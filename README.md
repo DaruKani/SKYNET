@@ -44,12 +44,13 @@ API has no state-clone primitive, so perfect lookahead is not silently assumed.
 
 ## Revised architecture: knowledge, plans and learning
 
-The bootstrap currently scores individual actions and learns nine shared weights.
-That is useful infrastructure, but it does not yet understand deck plans. Its
-single-role-per-card table must evolve to represent multiple effects, costs,
-targets, restrictions and follow-up choices.
+The policy scores legal actions and can learn nine shared residual weights. A
+first shared strategy module now connects Emergence, Mo Ye and Chixiao, including
+costs, searches, materials and interruption. It re-evaluates observed resources
+after each prompt; it does not search simulated future states. The broader card
+representation and configurable planning layers below remain work in progress.
 
-The target design below is **planned**, not a description of shipped features:
+The table describes the **target architecture**; the shipped subset is listed below:
 
 | Layer | Responsibility |
 | --- | --- |
@@ -137,6 +138,50 @@ python Tools/Skynet/catalog_sources.py `
 The tool reads only explicitly selected workspace sources, caps file count/size,
 does not search archives/parents/siblings and never runs the indexed code.
 
+### Shared Swordsoul route and decision explanations
+
+Use `DeckFile=Decks/AI_SkynetSwordsoul.ydk` with `Agent=skynet`. The included
+40-card research deck has three Chixiao in its Extra Deck and uses the same
+shared policy as other decks; it does not register a deck-specific executor.
+
+The supported route is **Emergence → Mo Ye → token + level-four Wyrm → Chixiao**.
+Mo Ye reveals an actual offered hand resource; Chixiao chooses actual materials,
+searches follow-up cards and can negate a visible enemy monster effect on a later
+turn. Search and negate share the core's once-per-turn restriction. The module
+checks the current material properties and stops relying on the route when those
+resources disappear or change. Selection state belongs to the accepted action
+and duel instance, never a static cache or a speculative proposal.
+
+This is a compact research route, not full Swordsoul/Tenyi play. Longyuan, Taia,
+Blackout, broader Extra Deck routes and Emergence's banished level change are not
+implemented. The pre-summon reveal estimate cannot know whether a hand card is
+already public; the core's actual activation and reveal offers remain decisive.
+Reviewed executor and deployed-script provenance is in
+[the existing review receipt](Catalog/expert-baselines.json).
+
+Pass `Explain=true` to print the selected ranked action, up to four alternatives
+and four excluded offers, their reasons, baseline/residual/total scores and the
+policy revision. In **Arena → Settings → Agents**, enable **Decision explanations**
+for the candidate, save, then open **View candidate output** during a run. Output
+is capped at 128 decisions per duel and 480 characters per line. Hidden opponent
+identities are redacted. Explanation reads do not sample RNG or queue selections;
+2,200 paired seeded choices remained identical with diagnostics enabled.
+
+These are explanations of the implemented scoring rules, not generated thoughts
+or complete traces of every battle/selection callback. Default is off; expert
+mode has no ranked-policy explanation. Fresh episodes use `skynet-policy-v3`;
+older episodes must be recollected, not relabeled. Learning is still optional
+and offline, and this strategy update uses frozen built-in weights.
+
+Validation for this update: Debug/Release Any CPU builds, 220 focused C#
+strategy/diagnostics assertions, 79 prior shared-card assertions, 13 learning
+tests, 138 Arena tests and six native fixture duels passed. A shuffled, unseeded
+20-match Arena comparison on the same compact deck finished **20–0 against the
+preserved v2 general policy**, with zero recorded disconnects. The approximate
+95% Wilson interval is 83.9–100%. The predecessor lacks these Swordsoul effects;
+this result demonstrates useful added coverage, not competitive modern strength
+or generalization to unseen decks. No weights were trained or promoted.
+
 ### Friendly strategy authoring
 
 The planned workflow is: import a `.ydk`, see available effect support and gaps,
@@ -195,7 +240,8 @@ engine behavior and concurrent duels.
 | Chaining | Rank optional offers; always honor mandatory offers |
 | Card selection | Select from actual server candidates using hint and the correct activation/resolution context |
 | Basic combat | Reuses observed-state battle helpers |
-| Strategy | Development, pressure, advantage, interaction, recovery, protection, conservation, risk and modest race cohesion |
+| Strategy | Shared features plus a compact, observed-state Swordsoul route available across deck lists |
+| Explanations | Opt-in chosen action, alternatives, exclusions and baseline/learned scores in console or Arena |
 | Learning | Optional softmax exploration; completed-duel episodes; offline linear residual updates |
 | Frozen play | Greedy inference; no training-file writes or automatic checkpoint promotion |
 | MDPro4 | Optional Windows external opponent through the ocgcore Solo adapter |
@@ -206,7 +252,8 @@ engine behavior and concurrent duels.
 The bootstrap library covers Pot of Greed, Raigeki, Dark Hole, Monster Reborn,
 Mystical Space Typhoon, Mirror Force, Trap Hole, Fissure, Smashing Ground,
 Reinforcement of the Army, Sangan, Hammer Shot, Double Summon, Swords of Revealing
-Light and Dimensional Prison: **15 supported cards**. Prompt timing was checked
+Light and Dimensional Prison: **15 shared staple cards**. The separate shared
+Swordsoul module adds three effect cards and its token/material handling. Prompt timing was checked
 against local `ygopro-scripts` sources; the four new entries were also compared
 with the deployed scripts. Mandatory selections do not depend on an activation
 handler having run.
@@ -294,7 +341,7 @@ python Tools/Skynet/evaluate.py Artifacts/evaluation/results.csv
 Training uses an episodic policy-gradient update over nine bounded features.
 Checkpoint formats and features are validated; incomplete/disconnected duels do
 not become losses. Each completed episode is published atomically under a unique
-name. New episodes include `policyRevision: skynet-policy-v2`. The offline
+name. New episodes include `policyRevision: skynet-policy-v3`. The offline
 trainer refuses missing or different policy revisions, mixed behavior-model
 versions, duplicate records, invalid values and an empty training/holdout
 partition. Recollect older episodes; do not relabel them. Existing compatible
@@ -486,15 +533,15 @@ weights or embeddings have been downloaded, and neural inference is not active.
 
 ## Testing and improvement roadmap
 
-The first shared effect migration is implemented and checked in native duels:
-the four-card package above now works in the general policy. The next milestone
-is decision diagnostics and a compact supported plan, measured against a stronger
-modern comparison opponent. The source inventory, OldSchool compatibility mode
+Shared staples, readable decision diagnostics and the first compact Swordsoul
+route are implemented and checked in native duels. The next milestone is wider
+modern effect coverage, clearer user-authored preferences and a reviewed stronger
+comparison opponent. The source inventory, OldSchool compatibility mode
 and native Arena adapter are implemented; the following work is planned:
 
 1. **Choose reviewed expertise.** Compare local and recent upstream versions,
    record provenance, fix known defects and pin the exact baseline. Start with a
-   staple package and a compact Swordsoul route; use Crimson King's planner as
+   broader Swordsoul coverage after this compact route; use Crimson King's planner as
    architectural input after its remaining resource issues are addressed.
 2. **Preserve or port the complete behavior.** Introduce effect/prompt context and
    pure proposal/commit interfaces. Preserve a selected expert executor in a

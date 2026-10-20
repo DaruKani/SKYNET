@@ -988,5 +988,455 @@
         "interpretation": "Exploratory single-deck comparisons, without tuning weights or policy after observing the runs. Updated SKYNET beat its preserved predecessor 18-2 and scored 9-11 against the preserved expert, compared with the historical 2-18 initial expert comparison. Samples are independent and unseeded, not paired. No trained checkpoint or automatic promotion; no claim of competitive general deck play."
       }
     }
+  ],
+  "sharedStrategyUpdates": [
+    {
+      "id": "shared-swordsoul-explained-v3",
+      "completedAt": "2026-10-20T18:38:01.866142+00:00",
+      "behaviorCommit": "7914e11",
+      "arenaCommit": "5ed2a94",
+      "policyRevision": "skynet-policy-v3",
+      "scope": "Shared Emergence, Mo Ye and Chixiao route, actual material/cost/search/negate prompts, and optional ranked-decision explanations. No complete modern executor or neural inference.",
+      "sourceReview": {
+        "source": {
+          "url": "https://github.com/IceYGO/windbot/blob/ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6/Game/AI/Decks/SwordsoulExecutor.cs",
+          "commit": "ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6",
+          "blobSha": "58d6fd17f3307c5dd591dba06c265c8c89b9c899",
+          "upstreamSha256": "70c942017726e63170d6f017a1ad7e2475a9f1a1ec1767630f8d3efd0d4d6d0a",
+          "legacySha256": "f587cb755a9ffc1842fdbe6e12df957bb6ee3ce4fbec7a1962ae99152792e0e8",
+          "normalizedEqual": true,
+          "localProvenance": "Normalized text equality (UTF-8 BOM/newlines only) against reviewed official source is verified; raw hashes differ and local checkout history remains unavailable."
+        },
+        "scripts": [
+          {
+            "id": 56465981,
+            "entry": "script/c56465981.lua",
+            "localRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+            "localSha256": "bd54734e93ee140e4a8d1a3cd8788982fab3744b7719d5ce165bbf444086b8b1",
+            "deployedSha256": "c8973c2cf1c08d6963e552ac6e95fae6f0bc32458c887d19b3269d1543e1f367",
+            "deployedBytes": 2759,
+            "normalizedEqual": true
+          },
+          {
+            "id": 20001443,
+            "entry": "script/c20001443.lua",
+            "localRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+            "localSha256": "e7132b56dcab949b835d2c806c44880aea568cb466655ac03c2c087613d1ded8",
+            "deployedSha256": "09f63d115ee5caf47ac294f8d3e1b6e395de15eabc88b42196d873b616a1d627",
+            "deployedBytes": 3062,
+            "normalizedEqual": true
+          },
+          {
+            "id": 69248256,
+            "entry": "script/c69248256.lua",
+            "localRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+            "localSha256": "4c74cc65a66b9935bdcf464b4538998c21545f4b8ea85aed95ac13aa34a02f20",
+            "deployedSha256": "011611fe67fa5125eb0de42cb19ce1903f89c7c7877419eb1650ce588267392f",
+            "deployedBytes": 3393,
+            "normalizedEqual": true
+          }
+        ],
+        "tokenHasStandaloneScript": false,
+        "database": [
+          {
+            "id": 20001443,
+            "name": "Swordsoul of Mo Ye",
+            "type": 33,
+            "level": 4,
+            "race": 8388608,
+            "attribute": 2,
+            "setcode": 363,
+            "str1": "",
+            "str2": ""
+          },
+          {
+            "id": 20001444,
+            "name": "Swordsoul Token",
+            "type": 20497,
+            "level": 4,
+            "race": 8388608,
+            "attribute": 2,
+            "setcode": 363,
+            "str1": "",
+            "str2": ""
+          },
+          {
+            "id": 56465981,
+            "name": "Swordsoul Emergence",
+            "type": 2,
+            "level": 0,
+            "race": 0,
+            "attribute": 0,
+            "setcode": 363,
+            "str1": "",
+            "str2": ""
+          },
+          {
+            "id": 69248256,
+            "name": "Swordsoul Grandmaster - Chixiao",
+            "type": 8225,
+            "level": 8,
+            "race": 8388608,
+            "attribute": 16,
+            "setcode": 363,
+            "str1": "",
+            "str2": ""
+          }
+        ]
+      },
+      "validation": {
+        "debugAnyCpu": "passed",
+        "releaseAnyCpu": "passed",
+        "releaseSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+        "diagnostics": {
+          "kind": "focused-decision-diagnostics-regression",
+          "checkedAt": "2026-10-20T18:32:59.4085900Z",
+          "framework": ".NET Framework 4.8",
+          "languageVersion": "C# 6",
+          "policyRevision": "skynet-policy-v3",
+          "debugExecutableSha256": "0e13be0c521489554da60f532e3f5b9dfef678c0e858570dba28a77f6ee2e365",
+          "database": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "diagnosticAssertionsPassed": 135,
+          "integrationAssertionsPassed": 11,
+          "assertionsSkipped": 0,
+          "pairedSeededChoices": 2200,
+          "diagnosticSourceSha256": "b4eb4be8e64259d2a02df4e52592572750b8247cee3568ecbbea46c7277c78ba",
+          "integrationSourceSha256": "ab9a04d1ff3d0952564fd39347799cb4971fb1f36bcfeacfc13b45b9d33f4391",
+          "diagnosticResultsSha256": "6f2e8916b9dd4e7ede2919b5cefb087ef8930b10b4f0131e23e7c35e47633ede",
+          "integrationResultsSha256": "673f910461b4eb773276b75a83dca29f2f93a0f217bdaec300db1623bd7bdf49",
+          "limits": [
+            "Synthetic visible client states and legal offers, not native protocol or competitive evidence.",
+            "Tracing covers ranked action selection; existing battle helpers and unreviewed selection callbacks are not individually explained.",
+            "At most 128 decisions per duel; each shows chosen offer, top four other admitted offers, and first four exclusions.",
+            "Training model and policy identity are logged without checkpoint modification or automatic promotion."
+          ]
+        },
+        "strategy": {
+          "kind": "focused-synthetic-client-state-regression",
+          "source": "Artifacts/swordsoul-qa/SwordsoulProbe.cs",
+          "sourceSha256": "7c6c754fdd4efe5c5f5c0cddfb444c43ed77fb569af15ac387573f141fba65b8",
+          "framework": ".NET Framework 4.8",
+          "languageVersion": "C# 6",
+          "executable": "Artifacts/swordsoul-qa/runtime/SKYNET.exe",
+          "executableSha256": "0e13be0c521489554da60f532e3f5b9dfef678c0e858570dba28a77f6ee2e365",
+          "database": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "assertionsPassed": 74,
+          "assertionsFailed": 0,
+          "assertionsSkipped": 0,
+          "results": "Artifacts/swordsoul-qa/results.log",
+          "resultsSha256": "7145434ca20af0a2e0d15b1a2a4e437a2a533bdc92858918aeb86d7e1ee964ef",
+          "limitations": [
+            "Synthetic public client states and legal-offer/callback objects, not native script execution or competitive evidence.",
+            "No full Swordsoul/Tenyi executor validation or general combo solver.",
+            "Only optional Mo Ye/Emergence/Chixiao script identities reviewed.",
+            "Token lifetime summon lock and Chixiao shared once-per-turn restriction are core-owned and need native evidence."
+          ],
+          "build": "Root Debug Any CPU build passed; harness compiled separately with /langversion:6.",
+          "sourceFiles": {
+            "Game/AI/Strategy/SwordsoulStrategy.cs": "be8dc233f89aeb1943d6e1a7e779c274583e19b9ef038008ac01ef507063816c",
+            "Game/AI/Strategy/SkynetPolicy.cs": "34818b7a8a3107ef33db65a43fd645e8ec019762262c2477ea4d2d4892d663f9",
+            "Game/AI/Strategy/SkynetAgent.cs": "b53c0f4b6f332dad19ea2fff6a3be93f61ddf62f8059289b7aa5a83b66745f5d",
+            "Game/SkynetDecisionAdapter.cs": "b8d985dae200c8b240bd00f67806276f6d12d860a9f21ee07e16100dc5d74da1"
+          },
+          "priorSharedCardRegression": {
+            "source": "Artifacts/four-card-qa/FourCardProbe.cs",
+            "sourceSha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6",
+            "assertionsPassed": 79,
+            "assertionsFailed": 0,
+            "assertionsSkipped": 0,
+            "results": "Artifacts/swordsoul-qa/prior-four-card-results.log",
+            "resultsSha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f",
+            "executableSha256": "0e13be0c521489554da60f532e3f5b9dfef678c0e858570dba28a77f6ee2e365"
+          }
+        },
+        "arenaBackendTestsPassed": 138,
+        "arenaProductionBuild": "passed; existing bundle-size advisory remains",
+        "learningTestsPassed": 13,
+        "nativeFixtures": [
+          {
+            "id": "moye-final",
+            "receipt": "Artifacts/swordsoul-native-moye-final/result.json",
+            "receiptSha256": "a5f7d03a671c8bfab6518da1a0349b90111004c17da3cf5855185adc04093ffb",
+            "inputs": {
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "botSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+              "opponentSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "deckSha256": "dfb7a27c5a74d2a954e9b85d67892774d36835cb534d7669acb77f0d8e157a79",
+              "opponentDeckSha256": "3745b82ceb618d3b2207f4fd2dd0dea2d1ff4b0691ae000bed07e7a9487ce47e",
+              "coreSeed": null
+            },
+            "duels": [
+              {
+                "duel": 1,
+                "matchId": "92b24558-add1-4c2c-b658-cbf3cc42ad7f",
+                "targetSeat": 0,
+                "policySeed": 20261021,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 52418,
+                "result": "win",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              },
+              {
+                "duel": 2,
+                "matchId": "59f21b66-47a4-4d72-8fdd-067f1ddfdacc",
+                "targetSeat": 1,
+                "policySeed": 20261022,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 52434,
+                "result": "win",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              }
+            ],
+            "observations": [
+              {
+                "log": "Artifacts/swordsoul-native-moye-final/duel-01/client-0.log",
+                "sha256": "b6dd9672ecdf8a7d0668b92a72e5f80afe8db5689a138a46b7b8adaa9d34bda0",
+                "chosenMoYeSummon": 3,
+                "chosenChixiaoSummon": 3,
+                "chosenChixiaoNegate": 0,
+                "trapHoleObserved": false
+              },
+              {
+                "log": "Artifacts/swordsoul-native-moye-final/duel-02/client-1.log",
+                "sha256": "fff84624118cba0d4857c2af774292d048b2498f2637ff87b87ce33fe7d6506e",
+                "chosenMoYeSummon": 3,
+                "chosenChixiaoSummon": 3,
+                "chosenChixiaoNegate": 0,
+                "trapHoleObserved": false
+              }
+            ]
+          },
+          {
+            "id": "emergence-mirror",
+            "receipt": "Artifacts/swordsoul-native-emergence-mirror/result.json",
+            "receiptSha256": "6971deb1e8cae7a9c6c11c8f0fdef71ce89486ebd5631a832c7251ecdf529b07",
+            "inputs": {
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "botSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+              "opponentSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "deckSha256": "bd68fd0699abeb0684400c5833d200113e8b757e123675e0962df055610592fd",
+              "opponentDeckSha256": "dfb7a27c5a74d2a954e9b85d67892774d36835cb534d7669acb77f0d8e157a79",
+              "coreSeed": null
+            },
+            "duels": [
+              {
+                "duel": 1,
+                "matchId": "01267985-48a0-439f-aa20-6f32cf56bb5c",
+                "targetSeat": 0,
+                "policySeed": 20261021,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 59047,
+                "result": "win",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              },
+              {
+                "duel": 2,
+                "matchId": "857dff72-7b97-4e64-a250-0aa72258c0cd",
+                "targetSeat": 1,
+                "policySeed": 20261022,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 59055,
+                "result": "loss",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              }
+            ],
+            "observations": [
+              {
+                "log": "Artifacts/swordsoul-native-emergence-mirror/duel-01/client-0.log",
+                "sha256": "8604d9e5d9be793768b3131374cf041a92fbc746cc7b0dc454eae1a0a5007459",
+                "chosenMoYeSummon": 3,
+                "chosenChixiaoSummon": 3,
+                "chosenChixiaoNegate": 4,
+                "trapHoleObserved": false
+              },
+              {
+                "log": "Artifacts/swordsoul-native-emergence-mirror/duel-02/client-1.log",
+                "sha256": "a8a3a572ea452b3d27ef9595477c2c61283f5007967f8b12697577d41bd83eae",
+                "chosenMoYeSummon": 3,
+                "chosenChixiaoSummon": 0,
+                "chosenChixiaoNegate": 0,
+                "trapHoleObserved": false
+              }
+            ]
+          },
+          {
+            "id": "interrupted",
+            "receipt": "Artifacts/swordsoul-native-interrupted/result.json",
+            "receiptSha256": "86c6e7f4a92d5b44206f4f679ee9e75f191e4c07d67c76944797df31713accd3",
+            "inputs": {
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "botSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+              "opponentSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "deckSha256": "dfb7a27c5a74d2a954e9b85d67892774d36835cb534d7669acb77f0d8e157a79",
+              "opponentDeckSha256": "d23339ff68acbdbe1d6a7fe1935cee48e498f2f3e4b2757ed06245fbc7bcc436",
+              "coreSeed": null
+            },
+            "duels": [
+              {
+                "duel": 1,
+                "matchId": "aba5dbd5-ac19-4668-8868-eb5bf1458f0c",
+                "targetSeat": 0,
+                "policySeed": 20261021,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 57107,
+                "result": "win",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              },
+              {
+                "duel": 2,
+                "matchId": "f17a23f3-2cc2-4268-83f5-e1d199d2eb33",
+                "targetSeat": 1,
+                "policySeed": 20261022,
+                "agent": "skynet",
+                "opponentAgent": "skynet",
+                "coreSeed": null,
+                "noDeckCheck": true,
+                "noShuffle": true,
+                "status": "passed",
+                "port": 57114,
+                "result": "win",
+                "seatSource": "authoritative STOC_TYPE_CHANGE",
+                "forcedCleanup": [],
+                "exitCodes": [
+                  0,
+                  0
+                ],
+                "serverExitCode": 0
+              }
+            ],
+            "observations": [
+              {
+                "log": "Artifacts/swordsoul-native-interrupted/duel-01/client-0.log",
+                "sha256": "0610b02bd4af5278fc70f13312d4ffd55b8d50e1e5d4d50e0ea3a0cec2b7f2f8",
+                "chosenMoYeSummon": 4,
+                "chosenChixiaoSummon": 3,
+                "chosenChixiaoNegate": 0,
+                "trapHoleObserved": true
+              },
+              {
+                "log": "Artifacts/swordsoul-native-interrupted/duel-02/client-1.log",
+                "sha256": "72a20dca09225fb60506187b59dd6c5aaab53fd132b31b54bc4c98298f5a4af0",
+                "chosenMoYeSummon": 4,
+                "chosenChixiaoSummon": 3,
+                "chosenChixiaoNegate": 0,
+                "trapHoleObserved": true
+              }
+            ]
+          }
+        ],
+        "nativeInterpretation": "Six final-binary duels completed normally. Actual logs show Emergence search, Mo Ye reveal/token/draw, token/Wyrm Synchro materials, Chixiao search and negate with graveyard banish cost and enemy target. Trap Hole removes Mo Ye while its token effect resolves; subsequent offers abandon Chixiao until resources are restored. Host seats 0 and 1 exercised; not a strength benchmark. Two earlier exploratory Mo Ye duels are excluded from this final-binary receipt.",
+        "payloadManifest": "Artifacts/modern-payload/Data/Skynet/manifest.json",
+        "payloadManifestSha256": "697089e87cf0d353ca327eafb63ca1718a35feb4f67a183b492f4b799b78dd34"
+      },
+      "arenaEvaluation": {
+        "runId": "dfd0ff70-f713-43ec-9e6d-cac9ed4aaa34",
+        "startedAt": "2026-10-20T18:33:47.185Z",
+        "finishedAt": "2026-10-20T18:36:42.770Z",
+        "comparison": "New general policy vs preserved previous v2 general policy, identical compact Swordsoul deck, built-in weights and training disabled",
+        "candidateExeSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+        "baselineExeSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+        "deck": "Decks/AI_SkynetSwordsoul.ydk",
+        "deckSha256": "68adacdec019174a0874ab950e15d7d855b74b3f8f8ef7be6ae7af2a52fd7bc0",
+        "matches": 20,
+        "candidateWins": 20,
+        "baselineWins": 0,
+        "candidateDisconnects": 0,
+        "baselineDisconnects": 0,
+        "candidateWinRateWilson95": [
+          0.83887,
+          1.0
+        ],
+        "shuffleEnabled": true,
+        "coreSeed": null,
+        "candidateExplainEnabled": true,
+        "receipt": "Artifacts/modern-arena-previous.json",
+        "receiptSha256": "d206356e4b7d505701af55a015da57561352bda77037308739e8e6165991961b",
+        "interpretation": "Exploratory single-deck gain from newly supported cards against a predecessor lacking them; no competitive modern-expert benchmark, held-out generalization, paired RNG, trained checkpoint or automatic promotion."
+      },
+      "cleanup": {
+        "checkedAt": "2026-10-20T18:38:01.879078+00:00",
+        "activeRuns": {
+          "runs": []
+        },
+        "gatewayRooms": {
+          "enableHalfwayWatch": false,
+          "fetchedAt": "2026-10-20T18:38:01.865Z",
+          "srvpro": {
+            "id": "srvpro-1",
+            "name": "SKYNET Local Arena"
+          },
+          "rooms": []
+        }
+      },
+      "limitations": [
+        "Ranked-action explanations do not cover every battle/selection callback and are capped at 128 decisions per duel.",
+        "Full Swordsoul/Tenyi, Taia, Longyuan, Blackout and Emergence banished-level effects are unsupported.",
+        "Normal-summon planning estimates a reveal resource from visible own-hand categories; the actual core prompt proves reveal eligibility.",
+        "Policy v3 episodes must be collected fresh; existing compatible weights may initialize them but old episodes must not be relabeled."
+      ]
+    }
   ]
 }
