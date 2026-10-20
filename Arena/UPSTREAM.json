@@ -1,0 +1,146 @@
+{
+  "repository": "https://github.com/mercury233/windbot-arena",
+  "commit": "371e62de0b0b29a8f097f84293e9f8f0f15a7509",
+  "archiveSha256": "3676bdcdd236c8cda66aca48f954f0bb2a5392e4dc4f73bbd175a43d3825e07a",
+  "importKind": "pinned source snapshot, no nested checkout or installed dependencies",
+  "upstreamLicenseFile": null,
+  "licensingNote": "Upstream notices retained; root SKYNET license does not relicense imported upstream content.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "c9c9142df700e792ad447d211aed97924ab2fe798fdbd374e7b39284992c44b1"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "5e93aa4611646b4afb8135c9b24480cf2f7ccee4980c7575b4598753c111d76a"
+    },
+    {
+      "path": "API.md",
+      "sha256": "b64ca63d652170be13d1ed14525983152e61eee3402ba84f87d5306908db7146"
+    },
+    {
+      "path": "README.md",
+      "sha256": "c9e3391b7946e7dfe1b349c93830bc0ea49f90bdf7cdb0d8d8901bb920b3a890"
+    },
+    {
+      "path": "client/index.html",
+      "sha256": "812fe45ef72169b62152f3560566d1107ad250fd06ff79996188ce67da418544"
+    },
+    {
+      "path": "client/public/arena.ico",
+      "sha256": "927df56fd1fe3fcd6313f9a7e13e50f27a1cdb2abb25ddd310774c7afe727f79"
+    },
+    {
+      "path": "client/src/App.vue",
+      "sha256": "2ae9a9297b118487e0943d0e225c78cbbf8cfc62c35e668a8063555ed56efcd6"
+    },
+    {
+      "path": "client/src/SettingsModal.vue",
+      "sha256": "b639266d1bb368d0e100964d871825a6c75d0d20a44b5dbffe5b31bcd7914e17"
+    },
+    {
+      "path": "client/src/main.js",
+      "sha256": "aea1c6869c005fa38cfc5ed38730fd08c0f2b982720d87bf4dc65c6b3ddaf9aa"
+    },
+    {
+      "path": "client/src/styles.css",
+      "sha256": "665446250f9c4be493f6244e171772340857226826c0139a7f8068bef03691e4"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "778431de32b9a75238c28e81e601ce5ae265e9069c0e551c5075a43d2cd46e99"
+    },
+    {
+      "path": "package.json",
+      "sha256": "f38fc5112501fe5710ddbca257b925945c9204b40a610ea2ffbde10c5622441b"
+    },
+    {
+      "path": "pm2.json",
+      "sha256": "ce510767f579316050019edff9b90af6a9adb9589642c4c568abaa0841c7c7d6"
+    },
+    {
+      "path": "server/app.js",
+      "sha256": "c92cda1d88d8798ef32106b994a705e0da905b98a68332ce5e7099d4c747433b"
+    },
+    {
+      "path": "server/arena-service.js",
+      "sha256": "e2ebacc7c8e245a26f909a5056b57e84e1c613f8bf33abc9a017115515cee6e1"
+    },
+    {
+      "path": "server/arena-settings.js",
+      "sha256": "c2bfbbf00b1c4289fc89edd28d21e130d1c234e66ea458df57682d2e2d82c2de"
+    },
+    {
+      "path": "server/bot-config.js",
+      "sha256": "c8ff349767639939cc94973e3ce6f8dc17008beafd2621361cd339c9fbd8fefb"
+    },
+    {
+      "path": "server/config.js",
+      "sha256": "6d27c4951ccac33d7f29c0518ecc87a8740a409a8667878d211714d4f5406322"
+    },
+    {
+      "path": "server/database.js",
+      "sha256": "7e0de7008cd4a0ea5990a3c5adb09abc57d89fcb8a20863d2b1814e8e805ea7d"
+    },
+    {
+      "path": "server/index.js",
+      "sha256": "9ab918eff4ccc83b6c22ffc49b5d5c82cb5ca12ad64a18655d914a00fd3a0e87"
+    },
+    {
+      "path": "server/migrations/001_initial.sql",
+      "sha256": "444dc46285d6f92a49a8a8ce96cbe5e66eb19ed33de767df3a61897c2b8b28d8"
+    },
+    {
+      "path": "server/migrations/002_multiple_srvpro_settings.sql",
+      "sha256": "5ccf3a575c2eb5b663adff629d7063eaf2e863ee4b9d361ee9202d4f655b2bfe"
+    },
+    {
+      "path": "server/migrations/003_run_note.sql",
+      "sha256": "c457c61af620778d61769074e1237d83e9a00cc487bf311573a1ea575180b26c"
+    },
+    {
+      "path": "server/migrations/004_notifications.sql",
+      "sha256": "9950477a54cb9f76951e043779489f2891a3c5c4139e7e9d222c44c766f2b2b1"
+    },
+    {
+      "path": "server/notifications.js",
+      "sha256": "8ef6d986487004c489c034fd1cdfaf63627179ac926ffdbebed19c79b8d7990e"
+    },
+    {
+      "path": "server/stats.js",
+      "sha256": "2ac3a860f3d7b8a8d0550faff109766dd4fd8be511809a517eadeb1d3b6656e6"
+    },
+    {
+      "path": "test/app.test.js",
+      "sha256": "78e393e395c97e2ea5f1a87644c8067130b26b312d1730d4ba4017659d93cc5e"
+    },
+    {
+      "path": "test/arena-service.test.js",
+      "sha256": "bd6613459c25f2abf53d51e0efdc47a5ae79901627aa027735eeb9052ce51926"
+    },
+    {
+      "path": "test/arena-settings.test.js",
+      "sha256": "eb5c879fc01a57c6daab9dec81c48cde59ca3275508df30b85639062c417f3f8"
+    },
+    {
+      "path": "test/bot-config.test.js",
+      "sha256": "b5d09ffc9d44c0412304a9a90e4bc88b776eae769f1d4a4ebbd32f8ca07b5b62"
+    },
+    {
+      "path": "test/database.test.js",
+      "sha256": "b6201a29ca16506f398c2dd9077ca39b20231b8ac98ba4bc448ab6f353a93806"
+    },
+    {
+      "path": "test/notifications.test.js",
+      "sha256": "b0d1cdaadadfab63af757303473a7af417243613fd89706baa30d34d25d86e19"
+    },
+    {
+      "path": "test/stats.test.js",
+      "sha256": "0e6b1e83cc2d554c69103447d5f85bdfb69e241480f42d9b7fe7977d90e1a59f"
+    },
+    {
+      "path": "vite.config.mjs",
+      "sha256": "e0c6123d5f677e5217cb66dd67203646e434b223c5fd3f588488b9afb1cf5631"
+    }
+  ]
+}

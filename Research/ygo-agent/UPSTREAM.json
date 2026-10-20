@@ -1,0 +1,650 @@
+{
+  "repository": "https://github.com/sbl1996/ygo-agent",
+  "commit": "dbf5142d49aab2e6beb4150788d4fffec39ae3e5",
+  "archiveSha256": "0456849dd1ebd65db2d147cfeb944e1560c6ad8e7d1f0b37c37930b07c01871c",
+  "importKind": "pinned source snapshot, no nested checkout or installed dependencies",
+  "upstreamLicenseFile": "LICENSE",
+  "licensingNote": "Upstream notices retained; root SKYNET license does not relicense imported upstream content.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "d0b38d25d37e6fb2f02671d63829c65f203594df77e4ec0a5204ee191f85dfeb"
+    },
+    {
+      "path": ".gitlab-ci.yml",
+      "sha256": "881ee1d0aa091aff673cb25d9e66d0549fec38ef2d4296d620d40ebd49eccf8d"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "7c9f4048c4c72532c6e1c54b51f44e3338afc67735726a693cbbba6d306198bf"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "a2ba8ba8b163bd6269fb6af6c7d94102dc80abafb5ef089de60fbe9219c51125"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "ea5096249b4c0fea021b2e07acc0b67fb1ae51b360c3614d999c4ec3bd8bce5c"
+    },
+    {
+      "path": "README.md",
+      "sha256": "45c0b9dc0da9a1119ea45d0143dd3f95789f54ae392c34fb787554ee55cd37c9"
+    },
+    {
+      "path": "assets/deck/BestowedDragon.ydk",
+      "sha256": "1bfa1160b22ae2fe0222f132b86ee321be18a25b6654d414ed2b8559352a8f6e"
+    },
+    {
+      "path": "assets/deck/BestowedDragon2.ydk",
+      "sha256": "90699b352a16f476e54f45cf4f55b8905d48b31122e444362a08cd6b81166f32"
+    },
+    {
+      "path": "assets/deck/BestowedDragonF.ydk",
+      "sha256": "85d68942ec9cea0180cd8bb59ae327519e823bdd84fa16a6df9c931680ce564b"
+    },
+    {
+      "path": "assets/deck/Blackwing.ydk",
+      "sha256": "077083a2b3b52f3b2c96cba40bfe5086f7c9946dc315e0ccd61feff5066abca2"
+    },
+    {
+      "path": "assets/deck/BlueEyes.ydk",
+      "sha256": "d62bc9b81e8183ab9be06d5aac39eedee3db1e92aaa8ed16bf10ebd51235e146"
+    },
+    {
+      "path": "assets/deck/Branded.ydk",
+      "sha256": "f173735edeb8c4aee0ed4e736a50b0d9ffeb1ca80163e90683c3c93b234c132e"
+    },
+    {
+      "path": "assets/deck/Branded60.ydk",
+      "sha256": "c0833e2ddc1fc99d5b8d2d8849fe3a0cf8d8c3843c38d420eebaa4e8891a5570"
+    },
+    {
+      "path": "assets/deck/CenturIon.ydk",
+      "sha256": "7ea060363aba5d44445940493a4392e8b78a0cfc22ef1a74fe79233c822d8204"
+    },
+    {
+      "path": "assets/deck/CenturIon2.ydk",
+      "sha256": "54176cb4fc42d9a72343f66de28cf28c269345d15351318adb495f4f1c133722"
+    },
+    {
+      "path": "assets/deck/Chimera.ydk",
+      "sha256": "3aac54358e05232b7632f0cd687f9914f1e7887ebfd473026d10b1a66b423e53"
+    },
+    {
+      "path": "assets/deck/CyberDragon.ydk",
+      "sha256": "c3b3e74490e6940b78a8e5ecc7e362bee1db87ce7e843f0f9aa56d54c58f7eaa"
+    },
+    {
+      "path": "assets/deck/Eld.ydk",
+      "sha256": "1a448dab9c3bf5b6e573dc7646fa193af1637b9d6b1f91ec1aae57751ec5f318"
+    },
+    {
+      "path": "assets/deck/Floowandereeze.ydk",
+      "sha256": "fd4003b4baf17f0d23232d9444329122c09bb4ac7284acce87b058ee7b91c697"
+    },
+    {
+      "path": "assets/deck/Floowandereeze2.ydk",
+      "sha256": "705fdd9e31f2d018d41d57d17373557d88bb8aa76d37e3e7873822a325cb09ce"
+    },
+    {
+      "path": "assets/deck/Hero.ydk",
+      "sha256": "3c0fdf3383d8dafcf9fcd54cc4b0ee870c8d0d48bd01c8ed0009bc14a225796c"
+    },
+    {
+      "path": "assets/deck/Labrynth.ydk",
+      "sha256": "eb4f7c67f8e3bfddf2eee19db0e68483e2716e94bac2a0a6c634208379f00e1e"
+    },
+    {
+      "path": "assets/deck/MaxDragon.ydk",
+      "sha256": "904108f207da61a049303fb0c07c5a74052eb9b44d68414c4c287f1d1f1715df"
+    },
+    {
+      "path": "assets/deck/NatRunick.ydk",
+      "sha256": "c092593caecdf1cc16cd5ea4152e4721e81d23d5c369200a06d3819929677b96"
+    },
+    {
+      "path": "assets/deck/Pachycephalo.ydk",
+      "sha256": "26bd97a4c06303fd8abfa1cfb5b3095b96486d7164efd1836d42fab0267a5d37"
+    },
+    {
+      "path": "assets/deck/Shaddoll.ydk",
+      "sha256": "5f8824e0c824c006a2c8795b8303e142b80f541501383d977701e1149ea94d09"
+    },
+    {
+      "path": "assets/deck/Shiranui.ydk",
+      "sha256": "773261d428703a72ba1bfa6a8540d6b4ab4cf1b4bc77eecbd79ba998bcee10d1"
+    },
+    {
+      "path": "assets/deck/SinfulSnake.ydk",
+      "sha256": "6cbdcccbcb45e9000caa6c2ec433e088420235b2fca67b6c642965950dfe66b9"
+    },
+    {
+      "path": "assets/deck/SinfulSnake2.ydk",
+      "sha256": "0570380e0475d6ff228981dfaf00b860278df6b5096a4951cb946b7ca753baaf"
+    },
+    {
+      "path": "assets/deck/SinfulSnakeKash.ydk",
+      "sha256": "0792d61a503d591de1cddc1577740e7adb4cc32516ae1354023a4e2e6b3f2e36"
+    },
+    {
+      "path": "assets/deck/SkyStrikerAce.ydk",
+      "sha256": "488053b853054975beb2ec4fbc5e3ca54b542b116068a3a5e8af621c0a8069d7"
+    },
+    {
+      "path": "assets/deck/SnakeEyeAlter.ydk",
+      "sha256": "0daf238f4d9ddfcca55dabfa7ab6268476c20af837a0cccc40060d382c46a6ef"
+    },
+    {
+      "path": "assets/deck/SnakeEyeFire.ydk",
+      "sha256": "cc093846197c7f72af10a7929c70d63beb2dedcb1e3eaca6bf08d8807291f0eb"
+    },
+    {
+      "path": "assets/deck/SnakeEyeFire2.ydk",
+      "sha256": "f2156b278dffd6cec0059c5500b03eb5aaf7cd8230af7d9c8998e8dfaed3ec3c"
+    },
+    {
+      "path": "assets/deck/SnakeEyeTear.ydk",
+      "sha256": "cee7a4de4d85b2a0073262faeb319503f6a24591ed964cb0abeb504a417738bf"
+    },
+    {
+      "path": "assets/deck/TenyiSword.ydk",
+      "sha256": "85b9b2dda4a24d3d6cd19e335d7a76d533dc3eca910fe3f09d9bc357a5c3ecce"
+    },
+    {
+      "path": "assets/deck/Voiceless.ydk",
+      "sha256": "4c20234be9e9f74b97e83fe9c78afafa06b9e2414fb0aef969209ccdefc8fb56"
+    },
+    {
+      "path": "assets/deck/unsupported/Magician.ydk",
+      "sha256": "e1e3524766b1310c8472edbe4f6c3efc5627b67b15a193663d19776932b48019"
+    },
+    {
+      "path": "assets/deck/unsupported/_tokens.ydk",
+      "sha256": "a1024692d585532c3f5a64b70cfdc4092fd7fb5572f70e64fc8dce7df7182e4a"
+    },
+    {
+      "path": "assets/deck/unused/OldSchool.ydk",
+      "sha256": "ebd327c60ca8050f882881fb962c7d942c7bd489f630f29dd8c7f698b3f102e2"
+    },
+    {
+      "path": "assets/log_conf.yaml",
+      "sha256": "8de0bfec3ce5af377fe2b928d6a3b9a80b36ad0a864d7912228b67e45700697c"
+    },
+    {
+      "path": "docs/action.md",
+      "sha256": "a41c1eaa08cc1859d39612dc8ad7e9249ec7786efe5444c29f185df8e07c1e53"
+    },
+    {
+      "path": "docs/feature_engineering.md",
+      "sha256": "cced0596cf44a0f4ea5c7b074e20538d41a95fd56d8f6756ee7eaa73cda1d52d"
+    },
+    {
+      "path": "docs/network_design.md",
+      "sha256": "3200ba36b922b007cc440338992c1a21a867098493a11b0ce2eb761e3b06349c"
+    },
+    {
+      "path": "docs/support.md",
+      "sha256": "2cd95dfa7d00c30b29399c549277dd96f1c84a1384fcce4fa55c57a8f43d72f8"
+    },
+    {
+      "path": "mcts/mcts/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "mcts/mcts/alphazero/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "mcts/mcts/alphazero/alphazero.py",
+      "sha256": "d410ec1f531e2af5fa610d9daa1048f841e7c757d413cfa45cb9b95dc49aecd7"
+    },
+    {
+      "path": "mcts/mcts/alphazero/alphazero_mcts.pyi",
+      "sha256": "74a4d5b660ed62e9a67fb41b659293c63ce999900e65677015b5cb64eeab5ed8"
+    },
+    {
+      "path": "mcts/mcts/alphazero/cnode.cpp",
+      "sha256": "60daeb125d34883a188dc08cd8cf0e91d08e5e864ada05e435c66c91edfdb75c"
+    },
+    {
+      "path": "mcts/mcts/alphazero/cnode.h",
+      "sha256": "cf5dc1c126b090ec26481da4fa7b2c98125ccf595098c0b18dfb2412e50001e6"
+    },
+    {
+      "path": "mcts/mcts/alphazero/tree.cpp",
+      "sha256": "4e6beecefbac2f31e3d4d296bb520e45d68d546da589b9fa6d50b66ae6e8f2b4"
+    },
+    {
+      "path": "mcts/mcts/core/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "mcts/mcts/core/array.h",
+      "sha256": "dbec81caed912f2c7708c82b6186ea5f90d7319d5b0d2f3db34b554fb11f598c"
+    },
+    {
+      "path": "mcts/mcts/core/common.h",
+      "sha256": "af2acf0f41eb61af516b7ea2ae29eeb61ab654a5ee45860b5f53990c7d393024"
+    },
+    {
+      "path": "mcts/mcts/core/minimax.h",
+      "sha256": "1a391b0bfa5c928b1a0a99bd0946a26d7fa95ed990b0c42d7030d2a83c850c0a"
+    },
+    {
+      "path": "mcts/mcts/core/spec.h",
+      "sha256": "af5096e357720f7c375eb87d92c985777db47a53addaf8ae6d02a1ce29a70e23"
+    },
+    {
+      "path": "mcts/mcts/core/state.py",
+      "sha256": "afa14b4ec5a0b4d11016f30b3378668a9ee24111cf973fdf9f209fecb2d83a5e"
+    },
+    {
+      "path": "mcts/setup.py",
+      "sha256": "67ea5aa7b957673f3268986b430c2ab54f70ba83908ee18b1f70f9ac22b2eb6e"
+    },
+    {
+      "path": "repo/packages/e/edopro-core/xmake.lua",
+      "sha256": "4a78cedd382e1384934aebc8e7403bf991095f229f73403b2ee4d4ce1daf7238"
+    },
+    {
+      "path": "repo/packages/y/ygopro-core/xmake.lua",
+      "sha256": "a311804e58b2ffefc4f48132424b17707b53bf78705589c5943e3e50e0921a01"
+    },
+    {
+      "path": "scripts/battle.py",
+      "sha256": "ed10aef65e5b327ef25eb864a592ddfe713df65e81a13a156944a2e5d141332e"
+    },
+    {
+      "path": "scripts/card/code_list.py",
+      "sha256": "7a20ec7040740bd201472e075ea4168b152b316e44020aac80b9c8e606668c8c"
+    },
+    {
+      "path": "scripts/card/embedding.py",
+      "sha256": "38437300fa2962feb3893631450700b464c3a3dec2fba9ce7f5eeb76c20857f8"
+    },
+    {
+      "path": "scripts/cleanba.py",
+      "sha256": "487bec3694530ff8b067c6eb1dd1ad0dc75603df9f1574189b7286c7ee65fbcf"
+    },
+    {
+      "path": "scripts/cleanba_g.py",
+      "sha256": "d5558914ac61a88660a913be7e3f2c218de816385228d71a5714ea2b2a711de5"
+    },
+    {
+      "path": "scripts/cleanba_l.py",
+      "sha256": "f20b0c78d3308b681b42bda6d3107f36c6e0d68508203001807214095791ea8e"
+    },
+    {
+      "path": "scripts/cleanba_nnx.py",
+      "sha256": "4923d4f8d441ae0a7fa501477dd10c9b2bf35b971a66fff3b420a50e2a5646d6"
+    },
+    {
+      "path": "scripts/cleanba_rnd.py",
+      "sha256": "a43a102cec25050ed4f02fc8430214b5fe59831c1e7520024fed6292699a71dd"
+    },
+    {
+      "path": "scripts/code_list.txt",
+      "sha256": "7b96f32845710b62a2f5ac1aa2a8c22e3af0ca780b5069532a06204f7dbdde78"
+    },
+    {
+      "path": "scripts/eval.py",
+      "sha256": "2e6fc95c07dfca3679684eea486f74c813d73bee22bf11201143279195b6bf84"
+    },
+    {
+      "path": "scripts/impala.py",
+      "sha256": "5d87ce30b36ec9be71ffe1b0e44cc004426824fae8130bbfb30d9c64d3348ed0"
+    },
+    {
+      "path": "scripts/torch/ppo.py",
+      "sha256": "c9034b363f3afc56216129bac349b0a53488cfe9bb4454503ed4e9b65ac11847"
+    },
+    {
+      "path": "scripts/torch/ppo_c.py",
+      "sha256": "adfb70ab0bd8329bc20e995a84143cfc86ba95e76c0b24f1b49d3daa8acdf6ab"
+    },
+    {
+      "path": "scripts/torch/ppo_osfp.py",
+      "sha256": "ed3ad4ecf4e07428b7150fd2356392134260560038b8c97d0a7bfb771d370cad"
+    },
+    {
+      "path": "scripts/torch/ppo_xla.py",
+      "sha256": "73bfc63add25aa35876faf8e7d3d882e2dcf6723a82fc8cd0f4e7d5d396e76c0"
+    },
+    {
+      "path": "setup.py",
+      "sha256": "c38e945e2f04f8f2abb65088d83620df0ef3be5c77eca99ce01be7d8dfa42c86"
+    },
+    {
+      "path": "xmake.lua",
+      "sha256": "43f0b65d5356c51c0da1db280966012ff4f5b4da1b3d7d0032fc1129791218a3"
+    },
+    {
+      "path": "ygoai/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ygoai/_version.py",
+      "sha256": "ba0cae165884aad0304261f8b1395cd7a6172986c558399fca4f3b7c4ac1f3ef"
+    },
+    {
+      "path": "ygoai/constants.py",
+      "sha256": "23dacd470af1d4b4f126b8a886619a095fab187742e7ebe8dc29bbed774810e8"
+    },
+    {
+      "path": "ygoai/embed.py",
+      "sha256": "c3d80dae7be53b41b5cc0f85200e974213388822e63d97119461969cfece7f3a"
+    },
+    {
+      "path": "ygoai/rl/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ygoai/rl/agent.py",
+      "sha256": "616074c72d8084d123cc27700bb2ac794900381660ec288ae49f8c8271946738"
+    },
+    {
+      "path": "ygoai/rl/agent2.py",
+      "sha256": "030106b3e79570b1a2b23960dc6802a27df39be4fd875fe5ebb51859ab80ca08"
+    },
+    {
+      "path": "ygoai/rl/buffer.py",
+      "sha256": "2051535c680aceba4d166d6693aed2c9a36bb260b1f33beaa75b2de15ab76149"
+    },
+    {
+      "path": "ygoai/rl/ckpt.py",
+      "sha256": "fa0db30733663a97572dcf75c8c0e2a393399e7db0354b8107b36268a83422d7"
+    },
+    {
+      "path": "ygoai/rl/dist.py",
+      "sha256": "2c49931606d2027f55006464c318b772d4cf539dcd4e196882842f3990435e7c"
+    },
+    {
+      "path": "ygoai/rl/env.py",
+      "sha256": "09d3bce1fb269c680c69b364419b0ade91ee267f14ac25a1070c1c5d4471e940"
+    },
+    {
+      "path": "ygoai/rl/eval.py",
+      "sha256": "8a45cbfe796ef99130bab893a58ff8eed6e8f31f3b2f0e2d582dc4c0b53443b0"
+    },
+    {
+      "path": "ygoai/rl/jax/__init__.py",
+      "sha256": "ca2b469fb2f0770938dcc19444633b2e81cf2510f93a99bf3bb2ab680edb376c"
+    },
+    {
+      "path": "ygoai/rl/jax/agent.py",
+      "sha256": "8c0da9be1ceb13d2a289d5f7f521be85a13bbd87d5388d885af47dece2833655"
+    },
+    {
+      "path": "ygoai/rl/jax/agent2.py",
+      "sha256": "76c4eae260b102a8c4a2f88725068f736f43b3964662456d6e68da31c0fb541e"
+    },
+    {
+      "path": "ygoai/rl/jax/eval.py",
+      "sha256": "a4c097a3668ca0301f07d68bf7818c468af4e63757ff826cc317be33f4f00e18"
+    },
+    {
+      "path": "ygoai/rl/jax/modules.py",
+      "sha256": "63358e3566e046180dc3e2f51fd283d2a060e789ba201551faa04fca8c9327de"
+    },
+    {
+      "path": "ygoai/rl/jax/nnx/agent.py",
+      "sha256": "6d5ccecfdef383ff413f4e235a15667ee8f0cb7595394c86327c5ba410e9f79b"
+    },
+    {
+      "path": "ygoai/rl/jax/nnx/modules.py",
+      "sha256": "3ab62144f5c16168e9629b61e7ed5c82efdc0c003f933ba391bd92f242aba08f"
+    },
+    {
+      "path": "ygoai/rl/jax/nnx/rnn.py",
+      "sha256": "2e2f1c5602545b7ddff53b5ed3332dfad11d07fade8b61370145bb31640fe30a"
+    },
+    {
+      "path": "ygoai/rl/jax/nnx/transformer.py",
+      "sha256": "15aec28cf34ec37480e912a1c8f102eff4ffea6ea5b068aa12b4a5df68da6761"
+    },
+    {
+      "path": "ygoai/rl/jax/rwkv.py",
+      "sha256": "1ddb0f5e6ec0ac5acca7f5ddd104a9c1a314635b2a0000c23f7247dd2110f713"
+    },
+    {
+      "path": "ygoai/rl/jax/switch.py",
+      "sha256": "542e3745644e0bb69207457ad3d9ba060bcbc0ab433345f6bc6d4e0c6601867e"
+    },
+    {
+      "path": "ygoai/rl/jax/transformer.py",
+      "sha256": "699448a92679ad7bf8fc1d771ab648bb208a0bf21decf22ff140612926d617a7"
+    },
+    {
+      "path": "ygoai/rl/jax/utils.py",
+      "sha256": "d42724ec3ce8bc188356a0d455629aacf0e798856bb5bf03bbb7afe7a9dc32bd"
+    },
+    {
+      "path": "ygoai/rl/ppo.py",
+      "sha256": "7014d28e649157e87852f6e8d38a760bd9e8843c2972056bcc108adfcbbbdc64"
+    },
+    {
+      "path": "ygoai/rl/utils.py",
+      "sha256": "0a37541f7bbd9817b75ff8eafc37684b38aef455f1a99ef1b08d5cc88ef3abd6"
+    },
+    {
+      "path": "ygoai/utils.py",
+      "sha256": "f20ddd21d17cb452fe51b35ea9a425bf97adfb6f3cccfc457548cc8c234d6621"
+    },
+    {
+      "path": "ygoenv/MANIFEST.in",
+      "sha256": "4b0fff539b09170dbc969417dd899eddc25a8775548618379c925d1ebde64e1a"
+    },
+    {
+      "path": "ygoenv/setup.py",
+      "sha256": "86394ba26f80555e2898ed7bd02aeee421f1ac2c99a7f80aaf108485e9120184"
+    },
+    {
+      "path": "ygoenv/ygoenv/__init__.py",
+      "sha256": "e3e7182b3209d89c5e8d6246a9adca6ec305f63559ee06a9dc955a5832c9847b"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/BS_thread_pool.h",
+      "sha256": "a105dc772ee80510894c200ec0284fac1845cb24bca31041d8702934c349e0e9"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/ThreadPool.h",
+      "sha256": "5b7183e85aab6b78082510ccc8e9cb3dc739a43d284c53aed29bad825566cb97"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/action_buffer_queue.h",
+      "sha256": "f07775993bd76a2d1920aa1349309270bbd48a914b5be1bb88b82dd2194cfbde"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/array.h",
+      "sha256": "bd10716b170f2fb4ba95e2f828ed9edb4ddcb1175865230b9100c4011681456e"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/async_envpool.h",
+      "sha256": "9df396abc6e3b3c9eac9c00f4d5c95667b35d0c205bc37ead79bf58c43ef2546"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/circular_buffer.h",
+      "sha256": "280bae8bb925b0e35bbea78baf5686f22cb3e518a961ceffd9258243debdffe3"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/dict.h",
+      "sha256": "2577bb2672e43c829cb5aa2f03006b171a01c9c3512ba8d5b38c6be125200682"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/env.h",
+      "sha256": "9ffc5cfa747bedde7eef622e04d73ac013c5e5fa25db67bfe3b0f26d0436fd34"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/env_spec.h",
+      "sha256": "99baf723245e4a89c1d7008e20161547878fd41ee066c027aa97819956536214"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/envpool.h",
+      "sha256": "c244fba3617451039b8188ed6311a05d2b030c54f3f93d32d724ba9257ada1de"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/py_envpool.h",
+      "sha256": "db54a925eeae9496040a7ab0de189cb6d2116f11377a23b2da3c449c80f697ba"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/spec.h",
+      "sha256": "f4f37b544e79e3edd37242115d0a026e18d69f2889c164eebba9bcb7c091c0a3"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/state_buffer.h",
+      "sha256": "d8d42f77ea5a05c87d1d7125c7dec89ec2c72c338e285de15973979adb594af2"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/state_buffer_queue.h",
+      "sha256": "a9c6fe07b70526b27c670f4d4009062f669a5f13ea51ecefec1332b068d4af97"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/tuple_utils.h",
+      "sha256": "3ae5d62f8ab117b2e4935894c485921e92079626229bce470b2028f6093e5a5a"
+    },
+    {
+      "path": "ygoenv/ygoenv/core/type_utils.h",
+      "sha256": "502c15aac292c4f083bbd810484cff928c9d79ee81032e214f6dcd14a69f0f76"
+    },
+    {
+      "path": "ygoenv/ygoenv/dummy/__init__.py",
+      "sha256": "5b3e920889d9587415e30effe7bdb47cfb9ec68919c143977a86532200afbe41"
+    },
+    {
+      "path": "ygoenv/ygoenv/dummy/dummy_envpool.cpp",
+      "sha256": "7d3dbb970f20e936d2ab233cc40adc1e7a2e602a7db3e4ebc7cef07301f1efe1"
+    },
+    {
+      "path": "ygoenv/ygoenv/dummy/dummy_envpool.h",
+      "sha256": "07532628653ffd9ff00b4f8c970efcf9db3f9ad7db58f51bf70e4413579c97b6"
+    },
+    {
+      "path": "ygoenv/ygoenv/dummy/registration.py",
+      "sha256": "e279e03bbd1c47efaee51e88f15fd71e1389bffda151df842e3b20be0f458c11"
+    },
+    {
+      "path": "ygoenv/ygoenv/edopro/__init__.py",
+      "sha256": "328cd51c24449d9c58820b4404d76ca171306a1cf00fbf886ed05b5f540ed7d9"
+    },
+    {
+      "path": "ygoenv/ygoenv/edopro/edopro.cpp",
+      "sha256": "7d11c0db5d0705e5192c3033c9ecdbc31a5f1b886e29e7bcbac66cd29f798d81"
+    },
+    {
+      "path": "ygoenv/ygoenv/edopro/edopro.h",
+      "sha256": "12a0e25ac89f65b94d3b1c256402c2f662e91278f7756e5d33127e23a434ed5c"
+    },
+    {
+      "path": "ygoenv/ygoenv/edopro/registration.py",
+      "sha256": "c1419cb5ddd4d0a57f0a07efda90490e3b9f2630323cb9397da3e8c40df39d6b"
+    },
+    {
+      "path": "ygoenv/ygoenv/entry.py",
+      "sha256": "be6b09b9d60b9ef1306b968dd09db7e3c38104c4b0a735e0022b55c1f6e618b3"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/__init__.py",
+      "sha256": "b21b2033b9cb327ce2813d74583b0bfd0c7f0d140fd73f9cb0c3beb206420490"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/api.py",
+      "sha256": "2613ecca81983a3c1bb7699a81b1a25aa17674089063964b35ababf4177aac27"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/data.py",
+      "sha256": "7dc59d91e20b0508ea4382dc40d86cb586b15d1ca783c31e813dd04e77f119a1"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/dm_envpool.py",
+      "sha256": "50cfda09344c468c8195159f47aa2f3d95758f5986255b992c1cfb33d3789e7b"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/env_spec.py",
+      "sha256": "94d73c5c0132035664f0da21595b775211e92b8ce1922bc0af93b2887b2b66b4"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/envpool.py",
+      "sha256": "f8453033bbbc16b3da518e725faa3af1d3038e6fbcae1307b9a5736d6395058a"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/gym_envpool.py",
+      "sha256": "46692b6c9967648980d7182030fb069b58b99df37f0e339bf0633f98236e6b6a"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/gymnasium_envpool.py",
+      "sha256": "db0b73e0d43cc7502de4ae20ecb940cbbb5fd0f041d252920e58722e4bc12e62"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/protocol.py",
+      "sha256": "ce43534a40f84382c9764a4b25f5702bad63a5f706a0166b57c839b84334d2ad"
+    },
+    {
+      "path": "ygoenv/ygoenv/python/utils.py",
+      "sha256": "8b7b10d0ed87ff1b3050873aac07d7c5daa855702b38a25ecbdf426f70717a0a"
+    },
+    {
+      "path": "ygoenv/ygoenv/registration.py",
+      "sha256": "0a2c7c099f9c7390d22ac95d87d45fbb40aff13ed39618e6a428bccc668d8990"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro/__init__.py",
+      "sha256": "c9a29789f52443fc44f2c505f9b9d199c229416b7d1d4ce64b17aa52c6f528de"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro/registration.py",
+      "sha256": "6270754776ea432a525eef054187827c1d697eacf1216745359adb4472ccae2a"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro/ygopro.cpp",
+      "sha256": "1c68cb46dcc854e490e843d57a9643583f8cdbbd471f450b39f04680875ff754"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro/ygopro.h",
+      "sha256": "79bd8e46948ed7a7a1b9cb3bbc21d782fda915baa15e967b126235cfbc42598d"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro0/__init__.py",
+      "sha256": "bc393ca8f8aacabbb591dd903ebeb8bde867e60346607792c26385ae3d798fb0"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro0/registration.py",
+      "sha256": "5d021781c693a649fe6aaf0f3e9d35bdf92b9885158fc953ca9b5631a0ea6eb5"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro0/ygopro.cpp",
+      "sha256": "d9602e0624f052222f73ca390380879ae944077fd7a1003c1e79ed14af55487d"
+    },
+    {
+      "path": "ygoenv/ygoenv/ygopro0/ygopro.h",
+      "sha256": "c3b2dda003015345f5c914c3b6a0bf2bfa3d9488dfe17fe4346c831efb001bc8"
+    },
+    {
+      "path": "ygoinf/setup.py",
+      "sha256": "a4427335a985e10e3372f82051f8a948d5bebf0d78296adec060e5ecf8b71bd5"
+    },
+    {
+      "path": "ygoinf/ygoinf/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "ygoinf/ygoinf/features.py",
+      "sha256": "5fb695821f0db41b94da3293756c78ccff6fd29cc14c0fb939ec4ed16365e83e"
+    },
+    {
+      "path": "ygoinf/ygoinf/jax_inf.py",
+      "sha256": "c26fc84e8a96418f180fa7424aabd58678a3295c89db0df5b3e6ab31ee955a2c"
+    },
+    {
+      "path": "ygoinf/ygoinf/models.py",
+      "sha256": "c934c32d6aa3c2c09911c4ae64886977e70da70ac46ad702825f14db98f3e9a8"
+    },
+    {
+      "path": "ygoinf/ygoinf/server.py",
+      "sha256": "ca3d5bdd978179b18fefed1782755bf003348d0256c2458d64fdd0f5801f93e1"
+    },
+    {
+      "path": "ygoinf/ygoinf/tflite_inf.py",
+      "sha256": "b684414713fb75d0b68578712a0da3be6ae71127ca3176dc0be77b7f3670f2f1"
+    }
+  ]
+}
