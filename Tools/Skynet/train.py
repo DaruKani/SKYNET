@@ -17,6 +17,7 @@ FEATURES = (
     "protection", "conserve", "risk", "synergy",
 )
 SCHEMA = "skynet-public-v1"
+POLICY_REVISION = "skynet-policy-v2"
 
 
 def require(condition, message):
@@ -38,6 +39,8 @@ def validate_weights(model):
 
 
 def episode_gradient(episode):
+    require(episode.get("policyRevision") == POLICY_REVISION,
+            "Incompatible policy revision: collect fresh episodes with " + POLICY_REVISION + ".")
     require(episode.get("format") == "skynet-episode-v1"
             and episode.get("featureSchema") == SCHEMA
             and not episode.get("truncated", False),
@@ -113,6 +116,7 @@ def train(episodes, base_model, learning_rate, holdout_fraction, split_salt):
         weights[key] = max(-20.0, min(20.0, weights.get(key, 0.0) + delta))
     provenance = {
         "parent": base_model["version"], "trainingIds": sorted(training_ids),
+        "policyRevision": POLICY_REVISION,
         "holdoutIds": sorted(holdout_ids), "splitSalt": split_salt,
         "holdoutFraction": holdout_fraction, "learningRate": learning_rate,
         "groupCount": len(groups),

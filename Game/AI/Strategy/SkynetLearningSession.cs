@@ -45,6 +45,8 @@ namespace Skynet.Game.AI.Strategy
         public string Id { get; set; }
         [DataMember(Name = "sourceModel")]
         public string SourceModel { get; set; }
+        [DataMember(Name = "policyRevision", IsRequired = true)]
+        public string PolicyRevision { get; set; }
         [DataMember(Name = "group")]
         public string Group { get; set; }
         [DataMember(Name = "result")]
@@ -65,6 +67,7 @@ namespace Skynet.Game.AI.Strategy
         public const string FeatureSchema = "skynet-public-v1";
         public const string ModelFormat = "skynet-linear-v1";
         public const string EpisodeFormat = "skynet-episode-v1";
+        public const string PolicyRevision = "skynet-policy-v2";
         private const int MaximumDecisions = 4096;
         private static readonly string[] FeatureNames =
         {
@@ -106,6 +109,7 @@ namespace Skynet.Game.AI.Strategy
                 FeatureSchema = FeatureSchema,
                 Id = Guid.NewGuid().ToString("N"),
                 SourceModel = _model.Version,
+                PolicyRevision = PolicyRevision,
                 Group = TrainingGroup ?? "",
                 Decisions = new List<SkynetDecisionRecord>()
             } : null;

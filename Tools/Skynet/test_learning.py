@@ -1,8 +1,10 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import evaluate
 import train
@@ -16,6 +18,7 @@ class LearningTests(unittest.TestCase):
         }
         self.episode = {
             "format": "skynet-episode-v1", "featureSchema": train.SCHEMA,
+            "policyRevision": train.POLICY_REVISION,
             "id": "training", "sourceModel": "heuristic-v1", "group": "cohort",
             "result": 0, "truncated": False,
             "decisions": [{
@@ -64,6 +67,49 @@ class LearningTests(unittest.TestCase):
         self.episode["group"] = ""
         with self.assertRaises(ValueError):
             self.fit()
+
+    def test_missing_policy_revision_rejected(self):
+        del self.episode["policyRevision"]
+        with self.assertRaisesRegex(ValueError, "policy revision"):
+            self.fit()
+
+    def test_stale_policy_revision_rejected(self):
+        self.episode["policyRevision"] = "skynet-policy-v1"
+        with self.assertRaisesRegex(ValueError, "policy revision"):
+            self.fit()
+
+    def test_custom_checkpoint_does_not_allow_mixed_policy_revisions(self):
+        self.base.update(version="custom-checkpoint", weights={"risk": -0.75})
+        self.episode["sourceModel"] = self.holdout["sourceModel"] = self.base["version"]
+        self.holdout["policyRevision"] = "skynet-policy-v1"
+        with self.assertRaisesRegex(ValueError, "policy revision"):
+            self.fit()
+        del self.holdout["policyRevision"]
+        with self.assertRaisesRegex(ValueError, "policy revision"):
+            self.fit()
+
+    def test_current_policy_episodes_accept_existing_custom_checkpoint(self):
+        self.base.update(version="custom-checkpoint", weights={"risk": -0.75})
+        self.episode["sourceModel"] = self.holdout["sourceModel"] = self.base["version"]
+        original = copy.deepcopy(self.base)
+        candidate = self.fit()
+        self.assertEqual(candidate["training"]["policyRevision"], train.POLICY_REVISION)
+        self.assertEqual(candidate["training"]["parent"], "custom-checkpoint")
+        self.assertEqual(candidate["weights"]["risk"], -0.75)
+        self.assertEqual(self.base, original)
+
+    def test_candidate_identity_includes_policy_revision(self):
+        candidate = self.fit()
+        fingerprint = hashlib.sha256(json.dumps(
+            {"weights": candidate["weights"], "training": candidate["training"]},
+            sort_keys=True).encode()).hexdigest()[:16]
+        self.assertEqual(candidate["version"], "candidate-" + fingerprint)
+        next_revision = "synthetic-next-policy-for-fingerprint-test"
+        self.episode["policyRevision"] = self.holdout["policyRevision"] = next_revision
+        with mock.patch.object(train, "POLICY_REVISION", next_revision):
+            next_candidate = self.fit()
+        self.assertEqual(candidate["weights"], next_candidate["weights"])
+        self.assertNotEqual(candidate["version"], next_candidate["version"])
 
     def test_duplicates_truncated_and_invalid_probability_rejected(self):
         with self.assertRaises(ValueError):
