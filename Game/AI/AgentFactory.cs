@@ -8,9 +8,10 @@ namespace Skynet.Game.AI
     {
         public static void ValidateOptions(string agent, bool policyTraining, string policyModel)
         {
-            bool expert = string.Equals(agent, "expert-oldschool", StringComparison.OrdinalIgnoreCase);
+            bool expert = string.Equals(agent, "expert-oldschool", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(agent, "expert-swordsoul", StringComparison.OrdinalIgnoreCase);
             if (!expert && !string.Equals(agent, "skynet", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("Agent must be skynet or expert-oldschool.");
+                throw new ArgumentException("Agent must be skynet, expert-oldschool or expert-swordsoul.");
             if (expert && (policyTraining || !string.IsNullOrWhiteSpace(policyModel)))
                 throw new ArgumentException("Expert compatibility owns its full decision lifecycle and does not accept PolicyTraining or PolicyModel.");
         }
@@ -18,6 +19,12 @@ namespace Skynet.Game.AI
         public static Executor Create(GameAI ai, Duel duel, GameClient game)
         {
             ValidateOptions(game.Agent, game.PolicyTraining, game.PolicyModel);
+            if (string.Equals(game.Agent, "expert-swordsoul", StringComparison.OrdinalIgnoreCase))
+            {
+                SwordsoulExecutor expert = new SwordsoulExecutor(ai, duel);
+                expert.Deck = "AI_ExpertSwordsoul";
+                return expert;
+            }
             if (string.Equals(game.Agent, "expert-oldschool", StringComparison.OrdinalIgnoreCase))
             {
                 // A whole expert owns every callback and its pending selectors.

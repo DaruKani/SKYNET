@@ -987,6 +987,502 @@
         },
         "interpretation": "Exploratory single-deck comparisons, without tuning weights or policy after observing the runs. Updated SKYNET beat its preserved predecessor 18-2 and scored 9-11 against the preserved expert, compared with the historical 2-18 initial expert comparison. Samples are independent and unseeded, not paired. No trained checkpoint or automatic promotion; no claim of competitive general deck play."
       }
+    },
+    {
+      "id": "expert-swordsoul",
+      "agentArgument": "Agent=expert-swordsoul",
+      "mode": "explicit-full-lifecycle-compatibility",
+      "purpose": "Reviewed modern Swordsoul/Tenyi comparison opponent; full original ordered executor owns callbacks and instance state. Playing strength is evaluated separately.",
+      "sourceReview": {
+        "source": {
+          "Game/AI/Decks/SwordsoulExecutor.cs": {
+            "url": "https://raw.githubusercontent.com/IceYGO/windbot/ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6/Game/AI/Decks/SwordsoulExecutor.cs",
+            "revision": "ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6",
+            "upstreamSha256": "70c942017726e63170d6f017a1ad7e2475a9f1a1ec1767630f8d3efd0d4d6d0a",
+            "archivedSha256": "f587cb755a9ffc1842fdbe6e12df957bb6ee3ce4fbec7a1962ae99152792e0e8",
+            "normalizedEqual": true,
+            "bytes": 132005
+          },
+          "Decks/AI_Swordsoul.ydk": {
+            "url": "https://raw.githubusercontent.com/IceYGO/windbot/ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6/Decks/AI_Swordsoul.ydk",
+            "revision": "ba2f37cb1fa8bd53eab227970f4fd0a692a91fe6",
+            "upstreamSha256": "da70d0cd0a5cb54b0633118cff5d720926367f4363efcdfa987aa7a11b6c29b5",
+            "archivedSha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824",
+            "normalizedEqual": true,
+            "bytes": 528
+          }
+        },
+        "deck": {
+          "mainCount": 40,
+          "extraCount": 15,
+          "cardCount": 55,
+          "uniqueCards": 30,
+          "path": "Decks/AI_ExpertSwordsoul.ydk",
+          "sha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824"
+        },
+        "database": "D:\\Programs\\GitHub\\MDPro_3\\Data\\locales\\en-US\\cards.cdb",
+        "scriptsArchive": "D:\\Programs\\GitHub\\MDPro_3\\Data\\script.zip",
+        "scriptReview": "Exact deck entry extraction bounded to 64 KiB; all deployed scripts compared with explicit companion checkout. Detailed semantic review covers corrected prompt paths, not every expert branch.",
+        "cards": [
+          {
+            "id": 5041348,
+            "name": "Draco Berserker of the Tenyi",
+            "type": 8225,
+            "level": 8,
+            "entry": "script/c5041348.lua",
+            "deployedBytes": 2661,
+            "deployedSha256": "5f82c5d7a599f965de8796e02aafe85b2971d4894d45e44442cd020f4b29da08",
+            "localSha256": "f1ecaf019809a5d76cd4534b7af22e08cefcc387b29dc4078a61c07196d7239c",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 9464441,
+            "name": "Adamancipator Risen - Dragite",
+            "type": 8225,
+            "level": 8,
+            "entry": "script/c9464441.lua",
+            "deployedBytes": 2606,
+            "deployedSha256": "b7cd21c3c42fb93159e50c2504983c0e4d1ad711d04e7e188df83353d45adabc",
+            "localSha256": "bc29caae7520fd514cbd655b67909224597a106c21272d96fef25289e6d2cc57",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 10045474,
+            "name": "Infinite Impermanence",
+            "type": 4,
+            "level": 0,
+            "entry": "script/c10045474.lua",
+            "deployedBytes": 3341,
+            "deployedSha256": "d64a2fc97f99a05231ea4de0ef507355b702c959e16650ed6f506bd3aa858105",
+            "localSha256": "87ae0f08634871fd8bbab8f83b8ec731019181b03be5ce4cab9e90f780e36cb8",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 14558127,
+            "name": "Ash Blossom & Joyous Spring",
+            "type": 4129,
+            "level": 3,
+            "entry": "script/c14558127.lua",
+            "deployedBytes": 1305,
+            "deployedSha256": "0afff1fadd6be7e6301e4d72d5457eab179c3aa966e4d3a3ac909ef25a4b0667",
+            "localSha256": "fd4c7dd7e01c5ab227d539187369c7d37a9062b9fa5f9a93cf8c8344eb1a770b",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 14821890,
+            "name": "Swordsoul Blackout",
+            "type": 4,
+            "level": 0,
+            "entry": "script/c14821890.lua",
+            "deployedBytes": 2779,
+            "deployedSha256": "aac574f9570f6d87eb0c81186def7b1c4adad8f4a20f2cc40e48d3226e5f77df",
+            "localSha256": "2126bbb78dae9433567f881c76b5e9df7265f58d718361aeebecb663094dde5e",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 15693423,
+            "name": "Evenly Matched",
+            "type": 4,
+            "level": 0,
+            "entry": "script/c15693423.lua",
+            "deployedBytes": 1661,
+            "deployedSha256": "dbe87d369e5b1c2be298995d3c621133ed5bde5d3e554589e752308a15373e2a",
+            "localSha256": "c7635b0ceb42d3dff81f6fe2d9eed2e56a42cb95e7e2fe41b87276fea7e684c3",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 20001443,
+            "name": "Swordsoul of Mo Ye",
+            "type": 33,
+            "level": 4,
+            "entry": "script/c20001443.lua",
+            "deployedBytes": 3062,
+            "deployedSha256": "09f63d115ee5caf47ac294f8d3e1b6e395de15eabc88b42196d873b616a1d627",
+            "localSha256": "e7132b56dcab949b835d2c806c44880aea568cb466655ac03c2c087613d1ded8",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 23431858,
+            "name": "Tenyi Spirit - Vishuda",
+            "type": 33,
+            "level": 7,
+            "entry": "script/c23431858.lua",
+            "deployedBytes": 2287,
+            "deployedSha256": "f9c83ece2cbd22fab8f3dfa36249780c69a4c924d92b07122bb31cdb72ce01ac",
+            "localSha256": "9b51510fd12e0620f44d26a0f3bf721462b5f4b6b8ab0eb2df3e5f4af61f0377",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 23434538,
+            "name": "Maxx \"C\"",
+            "type": 33,
+            "level": 2,
+            "entry": "script/c23434538.lua",
+            "deployedBytes": 2262,
+            "deployedSha256": "997212b26aa01d52096a7bbc03757220a43db36a065e8f405d81dcc8c999e651",
+            "localSha256": "74f29ae260b1d995d312979b3c413779cc314f38e0c497ce829e3901b42d9e50",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 24224830,
+            "name": "Called by the Grave",
+            "type": 65538,
+            "level": 0,
+            "entry": "script/c24224830.lua",
+            "deployedBytes": 2109,
+            "deployedSha256": "47c6204da1b2916f096af1efde8956ece412d44ed2a3a62417da6aa8a5f3fcea",
+            "localSha256": "9c33bccc809a3be742d15571022c3181a8eaa2ec49ad4f68a43971352d26df3c",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 27204311,
+            "name": "Nibiru, the Primal Being",
+            "type": 33,
+            "level": 11,
+            "entry": "script/c27204311.lua",
+            "deployedBytes": 3811,
+            "deployedSha256": "457256bcf0e22118b679a571f74337da23e3dfaf744c32bae163597be0233ca9",
+            "localSha256": "3074c9ecbef48e30078d508ae36dc3d224bd2932d3d831f11f3a2368925e34c8",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 32519092,
+            "name": "Monk of the Tenyi",
+            "type": 67108865,
+            "level": 1,
+            "entry": "script/c32519092.lua",
+            "deployedBytes": 245,
+            "deployedSha256": "4d25acecebee63932399f9f72770e812040ce6b254b8cec9f2921fbf00d593ed",
+            "localSha256": "f9cf825005321546bdea8ebd9c78dcb8f62f1f6ed2b243d1c24e229d53b707a9",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 35261759,
+            "name": "Pot of Desires",
+            "type": 2,
+            "level": 0,
+            "entry": "script/c35261759.lua",
+            "deployedBytes": 1100,
+            "deployedSha256": "8570ae233cca22516eaa79667365d636ffb9c3f243d9c194c081d32029223085",
+            "localSha256": "05d151decf6a5e57b2ec37234a47847ecd574571a8e7c65c4f6b02e1c313af4c",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 42632209,
+            "name": "Geomathmech Final Sigma",
+            "type": 8225,
+            "level": 12,
+            "entry": "script/c42632209.lua",
+            "deployedBytes": 2066,
+            "deployedSha256": "eeaa67b2a947eefd402566161c70e71bbeac57bd29cad695f5d1e035e5f9dd67",
+            "localSha256": "54380b574ff84b03ba01fdb346afd05ef53d2c4584fe9d5b4823783d1d55d187",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 43202238,
+            "name": "Yazi, Evil of the Yang Zing",
+            "type": 8225,
+            "level": 7,
+            "entry": "script/c43202238.lua",
+            "deployedBytes": 2956,
+            "deployedSha256": "dfbb17c5812bc4bdee71f81906947534471b75875e44bddff08f9659202f00ac",
+            "localSha256": "ed66d84096b475b55d43806c14b0706c6a3e377057b41d50226fc16c5e08e081",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 47710198,
+            "name": "Swordsoul Sinister Sovereign - Qixing Longyuan",
+            "type": 8225,
+            "level": 10,
+            "entry": "script/c47710198.lua",
+            "deployedBytes": 3634,
+            "deployedSha256": "08acf9a0f5e3a861630d191085cc5860ecd53538f2d43bd5a0a666f217b929a2",
+            "localSha256": "96a383b8072f892527dc36dcbd72b531d758ae0e92e61c952b5ce69dfea0983b",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 55273560,
+            "name": "Incredible Ecclesia, the Virtuous",
+            "type": 4129,
+            "level": 4,
+            "entry": "script/c55273560.lua",
+            "deployedBytes": 3706,
+            "deployedSha256": "8c3a8ff128e4e217de74f679443dcd4b56ac789eb9b42f2ca08b5f98669f7d1c",
+            "localSha256": "7a2b037487c614e735930df49288a9e1a737b5cd96c540db5d479e9b2454eaf2",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 56465981,
+            "name": "Swordsoul Emergence",
+            "type": 2,
+            "level": 0,
+            "entry": "script/c56465981.lua",
+            "deployedBytes": 2759,
+            "deployedSha256": "c8973c2cf1c08d6963e552ac6e95fae6f0bc32458c887d19b3269d1543e1f367",
+            "localSha256": "bd54734e93ee140e4a8d1a3cd8788982fab3744b7719d5ce165bbf444086b8b1",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 56495147,
+            "name": "Swordsoul of Taia",
+            "type": 33,
+            "level": 4,
+            "entry": "script/c56495147.lua",
+            "deployedBytes": 3133,
+            "deployedSha256": "002b5e2e118fdeefaf26803ee7807a1e3357be8f91f854273c0731d1d6f9e7f5",
+            "localSha256": "9f9e2594b4dc80ea49ac2bfd307dcb3bdb5575037449cc5aef2d3d250bc3c0d3",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 60465049,
+            "name": "Psychic End Punisher",
+            "type": 8225,
+            "level": 11,
+            "entry": "script/c60465049.lua",
+            "deployedBytes": 2952,
+            "deployedSha256": "5c500aa9620d41dd473eaf58e30abef43be2902cd53019783b20af806d889114",
+            "localSha256": "bf087bc760a2239006785754dfd215ff5f055f04ecdcdd540e1aaf758305c132",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 65681983,
+            "name": "Crossout Designator",
+            "type": 65538,
+            "level": 0,
+            "entry": "script/c65681983.lua",
+            "deployedBytes": 3322,
+            "deployedSha256": "3ad41a2ca5a768377b46c46144b7c97e8a7717c0de00eaf67387a2546edb61aa",
+            "localSha256": "712e2f610eda8524f6b9d2f5a6e23071fea782595ceab1dd620dadadb6258c39",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 69248256,
+            "name": "Swordsoul Grandmaster - Chixiao",
+            "type": 8225,
+            "level": 8,
+            "entry": "script/c69248256.lua",
+            "deployedBytes": 3393,
+            "deployedSha256": "011611fe67fa5125eb0de42cb19ce1903f89c7c7877419eb1650ce588267392f",
+            "localSha256": "4c74cc65a66b9935bdcf464b4538998c21545f4b8ea85aed95ac13aa34a02f20",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 78917791,
+            "name": "Shaman of the Tenyi",
+            "type": 67108897,
+            "level": 2,
+            "entry": "script/c78917791.lua",
+            "deployedBytes": 3220,
+            "deployedSha256": "06a4f67c5a9c0025c0012227c9935ae901ebbb40a265e7071e45ba9424c468a1",
+            "localSha256": "35951d765c5a50f6b3fa1decd3fe3d1262bb710def4d5f86a354ba21f19b4aee",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 83755611,
+            "name": "Baxia, Brightness of the Yang Zing",
+            "type": 8225,
+            "level": 8,
+            "entry": "script/c83755611.lua",
+            "deployedBytes": 3402,
+            "deployedSha256": "8293be6a80e7cff05b80c6a14024fb04f7753ebac2bc9de8bae6e196c8851899",
+            "localSha256": "83233be5b2663609b14027a867cc131f4ddc9de0ec2482483500a1038d749fcf",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 84815190,
+            "name": "Baronne de Fleur",
+            "type": 8225,
+            "level": 10,
+            "entry": "script/c84815190.lua",
+            "deployedBytes": 3682,
+            "deployedSha256": "bfad218d60d672dcc807568024ebd482c6b105a62fa89652870f4a95ec8e1bf5",
+            "localSha256": "5e628034e9b0aa684912345fff581171f890969cd92e1efebee72f836e4527d7",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 87052196,
+            "name": "Tenyi Spirit - Ashuna",
+            "type": 33,
+            "level": 7,
+            "entry": "script/c87052196.lua",
+            "deployedBytes": 2782,
+            "deployedSha256": "e7abdf748a5095ecd3ae39f1fdb064896c02632b710e0e7df442cef141537757",
+            "localSha256": "ad8f8cfcb98838fc91e4de5ed6683ac3c38264d111c6960abf5ab031c96f5f1a",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 93490856,
+            "name": "Swordsoul Strategist Longyuan",
+            "type": 33,
+            "level": 6,
+            "entry": "script/c93490856.lua",
+            "deployedBytes": 3029,
+            "deployedSha256": "a1165b7f8176e97bf4ef65767eb8419a044b7eae2d2e018ccfe3073c06b19d26",
+            "localSha256": "0b8aa0020db78b9ff8719d51659959e3ff7ea12524c5ab2214eb19cedf529b1a",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 93850690,
+            "name": "Swordsoul Sacred Summit",
+            "type": 2,
+            "level": 0,
+            "entry": "script/c93850690.lua",
+            "deployedBytes": 2936,
+            "deployedSha256": "e048f39ce156d4a081b20c47b8b2f746a3358b06ee849297580d175b116637d4",
+            "localSha256": "d567eec7d96ebfc3ca007dc9877d0e6b77e7a99df5cf1cbfc30afaedcc50a9c4",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 96633955,
+            "name": "Swordsoul Supreme Sovereign - Chengying",
+            "type": 8225,
+            "level": 10,
+            "entry": "script/c96633955.lua",
+            "deployedBytes": 3031,
+            "deployedSha256": "6f4c63a909507579a28cce17fcdb12619ca32e655ec382346f9fe248f58cf4df",
+            "localSha256": "1c37db852845b01a1b8470ca128a3f9bd456619030e82f7737a9aaff91b1bbf4",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 97268402,
+            "name": "Effect Veiler",
+            "type": 4129,
+            "level": 1,
+            "entry": "script/c97268402.lua",
+            "deployedBytes": 2033,
+            "deployedSha256": "d283f6744376f17e4a71c64526dde0df7331f4625c393427f479ff725b295f4a",
+            "localSha256": "f79441a6fb194377e54f0e9a496be52962031c010636ab8499296781d23c608f",
+            "normalizedScriptEqual": true
+          },
+          {
+            "id": 98159737,
+            "name": "Tenyi Spirit - Adhara",
+            "type": 4129,
+            "level": 1,
+            "entry": "script/c98159737.lua",
+            "deployedBytes": 2466,
+            "deployedSha256": "922c37692b47f09a613b16e73b5f9c28b5f1e0555d586dda58e6b6bbd28af0af",
+            "localSha256": "e059c86f737b021c752140329646476a9b5a2e0fe4be40b4b90167f1b8b52943",
+            "normalizedScriptEqual": true
+          }
+        ]
+      },
+      "adaptationsAndFocusedRegression": {
+        "upstreamRegistrationCount": 51,
+        "registrationOrderPreserved": true,
+        "trackedSource": "Game/AI/Experts/SwordsoulExecutor.cs",
+        "sourceSha256": "6615b73b9ddeccf7a0be80753c99c158f22a2c29a71848c408c9e721ee7c6914",
+        "corrections": [
+          {
+            "name": "Chixiao hand-only banish cost",
+            "source": "c69248256.lua:54-66; discost selects HAND+GRAVE before distg target",
+            "before": "No SelectCard queued when grave costs empty; SelectNextCard target was consumed by cost prompt.",
+            "after": "Queue offered matching hand resource first, then existing target.",
+            "regressions": "ExpertProbe.ChixiaoChecks: 7 assertions including hand and grave preference, queue exhaustion."
+          },
+          {
+            "name": "Chengying two resolution prompts",
+            "source": "c96633955.lua:68-81; separate field and grave selections, not targeting; replacement 55-63 selects own grave",
+            "before": "Single combined preselection was consumed by field prompt, leaving grave choice without intended strategy.",
+            "after": "No trigger preselection; OnSelectCard uses actual resolving immutable snapshot and actual offered enemy field/grave candidates, with own replacement isolated.",
+            "regressions": "ExpertProbe.ChengyingChecks: 11 assertions including changed live source, later chain, activation-stage exclusion and replacement isolation."
+          },
+          {
+            "name": "Evenly Matched context ownership",
+            "source": "c15693423.lua:32-40; resolving effect asks opponent to banish exact field-count difference",
+            "before": "Any enemy chain plus remove hint and matching field counts could be misclassified as Evenly.",
+            "after": "Require resolving enemy Evenly activation snapshot.",
+            "regressions": "ExpertProbe.EvenlyChecks: 4 assertions including unrelated source, mutation and activation-stage exclusion."
+          },
+          {
+            "name": "Longyuan duplicate discard preference",
+            "source": "c93490856.lua:26-32; matching hand card discarded as cost; expert source loops individual checkId",
+            "before": "Per-ID duplicate loop counted all IDs in the entire priority list, treating distinct resources as duplicates.",
+            "after": "Count the current ID, preserving genuine duplicate preference and actual held fallback.",
+            "regressions": "ExpertProbe.LongyuanChecks: 4 assertions including duplicate MoYe before lone Taia and sole valid cost."
+          },
+          {
+            "name": "Taia planning respects used Baxia revival",
+            "source": "c56495147.lua:63-76; Taia sends matching deck resource; c83755611.lua:31 and 68-83 limits Baxia revival; expert stores Baxia+2 when revival accepted",
+            "before": "Used flag was accidentally passed as faceUp option and tested wrong marker, so Taia planned spent revival.",
+            "after": "Use explicit face-up check and the already-recorded Baxia+2 marker as separate condition.",
+            "regressions": "ExpertProbe.BaxiaChecks: 6 assertions covering unused/used revival target and per-turn reset."
+          }
+        ],
+        "regression": {
+          "source": "Artifacts/swordsoul-expert-review/ExpertProbe.cs",
+          "assertions": 38,
+          "failures": 0,
+          "skipped": 0,
+          "status": "Passed final integrated Debug binary; six additional factory isolation assertions; no unexpected diagnostics.",
+          "binarySha256": "6a900a1fd375896bedf1e06e9883ddc16c911b4406ed1e70e7464ea40d9dbacb"
+        },
+        "limits": [
+          "Whole expert retains mutable ordered predicates and existing randomness; it is never mixed with pure policy scores.",
+          "Script identity was checked for all 30 unique deck cards plus Evenly; semantic review focused on migration integration and five corrections, not proof of every branch.",
+          "Banished Emergence/Summit level adjustment remains upstream TODO; source age is not a correctness guarantee."
+        ],
+        "inheritedHelperRegistrationCount": 5
+      },
+      "portedSource": "Game/AI/Experts/SwordsoulExecutor.cs",
+      "portedSourceSha256": "6615b73b9ddeccf7a0be80753c99c158f22a2c29a71848c408c9e721ee7c6914",
+      "nativeCompatibility": {
+        "receipt": "Artifacts/swordsoul-expert-native-final/result.json",
+        "receiptSha256": "536deda017da028aa8333bb9a726963bdcd8a7863f5ea7a0896254a5a1061f08",
+        "inputs": {
+          "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+          "botSha256": "29736da3ccae5f10174a737912c78826338dbb3f145dc81dda628386872d57fd",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+          "deckSha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824"
+        },
+        "duels": [
+          {
+            "duel": 1,
+            "matchId": "98c16bbd-99cc-4238-a506-177243f7fbf0",
+            "targetSeat": 0,
+            "policySeed": 20261021,
+            "agent": "expert-swordsoul",
+            "opponentAgent": "expert-swordsoul",
+            "coreSeed": null,
+            "noDeckCheck": true,
+            "noShuffle": true,
+            "status": "passed",
+            "port": 58371,
+            "result": "loss",
+            "seatSource": "authoritative STOC_TYPE_CHANGE",
+            "forcedCleanup": [],
+            "exitCodes": [
+              0,
+              0
+            ],
+            "serverExitCode": 0
+          },
+          {
+            "duel": 2,
+            "matchId": "d7154001-f786-4e49-94f1-b0803ddb9a21",
+            "targetSeat": 1,
+            "policySeed": 20261022,
+            "agent": "expert-swordsoul",
+            "opponentAgent": "expert-swordsoul",
+            "coreSeed": null,
+            "noDeckCheck": true,
+            "noShuffle": true,
+            "status": "passed",
+            "port": 58387,
+            "result": "win",
+            "seatSource": "authoritative STOC_TYPE_CHANGE",
+            "forcedCleanup": [],
+            "exitCodes": [
+              0,
+              0
+            ],
+            "serverExitCode": 0
+          }
+        ],
+        "interpretation": "Two mirror fixtures completed with authoritative terminal outcomes and no forced cleanup; both host seats exercised. This verifies selected runtime paths, not every branch or competitive strength."
+      },
+      "learning": "Frozen expert rejects PolicyTraining and PolicyModel; no ranked-policy explanation; shadow main-phase capture remains optional."
     }
   ],
   "sharedStrategyUpdates": [

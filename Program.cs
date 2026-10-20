@@ -21,7 +21,7 @@ namespace Skynet
                 Console.WriteLine("Options use Key=Value. Config=path loads additional options from a file.");
                 Console.WriteLine("Optional: Name, HostInfo, Version, Hand, Debug, Chat, Dialog.");
                 Console.WriteLine("Explain=true prints bounded action explanations for the general policy; default off.");
-                Console.WriteLine("Agent=skynet (default) or Agent=expert-oldschool (frozen expert comparison).");
+                Console.WriteLine("Agent=skynet (default), expert-oldschool or expert-swordsoul (frozen expert comparison).");
                 Console.WriteLine("Learning: PolicyModel, PolicyTraining, PolicyData, PolicySeed, PolicyGroup.");
                 Console.WriteLine("ShadowData=absolute-directory opts into bounded public observation captures; default off.");
                 Console.WriteLine("Each process joins one duel room. Chat and training are disabled by default.");

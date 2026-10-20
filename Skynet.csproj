@@ -78,6 +78,7 @@
     <Compile Include="Game\AI\Shadow\ShadowRecord.cs" />
     <Compile Include="Game\AI\Shadow\ShadowSession.cs" />
     <Compile Include="Game\AI\Experts\OldSchoolExecutor.cs" />
+    <Compile Include="Game\AI\Experts\SwordsoulExecutor.cs" />
     <Compile Include="Game\AI\Strategy\*.cs" />
     <Compile Include="Game\SkynetDecisionAdapter.cs" />
     <Compile Include="Game\AI\CardContainer.cs" />
@@ -192,6 +193,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Decks\AI_ExpertOldSchool.ydk">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Decks\AI_ExpertSwordsoul.ydk">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Decks\AI_SkynetSwordsoul.ydk">

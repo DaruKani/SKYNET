@@ -24,6 +24,7 @@ $payload = @{
     'x86\sqlite3.dll' = 'ThirdParty\sqlite\x86\sqlite3.dll'
     'Decks\AI_Skynet.ydk' = 'Decks\AI_Skynet.ydk'
     'Decks\AI_ExpertOldSchool.ydk' = 'Decks\AI_ExpertOldSchool.ydk'
+    'Decks\AI_ExpertSwordsoul.ydk' = 'Decks\AI_ExpertSwordsoul.ydk'
     'Decks\AI_SkynetSwordsoul.ydk' = 'Decks\AI_SkynetSwordsoul.ydk'
     'skynet-logo.png' = 'Branding\skynet-logo.png'
     'LICENSE' = 'LICENSE'

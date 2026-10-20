@@ -199,9 +199,9 @@ def main():
     parser.add_argument("--opponent-exe", type=Path)
     parser.add_argument("--policy", default="SKYNET")
     parser.add_argument("--opponent-policy", default="SKYNET")
-    parser.add_argument("--agent", choices=("skynet", "expert-oldschool"),
+    parser.add_argument("--agent", choices=("skynet", "expert-oldschool", "expert-swordsoul"),
                         help="Explicit SKYNET runtime mode; omitted for unchanged legacy compatibility")
-    parser.add_argument("--opponent-agent", choices=("skynet", "expert-oldschool"))
+    parser.add_argument("--opponent-agent", choices=("skynet", "expert-oldschool", "expert-swordsoul"))
     parser.add_argument("--deck", type=Path)
     parser.add_argument("--opponent-deck", type=Path)
     parser.add_argument("--model", type=Path)
