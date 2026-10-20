@@ -14,7 +14,11 @@ namespace Skynet.Game.AI.Strategy
         Revive,
         BattleTrap,
         SummonTrap,
-        DestroyFaceupMonster
+        DestroyFaceupMonster,
+        DestroyStrongestAttacker,
+        AdditionalNormalSummon,
+        AttackLock,
+        BanishAttacker
     }
 
     /// <summary>
@@ -50,6 +54,10 @@ namespace Skynet.Game.AI.Strategy
                 { 4206964, new CardSemantics(4206964, EffectRole.SummonTrap, 0, false) },
                 { 66788016, new CardSemantics(66788016, EffectRole.DestroyFaceupMonster, HintMsg.Destroy, true) },
                 { 97169186, new CardSemantics(97169186, EffectRole.DestroyFaceupMonster, HintMsg.Destroy, true) },
+                { 26412047, new CardSemantics(26412047, EffectRole.DestroyStrongestAttacker, HintMsg.Destroy, true) },
+                { 43422537, new CardSemantics(43422537, EffectRole.AdditionalNormalSummon, 0, false) },
+                { 72302403, new CardSemantics(72302403, EffectRole.AttackLock, 0, false) },
+                { 70342110, new CardSemantics(70342110, EffectRole.BanishAttacker, 0, false) },
                 { 32807846, new CardSemantics(32807846, EffectRole.Search, HintMsg.AddToHand, true) },
                 { 26202165, new CardSemantics(26202165, EffectRole.Search, HintMsg.AddToHand, true) }
             };

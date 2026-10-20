@@ -110,8 +110,12 @@ namespace Skynet.Game.AI.Strategy
                     ordered = cards.OrderByDescending(c => _policy.IsUsefulSpellTarget(c) ? 2 : c.Controller == 1 ? 1 : 0)
                         .ThenByDescending(SkynetPolicy.CardValue);
                 }
-                else if (semantics.Role == EffectRole.DestroyFaceupMonster)
+                else if (semantics.Role == EffectRole.DestroyFaceupMonster
+                    || semantics.Role == EffectRole.DestroyStrongestAttacker)
                 {
+                    // The core supplies the actual tied group at resolution.
+                    // If the board changed, an unavoidable own-card choice must
+                    // still come from that group, with the cheapest loss first.
                     ordered = cards.OrderByDescending(c => c.Controller == 1 ? SkynetPolicy.CardValue(c) : -SkynetPolicy.CardValue(c));
                 }
             }

@@ -175,6 +175,98 @@ namespace Skynet.Game.AI.Strategy
                         return null;
                     features["interaction"] = 0.5;
                     return new ActionEvaluation(2.6, features);
+                case EffectRole.DestroyStrongestAttacker:
+                    // Hammer Shot includes both fields, but only face-up attack
+                    // positions. The core recomputes ties when it resolves.
+                    IList<ClientCard> attackers = allies.Concat(opponents)
+                        .Where(c => c.IsFaceup() && c.IsAttack()).ToList();
+                    if (attackers.Count == 0)
+                        return null;
+                    int highestAttack = attackers.Max(CardSemantics.Attack);
+                    ClientCard removal = attackers.Where(c => c.Controller == 1
+                        && CardSemantics.Attack(c) == highestAttack)
+                        .OrderByDescending(CardValue).FirstOrDefault();
+                    if (removal == null)
+                        return null;
+                    features["interaction"] = Math.Min(1, CardValue(removal) / 4);
+                    return new ActionEvaluation(2.6 + CardValue(removal) * 0.2, features);
+                case EffectRole.AdditionalNormalSummon:
+                    // Reuse the expert's pre-summon intent with actual current
+                    // offers, without its speculative tribute line or probe-time
+                    // usage flag. Successful resolution changes the core's summon
+                    // cap; a negated activation may legitimately be offered again.
+                    if (_duel.Player != 0 || (_duel.Phase != DuelPhase.Main1 && _duel.Phase != DuelPhase.Main2)
+                        || _duel.CurrentChain.Count != 0
+                        || _duel.Fields[0].MonsterZone.Take(5).Count(c => c == null) < 2)
+                        return null;
+                    MainPhase main = _duel.MainPhase;
+                    var developments = new Dictionary<ClientCard, double>();
+                    foreach (ClientCard candidate in main.SummonableCards.Concat(main.MonsterSetableCards).Distinct())
+                    {
+                        if (candidate.Controller != 0 || candidate.Location != CardLocation.Hand
+                            || CardSemantics.Level(candidate) < 1 || CardSemantics.Level(candidate) > 4)
+                            continue;
+                        double bestScore = 0;
+                        if (main.SummonableCards.Contains(candidate))
+                        {
+                            ActionEvaluation summon = Evaluate(new LegalAction(ExecutorType.Summon, candidate, -1,
+                                candidate.ActionIndex[(int)MainPhaseAction.MainAction.Summon]));
+                            if (summon != null)
+                                bestScore = summon.Score;
+                        }
+                        if (main.MonsterSetableCards.Contains(candidate))
+                        {
+                            ActionEvaluation set = Evaluate(new LegalAction(ExecutorType.MonsterSet, candidate, -1,
+                                candidate.ActionIndex[(int)MainPhaseAction.MainAction.SetMonster]));
+                            if (set != null)
+                                bestScore = Math.Max(bestScore, set.Score);
+                        }
+                        if (bestScore > 0)
+                            developments.Add(candidate, bestScore);
+                    }
+                    if (developments.Count < 2)
+                        return null;
+                    features["develop"] = 1;
+                    features["advantage"] = 0.5;
+                    // Like the expert's registration priority, make room for the
+                    // second development before spending the ordinary summon.
+                    return new ActionEvaluation(developments.Values.Max() + 1, features);
+                case EffectRole.AttackLock:
+                    if (_duel.Fields[0].GetSpells().Any(c => !ReferenceEquals(c, card)
+                        && c.IsFaceup() && !c.IsDisabled()
+                        && CardSemantics.Find(c) != null && CardSemantics.Find(c).Role == EffectRole.AttackLock))
+                        return null;
+                    int ownDefense = allies.Select(c => c.IsDefense()
+                        ? CardSemantics.Defense(c) : CardSemantics.Attack(c)).DefaultIfEmpty(0).Max();
+                    bool reveal = opponents.Any(c => c.IsFacedown());
+                    bool threatened = opponents.Any(c => c.IsFaceup() && CardSemantics.Attack(c) > ownDefense);
+                    if (!reveal && !threatened)
+                        return null;
+                    features["protection"] = threatened ? 1 : 0.5;
+                    return new ActionEvaluation(threatened ? 3.2 : 2.4, features);
+                case EffectRole.BanishAttacker:
+                    // Prison's Lua targets the attacker automatically. It has no
+                    // SelectCard prompt and must never enqueue a guessed target.
+                    ClientCard attacker = _duel.Fields[1].BattlingMonster;
+                    if (_duel.Player != 1 || !_duel.Fields[0].UnderAttack
+                        || attacker == null || attacker.Controller != 1
+                        || attacker.Location != CardLocation.MonsterZone || !attacker.IsFaceup()
+                        || !opponents.Contains(attacker))
+                        return null;
+                    for (int i = 0; i < _duel.CurrentChainInfo.Count; ++i)
+                    {
+                        ChainInfo chain = _duel.CurrentChainInfo[i];
+                        if (chain.ActivatePlayer != 0 || _duel.NegatedChainIndexList.Contains(i + 1))
+                            continue;
+                        // This is conservation based on a pending answer, not an
+                        // assertion that the monster has already left the field.
+                        if ((chain.IsActivateCode(70342110) && chain.Targets.Contains(attacker))
+                            || (chain.IsActivateCode(44095762) && attacker.IsAttack()))
+                            return null;
+                    }
+                    features["protection"] = 1;
+                    features["interaction"] = Math.Min(1, CardValue(attacker) / 4);
+                    return new ActionEvaluation(3.2 + CardValue(attacker) * 0.2, features);
                 case EffectRole.DestroyEnemySpell:
                     // Destroying a normal spell already on the chain does not negate
                     // it. Prefer facedown cards and face-up persistent spell/traps.
@@ -209,7 +301,9 @@ namespace Skynet.Game.AI.Strategy
             return CardSemantics.HasType(card, CardType.Continuous)
                 || CardSemantics.HasType(card, CardType.Equip)
                 || CardSemantics.HasType(card, CardType.Field)
-                || CardSemantics.HasType(card, CardType.Pendulum);
+                || CardSemantics.HasType(card, CardType.Pendulum)
+                || (card.IsFaceup() && !card.IsDisabled() && CardSemantics.Find(card) != null
+                    && CardSemantics.Find(card).Role == EffectRole.AttackLock);
         }
 
         public double Synergy(ClientCard card)
