@@ -1,0 +1,40 @@
+using System;
+
+namespace Skynet
+{
+    public class AgentOptions
+    {
+        public string Name { get; set; }
+        public string Deck { get; set; }
+        public string DeckFile { get; set; }
+        public string Dialog { get; set; }
+        public string Host { get; set; }
+        public int Port { get; set; }
+        public string HostInfo { get; set; }
+        public int Version { get; set; }
+        public int Hand { get; set; }
+        public bool Debug { get; set; }
+        public bool Chat { get; set; }
+        public string PolicyModel { get; set; }
+        public bool PolicyTraining { get; set; }
+        public string PolicyData { get; set; }
+        public int PolicySeed { get; set; }
+        public string PolicyGroup { get; set; }
+        public AgentOptions()
+        {
+            Name = "SKYNET";
+            Deck = "SKYNET";
+            DeckFile = null;
+            Dialog = "default";
+            Host = "127.0.0.1";
+            Port = 7911;
+            HostInfo = "";
+            Version = 0x1362;
+            Hand = 0;
+            Debug = false;
+            Chat = false;
+            PolicyData = "Training";
+            PolicySeed = Environment.TickCount;
+        }
+    }
+}
