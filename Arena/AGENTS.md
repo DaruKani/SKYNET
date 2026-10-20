@@ -17,7 +17,7 @@ Only the listening address, HTTP port and SQLite path are environment-level star
 
 There are three runtime modes:
 
-- `skynet`: Arena starts one owned `SKYNET.exe` process per match participant, using explicitly configured executable, database, deck and optional model paths. `Agent=skynet` is the general policy; `Agent=expert-oldschool` is an explicit, frozen expert comparison. Expert mode does not accept a learned model. Arena forces training off, reserves all local participant slots for a room together, and enforces process limits and a deadline covering capacity wait and execution. Do not discover files outside the configured paths or silently enable archived executors. SKYNET tag duels remain disabled until validated.
+- `skynet`: Arena starts one owned `SKYNET.exe` process per match participant, using explicitly configured executable, database, deck and optional model paths. `Agent=skynet` is the general policy; `Agent=expert-oldschool` and `Agent=expert-swordsoul` are explicit, frozen expert comparisons. Expert mode does not accept a learned model. Arena forces training off, reserves all local participant slots for a room together, and enforces process limits and a deadline covering capacity wait and execution. Do not discover files outside the configured paths or silently enable archived executors. SKYNET tag duels remain disabled until validated.
 - `local`: Arena starts and stops a compatible `WindBot.exe` HTTP server and reads its local `bot.conf` directly.
 - `remote`: the user runs WindBot Server manually. Arena only calls its remote HTTP endpoint. Because Arena cannot read that host's filesystem, the user pastes `bot.conf` into the browser and its contents are stored in SQLite.
 

@@ -1933,6 +1933,325 @@
         "Normal-summon planning estimates a reveal resource from visible own-hand categories; the actual core prompt proves reveal eligibility.",
         "Policy v3 episodes must be collected fresh; existing compatible weights may initialize them but old episodes must not be relabeled."
       ]
+    },
+    {
+      "id": "swordsoul-longyuan-taia-chengying-v4",
+      "policyRevision": "skynet-policy-v4",
+      "implementationCommit": "6060e092fa3b792a868b28b78289a68eea9fbc83",
+      "expertCommit": "84af0945d1902418b06af463295e1b86de43e20a",
+      "arenaCommit": "87ee1c4262de49417fea721b3c9b5030d77ea96a",
+      "cardsAdded": [
+        93490856,
+        56495147,
+        96633955
+      ],
+      "strategySource": "Game/AI/Strategy/SwordsoulStrategy.cs",
+      "strategySha256": "48fb111c9334d12d8050ca78d879c887be132d66b978e392cafec3d7cd69ad45",
+      "expertIdeasSource": "LegacyWindBot/Game/AI/Decks/SwordsoulExecutor.cs",
+      "expertIdeasSourceSha256": "f587cb755a9ffc1842fdbe6e12df957bb6ee3ce4fbec7a1962ae99152792e0e8",
+      "localScriptRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+      "scriptReviewMaximumEntryBytes": 65536,
+      "scripts": [
+        {
+          "cardId": 93490856,
+          "localPath": "ygopro-scripts/c93490856.lua",
+          "localSha256": "0b8aa0020db78b9ff8719d51659959e3ff7ea12524c5ab2214eb19cedf529b1a",
+          "deployedEntry": "script/c93490856.lua",
+          "deployedSha256": "a1165b7f8176e97bf4ef65767eb8419a044b7eae2d2e018ccfe3073c06b19d26",
+          "bytes": 3029,
+          "normalizedMatch": true
+        },
+        {
+          "cardId": 56495147,
+          "localPath": "ygopro-scripts/c56495147.lua",
+          "localSha256": "9f9e2594b4dc80ea49ac2bfd307dcb3bdb5575037449cc5aef2d3d250bc3c0d3",
+          "deployedEntry": "script/c56495147.lua",
+          "deployedSha256": "002b5e2e118fdeefaf26803ee7807a1e3357be8f91f854273c0731d1d6f9e7f5",
+          "bytes": 3133,
+          "normalizedMatch": true
+        },
+        {
+          "cardId": 96633955,
+          "localPath": "ygopro-scripts/c96633955.lua",
+          "localSha256": "1c37db852845b01a1b8470ca128a3f9bd456619030e82f7737a9aaff91b1bbf4",
+          "deployedEntry": "script/c96633955.lua",
+          "deployedSha256": "6f4c63a909507579a28cce17fcdb12619ca32e655ec382346f9fe248f58cf4df",
+          "bytes": 3031,
+          "normalizedMatch": true
+        }
+      ],
+      "reviewedContracts": [
+        "Longyuan hand effect offset0, discard during activation, optional token SelectYesNo offset2 during resolution; grave Synchro burn offset1.",
+        "Taia field token offset0, grave banish activation cost; grave Synchro mill has no description and selects at resolution.",
+        "Chengying generic description96 requests non-chain destruction replacement; accepted replacement immediately selects one own grave card.",
+        "Chengying offset0 removal resolves field then grave separately and does not target.",
+        "Token card IDs are creator-specific with canonical20001444 aliases; client supports all actual variants."
+      ],
+      "validation": {
+        "builds": [
+          "Debug Any CPU",
+          "Release Any CPU"
+        ],
+        "debugExecutableSha256": "00e5711ea0038e998a9adcfafbc4641d5ed9d3189cd9819d1b93d6e017624b05",
+        "releaseExecutableSha256": "207c561707d93429bef2b33c2134a4a4e596c0dff7667f43824ed43c6a1fb6fe",
+        "focusedRegression": {
+          "kind": "focused-synthetic-client-state-regression",
+          "framework": ".NET Framework 4.8",
+          "languageVersion": "C# 6",
+          "database": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "executable": "Artifacts/swordsoul-expansion-qa/runtime/SKYNET.exe",
+          "executableSha256": "00e5711ea0038e998a9adcfafbc4641d5ed9d3189cd9819d1b93d6e017624b05",
+          "sourceFiles": {
+            "Game/AI/Strategy/SwordsoulStrategy.cs": "48fb111c9334d12d8050ca78d879c887be132d66b978e392cafec3d7cd69ad45",
+            "Game/AI/Strategy/SkynetAgent.cs": "30272a51d52522ceb53fa3ff7c281010d6ab0987feb018b42fae426630d92bbd",
+            "Game/AI/Strategy/SkynetPolicy.cs": "34818b7a8a3107ef33db65a43fd645e8ec019762262c2477ea4d2d4892d663f9",
+            "Decks/AI_SkynetSwordsoul.ydk": "b89ac2c901261c4a7b6c61aab7a2d7a1414d12be3d609241ad708546b2d58ad9"
+          },
+          "regressions": [
+            {
+              "source": "Artifacts/swordsoul-expansion-qa/SwordsoulExpansionProbe.cs",
+              "sourceSha256": "9b68fb9c053c897f12612c9efa78fda973351f0cc46d891943f08a8981bb4d31",
+              "results": "Artifacts/swordsoul-expansion-qa/results.log",
+              "resultsSha256": "2cc84561248ad19c07923d3704d93cd8c40ce837a95387f6c3c91160aaca2771",
+              "assertionsPassed": 73,
+              "assertionsFailed": 0,
+              "assertionsSkipped": 0
+            },
+            {
+              "source": "Artifacts/swordsoul-qa/SwordsoulProbe.cs",
+              "sourceSha256": "7c6c754fdd4efe5c5f5c0cddfb444c43ed77fb569af15ac387573f141fba65b8",
+              "results": "Artifacts/swordsoul-expansion-qa/prior-route-results.log",
+              "resultsSha256": "7145434ca20af0a2e0d15b1a2a4e437a2a533bdc92858918aeb86d7e1ee964ef",
+              "assertionsPassed": 74,
+              "assertionsFailed": 0,
+              "assertionsSkipped": 0
+            },
+            {
+              "source": "Artifacts/four-card-qa/FourCardProbe.cs",
+              "sourceSha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6",
+              "results": "Artifacts/swordsoul-expansion-qa/prior-shared-results.log",
+              "resultsSha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f",
+              "assertionsPassed": 79,
+              "assertionsFailed": 0,
+              "assertionsSkipped": 0
+            }
+          ],
+          "limitations": [
+            "Synthetic client-state fixtures, not native script execution or competitive strength evidence.",
+            "Shared route intentionally covers the reviewed six card identities; unknown optional effects remain excluded.",
+            "Committed normal-summon preference conservatively avoids more starter searches after Double Summon enables an additional summon.",
+            "No future engine state or hidden enemy identity is consulted."
+          ]
+        },
+        "expertAssertions": 38,
+        "expertRegressionReceipt": "Artifacts/swordsoul-expert-review/corrections.json",
+        "expertRegressionReceiptSha256": "806b0396da4b6e80f504a642ba2c7b790c4c84bf1c59364bf37d359d4723460c",
+        "learningTests": 13,
+        "arenaTests": 139,
+        "frontendBuild": "passed; existing advisory for a bundle larger than 500 kB",
+        "nativeReceipt": "Artifacts/swordsoul-expanded-native-accepted/result.json",
+        "nativeReceiptSha256": "2a2d8c9886c5a336b678aebd9d7950606ca92dc74ceb901430b08ba6f7d64846",
+        "native": {
+          "purpose": "Real native protocol/gameplay smoke; not a strength benchmark",
+          "server": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\bin\\release\\x64\\ygoserver.dll",
+          "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+          "botSha256": "207c561707d93429bef2b33c2134a4a4e596c0dff7667f43824ed43c6a1fb6fe",
+          "opponentSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+          "deckSha256": "b6938e6ef0cb010ced2b122fb83eaf44688b0e60669d70a2d66ff1ecfb99713f",
+          "opponentDeckSha256": "bd68fd0699abeb0684400c5833d200113e8b757e123675e0962df055610592fd",
+          "coreSeed": null,
+          "policy": "SKYNET",
+          "opponentPolicy": "SKYNET",
+          "shadowCapture": true,
+          "explainDecisions": true,
+          "policyGroup": "native:b6938e6ef0cb010c:bd68fd0699abeb06",
+          "duels": [
+            {
+              "duel": 1,
+              "matchId": "9db303e3-d855-4f49-9807-98aeb76d5a66",
+              "targetSeat": 0,
+              "policySeed": 20261021,
+              "agent": "skynet",
+              "opponentAgent": "skynet",
+              "coreSeed": null,
+              "noDeckCheck": true,
+              "noShuffle": true,
+              "status": "passed",
+              "port": 56713,
+              "result": "win",
+              "seatSource": "authoritative STOC_TYPE_CHANGE",
+              "forcedCleanup": [],
+              "exitCodes": [
+                0,
+                0
+              ],
+              "serverExitCode": 0
+            },
+            {
+              "duel": 2,
+              "matchId": "022c6979-50aa-49c2-9468-92eb521ac7a9",
+              "targetSeat": 1,
+              "policySeed": 20261022,
+              "agent": "skynet",
+              "opponentAgent": "skynet",
+              "coreSeed": null,
+              "noDeckCheck": true,
+              "noShuffle": true,
+              "status": "passed",
+              "port": 56722,
+              "result": "loss",
+              "seatSource": "authoritative STOC_TYPE_CHANGE",
+              "forcedCleanup": [],
+              "exitCodes": [
+                0,
+                0
+              ],
+              "serverExitCode": 0
+            }
+          ]
+        },
+        "nativeInterpretation": "Two final-binary fixed-order fixtures completed in host seats 0 and 1. Observed Longyuan cost/self summon/token/Chengying/burn, Taia cost/token/Chixiao/mill, Chengying non-targeting field then grave banish, and non-chain destruction replacement. This is protocol correctness evidence, not win-rate evidence.",
+        "payloadManifest": "Artifacts/swordsoul-expanded-payload/Data/Skynet/manifest.json",
+        "payloadManifestSha256": "81493bc9b1e152ec6a2a2ebaa1fe5fadf126ea3cb26902e7bc68048fa1f4c67b",
+        "ci": {
+          "commit": "6060e092fa3b792a868b28b78289a68eea9fbc83",
+          "url": "https://github.com/ElderLich/SKYNET/actions/runs/39478968665",
+          "result": "success",
+          "jobs": [
+            "windows",
+            "mono",
+            "arena"
+          ]
+        }
+      },
+      "arenaEvaluations": [
+        {
+          "runId": "b5d50f4d-f5f6-4ab2-ad77-5f6e387dd395",
+          "comparison": "General v4 versus frozen v3, identical expanded 40/6 research deck, built-in weights",
+          "startedAt": "2026-10-20T18:54:37.500Z",
+          "finishedAt": "2026-10-20T18:56:40.625Z",
+          "receipt": "Artifacts/swordsoul-expanded-arena-previous.json",
+          "receiptSha256": "c68de4ea5b129c43f32d666b5a355f622531b4b5d5c5e204360bc19eb926a844",
+          "candidateExeSha256": "207c561707d93429bef2b33c2134a4a4e596c0dff7667f43824ed43c6a1fb6fe",
+          "baselineExeSha256": "52f79ad5ff478210907686045889556eb4b7e4941c31fb88da7c5de2050e1582",
+          "deck": "Decks/AI_SkynetSwordsoul.ydk",
+          "deckSha256": "b89ac2c901261c4a7b6c61aab7a2d7a1414d12be3d609241ad708546b2d58ad9",
+          "matches": 20,
+          "candidateWins": 19,
+          "baselineWins": 1,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0.76387,
+            0.99112
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "candidateExplainEnabled": true,
+          "interpretation": "Exploratory best-of-three match results on one shared deck list per comparison; unrestricted rules, unknown core RNG, no paired seeds, held-out generalization or model promotion."
+        },
+        {
+          "runId": "d1ec0998-0060-41c0-abe5-011e104c345e",
+          "comparison": "General v4 versus reviewed full Swordsoul Tenyi expert, identical upstream 40/15 deck, same executable, explicit different owners",
+          "startedAt": "2026-10-20T18:57:49.202Z",
+          "finishedAt": "2026-10-20T18:59:30.503Z",
+          "receipt": "Artifacts/swordsoul-expanded-arena-expert.json",
+          "receiptSha256": "8d79f09dc47ab5a7267b5dbf11938d62fae911bd4a0c4df710c4c0fba29a1776",
+          "candidateExeSha256": "207c561707d93429bef2b33c2134a4a4e596c0dff7667f43824ed43c6a1fb6fe",
+          "baselineExeSha256": "207c561707d93429bef2b33c2134a4a4e596c0dff7667f43824ed43c6a1fb6fe",
+          "deck": "Decks/AI_ExpertSwordsoul.ydk",
+          "deckSha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824",
+          "matches": 20,
+          "candidateWins": 0,
+          "baselineWins": 20,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0,
+            0.16113
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "candidateExplainEnabled": true,
+          "interpretation": "Exploratory best-of-three match results on one shared deck list per comparison; unrestricted rules, unknown core RNG, no paired seeds, held-out generalization or model promotion."
+        }
+      ],
+      "modernOutputDiagnostics": {
+        "current": {
+          "receipt": "Artifacts/swordsoul-expanded-arena-expert-current-output.json",
+          "sha256": "75f775b0d960996ed4ae5045ebb6f33d521890817f60d4e66f1cc2814891df30",
+          "sessionBufferCharacters": 2000000,
+          "comparisonCharacters": 1494106,
+          "comparisonStartMarker": "[SKYNET] Starting C-Swordsoul Tenyi in ",
+          "startedDuels": 41,
+          "duelOutcomes": 41,
+          "hostSeats": {
+            "0": 10,
+            "1": 10
+          },
+          "unsupportedActivationMentions": {
+            "Maxx \"C\"#23434538": 1014,
+            "Infinite Impermanence#10045474": 713,
+            "Called by the Grave#24224830": 362,
+            "Effect Veiler#97268402": 331,
+            "Crossout Designator#65681983": 228,
+            "Pot of Desires#35261759": 77,
+            "Incredible Ecclesia, the Virtuous#55273560": 73,
+            "Nibiru, the Primal Being#27204311": 63,
+            "Tenyi Spirit - Ashuna#87052196": 59,
+            "Ash Blossom & Joyous Spring#14558127": 39,
+            "Tenyi Spirit - Vishuda#23431858": 36,
+            "Tenyi Spirit - Adhara#98159737": 16,
+            "Swordsoul Sacred Summit#93850690": 5,
+            "Swordsoul Blackout#14821890": 1
+          },
+          "scope": "Raw receipt is a bounded session buffer containing more than one run. Counts here start at the first modern-comparison launch marker after prior clients retired. Counts are diagnostic mentions, not distinct effect opportunities, coverage percentages or an independent result source."
+        },
+        "old": {
+          "receipt": "Artifacts/swordsoul-expanded-arena-expert-old-output.json",
+          "sha256": "22c59ef43dfb1fcbca7c2da3b517763f6a9c1056bea7056776a35a2ed9383c65",
+          "sessionBufferCharacters": 15626,
+          "comparisonCharacters": 7618,
+          "comparisonStartMarker": "[SKYNET] Starting B-Swordsoul Tenyi in ",
+          "startedDuels": 41,
+          "duelOutcomes": 41,
+          "hostSeats": {
+            "0": 10,
+            "1": 10
+          },
+          "unsupportedActivationMentions": {},
+          "scope": "Raw receipt is a bounded session buffer containing more than one run. Counts here start at the first modern-comparison launch marker after prior clients retired. Counts are diagnostic mentions, not distinct effect opportunities, coverage percentages or an independent result source."
+        }
+      },
+      "cleanup": {
+        "checkedAt": "2026-10-20T19:00:13.254254+00:00",
+        "activeRuns": {
+          "runs": []
+        },
+        "gatewayRooms": {
+          "enableHalfwayWatch": false,
+          "fetchedAt": "2026-10-20T19:00:13.253Z",
+          "srvpro": {
+            "id": "srvpro-1",
+            "name": "SKYNET Local Arena"
+          },
+          "rooms": []
+        },
+        "matchingSkynetClientAndNativeHostProcessCount": 0
+      },
+      "limitations": [
+        "General policy still lacks Tenyi effects, modern hand traps, Blackout, Baronne and broad Extra Deck planning.",
+        "Shared searches are conservative about extra normal summons; flexible level manipulation and Emergence banished effect remain unsupported.",
+        "Shared Chengying summon explanation names the preferred Longyuan material, although its material gate can also accept another currently eligible level-six Wyrm.",
+        "Expert semantic review focused on five inherited defects and integration; all 31 script identities were checked, not all expert branches proven correct.",
+        "No neural training or inference was added; v4 episodes must be recollected rather than relabeled.",
+        "Local scratch sources, executable payloads and raw runtime receipts remain ignored; this tracked receipt preserves their hashes and measured conclusions."
+      ]
     }
   ]
 }
