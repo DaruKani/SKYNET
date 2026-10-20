@@ -43,6 +43,7 @@ function buildSkynetCommand(competitor, srvpro, password) {
         'Chat=False',
         'Debug=False',
         'PolicyTraining=False',
+        `Explain=${config.explainDecisions && profile.agent === 'skynet' ? 'True' : 'False'}`,
         // Also override application configuration; an empty profile is frozen baseline inference.
         `PolicyModel=${profile.modelPath || ''}`,
     ];

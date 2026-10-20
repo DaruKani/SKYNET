@@ -46,6 +46,15 @@ paths, model files, card databases or server credentials are shipped.
    [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance.
 7. Select **Regression**, choose the matching profile and start a small run.
 
+To inspect choices, enable **Decision explanations** under the candidate's SKYNET
+settings, save, then open **View candidate output**. It reports ranked choices,
+alternatives, exclusions and scores for the general policy, capped per duel.
+It is off by default and does not enable training. Existing settings and history
+are upgraded automatically; previously saved explanation choices are preserved.
+`Decks/AI_SkynetSwordsoul.ydk` supplies a compact modern research route; compare
+it with the same deck and an explicitly preserved previous binary before drawing
+strength conclusions. It is not a full Swordsoul/Tenyi executor.
+
 The included OldSchool executor is a simple historical baseline, not a claim
 of modern competitive strength. Review and benchmark newer executors before
 using their decisions as training demonstrations.

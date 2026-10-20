@@ -4,6 +4,7 @@ import {
     NAlert,
     NButton,
     NCard,
+    NCheckbox,
     NForm,
     NFormItem,
     NInput,
@@ -321,6 +322,11 @@ function removeSrvpro(index) {
                                         </n-form-item>
                                         <n-form-item label="Match timeout (seconds)">
                                             <n-input-number v-model:value="draft.windbots[name].skynet.duelTimeoutSeconds" :min="10" :max="3600" :precision="0" />
+                                        </n-form-item>
+                                        <n-form-item label="Decision explanations">
+                                            <n-checkbox v-model:checked="draft.windbots[name].skynet.explainDecisions">
+                                                Show choices and alternatives in agent output (general policy)
+                                            </n-checkbox>
                                         </n-form-item>
                                         <div class="span-2 profile-help">
                                             <h4>Deck profiles</h4>

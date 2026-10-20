@@ -114,9 +114,52 @@ test('SKYNET launch uses fixed argument keys, absolute resources and disabled tr
     assert.ok(command.args.includes(`DeckFile=${deckPath}`));
     assert.ok(command.args.includes('PolicyTraining=False'));
     assert.ok(command.args.includes('PolicyModel='));
+    assert.ok(command.args.includes('Explain=False'));
     assert.ok(command.args.includes('HostInfo=M#123456789'));
     assert.equal(command.args.filter((value) => value.startsWith('DeckFile=')).length, 1);
 });
+
+test('decision explanations default off, persist, and apply only to the general policy', (t) => {
+    const { settings, directory } = settingsFixture(t);
+    delete settings.windbots.current.skynet.explainDecisions;
+    const migrated = validateAndMergeArenaSettings(settings, settings);
+    assert.equal(migrated.windbots.current.skynet.explainDecisions, false);
+    for (const instance of Object.values(migrated.windbots)) instance.skynet.explainDecisions = true;
+    const database = new ArenaDatabase(path.join(directory, 'explanations.sqlite'));
+    try {
+        database.saveArenaSettings(migrated);
+        const saved = database.getArenaSettings().settings;
+        assert.equal(saved.windbots.current.skynet.explainDecisions, true);
+        const players = buildRegressionMatchups(saved)[0].competitors;
+        assert.ok(buildSkynetCommand(players[0], saved.srvpros[0], 'M#1').args.includes('Explain=True'));
+        assert.ok(buildSkynetCommand(players[1], saved.srvpros[0], 'M#1').args.includes('Explain=False'));
+        saved.windbots.current.skynet.explainDecisions = 'false';
+        assert.throws(() => validateAndMergeArenaSettings(saved, migrated), /boolean/);
+    } finally { database.close(); }
+});
+
+test('explanation settings migrate once without replacing saved choices or credentials', (t) => {
+    const { settings, directory } = settingsFixture(t);
+    delete settings.windbots.current.skynet.explainDecisions;
+    settings.windbots.old.skynet.explainDecisions = true;
+    const filename = path.join(directory, 'legacy-explanations.sqlite');
+    const original = new ArenaDatabase(filename);
+    original.saveArenaSettings(settings);
+    original.db.prepare('DELETE FROM schema_migrations WHERE version = ?').run('006_decision_explanations.sql');
+    original.close();
+    const migrated = new ArenaDatabase(filename);
+    try {
+        const saved = migrated.getArenaSettings().settings;
+        assert.equal(saved.windbots.current.skynet.explainDecisions, false);
+        assert.equal(saved.windbots.old.skynet.explainDecisions, true);
+        assert.equal(saved.srvpros[0].password, 'secret');
+        assert.equal(saved.windbots.current.skynet.profiles[0].id, 'starter');
+        migrated.migrate();
+        assert.equal(migrated.db.prepare('SELECT COUNT(*) AS n FROM schema_migrations WHERE version = ?')
+            .get('006_decision_explanations.sql').n, 1);
+    } finally { migrated.close(); }
+});
+
 
 test('room reservation prevents partial-pair deadlock and releases slots only after owned children close', async (t) => {
     const { settings } = settingsFixture(t);

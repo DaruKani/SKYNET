@@ -12,6 +12,7 @@ function defaultSkynetSettings() {
         version: 4962,
         maxProcesses: 4,
         duelTimeoutSeconds: 300,
+        explainDecisions: false,
         profiles: [],
     };
 }
@@ -37,6 +38,9 @@ function explicitPath(value, label, extension) {
 
 function normalizeSkynetSettings(input) {
     const source = { ...defaultSkynetSettings(), ...input };
+    if (typeof source.explainDecisions !== 'boolean') {
+        throw new Error('Explain decisions must be a boolean');
+    }
     if (!Array.isArray(source.profiles) || source.profiles.length > 200) {
         throw new Error('SKYNET profiles must be an array of at most 200 entries');
     }
@@ -74,6 +78,7 @@ function normalizeSkynetSettings(input) {
         version: boundedInteger(source.version, 'SKYNET protocol version', 1, 65535),
         maxProcesses: boundedInteger(source.maxProcesses, 'SKYNET process limit', 2, 32),
         duelTimeoutSeconds: boundedInteger(source.duelTimeoutSeconds, 'SKYNET match timeout', 10, 3600),
+        explainDecisions: source.explainDecisions,
         profiles,
     };
 }
