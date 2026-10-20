@@ -75,6 +75,8 @@
     <Compile Include="Config.cs" />
     <Compile Include="Game\AI\AIUtil.cs" />
     <Compile Include="Game\AI\AgentFactory.cs" />
+    <Compile Include="Game\AI\Shadow\ShadowRecord.cs" />
+    <Compile Include="Game\AI\Shadow\ShadowSession.cs" />
     <Compile Include="Game\AI\Experts\OldSchoolExecutor.cs" />
     <Compile Include="Game\AI\Strategy\*.cs" />
     <Compile Include="Game\SkynetDecisionAdapter.cs" />

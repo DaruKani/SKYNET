@@ -6,6 +6,7 @@ namespace Skynet
     {
         public string Name { get; set; }
         public string Agent { get; set; }
+        public string ShadowData { get; set; }
         public string Deck { get; set; }
         public string DeckFile { get; set; }
         public string Dialog { get; set; }

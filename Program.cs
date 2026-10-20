@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using Skynet.Game;
 using Skynet.Game.AI;
+using Skynet.Game.AI.Shadow;
 using YGOSharp.OCGWrapper;
 
 namespace Skynet
@@ -21,6 +22,7 @@ namespace Skynet
                 Console.WriteLine("Optional: Name, HostInfo, Version, Hand, Debug, Chat, Dialog.");
                 Console.WriteLine("Agent=skynet (default) or Agent=expert-oldschool (frozen expert comparison).");
                 Console.WriteLine("Learning: PolicyModel, PolicyTraining, PolicyData, PolicySeed, PolicyGroup.");
+                Console.WriteLine("ShadowData=absolute-directory opts into bounded public observation captures; default off.");
                 Console.WriteLine("Each process joins one duel room. Chat and training are disabled by default.");
                 return 0;
             }
@@ -65,6 +67,9 @@ namespace Skynet
             AgentOptions options = new AgentOptions();
             options.Name = Config.GetString("Name", options.Name);
             options.Agent = Config.GetString("Agent", options.Agent);
+            options.ShadowData = Config.GetString("ShadowData", options.ShadowData);
+            if (!string.IsNullOrWhiteSpace(options.ShadowData))
+                options.ShadowData = ShadowSession.ResolveDirectory(options.ShadowData);
             options.Deck = Config.GetString("Deck", options.Deck);
             options.DeckFile = Config.GetString("DeckFile", options.DeckFile);
             options.Dialog = Config.GetString("Dialog", options.Dialog);
@@ -109,6 +114,7 @@ namespace Skynet
             }
             finally
             {
+                client.CloseShadow();
                 if (client.Connection != null)
                     client.Connection.Close();
                 Logger.ClearContext();

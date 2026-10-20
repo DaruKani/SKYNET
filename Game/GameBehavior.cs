@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Skynet.Game.AI;
+using Skynet.Game.AI.Shadow;
 using Skynet.Game.AI.Strategy;
 using YGOSharp.Network;
 using YGOSharp.Network.Enums;
@@ -21,6 +22,7 @@ namespace Skynet.Game
         public Deck Deck { get; private set; }
 
         private GameAI _ai;
+        private ShadowSession _shadow;
 
         private IDictionary<StocMessage, Action<BinaryReader>> _packets;
         private IDictionary<GameMessage, Action<BinaryReader>> _messages;
@@ -55,8 +57,15 @@ namespace Skynet.Game
             Deck = Deck.Load(Game.DeckFile ?? _ai.Executor.Deck);
             if (Deck == null)
                 throw new InvalidDataException("Could not load deck: " + (Game.DeckFile ?? _ai.Executor.Deck));
+            _shadow = new ShadowSession(Game.ShadowData, Game.Agent);
 
             _select_hint = 0;
+        }
+
+        public void CloseShadow()
+        {
+            if (_shadow != null)
+                _shadow.End(false, "connection-retired");
         }
 
         public int GetLocalPlayer(int player)
@@ -94,6 +103,7 @@ namespace Skynet.Game
             {
                 GameMessage msg = (GameMessage)packet.ReadByte();
                 Game.SetCurrentSTOCMessage(msg.ToString());
+                _shadow.OnMessage(msg);
                 if (_messages.ContainsKey(msg))
                     _messages[msg](packet);
                 _lastMessage = msg;
@@ -330,6 +340,7 @@ namespace Skynet.Game
         
         private void OnDuelEnd(BinaryReader packet)
         {
+            _shadow.End(true, "duel-end");
             Logger.WriteLine("SKYNET_END");
             Thread.Sleep(500);
             Connection.Close();
@@ -480,6 +491,7 @@ namespace Skynet.Game
                 Logger.DebugWriteLine("Duel started: " + _room.Names[0] + " versus " + _room.Names[1]);
             }
             _ai.OnStart();
+            _shadow.Begin(_isTag);
         }
 
         private void OnWin(BinaryReader packet)
@@ -487,6 +499,7 @@ namespace Skynet.Game
             int winner = packet.ReadByte();
             int result = winner < 2 ? GetLocalPlayer(winner) : winner;
             _ai.OnDuelResult(result);
+            _shadow.OnOutcome(result);
 
             string otherName;
             if (_isTag)
@@ -1550,6 +1563,7 @@ namespace Skynet.Game
 
             _duel.MainPhase = new MainPhase();
             MainPhase main = _duel.MainPhase;
+            List<ShadowOffer> shadowOffers = _shadow.Enabled ? new List<ShadowOffer>() : null;
             int count;
             for (int k = 0; k < 5; k++)
             {
@@ -1560,6 +1574,7 @@ namespace Skynet.Game
                     int con = GetLocalPlayer(packet.ReadByte());
                     CardLocation loc = (CardLocation)packet.ReadByte();
                     int seq = packet.ReadByte();
+                    _shadow.AddOffer(shadowOffers, k, i, con, (int)loc, seq, -1);
                     ClientCard card = _duel.GetCard(con, loc, seq);
                     if (card == null) continue;
                     card.ActionIndex[k] = i;
@@ -1586,12 +1601,13 @@ namespace Skynet.Game
             count = packet.ReadByte();
             for (int i = 0; i < count; ++i)
             {
-                packet.ReadInt32(); // card id
+                int offeredCode = packet.ReadInt32();
                 int con = GetLocalPlayer(packet.ReadByte());
                 CardLocation loc = (CardLocation)packet.ReadByte();
                 int seq = packet.ReadByte();
                 int desc = packet.ReadInt32();
 
+                _shadow.AddOffer(shadowOffers, 5, i, con, (int)loc, seq, desc, offeredCode < 0);
                 ClientCard card = _duel.GetCard(con, loc, seq);
                 if (card == null) continue;
                 card.ActionIndex[5] = i;
@@ -1604,9 +1620,18 @@ namespace Skynet.Game
 
             main.CanBattlePhase = packet.ReadByte() != 0;
             main.CanEndPhase = packet.ReadByte() != 0;
-            packet.ReadByte(); // CanShuffle
+            bool canShuffle = packet.ReadByte() != 0;
+            if (main.CanBattlePhase)
+                _shadow.AddOffer(shadowOffers, 6, 0, 0, 0, 0, -1);
+            if (main.CanEndPhase)
+                _shadow.AddOffer(shadowOffers, 7, 0, 0, 0, 0, -1);
+            if (canShuffle)
+                _shadow.AddOffer(shadowOffers, 8, 0, 0, 0, 0, -1);
 
-            Connection.Send(CtosMessage.Response, _ai.OnSelectIdleCmd(main).ToValue());
+            ShadowRecord observation = _shadow.Prepare(_duel, shadowOffers);
+            int response = _ai.OnSelectIdleCmd(main).ToValue();
+            Connection.Send(CtosMessage.Response, response);
+            _shadow.Commit(observation, response);
         }
 
         private void OnSelectOption(BinaryReader packet)

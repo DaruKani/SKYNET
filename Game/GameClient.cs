@@ -19,6 +19,7 @@ namespace Skynet.Game
         public string CurrentSTOCMessage { get; private set; }
         public string Username;
         public string Agent { get; private set; }
+        public string ShadowData { get; private set; }
         public string Deck;
         public string DeckFile;
         public string Dialog;
@@ -43,6 +44,7 @@ namespace Skynet.Game
             InstanceId = Interlocked.Increment(ref _nextInstanceId);
             Username = Info.Name;
             Agent = Info.Agent;
+            ShadowData = Info.ShadowData;
             Deck = Info.Deck;
             DeckFile = Info.DeckFile;
             Dialog = Info.Dialog;
@@ -63,6 +65,12 @@ namespace Skynet.Game
         internal void SetDeckContext(string executorName)
         {
             ExecutorName = executorName;
+        }
+
+        public void CloseShadow()
+        {
+            if (_behavior != null)
+                _behavior.CloseShadow();
         }
 
         internal void SetCurrentSTOCMessage(string message)

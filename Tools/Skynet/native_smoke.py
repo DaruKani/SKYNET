@@ -122,6 +122,8 @@ def run_duel(args, root, number, deck, opponent_deck):
             agent = args.agent if target else args.opponent_agent
             if agent:
                 command.append("Agent=" + agent)
+            if args.shadow:
+                command.append("ShadowData=" + str(bot_dir / "shadow"))
             process = launch(command, bot_dir, output)
             processes.append((process, log_path, target))
             # Server accepts each client before we launch the next; waiting for
@@ -206,6 +208,8 @@ def main():
     parser.add_argument("--policy-seed", type=int, default=20261020)
     parser.add_argument("--policy-group", help="Stable deck/encounter cohort; defaults to both deck hashes")
     parser.add_argument("--train", action="store_true")
+    parser.add_argument("--shadow", action="store_true",
+                        help="Capture bounded public main-phase observations from both SKYNET clients")
     parser.add_argument("--games", type=int, default=2)
     parser.add_argument("--timeout", type=float, default=90)
     parser.add_argument("--output-dir", type=Path)
@@ -220,6 +224,8 @@ def main():
         parser.error("--data-root, --bot-exe and --output-dir are required")
     if not 1 <= args.games <= 100 or not 10 <= args.timeout <= 600:
         parser.error("Use 1..100 games and a 10..600 second per-duel timeout")
+    if args.shadow and (not args.agent or not args.opponent_agent):
+        parser.error("--shadow requires explicit --agent and --opponent-agent SKYNET policies")
     args.bot_exe = args.bot_exe.resolve(strict=True)
     args.opponent_exe = (args.opponent_exe or args.bot_exe).resolve(strict=True)
     args.data_root = args.data_root.resolve(strict=True)
@@ -245,6 +251,7 @@ def main():
                "databaseSha256": digest(inputs / "cards.cdb"), "scriptsSha256": digest(inputs / "script.zip"),
                "deckSha256": digest(deck), "opponentDeckSha256": digest(opponent_deck),
                "coreSeed": None, "policy": args.policy, "opponentPolicy": args.opponent_policy,
+               "shadowCapture": args.shadow,
                "policyGroup": args.policy_group,
                "duels": []}
     for number in range(1, args.games + 1):
