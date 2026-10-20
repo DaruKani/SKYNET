@@ -4,6 +4,8 @@
 
 SKYNET is an experimental deck-independent MDPro4 duel AI. Build `Skynet.sln`
 with Visual Studio/MSBuild for .NET Framework 4.8; the output is `SKYNET.exe`.
+The owner prioritizes testing and improving the duel AI. Expedition gameplay,
+progression and campaign content are outside the project scope.
 The project is a classic non-SDK C# project with Any CPU and x86 configurations.
 Use C# 6-compatible syntax for the supported legacy Mono toolchain; do not add
 local functions, tuple types, inline out declarations, pattern matching or default

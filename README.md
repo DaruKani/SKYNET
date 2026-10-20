@@ -8,8 +8,9 @@
 ---
 
 **SKYNET is an experimental, deck-independent duel AI for MDPro4.** It has its own
-`SKYNET.exe`, solution, policy and learning tools. It is designed as the AI
-foundation for **Duel Expedition**, where decks evolve during a single-player run.
+`SKYNET.exe`, solution, policy and learning tools. The project focuses on testing
+and improving the AI's reliability, card coverage and playing strength across
+different decks.
 
 The first implementation is functional, with a deliberately bounded card library.
 It is not yet a competitive general-purpose player or a trained neural model.
@@ -165,19 +166,42 @@ Play-session warning reported a common-menu sound loading timeout; the SKYNET
 fixture itself logged no warnings or errors. These are correctness checks, not a strength benchmark.
 Without a database, the C# harness explicitly skips its five card-backed cases.
 
-## The path to Duel Expedition
+## Testing and improvement roadmap
 
-1. Expand reusable card capabilities, precise costs, targeting and material logic.
-2. Build a varied opponent/deck benchmark with separate training and evaluation.
-3. Add bounded planning using an isolated core harness and reproducible public
-   observations; preserve hidden-information boundaries.
-4. Develop stronger policy/value models and measure them against frozen baselines.
-5. Build Expedition in MDPro4: starter decks, branching encounters, curated reward
-   bundles, deck revisions, boss previews, limited defeats and persistent runs.
+The next milestone is a repeatable benchmark with decision diagnostics. The
+existing fixed-order native smoke test checks completion; repeating it many times
+does not establish playing strength. The work below is planned, not implemented.
 
-The Expedition UI, run save format, reward economy and unlock content are not
-implemented by this AI milestone. Curated pools and tested opponent pairings
-remain the practical way to make the first playable expedition coherent.
+1. **Measure the baseline.** Freeze the current executable and policy. Add a
+   manifest of small reviewed decks and compatible opponents, balance both seats,
+   and record deck/core/script/model hashes. Keep fixed-order correctness fixtures
+   separate from varied, shuffled strength matches. Record unavailable core seeds
+   honestly rather than treating policy seeds as duel seeds.
+2. **Explain mistakes.** Add optional diagnostic traces for offered actions,
+   support/rejection reasons, scores, selected actions and selection prompts using
+   only client-visible information. Report unsupported effect offers, timeouts,
+   response failures, decision latency and completed results. Diagnostic capture
+   must work independently of training; normal frozen play stays write-free.
+3. **Improve shared card knowledge and tactics.** Expand reviewed effect
+   capabilities, costs, targets and material selection in small coherent batches.
+   Start with simple decks, then introduce extra-deck mechanics and short action
+   sequences. Turn observed mistakes into focused regressions. Every deck should
+   benefit from the same supported card knowledge without a new executor class.
+4. **Evaluate each change.** Run the relevant regressions and the same declared
+   matchup suite against a frozen baseline. Report results per matchup and seat,
+   uncertainty, coverage and failures; do not hide failures in aggregate win rates.
+   Use bounded pilot batches before larger runs and inspect representative duels
+   in MDPro4.
+5. **Train after the supported decisions are useful.** Collect diverse completed
+   exploration episodes, keep deck/encounter groups separate, and evaluate each
+   candidate in fresh frozen duels against multiple opponents. Promote only after
+   evidence of improvement and no correctness regression. The current learner
+   adjusts action preferences; learning new rules, target choices or combo plans
+   requires further implementation.
+
+Each completed update gets a descriptive commit and its actual validation
+results. The project scope is the duel AI and its MDPro4 integration; an Expedition
+mode, progression economy and campaign content are outside this roadmap.
 
 ## Project map
 
