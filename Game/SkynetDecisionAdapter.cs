@@ -21,8 +21,8 @@ namespace Skynet.Game
             {
                 _activatedCards.Clear();
                 policy.OnDuelStarted();
-                Logger.WriteLine("SKYNET_START");
             }
+            Logger.WriteLine("SKYNET_START");
         }
 
         public void OnDuelResult(int result)
@@ -31,8 +31,8 @@ namespace Skynet.Game
             if (policy != null)
             {
                 policy.OnDuelFinished(result);
-                Logger.WriteLine("SKYNET_RESULT result=" + result);
             }
+            Logger.WriteLine("SKYNET_RESULT result=" + result);
         }
 
         private bool CanOfferPolicyActivation(ClientCard card)

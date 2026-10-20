@@ -1,0 +1,152 @@
+{
+  "format": "skynet-expert-baselines-v1",
+  "baselines": [
+    {
+      "id": "expert-oldschool",
+      "agentArgument": "Agent=expert-oldschool",
+      "mode": "explicit-full-lifecycle-compatibility",
+      "purpose": "Simple frozen comparison opponent for Arena; not a claim of competitive strength or general card understanding.",
+      "source": "LegacyWindBot/Game/AI/Decks/OldSchoolExecutor.cs",
+      "sourceSha256": "d3f2baff435e3cc340b294915d771a4d870576cf51abbda4af3c06842e9eb913",
+      "verifiedUpstreamCommit": null,
+      "sourceHistoryVerified": false,
+      "sourceAge": "unknown",
+      "sourceAttribution": "WindBot contributors; retained root MIT license",
+      "portedSource": "Game/AI/Experts/OldSchoolExecutor.cs",
+      "adaptations": [
+        "Namespace and explicit factory selection; deck attribute removed. Original registered action order, handlers and instance state retained.",
+        "Uses the retained current shared DefaultExecutor callbacks and GameAI selection path; not a byte-identical historical engine.",
+        "Policy model and training options are rejected. Generic SKYNET remains the default."
+      ],
+      "deck": "Decks/AI_ExpertOldSchool.ydk",
+      "deckSha256": "1b1f411fcfc7d187c7478855ee7c8e462dc03d33065b2fabb706756b22e84469",
+      "qualityStatus": "bounded static script and lifecycle review; ten focused assertions and two native completion fixtures passed",
+      "scriptCheckoutRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+      "scriptReviewScope": "Reviewed the eleven effect-bearing constants against these exact local Lua files. This checks prompt stages and lifecycle assumptions, not optimal play or every inherited DefaultExecutor path.",
+      "scripts": [
+        {
+          "cardId": 19613556,
+          "source": "ygopro-scripts/c19613556.lua",
+          "sha256": "93ef3910173bae6563c876ada5c17794bc239cb32e14e845f1f7ad8c7da7479f"
+        },
+        {
+          "cardId": 53129443,
+          "source": "ygopro-scripts/c53129443.lua",
+          "sha256": "647d1e59fb231512a48f4f32c7254dd83b942c502b464eb68488357af173a939"
+        },
+        {
+          "cardId": 12580477,
+          "source": "ygopro-scripts/c12580477.lua",
+          "sha256": "ca066997989a3a6771fd44f54cdbd5630d2db1505c3dc4803abd3e700c442dc3"
+        },
+        {
+          "cardId": 26412047,
+          "source": "ygopro-scripts/c26412047.lua",
+          "sha256": "5fffc779c38051324c1ca7c8d5d4731059f20dde51b9e5a990ed7951f75edbe1"
+        },
+        {
+          "cardId": 66788016,
+          "source": "ygopro-scripts/c66788016.lua",
+          "sha256": "5ab48cd519ac303a3a7d2920bc3d9a52cabc4ad42b0736110051c50906190ee6"
+        },
+        {
+          "cardId": 72302403,
+          "source": "ygopro-scripts/c72302403.lua",
+          "sha256": "f8b8fb1a876a6590c03c8707d97d5f8204be36bf524893f138ad7154aeaa82fe"
+        },
+        {
+          "cardId": 43422537,
+          "source": "ygopro-scripts/c43422537.lua",
+          "sha256": "f597e55834432a41e617776a88a114eade325661ec473000d74a3ca1f95257ee"
+        },
+        {
+          "cardId": 44095762,
+          "source": "ygopro-scripts/c44095762.lua",
+          "sha256": "aa839b2f787c59ef00e9d379df5308a7af1a1541bdd3337fb16f4e07a2fc86f9"
+        },
+        {
+          "cardId": 70342110,
+          "source": "ygopro-scripts/c70342110.lua",
+          "sha256": "39fef8803c51b2c2bc8d55550c79a0421b499142f87070c3bda6c29b510bf0cd"
+        },
+        {
+          "cardId": 83104731,
+          "source": "ygopro-scripts/c83104731.lua",
+          "sha256": "c97360a98c2e19f15d482018e469524a9765628db7331e1f9e4f22b260e900ee"
+        },
+        {
+          "cardId": 30190809,
+          "source": "ygopro-scripts/c30190809.lua",
+          "sha256": "265e64dbfe2adc832325e18e5304b7a7e4f31faccd7364a0b92b33d05fc131d4"
+        }
+      ],
+      "knownLimitations": [
+        "OldSchool is a simple historical beatdown strategy, not a modern combo baseline.",
+        "Double Summon only activates when its original offered-summon and hand-count heuristic passes; it can miss opportunities after the ordinary summon has already been spent.",
+        "Gear Golem the Moving Fortress is set as a defender; its optional direct-attack effect is not registered.",
+        "Sweep-removal heuristics and inherited tied-destruction selection are coarse and are not optimal labels.",
+        "Historical deck is a research fixture; no modern format legality or banlist compliance is claimed.",
+        "Changing DeckFile does not make the expert understand unregistered cards."
+      ],
+      "validation": [
+        {
+          "kind": "build",
+          "configuration": "Debug Any CPU and Release Any CPU",
+          "status": "passed",
+          "toolchain": "Visual Studio 2022 MSBuild / .NET Framework 4.8"
+        },
+        {
+          "kind": "scratch-integration-assertions",
+          "count": 10,
+          "status": "passed",
+          "source": "Artifacts/expert-review/ExpertProbe.cs",
+          "sha256": "c3818909dacf7fb131717ccfd94564bd80442dca3954142d16acaa9b0baba8ea",
+          "scope": [
+            "exclusive expert and default ranked lifecycles",
+            "invalid mode/model/training rejection",
+            "action priority and offered wire index",
+            "per-turn and per-duel state isolation",
+            "next-turn reset behavior",
+            "authoritative start and draw markers"
+          ],
+          "persistence": "Local ignored QA artifact; deleted Tests project was not restored."
+        },
+        {
+          "kind": "native-duel-completion",
+          "count": 2,
+          "status": "passed",
+          "receipt": "Artifacts/expert-review/native-oldschool/result.json",
+          "exeSha256": "308335bce9e2a460133bff8b024f0c23d2a8108598ce3162b3f25ce63c422f23",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+          "serverSha256": "6f2e94ddba2649c9e6c7800aa0f76b3b44100d8e010431f9f4ffb37a1374405e",
+          "seats": [
+            0,
+            1
+          ],
+          "opponent": "skynet, same OldSchool deck",
+          "results": [
+            "win",
+            "loss"
+          ],
+          "clientExitCodes": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "serverExitCodes": [
+            0,
+            0
+          ],
+          "forcedCleanup": [],
+          "noShuffle": true,
+          "noDeckCheck": true,
+          "coreSeed": null,
+          "strengthEvidence": false
+        }
+      ],
+      "portedSourceSha256": "f6f4771ba22e251c41493fe162ade0910738d3548084b1e93fa5d6d7a04bee80"
+    }
+  ]
+}

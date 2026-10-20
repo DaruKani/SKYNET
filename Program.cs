@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using Skynet.Game;
+using Skynet.Game.AI;
 using YGOSharp.OCGWrapper;
 
 namespace Skynet
@@ -18,6 +19,7 @@ namespace Skynet
                 Console.WriteLine("Usage: SKYNET.exe Host=127.0.0.1 Port=7911 DbPath=cards.cdb [DeckFile=starter.ydk]");
                 Console.WriteLine("Options use Key=Value. Config=path loads additional options from a file.");
                 Console.WriteLine("Optional: Name, HostInfo, Version, Hand, Debug, Chat, Dialog.");
+                Console.WriteLine("Agent=skynet (default) or Agent=expert-oldschool (frozen expert comparison).");
                 Console.WriteLine("Learning: PolicyModel, PolicyTraining, PolicyData, PolicySeed, PolicyGroup.");
                 Console.WriteLine("Each process joins one duel room. Chat and training are disabled by default.");
                 return 0;
@@ -62,6 +64,7 @@ namespace Skynet
         {
             AgentOptions options = new AgentOptions();
             options.Name = Config.GetString("Name", options.Name);
+            options.Agent = Config.GetString("Agent", options.Agent);
             options.Deck = Config.GetString("Deck", options.Deck);
             options.DeckFile = Config.GetString("DeckFile", options.DeckFile);
             options.Dialog = Config.GetString("Dialog", options.Dialog);
@@ -78,7 +81,8 @@ namespace Skynet
             options.PolicySeed = Config.GetInt("PolicySeed", options.PolicySeed);
             options.PolicyGroup = Config.GetString("PolicyGroup", options.PolicyGroup);
             if (!string.Equals(options.Deck, "SKYNET", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("SKYNET uses one general policy. Choose a deck with DeckFile=path.ydk.");
+                throw new ArgumentException("Deck must be SKYNET. Select behavior with Agent and cards with DeckFile=path.ydk.");
+            AgentFactory.ValidateOptions(options.Agent, options.PolicyTraining, options.PolicyModel);
             if (string.IsNullOrWhiteSpace(options.Host) || options.Port < 1 || options.Port > 65535)
                 throw new ArgumentException("Host must be nonempty and Port must be between 1 and 65535.");
             return options;

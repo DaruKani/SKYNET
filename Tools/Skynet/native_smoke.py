@@ -74,6 +74,7 @@ def run_duel(args, root, number, deck, opponent_deck):
     shutil.copy2(root / "inputs" / "cards.cdb", server_dir / "cards.cdb")
     target_seat = (number - 1) % 2
     row = {"duel": number, "matchId": str(uuid.uuid4()), "targetSeat": target_seat, "policySeed": args.policy_seed + number,
+           "agent": args.agent, "opponentAgent": args.opponent_agent,
            "coreSeed": None, "noDeckCheck": True, "noShuffle": True, "status": "failed"}
     processes = []
     logs = []
@@ -118,6 +119,9 @@ def run_duel(args, root, number, deck, opponent_deck):
                        "PolicyGroup=" + args.policy_group]
             if target and args.model:
                 command.append("PolicyModel=" + str(args.model))
+            agent = args.agent if target else args.opponent_agent
+            if agent:
+                command.append("Agent=" + agent)
             process = launch(command, bot_dir, output)
             processes.append((process, log_path, target))
             # Server accepts each client before we launch the next; waiting for
@@ -191,6 +195,9 @@ def main():
     parser.add_argument("--opponent-exe", type=Path)
     parser.add_argument("--policy", default="SKYNET")
     parser.add_argument("--opponent-policy", default="SKYNET")
+    parser.add_argument("--agent", choices=("skynet", "expert-oldschool"),
+                        help="Explicit SKYNET runtime mode; omitted for unchanged legacy compatibility")
+    parser.add_argument("--opponent-agent", choices=("skynet", "expert-oldschool"))
     parser.add_argument("--deck", type=Path)
     parser.add_argument("--opponent-deck", type=Path)
     parser.add_argument("--model", type=Path)

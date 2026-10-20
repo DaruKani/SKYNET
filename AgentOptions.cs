@@ -5,6 +5,7 @@ namespace Skynet
     public class AgentOptions
     {
         public string Name { get; set; }
+        public string Agent { get; set; }
         public string Deck { get; set; }
         public string DeckFile { get; set; }
         public string Dialog { get; set; }
@@ -23,6 +24,7 @@ namespace Skynet
         public AgentOptions()
         {
             Name = "SKYNET";
+            Agent = "skynet";
             Deck = "SKYNET";
             DeckFile = null;
             Dialog = "default";

@@ -50,12 +50,7 @@ namespace Skynet.Game
             _duel = new Duel();
 
             _ai = new GameAI(Game, _duel);
-            SkynetAgent agent = new SkynetAgent(_ai, _duel);
-            agent.Deck = "AI_Skynet";
-            agent.Learning = new SkynetLearningSession(Game.PolicyModel,
-                Game.PolicyTraining, Game.PolicyData, Game.PolicySeed);
-            agent.Learning.TrainingGroup = Game.PolicyGroup ?? (Game.DeckFile ?? agent.Deck);
-            _ai.Executor = agent;
+            _ai.Executor = AgentFactory.Create(_ai, _duel, Game);
             Game.SetDeckContext(_ai.Executor.GetType().Name);
             Deck = Deck.Load(Game.DeckFile ?? _ai.Executor.Deck);
             if (Deck == null)
@@ -245,8 +240,7 @@ namespace Skynet.Game
                 return;
             }
             _room.Position = pos;
-            if (_ai.Executor is IRankedDecisionPolicy)
-                Logger.WriteLine("SKYNET_SEAT seat=" + pos);
+            Logger.WriteLine("SKYNET_SEAT seat=" + pos);
             _room.IsHost = ((type >> 4) & 0xF) != 0;
             _room.IsReady[pos] = true;
             Connection.Send(CtosMessage.HsReady);
@@ -336,8 +330,7 @@ namespace Skynet.Game
         
         private void OnDuelEnd(BinaryReader packet)
         {
-            if (_ai.Executor is IRankedDecisionPolicy)
-                Logger.WriteLine("SKYNET_END");
+            Logger.WriteLine("SKYNET_END");
             Thread.Sleep(500);
             Connection.Close();
         }

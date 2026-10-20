@@ -18,6 +18,7 @@ namespace Skynet.Game
         public string ExecutorName { get; private set; }
         public string CurrentSTOCMessage { get; private set; }
         public string Username;
+        public string Agent { get; private set; }
         public string Deck;
         public string DeckFile;
         public string Dialog;
@@ -41,6 +42,7 @@ namespace Skynet.Game
         {
             InstanceId = Interlocked.Increment(ref _nextInstanceId);
             Username = Info.Name;
+            Agent = Info.Agent;
             Deck = Info.Deck;
             DeckFile = Info.DeckFile;
             Dialog = Info.Dialog;
