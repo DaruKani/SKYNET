@@ -372,6 +372,23 @@ No accepted fixture required forced cleanup or showed a captured selection
 fallback or hidden-identity violation. Native fixtures verify these behaviors,
 not competitive strength.
 
+The frozen v7 Arena comparisons on October 20, 2026 produced:
+
+| Comparison | v7 Chimera wins/losses | Earlier v6 sample | Disconnects |
+| --- | ---: | ---: | ---: |
+| Versus frozen v5, identical diagnostic 40/8 list | 12 / 8 | 6 / 14 | 0 |
+| Versus reviewed Swordsoul Tenyi expert, different 40/8 and 40/15 lists | 3 / 17 | 3 / 17 | 0 |
+
+Each row is 20 best-of-three matches with frozen heuristic weights, shuffled
+decks, unrestricted rules and unknown core seeds. The improved v5 result is
+encouraging but not a reliable strength claim: its 95% Wilson interval is
+38.7%–78.1%, and the v6/v7 samples are unpaired. The Swordsoul result is unchanged
+in this sample (interval 5.2%–36.0%); the modern matchup remains a weakness.
+No policy was changed during either run and no model was trained or promoted.
+Windows, Mono and Arena CI passed for `47d9bae`. Both experiments retired their
+duel processes and left no active runs or rooms. Exact receipts are in the
+validation catalog.
+
 ### Friendly strategy authoring
 
 The planned workflow is: import a `.ydk`, see available effect support and gaps,

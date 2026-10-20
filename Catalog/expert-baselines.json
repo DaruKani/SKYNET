@@ -3781,7 +3781,151 @@
         "The diagnostic deck is unchanged and uses unrestricted rules; it is not a competitive Master Duel list.",
         "No neural model trained or promoted. Future learning requires fresh v7 episodes and separate frozen evaluation.",
         "Scratch harnesses, native logs and binaries remain ignored; tracked receipts preserve inputs, hashes and conclusions."
-      ]
+      ],
+      "implementationCommit": "47d9baec12aa81c4b561421492b5156ae586d9e7",
+      "ci": {
+        "url": "https://github.com/ElderLich/SKYNET/actions/runs/39491991056",
+        "conclusion": "success",
+        "jobs": [
+          "windows",
+          "mono",
+          "arena"
+        ]
+      },
+      "arenaEvaluations": [
+        {
+          "runId": "82a03087-1b70-483c-bd1b-dc952c38dc46",
+          "kind": "regression",
+          "note": "Chimera v7 Mirror/King follow-up beside Guardian vs frozen v5; identical diagnostic 40/8 list; frozen weights; shuffled, unseeded; 20 matches",
+          "startedAt": "2026-10-20T20:25:15.835Z",
+          "finishedAt": "2026-10-20T20:28:52.358Z",
+          "receipt": "Artifacts/chimera-arena-followup-previous.json",
+          "receiptSha256": "7bbed6adb4b6be4f3f7a9588a912c7bd128b266b0703da31526e480eeb16052c",
+          "participants": {
+            "current": {
+              "agent": "skynet",
+              "arenaSlot": 1,
+              "arenaSource": "current",
+              "executableSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": true,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-followup-previous-current-output.json",
+                "sha256": "ad95d025a0d8536562d3f29ba69416ba288d04e8f6686a63f060f5587d5797a0",
+                "characters": 2000000,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            },
+            "old": {
+              "agent": "skynet",
+              "arenaSlot": 2,
+              "arenaSource": "old",
+              "executableSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": false,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-followup-previous-old-output.json",
+                "sha256": "75d5a8f3edfe009ed3d25776f20750e6ce8cf7b51a38e99d81a05d8c1a6a19cc",
+                "characters": 50918,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            }
+          },
+          "bestOfThreeMatches": 20,
+          "candidateWins": 12,
+          "baselineWins": 8,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0.38658,
+            0.78119
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "interpretation": "Exploratory sample with unrestricted rules, unpaired unknown core RNG and frozen policies. Same diagnostic deck on both sides compares complete policy revisions; this is not an isolated ablation of Guardian or the disabled-status fix. No neural training, held-out generalization or model promotion."
+        },
+        {
+          "runId": "b2b23985-f44d-4434-9f9a-0b80da860d63",
+          "kind": "challenge",
+          "note": "Reviewed Swordsoul Tenyi expert (challenger) vs Chimera v7 Guardian follow-up; different 40/15 and diagnostic 40/8 lists; frozen weights; shuffled, unseeded; 20 matches",
+          "startedAt": "2026-10-20T20:29:45.650Z",
+          "finishedAt": "2026-10-20T20:31:56.023Z",
+          "receipt": "Artifacts/chimera-arena-followup-modern.json",
+          "receiptSha256": "b54601409d52e1b791f4aa1e1a5261a9a374e128c5abd3168652334da80b4897",
+          "participants": {
+            "current": {
+              "agent": "skynet",
+              "arenaSlot": 2,
+              "arenaSource": "opponent",
+              "executableSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": true,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-followup-modern-current-output.json",
+                "sha256": "f3456a04c759e7487f92a102d84ac4a996d504c2fdcb9fc124b7d569cfb8f7d5",
+                "characters": 2000000,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            },
+            "old": {
+              "agent": "expert-swordsoul",
+              "arenaSlot": 1,
+              "arenaSource": "target",
+              "executableSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+              "deck": "Decks/AI_ExpertSwordsoul.ydk",
+              "deckSha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824",
+              "model": "built-in heuristic weights",
+              "explainDecisions": false,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-followup-modern-old-output.json",
+                "sha256": "ee2de3a11be40144516ceb662998a7df2849d20d28880090bb58192a2ee08c21",
+                "characters": 58926,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            }
+          },
+          "bestOfThreeMatches": 20,
+          "candidateWins": 3,
+          "baselineWins": 17,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0.05237,
+            0.36042
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "interpretation": "Exploratory sample with unrestricted rules, unpaired unknown core RNG and frozen policies. Different deck lists and agent owners; this measures a matchup, not AI quality in isolation. No neural training, held-out generalization or model promotion."
+        }
+      ],
+      "cleanup": {
+        "checkedAt": "2026-10-20T20:32:16.794905+00:00",
+        "activeRuns": {
+          "runs": []
+        },
+        "gatewayRooms": {
+          "enableHalfwayWatch": false,
+          "fetchedAt": "2026-10-20T20:32:16.794Z",
+          "srvpro": {
+            "id": "srvpro-1",
+            "name": "SKYNET Local Arena"
+          },
+          "rooms": []
+        },
+        "processCheck": {
+          "count": 0,
+          "names": [],
+          "scope": "Read-only Get-Process check for SKYNET and ygoserver; dedicated Arena supervisor remains available."
+        }
+      }
     }
   ]
 }
