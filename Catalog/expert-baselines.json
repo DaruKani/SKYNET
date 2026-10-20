@@ -3210,6 +3210,578 @@
           "scope": "Read-only Get-Process check for SKYNET and ygoserver; dedicated Arena supervisor remains available."
         }
       }
+    },
+    {
+      "id": "chimera-guardian-followup-v7",
+      "date": "2026-10-20",
+      "policyRevision": "skynet-policy-v7",
+      "purpose": "Develop a complementary King route beside Guardian when reviewed resources support it, preserving Guardian and existing King-based conservation.",
+      "deck": "Decks/AI_SkynetChimera.ydk",
+      "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+      "deckCounts": {
+        "main": 40,
+        "extra": 8,
+        "side": 0
+      },
+      "deckChanged": false,
+      "staticReview": {
+        "kind": "independent-script-and-code-review",
+        "policyRevision": "skynet-policy-v7",
+        "trackedEdits": false,
+        "reviewedSource": {
+          "path": "Game/AI/Strategy/ChimeraStrategy.cs",
+          "sha256": "94b5218b7d7a60a2bd94d6e2700a51f4414162dc451521863f4b055e03e83aee"
+        },
+        "relatedVersionFiles": [
+          {
+            "path": "Game/AI/Strategy/SkynetLearningSession.cs",
+            "sha256": "d3b3b9221abd69ef03885ac3dbdf715af2ee81a42560932289c164f905bf42ae"
+          },
+          {
+            "path": "Tools/Skynet/train.py",
+            "sha256": "b60a0ea798c6a715dc5b7feea439971c229e86b5248e36f8c93912c4926a863e"
+          }
+        ],
+        "provenanceFile": "Artifacts/guardian-followup-review/provenance.json",
+        "provenanceSha256": "685faf1e887991bd1701b1bce405587c96f99aa0dc9e70189ddb779e335e5526",
+        "scriptProvenance": {
+          "kind": "explicit-local-and-deployed-card-script-provenance",
+          "scriptsRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+          "archivePath": "D:\\Programs\\GitHub\\MDPro_3\\Data\\script.zip",
+          "archiveSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+          "databasePath": "D:\\Programs\\GitHub\\MDPro_3\\Data\\locales\\en-US\\cards.cdb",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "maximumEntryAndActualReadBytes": 262144,
+          "scripts": [
+            {
+              "cardId": 28954097,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c28954097.lua",
+              "archiveEntry": "script/c28954097.lua",
+              "localBytes": 2801,
+              "deployedBytes": 2720,
+              "localSha256": "76c36572d374ca0ec42648983fdd65bf9e10b09d38e66ea3722da0b5c1ff63b6",
+              "deployedSha256": "8fd38faf8bd881b53a225ef32b09597d5281d1a2e5a3e5c89f6501796859d054",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 1769875,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c1769875.lua",
+              "archiveEntry": "script/c1769875.lua",
+              "localBytes": 2635,
+              "deployedBytes": 2563,
+              "localSha256": "e0b8ee7d35c5c8350b12f39609c6bf524741d8733edf90c3b6ecc21c725b7a16",
+              "deployedSha256": "a82d3c2e966f49b36fd502a7cae9cfd04b56d0488154f6d00cb0b04fddc8211e",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 55461744,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c55461744.lua",
+              "archiveEntry": "script/c55461744.lua",
+              "localBytes": 3008,
+              "deployedBytes": 2928,
+              "localSha256": "7a811075cfcb0c51b5faf9704efbad89a8f1789c8a14884671ef1c00aa257f84",
+              "deployedSha256": "35868f679500917c30fc7342b094683f5f4183de1fdf7d199d32c60173513c0a",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 23076639,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c23076639.lua",
+              "archiveEntry": "script/c23076639.lua",
+              "localBytes": 1873,
+              "deployedBytes": 1818,
+              "localSha256": "5a1701bdf23f60ea46e3808588f3e2f3b91205fdb1fcd9aa39811da01ae841e7",
+              "deployedSha256": "71c7c64472799d119f55e02d5bdbac17b576acb5e66815c889fc2c95039ccfcb",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 63136489,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c63136489.lua",
+              "archiveEntry": "script/c63136489.lua",
+              "localBytes": 5200,
+              "deployedBytes": 5057,
+              "localSha256": "f7a176abbda2fe02ddd0c259de417eab9023503d0cfbbe559ea04bddfbfefaa8",
+              "deployedSha256": "0fe7eaf702160bd05982ca83992e4be410aa25a79aeafe4acd5bfaafc673d108",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 69601012,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c69601012.lua",
+              "archiveEntry": "script/c69601012.lua",
+              "localBytes": 2804,
+              "deployedBytes": 2730,
+              "localSha256": "0076842371e3c16db88b1f9e2a7ed34cb8196858e147aa8736911d18bf9d5a31",
+              "deployedSha256": "f2d45a113212a37befc60dfd01896352c6234e44816e19869e640a78f38e0cac",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 11321089,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c11321089.lua",
+              "archiveEntry": "script/c11321089.lua",
+              "localBytes": 3567,
+              "deployedBytes": 3471,
+              "localSha256": "71df3a8a0c9f9de227023559cf804d4b17f9509dfd9137478d3d4105a43bbe1f",
+              "deployedSha256": "8fbea1714902fbc56f08984c438ea8c176ef92edca5c6370951a1ec40d197ef2",
+              "normalizedEqual": true
+            },
+            {
+              "cardId": 92565383,
+              "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c92565383.lua",
+              "archiveEntry": "script/c92565383.lua",
+              "localBytes": 2954,
+              "deployedBytes": 2866,
+              "localSha256": "028509d0fc8ef77167e233139c36b3954b91e615849a4aacf6190b2c10d6d6b2",
+              "deployedSha256": "b6b27cf810377032e9db43f3b5749739215eff1fc92ae61bc07e92983386f0f4",
+              "normalizedEqual": true
+            }
+          ]
+        },
+        "blockingFindings": [],
+        "scope": [
+          "Narrow development of King beside a healthy Guardian when no reviewed named boss is already established",
+          "Mirror normal summon/recruit, Gazelle normal summon, BigWing material-trigger Mirror revival and missing-Fiend search",
+          "King Extra Deck target and actual two-material prompt selection while preserving established bosses",
+          "Accepted per-effect search/recruit flags and turn/duel resets; pending public target guard through chain resolution"
+        ],
+        "scriptConclusions": [
+          "Guardian alone does not have current code 4796100 and cannot enable Mirror or Coatl negates. Faceup King or fusion Berfomet supplies that condition.",
+          "Mirror pays its own tribute before the resolution recruit, freeing its main zone. Recruit choice occurs during resolution with SpSummon hint.",
+          "BigWing can search up to one level-four Beast and one Chimera Fusion together. Gazelle can search only one level-five Fiend or Fusion spell, so its route cannot assume both missing pieces.",
+          "BigWing material-trigger revival selects its Illusion target at activation. Gazelle material-trigger Illusion search selects at resolution.",
+          "Chimera Fusion activation has no hard once-per-turn limit; only its GY recovery does. Multiple Fusion actions are therefore possible when legal resources remain.",
+          "King uses Beast plus Fiend and registers random enemy-hand send for the End Phase. The policy neither selects nor reads that hidden identity."
+        ],
+        "resolvedFindings": [
+          "Complementary planning excludes Guardian and other established bosses from spare resources, including Coatl missing-Fiend search.",
+          "A hand-only preservation pair is declined when all five main zones are occupied; a pair that releases a main-zone body remains eligible.",
+          "Normal BigWing remains declined behind an established boss, avoiding a new path that could tribute Guardian.",
+          "New King priority no longer overrides a pending enemy target on Guardian. The guard covers chain building and actual Fusion resolution, rather than only the latest chain link at activation.",
+          "Actual resolution-callback validation found the goal guard alone insufficient: Guardian recipe pricing still lost its target discount and fell back to King. The same pending-target helper now feeds GuardianMaterialValue and MaterialValue, preserving the recipe estimate through the lower unresolved enemy link.",
+          "Viable unspent Mirror normal summon now scores 6.9 ahead of direct complementary King Fusion at 6.7, preserving the chance to put Mirror in the GY. Gazelle scores 6.8 only when its field search is unspent and a reviewed Fusion/BigWing target remains in the own deck; otherwise it stays at 6.4."
+        ],
+        "stateAndSelectionReview": [
+          "Scoring reads state only. Three new flags are written only by OnActionCommitted, retained through chain end, and reset by ResetTurnState at turn/duel boundaries.",
+          "Local IsTargetedByEnemy reads CurrentChainInfo snapshots without changing prompt ownership. Building considers known links; resolution considers Take(SolvingChainIndex - 1). Indexed negation checks use index + 1, matching the one-based protocol. Targets.Contains(card) retains exact client-card identity.",
+          "Already-resolved higher links and the current resolving link do not suppress development. GetCurrentSolvingChainInfo remains the source for resolution callbacks.",
+          "EnemyLink remains unchanged for current enemy effect identification by actual Mirror/Coatl negate offers; pending-target planning does not replace that current-source contract.",
+          "Cached pair preferences are intersected with each actual offered list; no cached unoffered card is returned. If the preserving route disappears, fallback still completes a legal offered procedure.",
+          "Enemy hidden identities are not inspected; own-deck identity availability uses HasInDeck and Extra Deck checks use the known own Extra Deck."
+        ],
+        "limitations": [
+          "Static review establishes script and callback consistency, not stronger match play. Root and validation agent own builds, focused assertions, native duels and Arena results.",
+          "Routes are bounded visible-resource estimates. They do not simulate scripts, negation, future draws, or chain outcomes.",
+          "The main-zone check is conservative and does not model disabled zones or all Extra Monster Zone opportunities; server offers remain authoritative.",
+          "Pending targeting evidence does not prove a destructive threat or continued effect relation after a card leaves and returns. This guard is deliberately conservative.",
+          "Target-aware material prices now survive resolution but remain heuristic: the policy does not prove that all targeted cards are moved or that the eventual enemy effect fails.",
+          "Guardian plus a reviewed King/Berfomet still conserves redundant expansion. Illusion Beast and generalized battle planning remain outside this change."
+        ],
+        "expertReuse": "No executor code imported in this update; current shared module and exact matching Lua scripts were reviewed.",
+        "incrementalReview": {
+          "supersedesReviewSha256": "905c1a4961c50a9aed6f1d6565e445dbc0bd35b3168cd06a13464acae52132ff",
+          "fromSourceSha256": "1945e67460048440124ce2719a4f54dcaff748fdb07acba47c8749026d29d934",
+          "toSourceSha256": "20c8838ad65aa9384039c0afd896222dd98c407762e664e342cb5dd9fe19e70e",
+          "trigger": "Validation agent reported two failed new threat-resolution assertions; no native runs had started for that binary.",
+          "change": "Consolidate already-reviewed pending-link scan in local IsTargetedByEnemy and reuse for complementary goal and material prices. No new mutable state or callback source changes.",
+          "result": "No additional static blocking findings. Root and validation agent must rerun affected callback assertions and builds for the new source hash."
+        },
+        "finalPriorityReview": {
+          "supersedesReviewSha256": "ec893e646bdf4197844633a2b11e54b8370dcc57097901252ef7ce9196f435cf",
+          "fromSourceSha256": "20c8838ad65aa9384039c0afd896222dd98c407762e664e342cb5dd9fe19e70e",
+          "toSourceSha256": "94b5218b7d7a60a2bd94d6e2700a51f4414162dc451521863f4b055e03e83aee",
+          "scope": "Only complementary Mirror/Gazelle normal-summon scores and Gazelle explanation changed; no callback, resource, flag or reset behavior changed.",
+          "reason": "Take the available Mirror GY setup or an unused Gazelle search before committing an already available King pair.",
+          "result": "No static blocking finding. Priority checks, builds and native runs are owned by root and validation agent."
+        }
+      },
+      "staticReviewReceipt": {
+        "path": "Artifacts/guardian-followup-review/review.json",
+        "sha256": "a15564abe5055531482cd5fd551485f29d0cd49d3ad70f5d3b482a208258292e"
+      },
+      "scriptProvenance": {
+        "kind": "explicit-local-and-deployed-card-script-provenance",
+        "scriptsRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+        "archivePath": "D:\\Programs\\GitHub\\MDPro_3\\Data\\script.zip",
+        "archiveSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+        "databasePath": "D:\\Programs\\GitHub\\MDPro_3\\Data\\locales\\en-US\\cards.cdb",
+        "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+        "maximumEntryAndActualReadBytes": 262144,
+        "scripts": [
+          {
+            "cardId": 28954097,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c28954097.lua",
+            "archiveEntry": "script/c28954097.lua",
+            "localBytes": 2801,
+            "deployedBytes": 2720,
+            "localSha256": "76c36572d374ca0ec42648983fdd65bf9e10b09d38e66ea3722da0b5c1ff63b6",
+            "deployedSha256": "8fd38faf8bd881b53a225ef32b09597d5281d1a2e5a3e5c89f6501796859d054",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 1769875,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c1769875.lua",
+            "archiveEntry": "script/c1769875.lua",
+            "localBytes": 2635,
+            "deployedBytes": 2563,
+            "localSha256": "e0b8ee7d35c5c8350b12f39609c6bf524741d8733edf90c3b6ecc21c725b7a16",
+            "deployedSha256": "a82d3c2e966f49b36fd502a7cae9cfd04b56d0488154f6d00cb0b04fddc8211e",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 55461744,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c55461744.lua",
+            "archiveEntry": "script/c55461744.lua",
+            "localBytes": 3008,
+            "deployedBytes": 2928,
+            "localSha256": "7a811075cfcb0c51b5faf9704efbad89a8f1789c8a14884671ef1c00aa257f84",
+            "deployedSha256": "35868f679500917c30fc7342b094683f5f4183de1fdf7d199d32c60173513c0a",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 23076639,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c23076639.lua",
+            "archiveEntry": "script/c23076639.lua",
+            "localBytes": 1873,
+            "deployedBytes": 1818,
+            "localSha256": "5a1701bdf23f60ea46e3808588f3e2f3b91205fdb1fcd9aa39811da01ae841e7",
+            "deployedSha256": "71c7c64472799d119f55e02d5bdbac17b576acb5e66815c889fc2c95039ccfcb",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 63136489,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c63136489.lua",
+            "archiveEntry": "script/c63136489.lua",
+            "localBytes": 5200,
+            "deployedBytes": 5057,
+            "localSha256": "f7a176abbda2fe02ddd0c259de417eab9023503d0cfbbe559ea04bddfbfefaa8",
+            "deployedSha256": "0fe7eaf702160bd05982ca83992e4be410aa25a79aeafe4acd5bfaafc673d108",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 69601012,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c69601012.lua",
+            "archiveEntry": "script/c69601012.lua",
+            "localBytes": 2804,
+            "deployedBytes": 2730,
+            "localSha256": "0076842371e3c16db88b1f9e2a7ed34cb8196858e147aa8736911d18bf9d5a31",
+            "deployedSha256": "f2d45a113212a37befc60dfd01896352c6234e44816e19869e640a78f38e0cac",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 11321089,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c11321089.lua",
+            "archiveEntry": "script/c11321089.lua",
+            "localBytes": 3567,
+            "deployedBytes": 3471,
+            "localSha256": "71df3a8a0c9f9de227023559cf804d4b17f9509dfd9137478d3d4105a43bbe1f",
+            "deployedSha256": "8fbea1714902fbc56f08984c438ea8c176ef92edca5c6370951a1ec40d197ef2",
+            "normalizedEqual": true
+          },
+          {
+            "cardId": 92565383,
+            "localPath": "D:\\Programs\\GitHub\\ygopro-scripts\\c92565383.lua",
+            "archiveEntry": "script/c92565383.lua",
+            "localBytes": 2954,
+            "deployedBytes": 2866,
+            "localSha256": "028509d0fc8ef77167e233139c36b3954b91e615849a4aacf6190b2c10d6d6b2",
+            "deployedSha256": "b6b27cf810377032e9db43f3b5749739215eff1fc92ae61bc07e92983386f0f4",
+            "normalizedEqual": true
+          }
+        ]
+      },
+      "validation": {
+        "kind": "guardian-followup-focused-and-native-validation",
+        "policyRevision": "skynet-policy-v7",
+        "binary": {
+          "path": "Artifacts/guardian-followup-qa/runtime/SKYNET.exe",
+          "sha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241"
+        },
+        "database": {
+          "path": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+          "sha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8"
+        },
+        "diagnosticDeck": {
+          "path": "Decks/AI_SkynetChimera.ydk",
+          "sha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e"
+        },
+        "languageVersion": "C# 6",
+        "regressions": [
+          {
+            "name": "followup",
+            "source": {
+              "path": "Artifacts/guardian-followup-qa/GuardianFollowupProbe.cs",
+              "sha256": "313995c4d5c679023041e5e2092e1d3a2ab22033f36f1e90e37c12a56a77dd81"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/followup-results.log",
+              "sha256": "d8476035a07484d40ed4f53563c4911c5f19d9f3c03b35d63f1ab22d28091659"
+            },
+            "passed": 51,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "guardian",
+            "source": {
+              "path": "Artifacts/chimera-expansion-qa/GuardianProbe.cs",
+              "sha256": "daef338dd90b324f444279b034e08e45bd06ddf309fa09066eac85bd36dbf7b5"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/guardian-results.log",
+              "sha256": "b965f3fe8028c20035cd372d2c3af0739dedec32df06ad334a969c195e4abaaa"
+            },
+            "passed": 69,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "chimera",
+            "source": {
+              "path": "Artifacts/chimera-qa/ChimeraProbe.cs",
+              "sha256": "bcdffbabccbb5a6760b5ea54fa152f14421498785c6c8622a0f024b5119da347"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/chimera-results.log",
+              "sha256": "c258a9617902e919497b3f896b4b075acf5587c3407589e4d3ff7b4b79e5046d"
+            },
+            "passed": 71,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulExpanded",
+            "source": {
+              "path": "Artifacts/swordsoul-expansion-qa/SwordsoulExpansionProbe.cs",
+              "sha256": "9b68fb9c053c897f12612c9efa78fda973351f0cc46d891943f08a8981bb4d31"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/swordsoul-expanded-results.log",
+              "sha256": "2cc84561248ad19c07923d3704d93cd8c40ce837a95387f6c3c91160aaca2771"
+            },
+            "passed": 73,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulOriginal",
+            "source": {
+              "path": "Artifacts/swordsoul-qa/SwordsoulProbe.cs",
+              "sha256": "7c6c754fdd4efe5c5f5c0cddfb444c43ed77fb569af15ac387573f141fba65b8"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/swordsoul-results.log",
+              "sha256": "7145434ca20af0a2e0d15b1a2a4e437a2a533bdc92858918aeb86d7e1ee964ef"
+            },
+            "passed": 74,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "sharedEffects",
+            "source": {
+              "path": "Artifacts/four-card-qa/FourCardProbe.cs",
+              "sha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/shared-results.log",
+              "sha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f"
+            },
+            "passed": 79,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "expertSwordsoul",
+            "source": {
+              "path": "Artifacts/swordsoul-expert-review/ExpertProbe.cs",
+              "sha256": "7338c17e5a87db1fb8bc410086c671645282f8a8b86b9fa3dba25290683b5df7"
+            },
+            "log": {
+              "path": "Artifacts/guardian-followup-qa/expert-results.log",
+              "sha256": "6f0e3e7bafb104b467a3f4e249b203ec6758ad84ea015d66a2878a1f84f90c51"
+            },
+            "passed": 38,
+            "failed": 0,
+            "skipped": 0
+          }
+        ],
+        "native": [
+          {
+            "name": "followup",
+            "receipt": {
+              "path": "Artifacts/guardian-followup-native-followup-final/result.json",
+              "sha256": "3d44557a6781c5ea1603e87ff666425c737809561ff92edc3deccedc9ec84604"
+            },
+            "review": {
+              "path": "Artifacts/guardian-followup-qa/followup-native-review.json",
+              "sha256": "2fdddf56a256da0c7a74dfb13ad3c2fb0d3fd22592ff18dbabacab7a35631406"
+            },
+            "botSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "opponentSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "deckSha256": "525c9ad098d6735764b0d096b8b2544b3be860696bbedf99f8fa367417700486",
+            "opponentDeckSha256": "af606ff70dc84e06e9438317ed10df6c122da6461def56bcc25a5226679c7467",
+            "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+            "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+            "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: Guardian summoned first; later Mirror normal summon recruits Big-Winged Berfomet, King is Fusion summoned from two non-Guardian materials, and client observations show Guardian plus King with Mirror in grave.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          },
+          {
+            "name": "mirror",
+            "receipt": {
+              "path": "Artifacts/guardian-followup-native-mirror-final/result.json",
+              "sha256": "af2adab4835f63144a439d6af03679f4e40b0676ad532b5429a22a4c87830398"
+            },
+            "review": {
+              "path": "Artifacts/guardian-followup-qa/mirror-native-review.json",
+              "sha256": "62610b4640d553952494a906cca1a35d170f4aa2cb123e383a6836118be1edcb"
+            },
+            "botSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "opponentSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "deckSha256": "78e107162b940ac46e2228354e3b115134f1eed52e023919d5c0f01ab97cee5e",
+            "opponentDeckSha256": "af606ff70dc84e06e9438317ed10df6c122da6461def56bcc25a5226679c7467",
+            "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+            "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+            "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: original Mirror recruit into Big-Winged Berfomet and King Fusion remains functional.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          },
+          {
+            "name": "guardian",
+            "receipt": {
+              "path": "Artifacts/guardian-followup-native-guardian-final/result.json",
+              "sha256": "214ab232dde6ee83a38b8e91ca48937a1220a3b94438186e10e1206372d2d5fb"
+            },
+            "review": {
+              "path": "Artifacts/guardian-followup-qa/guardian-native-review.json",
+              "sha256": "41597b9198a8b8a06d6e8f028a54c8a8aee4d08c7449a72ee33c89b698a37fd8"
+            },
+            "botSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "opponentSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "deckSha256": "21a714ed7d3ff71cb7a020934693950aa4fc9d857268e393300305819de2c1fb",
+            "opponentDeckSha256": "af606ff70dc84e06e9438317ed10df6c122da6461def56bcc25a5226679c7467",
+            "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+            "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+            "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: original Guardian recipe uses two hand materials and one field material; draw-two and actual exact-one destruction selection remain functional.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          },
+          {
+            "name": "resolved-veiler",
+            "receipt": {
+              "path": "Artifacts/guardian-followup-native-resolved-veiler-final/result.json",
+              "sha256": "36787e76ae37e75bf2bef7c62571a54bcb6ad32475fbc5aaca2427dbfa219c4b"
+            },
+            "review": {
+              "path": "Artifacts/guardian-followup-qa/resolved-veiler-native-review.json",
+              "sha256": "9d442c3db0446c4b6b43b84b6ebd51904230fa88d38410968986d661ce949b1f"
+            },
+            "botSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "opponentSha256": "b58898ea2f8f4e08b05ca8569eb56ce1086e3a3509c0e1470f8a93aafe988241",
+            "deckSha256": "7583e809cd61e213b642ab1bcfb90a1927d5099c8949ef57db1a9b097542288b",
+            "opponentDeckSha256": "9503f598a5b8c1388f9d495c3694b9caf33f5c9bd4d3c71c1badd676a5888d14",
+            "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+            "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+            "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: expert Veiler truly resolves and disables field Gazelle; after later Fusion, the fresh graveyard search resolves despite cached field-disabled status.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          }
+        ],
+        "sourceFiles": {
+          "Game/AI/Strategy/ChimeraStrategy.cs": "94b5218b7d7a60a2bd94d6e2700a51f4414162dc451521863f4b055e03e83aee",
+          "Game/AI/Strategy/SkynetPolicy.cs": "540a6ff141f0d40b74399f2b63a3c9bd778768ac6ec55cb435ce686d83e1dce4",
+          "Game/AI/Strategy/SkynetAgent.cs": "6a7214d8331d3c8e382de8a74135555f2fdf472aa0fc764c26136ade1f190af8",
+          "Game/AI/Strategy/SkynetLearningSession.cs": "d3b3b9221abd69ef03885ac3dbdf715af2ee81a42560932289c164f905bf42ae",
+          "Tools/Skynet/train.py": "b60a0ea798c6a715dc5b7feea439971c229e86b5248e36f8c93912c4926a863e",
+          "Decks/AI_SkynetChimera.ydk": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e"
+        },
+        "earlierDiagnostics": [
+          {
+            "receipt": "Artifacts/guardian-followup-qa/rescue-finding.json",
+            "finding": "Two new regressions caught Guardian rescue changing to King at actual Fusion resolution. Final candidate now passes activation, resolution and material checks; negated and already-resolved links do not suppress follow-up."
+          },
+          {
+            "receipt": "Artifacts/guardian-followup-native-followup/result.json",
+            "review": "Artifacts/guardian-followup-qa/followup-wrong-opponent-mode-review.json",
+            "finding": "Initial fixture used the Swordsoul executor with vanilla Warwolf cards; it did not summon those cards, so no opposing field payoff existed and Guardian was not reached. Both completed duels are excluded from accepted native coverage."
+          },
+          {
+            "receipt": "Artifacts/guardian-followup-native-followup-accepted/result.json",
+            "review": "Artifacts/guardian-followup-qa/followup-before-priority-review.json",
+            "finding": "Corrected vanilla opponent reached the full Guardian/Mirror/King route in both seats on the intermediate 7c9e candidate. Superseded by the final b588 candidate rerun and excluded from final native totals."
+          }
+        ],
+        "limitations": [
+          "Native fixtures deliberately use noDeckCheck and noShuffle; completion outcomes do not measure competitive strength.",
+          "Both actual host seats are covered; core RNG seed remains unknown and policy seed is not a duel seed.",
+          "Inspection is limited to client-visible logs, masked public observations and actual offered response snapshots.",
+          "Ordinary select_card capture does not label every iterative material, option or chain prompt.",
+          "Focused synthetic checks include defensive impossible offers; they do not assert that the server emits illegal choices.",
+          "These checks do not train or promote a model. Arena strength measurements are recorded separately.",
+          "The original 404 regression assertions are rerun unchanged, with their original sources and prior receipts preserved."
+        ],
+        "totals": {
+          "focusedAssertionsPassed": 455,
+          "focusedFailed": 0,
+          "focusedSkipped": 0,
+          "nativeDuelsCompleted": 8,
+          "nativeForcedCleanup": 0,
+          "nativeSelectionFallbacks": 0,
+          "nativeOpponentHiddenIdentityViolations": 0
+        }
+      },
+      "validationReceipt": {
+        "path": "Artifacts/guardian-followup-qa/receipt.json",
+        "sha256": "62fbd251c5d59e5ce09cf1ac79c05cb2059b5994f7e1cf8e74a59f9dc22660cc"
+      },
+      "builds": {
+        "Debug Any CPU": "passed",
+        "Release Any CPU": "passed"
+      },
+      "pythonLearningTests": {
+        "passed": 13,
+        "failed": 0
+      },
+      "payload": {
+        "path": "Artifacts/guardian-followup-payload/Data/Skynet/manifest.json",
+        "sha256": "ef76ab7c5302b3b645c396f4317a366646ac752a635b5d4f326f93108a97279f"
+      },
+      "limits": [
+        "Bounded capability estimates do not simulate Lua or guarantee effects resolve. Only actual offered responses may be returned.",
+        "The diagnostic deck is unchanged and uses unrestricted rules; it is not a competitive Master Duel list.",
+        "No neural model trained or promoted. Future learning requires fresh v7 episodes and separate frozen evaluation.",
+        "Scratch harnesses, native logs and binaries remain ignored; tracked receipts preserve inputs, hashes and conclusions."
+      ]
     }
   ]
 }

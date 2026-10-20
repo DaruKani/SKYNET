@@ -191,7 +191,7 @@ identities are redacted. Explanation reads do not sample RNG or queue selections
 
 These are explanations of the implemented scoring rules, not generated thoughts
 or complete traces of every battle/selection callback. Default is off; expert
-mode has no ranked-policy explanation. Fresh episodes now use `skynet-policy-v6`;
+mode has no ranked-policy explanation. Fresh episodes now use `skynet-policy-v7`;
 older episodes must be recollected, not relabeled. Learning is still optional
 and offline, and this strategy update uses frozen built-in weights.
 
@@ -315,7 +315,7 @@ matches do not establish a precise win rate. Arena shows the Swordsoul expert as
 Windows, Mono and Arena CI passed for implementation commit `ae913a5`. Results,
 participant/deck hashes and native receipts are in the validation catalog.
 No learned model was trained or promoted. The Guardian expansion uses policy v6.
-Future learning cohorts must use fresh v6 episodes, followed by separate frozen
+Future learning cohorts must use fresh v7 episodes, followed by separate frozen
 evaluation of any candidate weights.
 
 The v6 expansion passed Debug/Release builds, 404 focused C# 6 assertions and
@@ -345,6 +345,32 @@ a generic attacker to be summoned. Developing a complementary King/protection
 route may help, but the bounded log does not prove that choice caused the losses.
 Frozen v5 remains preserved; no learned checkpoint was trained or promoted.
 Both experiments completed with empty rooms and no remaining duel processes.
+
+Policy v7 addresses that follow-up limitation. Beside a healthy Guardian and
+without an existing King-name Fusion, Mirror or Gazelle can develop King when
+the remaining reviewed searches and visible resources support it. Coatl avoids
+counting Guardian as expendable material when choosing the missing piece. The
+Fusion choice and successive material prompts preserve Guardian and use the
+spare Beast/Fiend pair; an enemy link still targeting Guardian takes priority
+over this development goal, including while our Fusion is resolving.
+An available Mirror recruit or useful, unspent Gazelle search precedes an
+immediate King Fusion, so the bot does not skip that setup merely because a
+material pair is already in hand.
+
+Search-use flags are committed only for accepted effects and reset each turn.
+The route conserves an already established King setup, avoids unsupported
+Berfomet tribute summons beside Guardian, and declines plans that need missing
+deck resources. These are bounded capability estimates; they do not guarantee
+that searches resolve or predict every field restriction.
+
+Validation for v7: Debug/Release builds, 455 focused C# 6 checks (51 new) and
+13 learning-tool tests passed. Eight native duels covered both seats for the
+new Guardian → Mirror → King route, the original Mirror opener, Guardian's
+draw-two/destroy-one route, and Gazelle's recovery after resolved Veiler. The
+new route retained the original Guardian and left Mirror in the graveyard.
+No accepted fixture required forced cleanup or showed a captured selection
+fallback or hidden-identity violation. Native fixtures verify these behaviors,
+not competitive strength.
 
 ### Friendly strategy authoring
 
@@ -507,7 +533,7 @@ python Tools/Skynet/evaluate.py Artifacts/evaluation/results.csv
 Training uses an episodic policy-gradient update over nine bounded features.
 Checkpoint formats and features are validated; incomplete/disconnected duels do
 not become losses. Each completed episode is published atomically under a unique
-name. New episodes include `policyRevision: skynet-policy-v6`. The offline
+name. New episodes include `policyRevision: skynet-policy-v7`. The offline
 trainer refuses missing or different policy revisions, mixed behavior-model
 versions, duplicate records, invalid values and an empty training/holdout
 partition. Recollect older episodes; do not relabel them. Existing compatible
