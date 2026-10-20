@@ -73,7 +73,7 @@ function normalizeSkynetSettings(input) {
         databasePath: explicitPath(source.databasePath, 'SKYNET card database', '.cdb'),
         version: boundedInteger(source.version, 'SKYNET protocol version', 1, 65535),
         maxProcesses: boundedInteger(source.maxProcesses, 'SKYNET process limit', 2, 32),
-        duelTimeoutSeconds: boundedInteger(source.duelTimeoutSeconds, 'SKYNET duel timeout', 10, 3600),
+        duelTimeoutSeconds: boundedInteger(source.duelTimeoutSeconds, 'SKYNET match timeout', 10, 3600),
         profiles,
     };
 }

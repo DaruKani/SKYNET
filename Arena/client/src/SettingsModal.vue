@@ -288,7 +288,7 @@ function removeSrvpro(index) {
 
                 <n-tab-pane name="windbots" tab="Agents">
                     <n-alert type="info" :bordered="false">
-                        Configure a candidate first. Add a baseline for regression comparisons. Native SKYNET launches one owned process per duel seat.
+                        Configure a candidate first. Add a baseline for regression comparisons. Native SKYNET launches one owned process per match participant.
                     </n-alert>
                     <div class="windbot-settings">
                         <section v-for="name in ['current', 'old']" :key="name" class="windbot-instance">
@@ -319,7 +319,7 @@ function removeSrvpro(index) {
                                         <n-form-item label="Maximum processes">
                                             <n-input-number v-model:value="draft.windbots[name].skynet.maxProcesses" :min="2" :max="32" :precision="0" />
                                         </n-form-item>
-                                        <n-form-item label="Duel timeout (seconds)">
+                                        <n-form-item label="Match timeout (seconds)">
                                             <n-input-number v-model:value="draft.windbots[name].skynet.duelTimeoutSeconds" :min="10" :max="3600" :precision="0" />
                                         </n-form-item>
                                         <div class="span-2 profile-help">

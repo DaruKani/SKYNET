@@ -505,7 +505,7 @@ class ArenaService {
                 : Number(input.gamesPerMatchup);
             if (!Number.isInteger(gamesPerMatchup) || gamesPerMatchup < 1 || gamesPerMatchup > 10000) {
                 throw requestError(
-                    `${kind === 'challenge' ? 'Per-opponent' : 'Per-deck'} game count must be an integer from 1 to 10000`,
+                    `${kind === 'challenge' ? 'Per-opponent' : 'Per-deck'} match count must be an integer from 1 to 10000`,
                 );
             }
         }
@@ -634,7 +634,7 @@ class ArenaService {
                 if (instance.mode === 'skynet') {
                     validateSkynetRuntime(instance);
                     this.database.addEvent(context.id, 'info', 'local-skynet',
-                        `${label}: SKYNET one-process-per-duel, frozen inference, maximum ${instance.skynet.maxProcesses} processes`);
+                        `${label}: SKYNET one process per match participant, frozen inference, maximum ${instance.skynet.maxProcesses} processes`);
                     this.markChanged('run-event');
                     return Promise.resolve();
                 }
@@ -661,7 +661,7 @@ class ArenaService {
                 context.id,
                 'info',
                 'running',
-                `${instances.length === 2 ? 'Both' : 'Current'} AI runtimes are ready; creating games`,
+                `${instances.length === 2 ? 'Both' : 'Current'} AI runtimes are ready; creating rooms`,
             );
             this.markChanged('running');
             if (context.kind !== 'tag') {
@@ -674,15 +674,15 @@ class ArenaService {
             }
             if (!context.gracefulStop) {
                 this.database.setRunStatus(context.id, 'settling');
-                this.database.addEvent(context.id, 'info', 'settling', 'All games have been created; waiting for duels to finish');
+                this.database.addEvent(context.id, 'info', 'settling', 'All matches have been created; waiting for matches to finish');
                 this.markChanged('settling');
             }
             const fullyObserved = await this.waitForResults(context);
             if (!fullyObserved) {
-                this.database.addEvent(context.id, 'warning', 'settle-timeout', 'Timed out waiting for duels; existing results have been retained');
+                this.database.addEvent(context.id, 'warning', 'settle-timeout', 'Timed out waiting for active rooms; existing results have been retained');
             }
             await this.finish(context, context.gracefulStop ? 'stopped' : 'completed',
-                context.gracefulStop ? 'All duels finished; run complete' : 'Run complete');
+                context.gracefulStop ? 'All active rooms finished; run complete' : 'Run complete');
         } catch (error) {
             if (isAbortError(error) && context.stopReason) {
                 await this.finish(context, 'stopped', context.stopReason);
@@ -1334,7 +1334,7 @@ class ArenaService {
                     context.id,
                     'warning',
                     'settle-empty-rooms',
-                    'SRVPro room count is zero; run completed early, and some games may be missing from the rankings',
+                    'SRVPro room count is zero; run completed early, and some matches may be missing from the rankings',
                 );
                 this.markChanged('run-event');
                 return true;
@@ -1392,7 +1392,7 @@ class ArenaService {
         clearTimeout(context.stopTimer);
         context.stopTimer = setTimeout(() => {
             if (!context.finished && !context.stopReason && !context.gracefulStop) {
-                this.gracefulStopRun(runId, 'Scheduled stop reached: no new games; waiting for existing duels before finalizing results');
+                this.gracefulStopRun(runId, 'Scheduled stop reached: no new rooms; waiting for active rooms before finalizing results');
             }
         }, minutes * 60_000);
         context.stopTimer.unref();
@@ -1401,7 +1401,7 @@ class ArenaService {
         return this.database.getRun(runId);
     }
 
-    gracefulStopRun(runId, reason = 'Graceful stop requested: no new games; waiting for existing duels before finalizing results') {
+    gracefulStopRun(runId, reason = 'Graceful stop requested: no new rooms; waiting for active rooms before finalizing results') {
         const context = [...this.contexts.values()].find((item) => item.id === runId);
         if (!context || context.finished) {
             throw requestError('This run is not currently active', 409);

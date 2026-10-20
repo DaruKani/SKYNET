@@ -184,7 +184,7 @@ test('an unexpected client exit interrupts its run rather than creating a termin
     await runtime.launch(context, players[0], 'M#100000001');
     children[0].finish(1);
     assert.equal(context.abortController.signal.aborted, true);
-    assert.match(context.abortController.signal.reason.message, /without a completed duel/);
+    assert.match(context.abortController.signal.reason.message, /without clean completion/);
     await runtime.stopContext(context);
     assert.equal(runtime.activeCount(), 0);
 });
@@ -219,7 +219,7 @@ test('absolute room deadline aborts the run and retires every owned child', asyn
     await runtime.launch(context, players[1], 'M#100000001');
     await new Promise((resolve) => setTimeout(resolve, 60));
     assert.equal(context.abortController.signal.aborted, true);
-    assert.match(context.abortController.signal.reason.message, /bounded duel deadline/);
+    assert.match(context.abortController.signal.reason.message, /bounded match deadline/);
     assert.equal(runtime.activeCount(), 0);
     assert.equal(children.every((child) => child.calls.length === 1), true);
 });

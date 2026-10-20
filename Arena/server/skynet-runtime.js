@@ -115,7 +115,7 @@ class SkynetRuntime {
         signal.addEventListener('abort', room.onAbort, { once: true });
         this.rooms.set(key, room);
         room.timer = setTimeout(() => {
-            this.fail(room, new Error(`SKYNET room ${password} exceeded its bounded duel deadline`));
+            this.fail(room, new Error(`SKYNET room ${password} exceeded its bounded match deadline`));
         }, Math.max(1, deadline - Date.now()));
         room.timer.unref();
     }
@@ -195,7 +195,7 @@ class SkynetRuntime {
                 this.release(record);
                 record.resolveClosed();
                 this.onOutput(context, competitor, `[SKYNET] ${competitor.rankName} exited: ${code ?? signal}\n`);
-                const error = new Error(`SKYNET ${competitor.rankName} exited without a completed duel (code=${code}, signal=${signal || 'none'})`);
+                const error = new Error(`SKYNET ${competitor.rankName} exited without clean completion (code=${code}, signal=${signal || 'none'})`);
                 settle(error);
                 // Console markers diagnose completion; SRVPro scores remain the
                 // sole result source. Aborts/timeouts must never become losses.

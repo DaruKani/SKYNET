@@ -1,6 +1,6 @@
 # Skynet Arena contributor instructions
 
-Skynet Arena is a self-hosted Node.js duel experiment console derived from WindBot Arena. It manages experiments through a browser, launches native SKYNET clients or calls two compatible WindBot Servers to create match-mode duels on a user-selected, dedicated [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance, actively polls that server's rankings, and stores configuration, experiment history and statistics in SQLite. A dedicated arena-srvpro instance is required; a generic duel server is not a substitute for its management and cumulative-ranking APIs.
+Skynet Arena is a self-hosted Node.js duel experiment console derived from WindBot Arena. It manages experiments through a browser, launches native SKYNET clients or calls two compatible WindBot Servers to create best-of-three matches on a user-selected, dedicated [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance, actively polls that server's rankings, and stores configuration, experiment history and statistics in SQLite. A dedicated arena-srvpro instance is required; a generic duel server is not a substitute for its management and cumulative-ranking APIs.
 
 ## Architecture
 
@@ -17,7 +17,7 @@ Only the listening address, HTTP port and SQLite path are environment-level star
 
 There are three runtime modes:
 
-- `skynet`: Arena starts one owned `SKYNET.exe` process per duel participant, using explicitly configured executable, database, deck and optional model paths. `Agent=skynet` is the general policy; `Agent=expert-oldschool` is an explicit, frozen expert comparison. Expert mode does not accept a learned model. Arena forces training off, reserves all local participant slots for a room together, and enforces process limits and a deadline covering capacity wait and execution. Do not discover files outside the configured paths or silently enable archived executors. SKYNET tag duels remain disabled until validated.
+- `skynet`: Arena starts one owned `SKYNET.exe` process per match participant, using explicitly configured executable, database, deck and optional model paths. `Agent=skynet` is the general policy; `Agent=expert-oldschool` is an explicit, frozen expert comparison. Expert mode does not accept a learned model. Arena forces training off, reserves all local participant slots for a room together, and enforces process limits and a deadline covering capacity wait and execution. Do not discover files outside the configured paths or silently enable archived executors. SKYNET tag duels remain disabled until validated.
 - `local`: Arena starts and stops a compatible `WindBot.exe` HTTP server and reads its local `bot.conf` directly.
 - `remote`: the user runs WindBot Server manually. Arena only calls its remote HTTP endpoint. Because Arena cannot read that host's filesystem, the user pastes `bot.conf` into the browser and its contents are stored in SQLite.
 
@@ -95,7 +95,7 @@ ORDER BY matchups.ai_level IS NULL, matchups.ai_level DESC, matchups.label;
 
 Use explicitly selected source locations; do not search parent or sibling directories automatically at runtime.
 
-- The SKYNET repository root is `..` relative to `Arena/`. `Program.cs` defines the native one-process-per-duel CLI. `Game/AI/AgentFactory.cs` selects the general or explicit expert lifecycle.
+- The SKYNET repository root is `..` relative to `Arena/`. `Program.cs` defines the native client CLI used by each match participant. `Game/AI/AgentFactory.cs` selects the general or explicit expert lifecycle.
 - The upstream development layout places `arena-srvpro` beside the Arena checkout (`../arena-srvpro`). If that checkout is present at an explicitly configured location, inspect its `index.js` for room and ranking API behavior. Room counts and match rankings are queried through `/api/getroomscount` and `/api/getscores` respectively. This repository does not assume that upstream layout or provide the server automatically.
 - The upstream layout similarly uses `../windbot` for a separate WindBot source checkout. When a compatible checkout has been explicitly supplied, its `Program.cs` defines the ServerMode HTTP protocol and its own implementation defines deck/runtime resource behavior. The ignored `LegacyWindBot` archive in SKYNET is reference material, not an automatically enabled runtime collection.
 

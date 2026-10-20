@@ -143,10 +143,10 @@ const runKindIndexes = {
     ranking: '04',
 };
 const runKindDescriptions = {
-    regression: 'Compare candidate and baseline policies on matching deck profiles for a fixed number of duels.',
-    challenge: 'Challenge selected opponents in sequence with one deck. Each matchup ends after the requested number of duels.',
+    regression: 'Compare candidate and baseline policies on matching deck profiles for a fixed number of best-of-three matches.',
+    challenge: 'Challenge selected opponents in sequence with one deck. Each matchup ends after the requested number of best-of-three matches.',
     tag: 'Form random tag teams until stopped. Room creation runs at half speed; this checks stability without scoring wins.',
-    ranking: 'Play random pairings from the selected decks until stopped.',
+    ranking: 'Play best-of-three matches between random pairings from the selected decks until stopped.',
 };
 
 const regressionDeckOptions = computed(() => (system.value?.configuration.decks || []).map((item) => ({
@@ -280,12 +280,12 @@ const stopMenuOptions = computed(() => {
     if (stopCountdown.value) {
         options.push({ label: 'Stop immediately', key: 'immediate', disabled: stopping.value });
     }
-    options.push({ label: 'Finish active duels', key: 'graceful', disabled: stopping.value || run?.status !== 'running',
-        description: 'Stop creating rooms and let all active duels finish before collecting results.' });
+    options.push({ label: run?.kind === 'tag' ? 'Finish active tag duels' : 'Finish active matches', key: 'graceful', disabled: stopping.value || run?.status !== 'running',
+        description: 'Stop creating rooms and let all active rooms finish before collecting results.' });
     if (['ranking', 'tag'].includes(run?.kind)) {
         options.push({ label: stopCountdown.value ? 'Edit stop timer' : 'Stop timer', key: 'timer',
             disabled: stopping.value || run?.status !== 'running',
-            description: 'Finish active duels when the timer expires.' });
+            description: 'Wait for active rooms to finish when the timer expires.' });
     }
     return options;
 });
@@ -458,7 +458,7 @@ function formatWindBotEndpoint(windbot) {
         return '—';
     }
     if (windbot.mode === 'skynet') {
-        return 'SKYNET · local duel processes';
+        return 'SKYNET · local match processes';
     }
     return `${windbot.mode === 'local' ? 'Local' : 'Remote'} ${windbot.host}:${windbot.port}`;
 }
@@ -909,7 +909,7 @@ async function stopRun(graceful = false, runId = activeRun.value?.id) {
     stopping.value = true;
     try {
         await api(`/api/runs/${runId}/${graceful ? 'graceful-stop' : 'stop'}`, { method: 'POST' });
-        message.info(graceful ? 'Stop requested. Waiting for active duels before collecting results.' : 'Collecting results and stopping the experiment.');
+        message.info(graceful ? 'Stop requested. Waiting for active rooms before collecting results.' : 'Collecting results and stopping the experiment.');
         await refresh(['runs', 'active']);
     } catch (error) {
         message.error(error.message);
@@ -1059,8 +1059,8 @@ function serializeResults(run, format) {
         ['Experiment ID', run.id],
         ['Status', statusLabels[run.status] || run.status],
         ['Created at', formatDate(run.createdAt)],
-        ['Completed duels', run.kind === 'tag' ? 'Not scored' : run.observedGames],
-        ['Launched duels', `${run.launchedGames}${
+        [run.kind === 'tag' ? 'Completed tag duels' : 'Completed matches', run.kind === 'tag' ? 'Not scored' : run.observedGames],
+        [run.kind === 'tag' ? 'Launched tag duels' : 'Launched matches', `${run.launchedGames}${
             !['ranking', 'tag'].includes(run.kind) ? ` / ${run.totalGames}` : ''
         }`],
     ];
@@ -1092,7 +1092,7 @@ function serializeResults(run, format) {
     let columns;
     let rows;
     if (run.kind === 'regression') {
-        columns = ['Deck', 'Level / Bot', 'Results collected', 'W / L / disconnects', 'Candidate win rate'];
+        columns = ['Deck', 'Level / Bot', 'Matches collected', 'Match W / L / disconnects', 'Candidate win rate'];
         rows = regressionRows.value.map((matchup) => {
             const competitor = matchup.competitors[0];
             return [
@@ -1104,7 +1104,7 @@ function serializeResults(run, format) {
             ];
         });
     } else if (run.kind === 'challenge') {
-        columns = ['Opponent decks', 'Level / Bot', 'Results collected', 'Challenger W / L', 'Opponent disconnects', 'Challenger win rate'];
+        columns = ['Opponent decks', 'Level / Bot', 'Matches collected', 'Challenger match W / L', 'Opponent disconnects', 'Challenger win rate'];
         rows = challengeRows.value.map((matchup) => {
             const competitor = matchup.competitors[0];
             return [
@@ -1117,14 +1117,14 @@ function serializeResults(run, format) {
             ];
         });
     } else if (run.kind === 'tag') {
-        columns = ['Test decks', 'Level / Bot', 'Duels played'];
+        columns = ['Test decks', 'Level / Bot', 'Tag appearances launched'];
         rows = tagRows.value.map((entry) => [
             entry.label,
             `${entry.aiLevel ? `LV${entry.aiLevel} / ` : ''}${entry.competitors[0]?.botLabel || '—'}`,
             entry.launchedGames,
         ]);
     } else {
-        columns = ['Rank', 'Deck', 'Level / Bot', 'Collected / launched', 'W / L / disconnects', 'Win rate'];
+        columns = ['Rank', 'Deck', 'Level / Bot', 'Matches collected / launched', 'Match W / L / disconnects', 'Win rate'];
         rows = rankingRows.value.map((entry, index) => {
             const competitor = entry.competitors[0];
             return [
@@ -1581,7 +1581,7 @@ onBeforeUnmount(() => {
                                         v-if="!['ranking', 'tag'].includes(experimentKind)"
                                         class="field games-field"
                                     >
-                                        <span>{{ experimentKind === 'challenge' ? 'Duels per opponent' : 'Duels per deck' }}</span>
+                                        <span>{{ experimentKind === 'challenge' ? 'Matches per opponent' : 'Matches per deck' }}</span>
                                         <n-input-number
                                             v-model:value="configuredGamesPerMatchup"
                                             :disabled="!!activeRun"
@@ -1622,13 +1622,13 @@ onBeforeUnmount(() => {
                                                     {{ stopCountdown }}
                                                 </n-button>
                                             </template>
-                                            Finish active duels when the timer ends. Click to edit, or use the menu to stop immediately.
+                                            Wait for active rooms to finish when the timer ends. Click to edit, or use the menu to stop immediately.
                                         </n-tooltip>
                                         <n-popconfirm v-else @positive-click="stopRun(false)">
                                             <template #trigger>
                                                 <n-button type="error" ghost :loading="stopping" :disabled="activeRun?.status === 'stopping'" @click.stop>Stop experiment</n-button>
                                             </template>
-                                            Unfinished duels will be excluded from results. Stop the experiment?
+                                            Unfinished rooms will be excluded from results. Stop the experiment?
                                         </n-popconfirm>
                                             <n-button class="stop-menu-trigger" type="error" ghost :disabled="stopping || activeRun?.status === 'stopping'" aria-label="Stop options">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1697,7 +1697,7 @@ onBeforeUnmount(() => {
                             <div class="metric-grid">
                                 <div class="metric primary-metric">
                                     <span v-if="displayedRun.kind === 'tag'">Test decks</span>
-                                    <span v-else>{{ displayedRun.kind !== 'ranking' ? 'Progress' : 'Completed duels' }}</span>
+                                    <span v-else>{{ displayedRun.kind !== 'ranking' ? 'Match progress' : 'Completed matches' }}</span>
                                     <strong v-if="displayedRun.kind === 'tag'">{{ displayedRun.matchups.length }}</strong>
                                     <strong v-else-if="displayedRun.kind !== 'ranking'" class="progress-value">
                                         {{ displayedRun.observedGames }}<span> / {{ displayedRun.totalGames }}</span>
@@ -1713,7 +1713,7 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
                                 <div class="metric">
-                                    <span>Launched duels</span>
+                                    <span>{{ displayedRun.kind === 'tag' ? 'Launched tag duels' : 'Launched matches' }}</span>
                                     <strong>{{ displayedRun.launchedGames }}</strong>
                                 </div>
                                 <div class="metric">
@@ -1776,8 +1776,8 @@ onBeforeUnmount(() => {
                                     <thead>
                                         <tr>
                                             <th>Deck</th>
-                                            <th>Results collected</th>
-                                            <th>W / L / disconnects</th>
+                                            <th>Matches collected</th>
+                                            <th>Match W / L / disconnects</th>
                                             <th>Candidate win rate</th>
                                         </tr>
                                     </thead>
@@ -1825,8 +1825,8 @@ onBeforeUnmount(() => {
                                     <thead>
                                         <tr>
                                             <th>Opponent decks</th>
-                                            <th>Results collected</th>
-                                            <th>Challenger W / L</th>
+                                            <th>Matches collected</th>
+                                            <th>Challenger match W / L</th>
                                             <th>Opponent disconnects</th>
                                             <th>Challenger win rate</th>
                                         </tr>
@@ -1869,7 +1869,7 @@ onBeforeUnmount(() => {
                                     <thead>
                                         <tr>
                                             <th>Test decks</th>
-                                            <th>Duels played</th>
+                                            <th>Tag appearances launched</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1892,8 +1892,8 @@ onBeforeUnmount(() => {
                                         <tr>
                                             <th>Rank</th>
                                             <th>Deck</th>
-                                            <th>Collected / launched</th>
-                                            <th>W / L / disconnects</th>
+                                            <th>Matches collected / launched</th>
+                                            <th>Match W / L / disconnects</th>
                                             <th>Win rate</th>
                                         </tr>
                                     </thead>
@@ -2071,7 +2071,7 @@ onBeforeUnmount(() => {
             @positive-click="saveScheduledStop"
             @update:show="!$event && !timerSaving && (timerRunId = '')"
         >
-            <p>Start a countdown now. When it ends, stop creating rooms and wait for active duels before collecting results.</p>
+            <p>Start a countdown now. When it ends, stop creating rooms and wait for active rooms before collecting results.</p>
             <n-input-number v-model:value="stopAfterMinutes" :min="1" :max="10080" :precision="0" :disabled="timerSaving" aria-label="Stop timer duration">
                 <template #suffix>minutes</template>
             </n-input-number>
@@ -2080,7 +2080,7 @@ onBeforeUnmount(() => {
             :show="!!stopConfirmationRunId"
             preset="dialog"
             title="Stop immediately"
-            content="Unfinished duels will be excluded from results. Stop immediately?"
+            content="Unfinished rooms will be excluded from results. Stop immediately?"
             positive-text="Confirm"
             negative-text="Cancel"
             @positive-click="stopRun(false, stopConfirmationRunId)"

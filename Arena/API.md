@@ -145,7 +145,7 @@ Active statuses:
 | Status | Meaning |
 | --- | --- |
 | `preparing` | Preparing the environment |
-| `running` | Running duels |
+| `running` | Running matches, or tag duels for tag experiments |
 | `settling` | Scheduling has stopped; waiting for results to stabilize |
 | `stopping` | Stopping the run |
 
@@ -256,6 +256,8 @@ If the run does not exist, the endpoint returns HTTP `404`:
 
 ### Run fields
 
+Regression, Challenge and Ranking create `M#` best-of-three match rooms. Their counts and win rates describe matches, not individual duels within a match. Tag creates `T#` rooms and counts launched tag duels without scoring outcomes. Historical field names such as `gamesPerMatchup` and `observedGames` remain unchanged for compatibility.
+
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `id` | string | Run UUID |
@@ -263,10 +265,10 @@ If the run does not exist, the endpoint returns HTTP `404`:
 | `status` | string | Current run status |
 | `srvproId` | string | ID of the selected SRVPro instance |
 | `config` | object | Environment and selection snapshot saved when the run was created |
-| `gamesPerMatchup` | integer | Planned games per deck or opponent; 0 for ranking/tag experiments |
-| `totalGames` | integer | Planned total games; 0 for open-ended ranking/tag experiments |
-| `launchedGames` | integer | Number of duel groups already scheduled |
-| `observedGames` | integer | Number of games confirmed from cumulative rankings |
+| `gamesPerMatchup` | integer | Planned matches per deck or opponent; 0 for ranking/tag experiments |
+| `totalGames` | integer | Planned total matches; 0 for open-ended ranking/tag experiments |
+| `launchedGames` | integer | Number of scheduled matches, or tag duels for tag experiments |
+| `observedGames` | integer | Number of matches confirmed from cumulative rankings; tag duels are not scored |
 | `roomCount` | integer | Most recently queried SRVPro room count |
 | `createdAt` | string | Creation time |
 | `startedAt` | string \| null | Start time |
@@ -294,13 +296,13 @@ Terminal statuses:
 | `id` | integer | Matchup record ID |
 | `label` | string | Display name of the deck or opponent |
 | `aiLevel` | integer \| null | AI level, or `null` when unavailable |
-| `targetGames` | integer | Planned games; 0 for open-ended ranking/tag experiments |
-| `launchedGames` | integer | Number of scheduled duels |
-| `observedGames` | integer | Number of confirmed win/loss games |
+| `targetGames` | integer | Planned matches; 0 for open-ended ranking/tag experiments |
+| `launchedGames` | integer | Number of scheduled matches, or tag-duel appearances for this deck in tag experiments |
+| `observedGames` | integer | Number of confirmed win/loss matches; tag duels are not scored |
 | `currentWinRate` | number | First participant's win rate, from 0 to 1, not a percentage |
 | `competitors` | array | Participant statistics |
 
-The denominator of `currentWinRate` includes only wins by the two sides, excluding `flee`. For example, `0.5946` means approximately `59.46%`. The field is `0` when there are no decided games.
+The denominator of `currentWinRate` includes only wins by the two sides, excluding `flee`. For example, `0.5946` means approximately `59.46%`. The field is `0` when there are no decided matches.
 
 ### Participant fields
 

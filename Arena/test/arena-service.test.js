@@ -369,7 +369,7 @@ test('final result wait queries scores before completing when SRVPro has no room
         'warning',
         'settle-empty-rooms',
     ]);
-    assert.match(events[0][3], /some games may be missing from the rankings/);
+    assert.match(events[0][3], /some matches may be missing from the rankings/);
     assert.deepEqual(service.getRevisions(), { active: 1, runs: 0, system: 0 });
 });
 
