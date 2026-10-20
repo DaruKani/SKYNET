@@ -50,6 +50,9 @@ namespace Skynet.Game
             LegalAction selected = ((IRankedDecisionPolicy)Executor).ChooseAction(offers);
             if (selected == null || !offers.Contains(selected))
                 throw new InvalidOperationException("SKYNET returned an action outside the server offer.");
+            SkynetAgent general = Executor as SkynetAgent;
+            if (general != null)
+                general.OnActionCommitted(selected);
             if (selected.Type == ExecutorType.Activate && selected.Card != null && selected.Card.Id != 0)
             {
                 int count;

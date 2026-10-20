@@ -124,6 +124,8 @@ def run_duel(args, root, number, deck, opponent_deck):
                 command.append("Agent=" + agent)
             if args.shadow:
                 command.append("ShadowData=" + str(bot_dir / "shadow"))
+            if args.explain and target:
+                command.append("Explain=True")
             process = launch(command, bot_dir, output)
             processes.append((process, log_path, target))
             # Server accepts each client before we launch the next; waiting for
@@ -210,6 +212,8 @@ def main():
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--shadow", action="store_true",
                         help="Capture bounded public main-phase observations from both SKYNET clients")
+    parser.add_argument("--explain", action="store_true",
+                        help="Print bounded target-policy action explanations in its client log")
     parser.add_argument("--games", type=int, default=2)
     parser.add_argument("--timeout", type=float, default=90)
     parser.add_argument("--output-dir", type=Path)
@@ -252,6 +256,7 @@ def main():
                "deckSha256": digest(deck), "opponentDeckSha256": digest(opponent_deck),
                "coreSeed": None, "policy": args.policy, "opponentPolicy": args.opponent_policy,
                "shadowCapture": args.shadow,
+               "explainDecisions": args.explain,
                "policyGroup": args.policy_group,
                "duels": []}
     for number in range(1, args.games + 1):

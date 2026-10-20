@@ -67,7 +67,7 @@ namespace Skynet.Game.AI.Strategy
         public const string FeatureSchema = "skynet-public-v1";
         public const string ModelFormat = "skynet-linear-v1";
         public const string EpisodeFormat = "skynet-episode-v1";
-        public const string PolicyRevision = "skynet-policy-v2";
+        public const string PolicyRevision = "skynet-policy-v3";
         private const int MaximumDecisions = 4096;
         private static readonly string[] FeatureNames =
         {
@@ -88,6 +88,7 @@ namespace Skynet.Game.AI.Strategy
         public string LastEpisodePath { get; private set; }
         public string ModelVersion { get { return _model.Version; } }
         public bool Training { get { return _training; } }
+        public bool SamplesDecisions { get { return _training && _episode != null && !_completed; } }
 
         public SkynetLearningSession(string modelPath, bool training, string dataDirectory, int seed)
         {
@@ -125,18 +126,7 @@ namespace Skynet.Game.AI.Strategy
             int best = 0;
             for (int i = 0; i < features.Count; ++i)
             {
-                ValidateFeatures(features[i]);
-                double score = baselineScores[i];
-                if (!IsFinite(score))
-                    throw new ArgumentException("Candidate scores must be finite.", "baselineScores");
-                foreach (KeyValuePair<string, double> feature in features[i])
-                {
-                    double weight;
-                    if (_model.Weights.TryGetValue(feature.Key, out weight))
-                        score += weight * feature.Value;
-                }
-                if (!IsFinite(score))
-                    throw new ArgumentException("Candidate score overflow.");
+                double score = GetEffectiveScore(features[i], baselineScores[i]);
                 scores[i] = score;
                 if (score > scores[best])
                     best = i;
@@ -178,6 +168,25 @@ namespace Skynet.Game.AI.Strategy
             else
                 _episode.Truncated = true;
             return chosen;
+        }
+
+        // Read-only score inspection shares the exact inference math. It neither
+        // samples a choice nor records a decision, so explanation cannot advance RNG.
+        public double GetEffectiveScore(IDictionary<string, double> features, double baselineScore)
+        {
+            ValidateFeatures(features);
+            double score = baselineScore;
+            if (!IsFinite(score))
+                throw new ArgumentException("Candidate scores must be finite.", "baselineScores");
+            foreach (KeyValuePair<string, double> feature in features)
+            {
+                double weight;
+                if (_model.Weights.TryGetValue(feature.Key, out weight))
+                    score += weight * feature.Value;
+            }
+            if (!IsFinite(score))
+                throw new ArgumentException("Candidate score overflow.");
+            return score;
         }
 
         public void CompleteDuel(int localResult)

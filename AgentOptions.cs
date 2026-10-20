@@ -16,6 +16,7 @@ namespace Skynet
         public int Version { get; set; }
         public int Hand { get; set; }
         public bool Debug { get; set; }
+        public bool Explain { get; set; }
         public bool Chat { get; set; }
         public string PolicyModel { get; set; }
         public bool PolicyTraining { get; set; }

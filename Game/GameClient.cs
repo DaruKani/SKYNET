@@ -25,6 +25,7 @@ namespace Skynet.Game
         public string Dialog;
         public int Hand;
         public bool Debug;
+        public bool Explain { get; private set; }
         public bool _chat;
         public string PolicyModel { get; private set; }
         public bool PolicyTraining { get; private set; }
@@ -50,6 +51,7 @@ namespace Skynet.Game
             Dialog = Info.Dialog;
             Hand = Info.Hand;
             Debug = Info.Debug;
+            Explain = Info.Explain;
             _chat = Info.Chat;
             PolicyModel = Info.PolicyModel;
             PolicyTraining = Info.PolicyTraining;

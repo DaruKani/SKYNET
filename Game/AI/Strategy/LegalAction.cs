@@ -38,11 +38,13 @@ namespace Skynet.Game.AI.Strategy
     {
         public double Score { get; private set; }
         public IDictionary<string, double> Features { get; private set; }
+        public string Reason { get; private set; }
 
-        public ActionEvaluation(double score, IDictionary<string, double> features)
+        public ActionEvaluation(double score, IDictionary<string, double> features, string reason = null)
         {
             Score = score;
             Features = features;
+            Reason = reason;
         }
     }
 }

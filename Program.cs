@@ -20,6 +20,7 @@ namespace Skynet
                 Console.WriteLine("Usage: SKYNET.exe Host=127.0.0.1 Port=7911 DbPath=cards.cdb [DeckFile=starter.ydk]");
                 Console.WriteLine("Options use Key=Value. Config=path loads additional options from a file.");
                 Console.WriteLine("Optional: Name, HostInfo, Version, Hand, Debug, Chat, Dialog.");
+                Console.WriteLine("Explain=true prints bounded action explanations for the general policy; default off.");
                 Console.WriteLine("Agent=skynet (default) or Agent=expert-oldschool (frozen expert comparison).");
                 Console.WriteLine("Learning: PolicyModel, PolicyTraining, PolicyData, PolicySeed, PolicyGroup.");
                 Console.WriteLine("ShadowData=absolute-directory opts into bounded public observation captures; default off.");
@@ -79,6 +80,7 @@ namespace Skynet
             options.Version = Config.GetInt("Version", options.Version);
             options.Hand = Config.GetInt("Hand", options.Hand);
             options.Debug = Config.GetBool("Debug", options.Debug);
+            options.Explain = Config.GetBool("Explain", options.Explain);
             options.Chat = Config.GetBool("Chat", options.Chat);
             options.PolicyModel = Config.GetString("PolicyModel", options.PolicyModel);
             options.PolicyTraining = Config.GetBool("PolicyTraining", options.PolicyTraining);

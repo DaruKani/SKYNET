@@ -32,6 +32,8 @@ namespace Skynet.Game.AI
             agent.Learning = new SkynetLearningSession(game.PolicyModel,
                 game.PolicyTraining, game.PolicyData, game.PolicySeed);
             agent.Learning.TrainingGroup = game.PolicyGroup ?? (game.DeckFile ?? agent.Deck);
+            if (game.Explain)
+                agent.Trace = new DecisionTrace(duel);
             return agent;
         }
     }

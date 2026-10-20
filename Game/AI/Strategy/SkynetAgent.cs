@@ -9,7 +9,9 @@ namespace Skynet.Game.AI.Strategy
     public sealed class SkynetAgent : DefaultExecutor, IRankedDecisionPolicy
     {
         private readonly SkynetPolicy _policy;
+        private readonly SwordsoulStrategy _swordsoul;
         public SkynetLearningSession Learning { get; set; }
+        public DecisionTrace Trace { get; set; }
 
         public SkynetAgent(GameAI ai, Duel duel)
             : base(ai, duel)
@@ -17,7 +19,8 @@ namespace Skynet.Game.AI.Strategy
             // DefaultExecutor owns useful observed-state and battle handling.
             // Its constructor's ordered card rules do not participate here.
             Executors.Clear();
-            _policy = new SkynetPolicy(duel);
+            _swordsoul = new SwordsoulStrategy(duel);
+            _policy = new SkynetPolicy(duel, _swordsoul);
         }
 
         public LegalAction ChooseAction(IList<LegalAction> actions)
@@ -27,12 +30,25 @@ namespace Skynet.Game.AI.Strategy
             var admitted = new List<LegalAction>();
             var features = new List<IDictionary<string, double>>();
             var scores = new List<double>();
+            List<DecisionTraceOffer> traceOffers = Trace != null && Trace.CanWrite
+                ? new List<DecisionTraceOffer>() : null;
             bool hasMandatory = actions.Any(action => action != null && action.IsMandatory);
             foreach (LegalAction action in actions)
             {
                 if (hasMandatory && (action == null || !action.IsMandatory))
+                {
+                    if (traceOffers != null)
+                        traceOffers.Add(new DecisionTraceOffer(action, null, 0, "A mandatory offer must be selected."));
                     continue;
-                ActionEvaluation evaluation = _policy.Evaluate(action);
+                }
+                string reason;
+                ActionEvaluation evaluation = _policy.Evaluate(action, out reason);
+                if (traceOffers != null)
+                {
+                    double effectiveScore = evaluation == null ? 0 : Learning == null
+                        ? evaluation.Score : Learning.GetEffectiveScore(evaluation.Features, evaluation.Score);
+                    traceOffers.Add(new DecisionTraceOffer(action, evaluation, effectiveScore, reason));
+                }
                 if (evaluation == null)
                     continue;
                 admitted.Add(action);
@@ -41,7 +57,11 @@ namespace Skynet.Game.AI.Strategy
             }
 
             if (admitted.Count == 0)
+            {
+                if (traceOffers != null)
+                    Trace.Write(traceOffers, null, false, Learning == null ? "heuristic-v1" : Learning.ModelVersion);
                 return null;
+            }
             int chosen = 0;
             if (Learning != null)
                 chosen = Learning.Choose(features, scores);
@@ -53,17 +73,29 @@ namespace Skynet.Game.AI.Strategy
             }
             if (chosen < 0 || chosen >= admitted.Count)
                 throw new InvalidOperationException("SKYNET returned an index outside its admitted offers.");
+            if (traceOffers != null)
+                Trace.Write(traceOffers, admitted[chosen], Learning != null && Learning.SamplesDecisions,
+                    Learning == null ? "heuristic-v1" : Learning.ModelVersion);
             return admitted[chosen];
+        }
+
+        public void OnActionCommitted(LegalAction action)
+        {
+            _swordsoul.OnActionCommitted(action);
         }
 
         public void OnDuelStarted()
         {
+            _swordsoul.ResetPendingProcedure();
+            if (Trace != null)
+                Trace.Reset();
             if (Learning != null)
                 Learning.BeginDuel();
         }
 
         public void OnDuelFinished(int result)
         {
+            _swordsoul.ResetPendingProcedure();
             if (Learning != null)
                 Learning.CompleteDuel(result);
         }
@@ -77,6 +109,10 @@ namespace Skynet.Game.AI.Strategy
         {
             if (cards == null || max < min || min < 0 || cards.Count < min)
                 return null;
+
+            IList<ClientCard> strategySelection = _swordsoul.SelectCard(cards, min, max, hint, cancelable);
+            if (strategySelection != null)
+                return strategySelection;
 
             ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
             ClientCard activating = Duel.GetCurrentChainCard();
@@ -142,6 +178,38 @@ namespace Skynet.Game.AI.Strategy
         public override IList<ClientCard> OnSelectTribute(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
         {
             return AI.FindTributeSelection(cards.OrderBy(SkynetPolicy.CardValue).ToList(), min, max);
+        }
+
+        public override IList<ClientCard> OnSelectSynchroMaterial(IList<ClientCard> cards,
+            IList<ClientCard> mandatoryCards, int sum, int min, int max)
+        {
+            return _swordsoul.SelectSynchroMaterial(cards, mandatoryCards, sum, min, max)
+                ?? base.OnSelectSynchroMaterial(cards, mandatoryCards, sum, min, max);
+        }
+
+        public override int OnSelectOption(IList<int> options)
+        {
+            int selected = _swordsoul.SelectOption(options);
+            return selected >= 0 ? selected : base.OnSelectOption(options);
+        }
+
+        public override void OnNewTurn()
+        {
+            _swordsoul.ResetPendingProcedure();
+            base.OnNewTurn();
+        }
+
+        public override void OnNewPhase()
+        {
+            _swordsoul.ResetPendingProcedure();
+            base.OnNewPhase();
+        }
+
+        public override void OnSpSummoning()
+        {
+            // The core emits summon start after the material-selection procedure.
+            _swordsoul.ResetPendingProcedure();
+            base.OnSpSummoning();
         }
 
         public override IList<ClientCard> OnSelectPendulumSummon(IList<ClientCard> cards, int min, int max)
