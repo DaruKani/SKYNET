@@ -2677,7 +2677,7 @@
       "id": "chimera-guardian-recovery-v6",
       "policyRevision": "skynet-policy-v6",
       "date": "2026-10-20",
-      "status": "Reviewed shared strategy, focused regressions and native routes; frozen Arena comparison recorded separately.",
+      "status": "Reviewed implementation with passing route checks and frozen Arena results; competitive improvement not demonstrated.",
       "behavior": [
         "Guardian Chimera competes with King and fusion Berfomet using a bounded visible-material payoff estimate: at most 24 choose 3 combinations, distinct current names and a hand/field mix.",
         "The core supplies legal choices. Material callbacks honor actual offered objects, and non-targeting destruction accepts facedown Id=0 candidates without hidden identity inference.",
@@ -3053,7 +3053,163 @@
         "Illusion Beast battle decisions, Fiendsmith, Azamina, Hecahands and Nightmare Apprentice effects remain unsupported.",
         "Healthy Guardian conservation does not automatically develop a King alongside it; future measured changes may improve this tradeoff.",
         "Scratch harnesses and raw runtime receipts remain ignored at the owner's request; this catalog preserves inputs, hashes and conclusions."
-      ]
+      ],
+      "implementationCommit": "df81fdaa7606d9a000cd586b5d7b2b4d0c35c32b",
+      "ci": {
+        "url": "https://github.com/ElderLich/SKYNET/actions/runs/39488681602",
+        "conclusion": "success",
+        "jobs": [
+          "windows",
+          "mono",
+          "arena"
+        ]
+      },
+      "arenaEvaluations": [
+        {
+          "runId": "86b751ac-f52e-49a2-a696-24e7e8d6d0aa",
+          "kind": "regression",
+          "note": "Chimera v6 Guardian and recovery vs frozen v5; identical diagnostic 40/8 list; frozen weights; shuffled, unseeded; 20 matches",
+          "startedAt": "2026-10-20T20:01:28.776Z",
+          "finishedAt": "2026-10-20T20:04:43.856Z",
+          "receipt": "Artifacts/chimera-arena-expanded-previous.json",
+          "receiptSha256": "e4206125a085d057480cdf7d213069287673a67506f09c337ccbc27d3b69b07f",
+          "participants": {
+            "current": {
+              "agent": "skynet",
+              "arenaSlot": 1,
+              "arenaSource": "current",
+              "executableSha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": true,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-expanded-previous-current-output.json",
+                "sha256": "941ba0a58c82f6a716bb3999d74a59f5def30b2bdcaab41d020ee129bf816d1b",
+                "characters": 2000000,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            },
+            "old": {
+              "agent": "skynet",
+              "arenaSlot": 2,
+              "arenaSource": "old",
+              "executableSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": false,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-expanded-previous-old-output.json",
+                "sha256": "05522d435a6e66d6a7b5a7dda1254fe8edd785eca14ce5496638b109073ca041",
+                "characters": 34944,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            }
+          },
+          "bestOfThreeMatches": 20,
+          "candidateWins": 6,
+          "baselineWins": 14,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0.14548,
+            0.51897
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "interpretation": "Exploratory sample with unrestricted rules, unpaired unknown core RNG and frozen policies. Same diagnostic deck on both sides compares complete policy revisions; this is not an isolated ablation of Guardian or the disabled-status fix. No neural training, held-out generalization or model promotion."
+        },
+        {
+          "runId": "ec316c8f-96a9-4184-b75e-1492a3a8e1d7",
+          "kind": "challenge",
+          "note": "Reviewed Swordsoul Tenyi expert (challenger) vs Chimera v6 Guardian; different 40/15 and diagnostic 40/8 lists; frozen weights; shuffled, unseeded; 20 matches",
+          "startedAt": "2026-10-20T20:05:33.523Z",
+          "finishedAt": "2026-10-20T20:07:27.678Z",
+          "receipt": "Artifacts/chimera-arena-expanded-modern.json",
+          "receiptSha256": "f1d8a3ca4117606767535eb4fe619229934af700c5d7973b7a9faffb5d1a3861",
+          "participants": {
+            "current": {
+              "agent": "skynet",
+              "arenaSlot": 2,
+              "arenaSource": "opponent",
+              "executableSha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726",
+              "deck": "Decks/AI_SkynetChimera.ydk",
+              "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+              "model": "built-in heuristic weights",
+              "explainDecisions": true,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-expanded-modern-current-output.json",
+                "sha256": "ee932f50a9c7619c1d554bb625c678a7008414058b84260dc2906dcd58ec95a2",
+                "characters": 2000000,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            },
+            "old": {
+              "agent": "expert-swordsoul",
+              "arenaSlot": 1,
+              "arenaSource": "target",
+              "executableSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+              "deck": "Decks/AI_ExpertSwordsoul.ydk",
+              "deckSha256": "1f2af2326e9863be6dcaf0d1aeb23e897700f643d1a7f766d35636f57084c824",
+              "model": "built-in heuristic weights",
+              "explainDecisions": false,
+              "diagnosticOutput": {
+                "path": "Artifacts/chimera-arena-expanded-modern-old-output.json",
+                "sha256": "bc26961717b77763ad74467aedd9859203a97f1774453e96af23aa6521d64cea",
+                "characters": 42796,
+                "scope": "Bounded session buffer may contain previous experiments or omit earlier lines; not an independent scoring source."
+              }
+            }
+          },
+          "bestOfThreeMatches": 20,
+          "candidateWins": 3,
+          "baselineWins": 17,
+          "candidateDisconnects": 0,
+          "baselineDisconnects": 0,
+          "candidateWinRateWilson95": [
+            0.05237,
+            0.36042
+          ],
+          "shuffleEnabled": true,
+          "coreSeed": null,
+          "trainingEnabled": false,
+          "interpretation": "Exploratory sample with unrestricted rules, unpaired unknown core RNG and frozen policies. Different deck lists and agent owners; this measures a matchup, not AI quality in isolation. No neural training, held-out generalization or model promotion."
+        }
+      ],
+      "assessment": "Added behavior is functional in bounded route checks, but these samples do not demonstrate stronger play. The same-deck result is a regression signal. No learned checkpoint was trained or promoted; frozen v5 remains preserved.",
+      "nextExperiment": {
+        "focus": "Compare conserving a searched starter with developing a complementary King/protection route beside Guardian.",
+        "receipt": "Artifacts/chimera-arena-expanded-previous-current-output.json",
+        "receiptSha256": "941ba0a58c82f6a716bb3999d74a59f5def30b2bdcaab41d020ee129bf816d1b",
+        "trace": "3304496a",
+        "observed": [
+          "Turn 11 decisions 33-35: Coatl search chosen, then Mirror Swordknight summon/set rejected by established-board conservation; Guardian appears among offered field actions.",
+          "Turn 13 decision 36: Mirror summon still rejected while generic Archfiend Soldier summon is chosen."
+        ],
+        "interpretation": "Observed conservative behavior identifies a candidate for a fresh controlled comparison. The bounded log does not establish that developing Mirror would win or that this caused the aggregate result. Do not treat these evaluation decisions as optimal training labels."
+      },
+      "cleanup": {
+        "checkedAt": "2026-10-20T20:08:22.471907+00:00",
+        "activeRuns": {
+          "runs": []
+        },
+        "gatewayRooms": {
+          "enableHalfwayWatch": false,
+          "fetchedAt": "2026-10-20T20:08:22.471Z",
+          "srvpro": {
+            "id": "srvpro-1",
+            "name": "SKYNET Local Arena"
+          },
+          "rooms": []
+        },
+        "processCheck": {
+          "count": 0,
+          "names": [],
+          "scope": "Read-only Get-Process check for SKYNET and ygoserver; dedicated Arena supervisor remains available."
+        }
+      }
     }
   ]
 }

@@ -326,6 +326,26 @@ negated its field effect. These had no forced cleanup, captured selection
 fallbacks or hidden-identity violations. A two-destruction fixture did not reach
 Guardian, so that branch has synthetic checks but no accepted native coverage.
 
+The subsequent frozen v6 Arena evaluations produced:
+
+| Comparison | Chimera match wins/losses | Disconnects |
+| --- | ---: | ---: |
+| v6 versus frozen v5, identical diagnostic Chimera 40/8 list | 6 / 14 | 0 |
+| v6 Chimera versus reviewed Swordsoul Tenyi expert, different 40/8 and 40/15 lists | 3 / 17 | 0 |
+
+These results do **not** demonstrate stronger play. The same-deck result is a
+regression signal; its 95% Wilson interval is 14.5%–51.9%. The modern matchup's
+interval is 5.2%–36.0%, with different decks and unknown, unpaired core seeds.
+Passing route tests establishes supported behavior, not competitive quality.
+Windows, Mono and Arena CI passed for implementation commit `df81fda`.
+
+One observed limitation deserves a fresh comparison: SKYNET searched Mirror
+with Coatl, then conserved Mirror beside an established Guardian while allowing
+a generic attacker to be summoned. Developing a complementary King/protection
+route may help, but the bounded log does not prove that choice caused the losses.
+Frozen v5 remains preserved; no learned checkpoint was trained or promoted.
+Both experiments completed with empty rooms and no remaining duel processes.
+
 ### Friendly strategy authoring
 
 The planned workflow is: import a `.ydk`, see available effect support and gaps,
