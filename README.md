@@ -293,6 +293,7 @@ duels; a small training win count is not evidence of improvement.
 msbuild Skynet.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
 python Tools/Skynet/test_learning.py
 python Tools/Skynet/test_ygo_agent_inspection.py
+python Tools/Skynet/test_ygo_agent_shadow.py
 
 python Tools/Skynet/native_smoke.py `
   --server 'D:/YourGame/Assets/Plugins/Windows/ygoserver.dll' `
@@ -317,8 +318,8 @@ lifecycle behavior; they do not establish playing strength.
 
 Earlier local checks covered starter duels, terminal training records and eleven
 Unity host launch/connection-retirement assertions. Those receipts are historical;
-this Arena update does not claim a fresh Unity session or a dedicated SRVPro
-strength benchmark.
+this update does not claim a fresh Unity session. Dedicated SRVPro match results
+are recorded separately from the fixed-order fixture below.
 
 ## Skynet Arena
 
@@ -350,6 +351,30 @@ Full Arena experiments require a configured, dedicated
 native smoke fixture is a separate server path and cannot provide Arena's
 management APIs. Arena scores come from SRVPro's cumulative results; process
 exit alone is never a victory. Native SKYNET tag duels are currently disabled.
+
+The Windows bootstrap now stages that dedicated gateway with an owned
+`SKYNET_DUEL_HOST.exe` and a separate localhost-only MDPro4 engine build.
+See [local server setup](Arena/README.md#dedicated-local-server-windows).
+It records input hashes, keeps credentials under ignored `Artifacts/`, bounds
+room concurrency and supervisor lifetime, and retires the owned process tree
+even if the supervisor exits abruptly. It does not replace the installed engine.
+SRVPro `M#` rooms play best-of-three **matches**; their Arena counts are not
+individual duel counts.
+
+The first shuffled baseline completed **20 matches: SKYNET 2 wins, OldSchool
+18 wins, zero recorded disconnects**. A separate four-match integration pilot
+finished 2–2 and is not pooled into that result. Both policies used the same deck,
+training was disabled, room host order alternated and no clients/native rooms
+remained afterwards. This is an initial unrestricted baseline with unknown core
+seeds, not a paired-seed strength or model-promotion test.
+
+The [evaluation receipt](Catalog/expert-baselines.json) records engine, client,
+script and database hashes. It also identifies a concrete general-policy gap:
+Hammer Shot, Double Summon, Swords of Revealing Light and Dimensional Prison
+account for ten deck slots whose optional effects are not yet supported. Reviewing
+and porting those complete behaviors is the next useful comparison before tuning
+weights. The result does not establish that those missing effects explain every
+loss.
 
 The upstream source pin, archive hash and original file hashes are recorded in
 [`Arena/UPSTREAM.json`](Arena/UPSTREAM.json). These describe the imported base;
@@ -387,11 +412,40 @@ The tool caps reads and counts, hashes inputs and reports vocabulary coverage
 separately from compatibility. All 17 unique starter IDs appear in this pin's
 list; that does not prove correct card behavior or model support.
 
-The next experiment is a public-observation **shadow adapter**: capture real
-legal prompts and check feature/action mappings without controlling the duel.
-Only after matching a checkpoint and handling unsupported prompts should a
-bounded frozen inference process compete in Arena. No GPU environment, model
-weights or embeddings were downloaded for this import.
+An opt-in **shadow capture and offline mapper** is now implemented. Pass
+`ShadowData=<absolute directory>` to either policy, or add `--shadow --agent skynet
+--opponent-agent expert-oldschool` to the native fixture. Each duel gets its own
+JSONL file with detached predecision state, all raw main-phase offers, the actual
+wire response and authoritative outcome events. Captures exclude deck identities
+and hidden opponent properties; I/O failures disable capture without changing
+decisions. Limits are 4,096 rows, 16 MiB per duel and 1 MiB per row. Other prompt
+types are explicitly marked unsupported.
+
+```powershell
+python Tools/Skynet/ygo_agent_shadow.py `
+  --source-root Research/ygo-agent --capture 'Artifacts/qa/client/shadow/duel.jsonl' `
+  --output Artifacts/shadow-report.json
+```
+
+The mapper checks the pinned encoder contract, card visibility, vocabulary,
+action order, raw response indices and feature limits. It never executes imported
+code or loads a model. Twelve Python regression tests and eighteen local C#
+scratch assertions cover these boundaries.
+
+Real native captures exposed concrete blockers: **all 50 captured main-phase
+decisions included the legal shuffle action**, which this YGO Agent input schema
+cannot encode. The mapper abstained on all 50 instead of dropping that action.
+The current client also discards counter query state, so it cannot certify zero
+counters. `--allow-incomplete-counter-state` permits explicitly incomplete offline
+inspection; it never marks an observation model-ready. Overlays, relationships,
+field-only effects and unsupported prompts remain explicit compatibility gaps.
+Separately, all 50 selected wire responses matched the captured offers; 4,000
+card rows produced feature previews and 3,526 hidden/deck rows kept their private
+properties zeroed. These checks do not establish complete live mapping parity.
+
+Only after resolving these gaps, matching a checkpoint and handling the remaining
+prompts should bounded frozen inference compete in Arena. No GPU environment,
+weights or embeddings have been downloaded, and neural inference is not active.
 
 ## Testing and improvement roadmap
 
@@ -425,9 +479,10 @@ the following work is planned:
    and generic prompt handling are prerequisites for stronger unseen-card play.
 
 Skynet Arena supplies the experiment UI and native launcher for that work.
-Dedicated SRVPro experiments and a competitive modern expert baseline still
-need to be configured and measured. The imported YGO Agent supplies a research
-reference for contextual learning, with the concrete compatibility gates above.
+Dedicated SRVPro experiments now run locally; a competitive modern expert
+baseline still needs review and measurement. The imported YGO Agent supplies a
+research reference for contextual learning, with the concrete compatibility
+gates above.
 
 Each completed update gets a descriptive commit and its actual validation
 results. The project scope is the duel AI and its MDPro4 integration; an Expedition
@@ -440,6 +495,7 @@ mode, progression economy and campaign content are outside this roadmap.
 - `Game/`, `YGOSharp.*`: protocol and client-visible duel state.
 - `Tools/Skynet/`: training, evaluation, native QA and MDPro4 installation.
 - `Game/AI/Experts/`: explicitly selected complete expert baselines.
+- `Game/AI/Shadow/`: optional bounded public observations and raw action captures.
 - `Arena/`: Skynet Arena dashboard, native launch adapter and backend tests.
 - `Research/ygo-agent/`: attributed, pinned learning/inference research source.
 - `Branding/`: project logo, caption and application icon.

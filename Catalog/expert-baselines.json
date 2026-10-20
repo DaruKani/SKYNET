@@ -146,7 +146,91 @@
           "strengthEvidence": false
         }
       ],
-      "portedSourceSha256": "f6f4771ba22e251c41493fe162ade0910738d3548084b1e93fa5d6d7a04bee80"
+      "portedSourceSha256": "f6f4771ba22e251c41493fe162ade0910738d3548084b1e93fa5d6d7a04bee80",
+      "arenaEvaluation": {
+        "date": "2026-10-20",
+        "candidate": "Agent=skynet, built-in weights, PolicyTraining=False",
+        "baseline": "Agent=expert-oldschool",
+        "bothDecks": "Decks/AI_ExpertOldSchool.ydk",
+        "clientSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+        "server": {
+          "gatewayCommit": "af87d3a8c4269c105144a67221728aa25a747910",
+          "nativeServerCommit": "9b65c3fc90a782742a92c3e9afa685aa0eb3feca",
+          "coreCommit": "25eb27f6292ea407f615958fd5ff1d1db77066dc",
+          "nativeLibrarySha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+          "nativeHostSha256": "a98f769169e6ff378b53fd2082ca77db3346a90555fd2a6bdc084acd70f1d1a1",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb"
+        },
+        "protocolVersion": 4962,
+        "unit": "best-of-three match (M# room)",
+        "hostOrder": "alternates every match; opening turn is determined by duel protocol and policy",
+        "shuffleEnabled": true,
+        "deckChecksEnabled": false,
+        "coreSeed": null,
+        "pairedShuffleSeeds": false,
+        "maximumConcurrentRooms": 2,
+        "maximumClientProcesses": 4,
+        "results": [
+          {
+            "runId": "d6e8efd2-8a01-428c-ad51-bea6ddde8df7",
+            "purpose": "integration-pilot",
+            "startedAt": "2026-10-20T17:46:34.673Z",
+            "finishedAt": "2026-10-20T17:47:04.809Z",
+            "completedMatches": 4,
+            "candidateWins": 2,
+            "expertWins": 2,
+            "candidateDisconnects": 0,
+            "expertDisconnects": 0,
+            "error": null
+          },
+          {
+            "runId": "63f2b372-6402-466a-ad7b-8dc208776684",
+            "purpose": "initial-shuffled-baseline",
+            "startedAt": "2026-10-20T17:50:13.101Z",
+            "finishedAt": "2026-10-20T17:52:39.505Z",
+            "completedMatches": 20,
+            "candidateWins": 2,
+            "expertWins": 18,
+            "candidateDisconnects": 0,
+            "expertDisconnects": 0,
+            "error": null
+          }
+        ],
+        "cleanup": {
+          "nativeHostsRemaining": 0,
+          "clientsRemaining": 0,
+          "gatewayListenAddress": "127.0.0.1",
+          "nativeRoomLoopbackVerified": true
+        },
+        "knownCandidateCoverageGap": [
+          {
+            "cardId": 26412047,
+            "name": "Hammer Shot",
+            "deckCopies": 3,
+            "status": "optional effect absent from general CardSemantics"
+          },
+          {
+            "cardId": 43422537,
+            "name": "Double Summon",
+            "deckCopies": 3,
+            "status": "optional effect absent from general CardSemantics"
+          },
+          {
+            "cardId": 72302403,
+            "name": "Swords of Revealing Light",
+            "deckCopies": 2,
+            "status": "optional effect absent from general CardSemantics"
+          },
+          {
+            "cardId": 70342110,
+            "name": "Dimensional Prison",
+            "deckCopies": 2,
+            "status": "optional effect absent from general CardSemantics"
+          }
+        ],
+        "interpretation": "A functioning, frozen evaluation baseline with a substantial card-coverage gap. The 20-match result is 2 candidate wins and 18 expert wins; the separate pilot is not pooled. This is not a promotion test, controlled paired-seed experiment, or proof of performance on other decks."
+      }
     }
   ]
 }
