@@ -67,7 +67,7 @@ namespace Skynet.Game.AI.Strategy
         public const string FeatureSchema = "skynet-public-v1";
         public const string ModelFormat = "skynet-linear-v1";
         public const string EpisodeFormat = "skynet-episode-v1";
-        public const string PolicyRevision = "skynet-policy-v4";
+        public const string PolicyRevision = "skynet-policy-v5";
         private const int MaximumDecisions = 4096;
         private static readonly string[] FeatureNames =
         {

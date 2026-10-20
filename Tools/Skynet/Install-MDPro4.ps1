@@ -26,6 +26,7 @@ $payload = @{
     'Decks\AI_ExpertOldSchool.ydk' = 'Decks\AI_ExpertOldSchool.ydk'
     'Decks\AI_ExpertSwordsoul.ydk' = 'Decks\AI_ExpertSwordsoul.ydk'
     'Decks\AI_SkynetSwordsoul.ydk' = 'Decks\AI_SkynetSwordsoul.ydk'
+    'Decks\AI_SkynetChimera.ydk' = 'Decks\AI_SkynetChimera.ydk'
     'skynet-logo.png' = 'Branding\skynet-logo.png'
     'LICENSE' = 'LICENSE'
 }

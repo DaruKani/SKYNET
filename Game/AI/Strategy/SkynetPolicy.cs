@@ -15,13 +15,15 @@ namespace Skynet.Game.AI.Strategy
     {
         private readonly Duel _duel;
         private readonly SwordsoulStrategy _swordsoul;
+        private readonly ChimeraStrategy _chimera;
 
-        public SkynetPolicy(Duel duel, SwordsoulStrategy swordsoul = null)
+        public SkynetPolicy(Duel duel, SwordsoulStrategy swordsoul = null, ChimeraStrategy chimera = null)
         {
             if (duel == null)
                 throw new ArgumentNullException("duel");
             _duel = duel;
             _swordsoul = swordsoul ?? new SwordsoulStrategy(duel);
+            _chimera = chimera ?? new ChimeraStrategy(duel);
         }
 
         public ActionEvaluation Evaluate(LegalAction action)
@@ -67,6 +69,8 @@ namespace Skynet.Game.AI.Strategy
 
             ActionEvaluation strategyEvaluation;
             if (_swordsoul.TryEvaluate(action, out strategyEvaluation, out reason))
+                return strategyEvaluation;
+            if (_chimera.TryEvaluate(action, out strategyEvaluation, out reason))
                 return strategyEvaluation;
 
             if (action.Type == ExecutorType.Summon || action.Type == ExecutorType.MonsterSet)
@@ -171,6 +175,8 @@ namespace Skynet.Game.AI.Strategy
             }
             ActionEvaluation strategyEvaluation;
             if (_swordsoul.TryEvaluate(action, out strategyEvaluation, out reason))
+                return strategyEvaluation;
+            if (_chimera.TryEvaluate(action, out strategyEvaluation, out reason))
                 return strategyEvaluation;
             CardSemantics semantics = CardSemantics.Find(card);
             reason = "No reviewed optional effect is available for this card.";
@@ -318,6 +324,12 @@ namespace Skynet.Game.AI.Strategy
                     features["interaction"] = 0.5;
                     return new ActionEvaluation(_duel.Player == 0 ? 2.5 : 1.5, features, "Remove a facedown or persistent opposing back-row card; destroying a normal spell does not negate it.");
                 case EffectRole.Revive:
+                    reason = "Preserve the Chimera graveyard answers when no other known revivable resource is available.";
+                    if (_duel.Fields[0].Graveyard.Any(_chimera.PreserveGraveyardProtection)
+                        && !_duel.Fields[0].Graveyard.Concat(_duel.Fields[1].Graveyard)
+                            .Any(c => c != null && CardSemantics.HasType(c, CardType.Monster)
+                                && c.IsCanRevive() && !_chimera.PreserveGraveyardProtection(c)))
+                        return null;
                     features["recovery"] = 1;
                     features["develop"] = 0.7;
                     return new ActionEvaluation(3, features, "Recover an offered graveyard body through the supported revival prompt.");

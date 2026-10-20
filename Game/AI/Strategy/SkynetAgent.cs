@@ -10,6 +10,7 @@ namespace Skynet.Game.AI.Strategy
     {
         private readonly SkynetPolicy _policy;
         private readonly SwordsoulStrategy _swordsoul;
+        private readonly ChimeraStrategy _chimera;
         public SkynetLearningSession Learning { get; set; }
         public DecisionTrace Trace { get; set; }
 
@@ -20,7 +21,8 @@ namespace Skynet.Game.AI.Strategy
             // Its constructor's ordered card rules do not participate here.
             Executors.Clear();
             _swordsoul = new SwordsoulStrategy(duel);
-            _policy = new SkynetPolicy(duel, _swordsoul);
+            _chimera = new ChimeraStrategy(duel);
+            _policy = new SkynetPolicy(duel, _swordsoul, _chimera);
         }
 
         public LegalAction ChooseAction(IList<LegalAction> actions)
@@ -82,11 +84,13 @@ namespace Skynet.Game.AI.Strategy
         public void OnActionCommitted(LegalAction action)
         {
             _swordsoul.OnActionCommitted(action);
+            _chimera.OnActionCommitted(action);
         }
 
         public void OnDuelStarted()
         {
             _swordsoul.ResetTurnState();
+            _chimera.ResetTurnState();
             if (Trace != null)
                 Trace.Reset();
             if (Learning != null)
@@ -96,6 +100,7 @@ namespace Skynet.Game.AI.Strategy
         public void OnDuelFinished(int result)
         {
             _swordsoul.ResetTurnState();
+            _chimera.ResetTurnState();
             if (Learning != null)
                 Learning.CompleteDuel(result);
         }
@@ -111,6 +116,9 @@ namespace Skynet.Game.AI.Strategy
                 return null;
 
             IList<ClientCard> strategySelection = _swordsoul.SelectCard(cards, min, max, hint, cancelable);
+            if (strategySelection != null)
+                return strategySelection;
+            strategySelection = _chimera.SelectCard(cards, min, max, hint, cancelable);
             if (strategySelection != null)
                 return strategySelection;
 
@@ -137,9 +145,14 @@ namespace Skynet.Game.AI.Strategy
                 && semantics.SelectDuringResolution == (solving != null))
             {
                 count = Math.Min(max, Math.Max(1, min));
-                if (semantics.Role == EffectRole.Search || semantics.Role == EffectRole.Revive)
+                if (semantics.Role == EffectRole.Search)
                 {
                     ordered = cards.OrderByDescending(c => SkynetPolicy.CardValue(c) + _policy.Synergy(c) * 0.3);
+                }
+                else if (semantics.Role == EffectRole.Revive)
+                {
+                    ordered = cards.OrderBy(c => _chimera.PreserveGraveyardProtection(c) ? 1 : 0)
+                        .ThenByDescending(c => SkynetPolicy.CardValue(c) + _policy.Synergy(c) * 0.3);
                 }
                 else if (semantics.Role == EffectRole.DestroyEnemySpell)
                 {
@@ -190,24 +203,29 @@ namespace Skynet.Game.AI.Strategy
         public override int OnSelectOption(IList<int> options)
         {
             int selected = _swordsoul.SelectOption(options);
+            if (selected < 0)
+                selected = _chimera.SelectOption(options);
             return selected >= 0 ? selected : base.OnSelectOption(options);
         }
 
         public override void OnNewTurn()
         {
             _swordsoul.ResetTurnState();
+            _chimera.ResetTurnState();
             base.OnNewTurn();
         }
 
         public override void OnNewPhase()
         {
             _swordsoul.ResetPendingProcedure();
+            _chimera.ResetPendingProcedure();
             base.OnNewPhase();
         }
 
         public override void OnChainEnd()
         {
             _swordsoul.ResetPendingProcedure();
+            _chimera.ResetPendingProcedure();
             base.OnChainEnd();
         }
 
@@ -215,6 +233,7 @@ namespace Skynet.Game.AI.Strategy
         {
             // The core emits summon start after the material-selection procedure.
             _swordsoul.ResetPendingProcedure();
+            _chimera.ResetPendingProcedure();
             base.OnSpSummoning();
         }
 

@@ -2330,5 +2330,194 @@
         "Raw captures, harness and runtime receipts remain local ignored artifacts."
       ]
     }
+  ],
+  "chimeraUpdates": [
+    {
+      "id": "shared-chimera-core-v1",
+      "date": "2026-10-20",
+      "policyRevision": "skynet-policy-v5",
+      "implementation": "Game/AI/Strategy/ChimeraStrategy.cs",
+      "purpose": "Reusable core Chimera effect and route rules selected from actual hands and offered candidates; not an inherited deck executor or neural model.",
+      "guide": "https://www.masterduelmeta.com/articles/guides/chimera-drident",
+      "comboExamples": [
+        "https://www.masterduelmeta.com/combo/6a1eb1cf58dfb7813369b373",
+        "https://www.masterduelmeta.com/combo/6a26974ad1e2883b1dd41a26"
+      ],
+      "deck": "Decks/AI_SkynetChimera.ydk",
+      "deckSha256": "3394b61f1459b6c03ebba77d07f9023da9fdb7a1d4849e1cc891d708abf9d047",
+      "deckScope": "40 main / 6 extra / 0 side diagnostic list; no competitive Master Duel legality claim.",
+      "implementedCards": [
+        28954097,
+        92565383,
+        23076639,
+        55461744,
+        63136489,
+        1769875,
+        69601012
+      ],
+      "scriptCheckoutRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+      "deployedScriptArchiveSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+      "scriptReview": "Seven implemented effect cards checked against the explicitly configured deployed Lua entries and matching local scripts; Guardian Chimera and Illusion Beast reviewed but not implemented.",
+      "builds": [
+        "Debug Any CPU passed",
+        "Release Any CPU passed"
+      ],
+      "pythonValidation": {
+        "learningTests": 13,
+        "demonstrationAuditTests": 8
+      },
+      "validationReceipt": {
+        "path": "Artifacts/chimera-qa/receipt.json",
+        "sha256": "77a0a10a7d9a0578700843a94cb069cf8cc659acb98948ec64cd4307bc301783"
+      },
+      "validation": {
+        "kind": "chimera-focused-client-and-native-validation",
+        "binary": "Artifacts/chimera-qa/runtime/SKYNET.exe",
+        "binarySha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+        "policyRevision": "skynet-policy-v5",
+        "database": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+        "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+        "languageVersion": "C# 6",
+        "regressions": [
+          {
+            "name": "chimera",
+            "source": "Artifacts/chimera-qa/ChimeraProbe.cs",
+            "sourceSha256": "bcdffbabccbb5a6760b5ea54fa152f14421498785c6c8622a0f024b5119da347",
+            "log": "Artifacts\\chimera-qa\\chimera-results.log",
+            "logSha256": "c258a9617902e919497b3f896b4b075acf5587c3407589e4d3ff7b4b79e5046d",
+            "passed": 71,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulExpanded",
+            "source": "Artifacts/swordsoul-expansion-qa/SwordsoulExpansionProbe.cs",
+            "sourceSha256": "9b68fb9c053c897f12612c9efa78fda973351f0cc46d891943f08a8981bb4d31",
+            "log": "Artifacts\\chimera-qa\\swordsoul-expanded-results.log",
+            "logSha256": "2cc84561248ad19c07923d3704d93cd8c40ce837a95387f6c3c91160aaca2771",
+            "passed": 73,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulOriginal",
+            "source": "Artifacts/swordsoul-qa/SwordsoulProbe.cs",
+            "sourceSha256": "7c6c754fdd4efe5c5f5c0cddfb444c43ed77fb569af15ac387573f141fba65b8",
+            "log": "Artifacts\\chimera-qa\\swordsoul-results.log",
+            "logSha256": "7145434ca20af0a2e0d15b1a2a4e437a2a533bdc92858918aeb86d7e1ee964ef",
+            "passed": 74,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "sharedEffects",
+            "source": "Artifacts/four-card-qa/FourCardProbe.cs",
+            "sourceSha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6",
+            "log": "Artifacts\\chimera-qa\\shared-results.log",
+            "logSha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f",
+            "passed": 79,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "expertSwordsoul",
+            "source": "Artifacts/swordsoul-expert-review/ExpertProbe.cs",
+            "sourceSha256": "7338c17e5a87db1fb8bc410086c671645282f8a8b86b9fa3dba25290683b5df7",
+            "log": "Artifacts\\chimera-qa\\expert-results.log",
+            "logSha256": "6f0e3e7bafb104b467a3f4e249b203ec6758ad84ea015d66a2878a1f84f90c51",
+            "passed": 38,
+            "failed": 0,
+            "skipped": 0
+          }
+        ],
+        "native": [
+          {
+            "name": "mirror",
+            "receipt": "Artifacts\\chimera-native-mirror-accepted\\result.json",
+            "receiptSha256": "64f2f78b5c02869bf5e2414bf0205900d83184e8d632c30161d981819dbd0b77",
+            "review": "Artifacts\\chimera-qa\\mirror-accepted-route.json",
+            "reviewSha256": "cc4d0896a8b5f83da435c24125c64073b627994159b5a31b7373e9a2d5d5d53b",
+            "deck": "Artifacts/chimera-native-inputs/mirror-reborn.ydk",
+            "deckSha256": "95464e0f3c8c14a0976d6498b454261e063df2a2b6a7330267d99aaf43ff5813",
+            "duelsPassed": 2,
+            "expectedOpeningAndEndBoardAcrossBothSeats": true,
+            "coreSeed": null,
+            "opponentHiddenIdentityViolations": 0,
+            "capturedOrdinaryCardSelectionFallbacks": 0
+          },
+          {
+            "name": "coatl",
+            "receipt": "Artifacts\\chimera-native-coatl-accepted\\result.json",
+            "receiptSha256": "2cca38a17212f794a2c32ee1feaacfe41e689d35acec54b3020670d4f48cd7b5",
+            "review": "Artifacts\\chimera-qa\\coatl-accepted-route.json",
+            "reviewSha256": "93607368e12a4a7277ab252c32755682579be4c2fc7b8aa6fee723a3bcd3d2b3",
+            "deck": "Artifacts/chimera-native-inputs/coatl-isolated.ydk",
+            "deckSha256": "841282b6e591ada89a6ff83a6abbe6404205b4fa29da0398a5ee1764741746ea",
+            "duelsPassed": 2,
+            "expectedOpeningAndEndBoardAcrossBothSeats": true,
+            "coreSeed": null,
+            "opponentHiddenIdentityViolations": 0,
+            "capturedOrdinaryCardSelectionFallbacks": 0
+          },
+          {
+            "name": "gazelle",
+            "receipt": "Artifacts\\chimera-native-gazelle-accepted\\result.json",
+            "receiptSha256": "d559543c438c6644142d272237fd0cc7a21f7ca9fa38a04427c07dbada01ff7c",
+            "review": "Artifacts\\chimera-qa\\gazelle-accepted-route.json",
+            "reviewSha256": "fbe0d1f811a85d863472322f55498591431de611bc1e0c876d887864bcc5e5f0",
+            "deck": "Artifacts/chimera-native-inputs/gazelle-fusion-isolated.ydk",
+            "deckSha256": "0c10890a89c0e00a3cf939052f0b90ee7d7de528d3bfe0f5b5b8b092783035fa",
+            "duelsPassed": 2,
+            "expectedOpeningAndEndBoardAcrossBothSeats": true,
+            "coreSeed": null,
+            "opponentHiddenIdentityViolations": 0,
+            "capturedOrdinaryCardSelectionFallbacks": 0
+          }
+        ],
+        "sourceFiles": {
+          "Game/AI/Strategy/ChimeraStrategy.cs": "3497f5c550bcf3d910ed5cb06b5c2928c138e60c7942d4a662876d79bbdf5ece",
+          "Game/AI/Strategy/SkynetAgent.cs": "6a7214d8331d3c8e382de8a74135555f2fdf472aa0fc764c26136ade1f190af8",
+          "Game/AI/Strategy/SkynetPolicy.cs": "84810db5f86d1b7bc16135c2572f267e8b94d52bcbdc21150c386b5e7bbcf0f3",
+          "Game/AI/Strategy/SkynetLearningSession.cs": "724701b7452b3c52d2922fede3b4a34d83155e071d5554a650c03affd2a2e46a",
+          "Tools/Skynet/train.py": "63361c80dc56d0eab94ea2fbd36fda2ac9188f5cb38e79e34f30edbf871cf1c6",
+          "Decks/AI_SkynetChimera.ydk": "3394b61f1459b6c03ebba77d07f9023da9fdb7a1d4849e1cc891d708abf9d047",
+          "Skynet.csproj": "3c67d26f3c47c1d9a59e5d8b9febf2b0875251d0f44b3bd762bd4611b751dfc4"
+        },
+        "limitations": [
+          "Native fixtures deliberately use noDeckCheck and noShuffle with controlled initial five/six cards, against vanilla Battle Ox; wins do not establish competitive strength.",
+          "Nightmare Apprentice is used only as an observed Illusion material in the Gazelle fixture; its effects are not implemented by this module.",
+          "No Maxx C recognition or draw-budget adaptation is implemented or validated, despite guide combo titles mentioning it.",
+          "Ordinary selection capture does not yet label all iterative material/chain/option prompts; native moves and source snapshots verify these particular routes.",
+          "Interruption identity/stage and reset behaviors have synthetic client-state regressions; a native targeted disruption scenario was not run in this pass.",
+          "Core RNG seed is unknown and is never replaced by the policy seed."
+        ],
+        "earlierFindings": [
+          {
+            "receipt": "Artifacts/chimera-native-mirror/result.json",
+            "finding": "Before the shared revival preference fix, Monster Reborn unnecessarily moved Mirror to the field. Mirror can still negate there, but this spent a spell and exposed the resource. The exact original deck was retained as mirror-reborn.ydk and passes the final regression."
+          },
+          {
+            "receipt": "Artifacts/chimera-native-coatl-final/result.json",
+            "finding": "Earlier second-seat diagnostic drew Mirror sixth, so its first action was not the intended Coatl opener. The accepted fixture inserts a neutral sixth card."
+          },
+          {
+            "receipt": "Artifacts/chimera-native-gazelle-final/result.json",
+            "finding": "Earlier second-seat diagnostic drew Mirror sixth and took the King route. The accepted fixture inserts a neutral sixth card to verify Gazelle plus Illusion into fusion Berfomet on both seats."
+          }
+        ],
+        "totals": {
+          "focusedAssertionsPassed": 335,
+          "focusedFailed": 0,
+          "focusedSkipped": 0,
+          "nativeDuelsPassed": 6,
+          "nativeForcedCleanup": 0
+        }
+      },
+      "limitations": [
+        "Fiendsmith, Azamina, Hecahands, Guardian Chimera, Illusion Beast and Nightmare Apprentice effects remain unsupported.",
+        "Arena results will be recorded separately after frozen shuffled comparisons.",
+        "Raw scratch harnesses and runtime receipts remain ignored; this tracked record preserves provenance and measured conclusions."
+      ]
+    }
   ]
 }
