@@ -2,7 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getWindBotEndpoint } = require('./arena-settings');
+const { sameWindBotEndpoint } = require('./arena-settings');
+const { skynetCatalog, validateSkynetRuntime } = require('./skynet-config');
 
 function parseBotConfig(content) {
     const bots = new Map();
@@ -28,25 +29,29 @@ function parseBotConfig(content) {
 }
 
 function loadBotConfigText(instance, label) {
+    if (instance.mode === 'skynet') {
+        return JSON.stringify(instance.skynet);
+    }
     if (instance.mode === 'remote') {
         if (instance.botConfText.trim() === '') {
-            throw new Error(`${label}远程模式缺少 bot.conf 内容`);
+            throw new Error(`${label} remote mode requires bot.conf content`);
         }
         return instance.botConfText;
     }
     if (!fs.existsSync(instance.botConfPath)) {
-        throw new Error(`${label} bot.conf 不存在: ${instance.botConfPath}`);
+        throw new Error(`${label} bot.conf does not exist: ${instance.botConfPath}`);
     }
     return fs.readFileSync(instance.botConfPath, 'utf8');
 }
 
 function loadBotsFromInstance(instance, label) {
+    if (instance.mode === 'skynet') return skynetCatalog(instance);
     return parseBotConfig(loadBotConfigText(instance, label));
 }
 
 function getRegressionCatalog(settings) {
-    const currentBots = loadBotsFromInstance(settings.windbots.current, '新版');
-    const oldBots = loadBotsFromInstance(settings.windbots.old, '旧版');
+    const currentBots = loadBotsFromInstance(settings.windbots.current, 'Current');
+    const oldBots = loadBotsFromInstance(settings.windbots.old, 'Baseline');
     return [...currentBots.values()]
         .filter((bot) => oldBots.has(bot.deck))
         .map((current) => ({
@@ -67,7 +72,7 @@ function getRegressionCatalog(settings) {
 }
 
 function getCurrentCatalog(settings) {
-    return [...loadBotsFromInstance(settings.windbots.current, '新版').values()]
+    return [...loadBotsFromInstance(settings.windbots.current, 'Current').values()]
         .sort((left, right) => {
             if (left.aiLevel === null) {
                 return right.aiLevel === null ? left.deck.localeCompare(right.deck) : 1;
@@ -80,7 +85,7 @@ function getCurrentCatalog(settings) {
 }
 
 function getOldCatalog(settings) {
-    return [...loadBotsFromInstance(settings.windbots.old, '旧版').values()]
+    return [...loadBotsFromInstance(settings.windbots.old, 'Baseline').values()]
         .sort((left, right) => {
             if (left.aiLevel === null) {
                 return right.aiLevel === null ? left.deck.localeCompare(right.deck) : 1;
@@ -93,19 +98,24 @@ function getOldCatalog(settings) {
 }
 
 function validateWindBotRuntime(instance, label) {
+    if (instance.mode === 'skynet') {
+        validateSkynetRuntime(instance);
+        return;
+    }
     if (instance.mode === 'local') {
         const exePath = path.join(instance.runtimeDir, 'WindBot.exe');
         if (!fs.existsSync(exePath)) {
-            throw new Error(`${label}程序不存在: ${exePath}`);
+            throw new Error(`${label} executable does not exist: ${exePath}`);
         }
         return;
     }
     if (instance.host.trim() === '') {
-        throw new Error(`${label}远程服务地址不能为空`);
+        throw new Error(`${label} remote service host must not be empty`);
     }
 }
 
 function getDialog(instance, dialog) {
+    if (instance.mode === 'skynet') return null;
     if (instance.mode === 'remote') {
         return dialog;
     }
@@ -115,17 +125,21 @@ function getDialog(instance, dialog) {
 }
 
 function makeCompetitor(instance, bot, source, slot, rankName) {
+    if (instance.mode === 'skynet' && !bot.skynet) {
+        throw new Error(`SKYNET profile is not configured: ${bot.deck}`);
+    }
     return {
         botLabel: bot.label,
         deck: bot.deck,
         dialog: getDialog(instance, bot.dialog),
-        endpointHost: instance.mode === 'local' ? '127.0.0.1' : instance.host,
+        endpointHost: instance.mode !== 'remote' ? '127.0.0.1' : instance.host,
         endpointPort: instance.port,
         executionMode: instance.mode,
-        rankName: rankName || `${source === 'current' ? '新' : '旧'}-${bot.label}`,
+        rankName: rankName || `${source === 'current' ? 'C' : 'B'}-${bot.label}`,
         runtimeDir: instance.runtimeDir,
         slot,
         source,
+        ...(bot.skynet ? { skynet: structuredClone(bot.skynet) } : {}),
     };
 }
 
@@ -142,15 +156,15 @@ function validateRankNames(matchups, settings) {
         ))
         .map(([name]) => name);
     if (duplicateRankNames.length > 0) {
-        throw new Error(`本次测试生成了重复的排行榜名称: ${
-            duplicateRankNames.map((name) => `“${name}”`).join('、')
+        throw new Error(`This run generated duplicate ranking names: ${
+            duplicateRankNames.map((name) => `“${name}”`).join(', ')
         }`);
     }
     const rankNames = [...competitorsByRankName.keys()];
     const overlongRankNames = rankNames.filter((name) => [...name].length > 20);
     if (overlongRankNames.length > 0) {
-        throw new Error(`本次测试生成了超过 20 个字符的排行榜名称: ${
-            overlongRankNames.map((name) => `“${name}”`).join('、')
+        throw new Error(`This run generated ranking names exceeding 20 characters: ${
+            overlongRankNames.map((name) => `“${name}”`).join(', ')
         }`);
     }
 }
@@ -158,15 +172,15 @@ function validateRankNames(matchups, settings) {
 function buildRegressionMatchups(settings, requestedDecks) {
     const currentInstance = settings.windbots.current;
     const oldInstance = settings.windbots.old;
-    if (getWindBotEndpoint(currentInstance) === getWindBotEndpoint(oldInstance)) {
-        throw new Error('新版和旧版 WindBot 不能使用同一服务地址与端口');
+    if (sameWindBotEndpoint(currentInstance, oldInstance)) {
+        throw new Error('Current and baseline WindBot must not use the same service endpoint');
     }
-    validateWindBotRuntime(currentInstance, '新版');
-    validateWindBotRuntime(oldInstance, '旧版');
+    validateWindBotRuntime(currentInstance, 'Current');
+    validateWindBotRuntime(oldInstance, 'Baseline');
 
     const catalog = getRegressionCatalog(settings);
     if (catalog.length === 0) {
-        throw new Error('新旧版本之间没有可运行的共同卡组');
+        throw new Error('Current and baseline catalogs have no shared runnable decks');
     }
 
     const catalogByDeck = new Map(catalog.map((item) => [item.deck, item]));
@@ -175,7 +189,7 @@ function buildRegressionMatchups(settings, requestedDecks) {
         ? [...requestedDeckSet].filter((deck) => !catalogByDeck.has(deck))
         : [];
     if (missing.length > 0) {
-        throw new Error(`这些卡组不同时存在于新旧配置中: ${missing.join(', ')}`);
+        throw new Error(`These decks are not present in both catalogs: ${missing.join(', ')}`);
     }
     const selectedDecks = catalog
         .filter((item) => (
@@ -185,7 +199,7 @@ function buildRegressionMatchups(settings, requestedDecks) {
         ))
         .map((item) => item.deck);
     if (selectedDecks.length === 0) {
-        throw new Error('没有符合条件的共同卡组；批量选择不会包含 LV1');
+        throw new Error('No eligible shared decks; bulk selection excludes LV1');
     }
 
     const matchups = selectedDecks.map((deck) => {
@@ -205,17 +219,17 @@ function buildRegressionMatchups(settings, requestedDecks) {
 
 function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, challengerVersion = 'current') {
     if (!['current', 'old'].includes(challengerVersion)) {
-        throw new Error('挑战者版本无效');
+        throw new Error('Invalid challenger version');
     }
     const targetInstance = settings.windbots[challengerVersion];
     const opponentInstance = settings.windbots.current;
-    validateWindBotRuntime(targetInstance, challengerVersion === 'current' ? '新版' : '旧版');
+    validateWindBotRuntime(targetInstance, challengerVersion === 'current' ? 'Current' : 'Baseline');
     if (challengerVersion === 'old') {
-        validateWindBotRuntime(opponentInstance, '新版');
+        validateWindBotRuntime(opponentInstance, 'Current');
     }
     const requestedTargetDeck = String(targetDeckInput || '').trim();
     if (!requestedTargetDeck) {
-        throw new Error('挑战者卡组名称不能为空');
+        throw new Error('Challenger deck name must not be empty');
     }
 
     const opponentCatalog = getCurrentCatalog(settings);
@@ -230,7 +244,7 @@ function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, chall
         opponentDecks = [...new Set(requestedDecks.map((deck) => deck.trim()))];
         const missing = opponentDecks.filter((deck) => !opponentCatalogByDeck.has(deck));
         if (missing.length > 0) {
-            throw new Error(`这些对手不在新版 bot.conf 列表中: ${missing.join(', ')}`);
+            throw new Error(`These opponents are not in the current catalog: ${missing.join(', ')}`);
         }
     } else {
         opponentDecks = opponentCatalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
@@ -239,7 +253,7 @@ function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, chall
         }
     }
     if (opponentDecks.length === 0) {
-        throw new Error('至少需要一个对手卡组');
+        throw new Error('At least one opponent deck is required');
     }
 
     const targetBot = targetCatalogByDeck.get(targetDeck) || {
@@ -264,14 +278,14 @@ function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, chall
                     targetBot,
                     'target',
                     1,
-                    targetBot.deck,
+                    targetInstance.mode === 'skynet' ? `T-${targetBot.label}` : targetBot.deck,
                 ),
                 makeCompetitor(
                     opponentInstance,
                     opponent,
                     'opponent',
                     2,
-                    opponentCatalogByDeck.has(opponentDeck) ? opponent.label : `对手-${opponent.deck}`,
+                    opponentCatalogByDeck.has(opponentDeck) ? opponent.label : `Opp-${opponent.deck}`,
                 ),
             ],
         };
@@ -282,7 +296,7 @@ function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, chall
 
 function buildRankingEntries(settings, requestedDecks) {
     const instance = settings.windbots.current;
-    validateWindBotRuntime(instance, '新版');
+    validateWindBotRuntime(instance, 'Current');
     const catalog = getCurrentCatalog(settings);
     const catalogByDeck = new Map(catalog.map((bot) => [bot.deck, bot]));
     const selectedDecks = requestedDecks?.length
@@ -290,10 +304,10 @@ function buildRankingEntries(settings, requestedDecks) {
         : catalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
     const missing = selectedDecks.filter((deck) => !catalogByDeck.has(deck));
     if (missing.length > 0) {
-        throw new Error(`这些卡组不在新版 bot.conf 列表中: ${missing.join(', ')}`);
+        throw new Error(`These decks are not in the current catalog: ${missing.join(', ')}`);
     }
     if (selectedDecks.length < 2) {
-        throw new Error('胜率排行至少需要两个卡组');
+        throw new Error('Ranking requires at least two decks');
     }
 
     const entries = selectedDecks.map((deck) => {
@@ -318,7 +332,10 @@ function buildRankingEntries(settings, requestedDecks) {
 
 function buildTagEntries(settings, requestedDecks) {
     const instance = settings.windbots.current;
-    validateWindBotRuntime(instance, '新版');
+    if (instance.mode === 'skynet') {
+        throw new Error('SKYNET tag-duel support has not been validated; use regression, challenge or ranking');
+    }
+    validateWindBotRuntime(instance, 'Current');
     const catalog = getCurrentCatalog(settings);
     const catalogByDeck = new Map(catalog.map((bot) => [bot.deck, bot]));
     const selectedDecks = requestedDecks?.length
@@ -326,10 +343,10 @@ function buildTagEntries(settings, requestedDecks) {
         : catalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
     const missing = selectedDecks.filter((deck) => !catalogByDeck.has(deck));
     if (missing.length > 0) {
-        throw new Error(`这些卡组不在新版 bot.conf 列表中：${missing.join(', ')}`);
+        throw new Error(`These decks are not in the current catalog: ${missing.join(', ')}`);
     }
     if (selectedDecks.length === 0) {
-        throw new Error('双打冒烟测试至少需要一个测试卡组');
+        throw new Error('Tag smoke tests require at least one deck');
     }
 
     const entries = selectedDecks.map((deck) => {
@@ -348,48 +365,50 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
     const baseIssues = [];
     const srvpro = selectedSrvpro || {};
     for (const [label, value] of [
-        ['SRVPro 地址', srvpro.host],
-        ['SRVPro 管理账号', srvpro.username],
-        ['SRVPro 管理密码', srvpro.password],
+        ['SRVPro host', srvpro.host],
+        ['SRVPro admin username', srvpro.username],
+        ['SRVPro admin password', srvpro.password],
     ]) {
         if (typeof value !== 'string' || value.trim() === '') {
-            baseIssues.push(`${label}未配置`);
+            baseIssues.push(`${label} is not configured`);
         }
     }
 
     const inspectInstance = (label, instance) => {
         const issues = [];
-        if (instance.mode === 'local') {
+        if (instance.mode === 'skynet') {
+            try { validateSkynetRuntime(instance); } catch (error) { issues.push(error.message); }
+        } else if (instance.mode === 'local') {
             if (!instance.runtimeDir) {
-                issues.push(`${label} WindBot 运行目录未配置`);
+                issues.push(`${label} WindBot runtime directory is not configured`);
             } else {
                 const executablePath = path.join(instance.runtimeDir, 'WindBot.exe');
                 if (!fs.existsSync(executablePath)) {
-                    issues.push(`${label} WindBot.exe 不存在: ${executablePath}`);
+                    issues.push(`${label} WindBot.exe does not exist: ${executablePath}`);
                 }
             }
             if (!instance.botConfPath) {
-                issues.push(`${label} bot.conf 路径未配置`);
+                issues.push(`${label} bot.conf path is not configured`);
             } else if (!fs.existsSync(instance.botConfPath)) {
-                issues.push(`${label} bot.conf 不存在: ${instance.botConfPath}`);
+                issues.push(`${label} bot.conf does not exist: ${instance.botConfPath}`);
             }
         } else {
             if (!instance.host) {
-                issues.push(`${label}远程 WindBot 地址未配置`);
+                issues.push(`${label} remote WindBot host is not configured`);
             }
             if (!instance.botConfText?.trim()) {
                 issues.push(instance.botConfUrl
-                    ? `${label}尚未从 URL 获取 bot.conf，请手动刷新`
-                    : `${label}远程模式缺少 bot.conf 内容或 URL`);
+                    ? `${label} bot.conf URL has not been fetched; refresh it first`
+                    : `${label} remote mode requires bot.conf content or a URL`);
             }
         }
         return issues;
     };
-    const currentIssues = [...baseIssues, ...inspectInstance('新版', settings.windbots.current)];
-    const oldIssues = inspectInstance('旧版', settings.windbots.old);
+    const currentIssues = [...baseIssues, ...inspectInstance('Current', settings.windbots.current)];
+    const oldIssues = inspectInstance('Baseline', settings.windbots.old);
     const regressionIssues = [...currentIssues, ...oldIssues];
-    if (getWindBotEndpoint(settings.windbots.current) === getWindBotEndpoint(settings.windbots.old)) {
-        regressionIssues.push('新版和旧版 WindBot 不能使用同一服务地址与端口');
+    if (sameWindBotEndpoint(settings.windbots.current, settings.windbots.old)) {
+        regressionIssues.push('Current and baseline WindBot must not use the same service endpoint');
     }
 
     let decks = [];
@@ -402,7 +421,7 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 oldLabel: item.old.label,
             }));
             if (decks.length === 0) {
-                regressionIssues.push('两份 bot.conf 没有共同的可运行卡组');
+                regressionIssues.push('The two catalogs have no shared runnable decks');
             }
         } catch (error) {
             regressionIssues.push(error.message);
@@ -417,7 +436,7 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 deck: item.deck,
             }));
             if (currentDecks.length === 0) {
-                currentIssues.push('新版 bot.conf 没有可运行的卡组');
+                currentIssues.push('Current catalog has no runnable decks');
             }
         } catch (error) {
             currentIssues.push(error.message);
@@ -432,15 +451,15 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 deck: item.deck,
             }));
             if (oldDecks.length === 0) {
-                oldIssues.push('旧版 bot.conf 没有可运行的卡组');
+                oldIssues.push('Baseline catalog has no runnable decks');
             }
         } catch (error) {
             oldIssues.push(error.message);
         }
     }
     const oldChallengeIssues = [...currentIssues, ...oldIssues];
-    if (getWindBotEndpoint(settings.windbots.current) === getWindBotEndpoint(settings.windbots.old)) {
-        oldChallengeIssues.push('新版和旧版 WindBot 不能使用同一服务地址与端口');
+    if (sameWindBotEndpoint(settings.windbots.current, settings.windbots.old)) {
+        oldChallengeIssues.push('Current and baseline WindBot must not use the same service endpoint');
     }
     const currentMode = { issues: currentIssues, valid: currentIssues.length === 0 };
     return {
@@ -452,7 +471,9 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
             challengeOld: { issues: oldChallengeIssues, valid: oldChallengeIssues.length === 0 },
             ranking: currentMode,
             regression: { issues: regressionIssues, valid: regressionIssues.length === 0 },
-            tag: currentMode,
+            tag: settings.windbots.current.mode === 'skynet'
+                ? { valid: false, issues: [...currentIssues, 'SKYNET tag-duel support has not been validated'] }
+                : currentMode,
         },
         oldDecks,
         valid: regressionIssues.length === 0,

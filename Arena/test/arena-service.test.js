@@ -16,12 +16,12 @@ test('timed stop rejects finite modes and invalid durations before accessing set
     const service = new ArenaService({}, {});
     for (const kind of ['regression', 'challenge']) {
         service.contexts.set('srvpro-1', { id: 'run', kind, running: true });
-        assert.throws(() => service.scheduleStopRun('run', 1), /仅适用于无限数量/);
+        assert.throws(() => service.scheduleStopRun('run', 1), /only applies to unbounded/);
     }
     for (const kind of ['ranking', 'tag']) {
         for (const stopAfterMinutes of [0, -1, 1.5, 10081, '60', true, NaN, Infinity]) {
             service.contexts.set('srvpro-1', { id: 'run', kind, running: true });
-            assert.throws(() => service.scheduleStopRun('run', stopAfterMinutes), /1 到 10080 分钟/);
+            assert.throws(() => service.scheduleStopRun('run', stopAfterMinutes), /1 to 10080 minutes/);
         }
     }
 });
@@ -68,7 +68,7 @@ for (const kind of ['ranking', 'tag']) {
         service.waitForResults = async () => true;
         await service.execute(context);
         assert.deepEqual(statuses, ['running', 'settling', 'stopped']);
-        assert.ok(events.some((event) => /定时停止已到期/.test(event[3])));
+        assert.ok(events.some((event) => /Scheduled stop reached/.test(event[3])));
         callback();
         assert.equal(statuses.length, 3);
     });
@@ -97,9 +97,9 @@ test('rescheduling replaces the previous timer and stopped tasks reject scheduli
     assert.ok(Date.parse(deadlines[1]) < Date.parse(deadlines[0]));
     for (const state of [{ running: false }, { finished: true }, { gracefulStop: true }, { stopReason: 'stopped' }]) {
         service.contexts.set('srvpro-1', { id: 'run', running: true, kind: 'ranking', ...state });
-        assert.throws(() => service.scheduleStopRun('run', 1), /只能为正在调度/);
+        assert.throws(() => service.scheduleStopRun('run', 1), /Scheduled stop can only be set for actively scheduling/);
     }
-    assert.throws(() => service.scheduleStopRun('missing', 1), /只能为正在调度/);
+    assert.throws(() => service.scheduleStopRun('missing', 1), /Scheduled stop can only be set for actively scheduling/);
 });
 
 test('manual stop and failure clear the scheduled stop timer', async (t) => {
@@ -261,12 +261,12 @@ test('ranking scheduler draws two distinct random entries and records one pair l
     service.getRoomCount = async () => 0;
     service.launchRankingPair = async () => {
         if (launches.length === 20) {
-            context.abortController.abort(new DOMException('测试结束', 'AbortError'));
+            context.abortController.abort(new DOMException('Test finished', 'AbortError'));
             throw context.abortController.signal.reason;
         }
     };
 
-    await assert.rejects(service.scheduleGames(context), /测试结束/);
+    await assert.rejects(service.scheduleGames(context), /Test finished/);
     assert.equal(launches.length, 20);
     assert.ok(launches.every((launch) => launch.matchupIds.length === 2));
     assert.ok(launches.every((launch) => new Set(launch.matchupIds).size === 2));
@@ -287,12 +287,12 @@ test('tag scheduler draws four candidates with replacement for every room', asyn
     service.getRoomCount = async () => 0;
     service.launchTagGroup = async () => {
         if (launches.length === 20) {
-            context.abortController.abort(new DOMException('测试结束', 'AbortError'));
+            context.abortController.abort(new DOMException('Test finished', 'AbortError'));
             throw context.abortController.signal.reason;
         }
     };
 
-    await assert.rejects(service.scheduleGames(context), /测试结束/);
+    await assert.rejects(service.scheduleGames(context), /Test finished/);
     assert.equal(launches.length, 20);
     assert.ok(launches.every((launch) => launch.matchupIds.length === 4));
     assert.ok(launches.every((launch) => launch.matchupIds.every((id) => id === 1)));
@@ -369,7 +369,7 @@ test('final result wait queries scores before completing when SRVPro has no room
         'warning',
         'settle-empty-rooms',
     ]);
-    assert.match(events[0][3], /可能有对局未被排行统计记录/);
+    assert.match(events[0][3], /some games may be missing from the rankings/);
     assert.deepEqual(service.getRevisions(), { active: 1, runs: 0, system: 0 });
 });
 
@@ -528,7 +528,7 @@ test('pair launch closes timed-out rooms and retries with a new password', async
         const requestUrl = new URL(url);
         requests.push(requestUrl);
         if (requestUrl.hostname === 'old.lan') {
-            throw new DOMException('WindBot 请求超时', 'TimeoutError');
+            throw new DOMException('WindBot request timed out', 'TimeoutError');
         }
         if (requestUrl.pathname === '/api/message') {
             return new Response("['kick ok', 'M#123456789']", {
@@ -541,7 +541,7 @@ test('pair launch closes timed-out rooms and retries with a new password', async
     await assert.rejects(
         service.launchMatchup(activeContext, matchup),
         (error) => error.code === 'WINDBOT_UNAVAILABLE'
-            && /WindBot 连续 3 个约战房间请求失败/.test(error.message),
+            && /WindBot failed 3 consecutive challenge-room requests/.test(error.message),
     );
     const windBotPasswords = requests
         .filter((url) => url.hostname === 'current.lan' || url.hostname === 'old.lan')
@@ -587,18 +587,18 @@ test('WindBot 404 distinguishes a missing challenger from other missing decks', 
             source: 'target',
         }, 'M#123456789'),
         (error) => error.code === 'WINDBOT_DECK_NOT_FOUND'
-            && error.message === '挑战者卡组“MissingTarget”在对应的 WindBot 中不存在',
+            && error.message === 'Challenger deck “MissingTarget” does not exist in the selected WindBot',
     );
     await assert.rejects(
         service.addBot(activeContext, {
             deck: 'MissingOpponent',
             endpointHost: 'current.lan',
             endpointPort: 2399,
-            rankName: '对手-MissingOpponent',
+            rankName: 'Opponent-MissingOpponent',
             source: 'opponent',
         }, 'M#123456790'),
         (error) => error.code === 'WINDBOT_DECK_NOT_FOUND'
-            && error.message === '对手-MissingOpponent 使用的卡组“MissingOpponent”在对应的 WindBot 中不存在，请检查 bot.conf 与 WindBot 版本是否匹配',
+            && error.message === 'Opponent-MissingOpponent deck “MissingOpponent” does not exist in the selected WindBot; check that bot.conf matches its version',
     );
 });
 
@@ -615,12 +615,12 @@ test('scheduler stops immediately when WindBot reports a missing deck', async ()
     let launchCount = 0;
     service.launchMatchup = async () => {
         launchCount++;
-        const error = new Error('挑战者卡组不存在');
+        const error = new Error('Challenger deck does not exist');
         error.code = 'WINDBOT_DECK_NOT_FOUND';
         throw error;
     };
 
-    await assert.rejects(service.scheduleGames(context), /挑战者卡组不存在/);
+    await assert.rejects(service.scheduleGames(context), /Challenger deck does not exist/);
     assert.equal(launchCount, 1);
     assert.deepEqual(events, []);
 });
@@ -636,7 +636,7 @@ test('scheduler stops immediately after WindBot is confirmed unavailable', async
     context.totalGames = 1;
     service.getRoomCount = async () => 0;
     service.launchMatchup = async () => {
-        const error = new Error('新版 WindBot 连续 3 次请求不可用');
+        const error = new Error('Current WindBot unavailable after 3 consecutive requests');
         error.code = 'WINDBOT_UNAVAILABLE';
         throw error;
     };
@@ -711,7 +711,7 @@ test('room queries abort the task when the SRVPro instance changes', async () =>
     await assert.rejects(
         service.getRoomCount(activeContext),
         (error) => error.code === 'SRVPRO_INSTANCE_CHANGED'
-            && /服务可能在任务运行期间重启/.test(error.message),
+            && /the service may have restarted during the run/.test(error.message),
     );
     assert.equal(activeContext.abortController.signal.aborted, true);
     assert.equal(
@@ -764,7 +764,7 @@ test('SRVPro room count timeout reports the endpoint and startup guidance', asyn
             statusPort: 7922,
             username: 'arena',
         }),
-        (error) => error.message === 'SRVPro 房间计数 API 请求超时（5 秒）：http://127.0.0.1:7922/api/getroomscount；请确认 SRVPro 已启动且管理端口可访问'
+        (error) => error.message === 'SRVPro room-count API request timed out (5 seconds): http://127.0.0.1:7922/api/getroomscount; confirm SRVPro is running and the management port is reachable'
             && error.cause?.name === 'TimeoutError'
             && !error.message.includes('management-secret'),
     );
@@ -787,9 +787,9 @@ test('SRVPro connection refusal exposes the network error code without credentia
             statusPort: 7922,
             username: 'arena',
         }),
-        (error) => /SRVPro 房间计数 API 请求失败：http:\/\/127\.0\.0\.1:7922\/api\/getroomscount/.test(error.message)
-            && /目标拒绝连接（ECONNREFUSED）/.test(error.message)
-            && /请确认 SRVPro 已启动且管理端口配置正确/.test(error.message)
+        (error) => /SRVPro room-count API request failed: http:\/\/127\.0\.0\.1:7922\/api\/getroomscount/.test(error.message)
+            && /Connection refused \(ECONNREFUSED\)/.test(error.message)
+            && /confirm SRVPro is running and its management port is configured correctly/.test(error.message)
             && !error.message.includes('management-secret'),
     );
 });
@@ -855,13 +855,13 @@ test('run notes validate input and notify history and active views', () => {
         },
         getRun: (id) => records.get(id),
     });
-    assert.equal(service.updateRunNote('finished', ' 中文备注 ').note, '中文备注');
-    assert.equal(service.updateRunNote('active', '测试').status, 'running');
+    assert.equal(service.updateRunNote('finished', ' Sample note ').note, 'Sample note');
+    assert.equal(service.updateRunNote('active', 'Test').status, 'running');
     assert.equal(service.updateRunNote('finished', '  ').note, '');
     for (const value of [undefined, null, 1, {}, 'a'.repeat(201)]) {
         assert.throws(() => service.updateRunNote('finished', value), { statusCode: 400 });
     }
-    assert.throws(() => service.updateRunNote('missing', '备注'), { statusCode: 404 });
+    assert.throws(() => service.updateRunNote('missing', 'Note'), { statusCode: 404 });
     assert.deepEqual(service.getRevisions(), { active: 3, runs: 3, system: 0 });
 });
 
@@ -978,27 +978,27 @@ test('runtime infrastructure loss is interrupted while startup unavailability is
         return statuses[0];
     };
 
-    const instanceChanged = new Error('SRVPro 实例已变化');
+    const instanceChanged = new Error('SRVPro instance changed');
     instanceChanged.code = 'SRVPRO_INSTANCE_CHANGED';
     assert.deepEqual(await executeWithError(instanceChanged), {
-        reason: '测试中断: SRVPro 实例已变化',
+        reason: 'Run interrupted: SRVPro instance changed',
         status: 'interrupted',
         storedError: undefined,
     });
 
-    const windBotUnavailable = new Error('新版 WindBot 连续 3 次请求不可用');
+    const windBotUnavailable = new Error('Current WindBot unavailable after 3 consecutive requests');
     windBotUnavailable.code = 'WINDBOT_UNAVAILABLE';
     assert.deepEqual(await executeWithError(windBotUnavailable), {
-        reason: '测试中断: 新版 WindBot 连续 3 次请求不可用',
+        reason: 'Run interrupted: Current WindBot unavailable after 3 consecutive requests',
         status: 'interrupted',
         storedError: undefined,
     });
 
-    const startupUnavailable = new Error('新版 WindBot HTTP 服务没有就绪');
+    const startupUnavailable = new Error('Current WindBot HTTP server was not ready');
     assert.deepEqual(await executeWithError(startupUnavailable, true), {
-        reason: '测试失败: 新版 WindBot HTTP 服务没有就绪',
+        reason: 'Run failed: Current WindBot HTTP server was not ready',
         status: 'failed',
-        storedError: '新版 WindBot HTTP 服务没有就绪',
+        storedError: 'Current WindBot HTTP server was not ready',
     });
 });
 
@@ -1024,7 +1024,7 @@ test('run creation rejects incomplete settings before persisting a run', () => {
 
     assert.throws(
         () => service.createRun({ decks: ['Alpha', 'Beta'], kind: 'ranking' }),
-        (error) => error.statusCode === 400 && /SRVPro 地址未配置/.test(error.message),
+        (error) => error.statusCode === 400 && /SRVPro host is not configured/.test(error.message),
     );
     assert.equal(createdRunCount, 0);
     assert.equal(service.contexts.size, 0);
@@ -1235,7 +1235,7 @@ test('different SRVPro instances can run concurrently while each instance stays 
     assert.equal(JSON.stringify(createdRuns).includes('second-secret'), false);
     assert.throws(
         () => service.createRun({ decks: ['Alpha', 'Beta'], kind: 'ranking', srvproId: 'srvpro-1' }),
-        (error) => error.statusCode === 409 && /SRVPro 1 已有测试正在运行/.test(error.message),
+        (error) => error.statusCode === 409 && /SRVPro 1 already has an active run/.test(error.message),
     );
 });
 
@@ -1395,11 +1395,11 @@ test('room inspection authenticates server-side and exposes only display fields'
                 roommode: 2,
                 roomname: 'T#85468',
                 users: [
-                    { ip: '192.0.2.1', name: '新版', pos: 0, status: { lp: 8000, score: 1 } },
-                    { ip: '192.0.2.2', name: '旧版', pos: 1, status: { lp: 8000, score: 0 } },
-                    { ip: '192.0.2.4', name: '队友', pos: 2, status: { lp: 8000, score: 1 } },
-                    { ip: '192.0.2.5', name: '对手', pos: 3, status: { lp: 8000, score: 0 } },
-                    { ip: '192.0.2.3', name: '观战者', pos: 7, status: null },
+                    { ip: '192.0.2.1', name: 'Current', pos: 0, status: { lp: 8000, score: 1 } },
+                    { ip: '192.0.2.2', name: 'Baseline', pos: 1, status: { lp: 8000, score: 0 } },
+                    { ip: '192.0.2.4', name: 'Teammate', pos: 2, status: { lp: 8000, score: 1 } },
+                    { ip: '192.0.2.5', name: 'Opponent', pos: 3, status: { lp: 8000, score: 0 } },
+                    { ip: '192.0.2.3', name: 'Spectator', pos: 7, status: null },
                 ],
             }],
         });
@@ -1412,10 +1412,10 @@ test('room inspection authenticates server-side and exposes only display fields'
         mode: 2,
         name: 'T#85468',
         players: [
-            { name: '新版', position: 0, status: { lp: 8000, score: 1 } },
-            { name: '旧版', position: 1, status: { lp: 8000, score: 0 } },
-            { name: '队友', position: 2, status: { lp: 8000, score: 1 } },
-            { name: '对手', position: 3, status: { lp: 8000, score: 0 } },
+            { name: 'Current', position: 0, status: { lp: 8000, score: 1 } },
+            { name: 'Baseline', position: 1, status: { lp: 8000, score: 0 } },
+            { name: 'Teammate', position: 2, status: { lp: 8000, score: 1 } },
+            { name: 'Opponent', position: 3, status: { lp: 8000, score: 0 } },
         ],
         status: 'Duel:2 Turn:10',
     }]);
@@ -1520,9 +1520,9 @@ test('local WindBot stderr errors are recorded for running tag tasks', () => {
             'local-tag',
             'error',
             'windbot-output-error',
-            'WindBot 输出错误: Invalid card selection, using a legal fallback.',
+            'WindBot output error: Invalid card selection, using a legal fallback.',
         ],
-        ['local-tag', 'error', 'windbot-output-error', 'WindBot 输出错误: Tick Error'],
+        ['local-tag', 'error', 'windbot-output-error', 'WindBot output error: Tick Error'],
     ]);
 });
 
@@ -1548,7 +1548,7 @@ test('local WindBot output is decoded from the Windows Chinese code page', (cont
     const service = new ArenaService({}, {
         getArenaSettings: () => ({ settings }),
     });
-    service.startWindBot('current', '新版', {
+    service.startWindBot('current', 'Current', {
         port: 2399,
         runtimeDir: 'F:\\WindBot',
     });
@@ -1557,8 +1557,8 @@ test('local WindBot output is decoded from the Windows Chinese code page', (cont
     child.stderr.write(encoded.subarray(0, 1));
     child.stderr.write(encoded.subarray(1));
 
-    assert.match(service.getWindBotOutput('current').output, /\[错误\] 拒绝访问。/);
-    assert.match(loggedOutput, /\[新版:错误\] 拒绝访问。/);
+    assert.match(service.getWindBotOutput('current').output, /\[error\] \u62d2\u7edd\u8bbf\u95ee\u3002/);
+    assert.match(loggedOutput, /\[Current:error\] \u62d2\u7edd\u8bbf\u95ee\u3002/);
     assert.doesNotMatch(loggedOutput, /�/);
 });
 
@@ -1584,7 +1584,7 @@ test('local WindBot exit interrupts running tasks but not tasks still starting',
     const startingContext = makeContext('starting-task', false);
     service.contexts.set('srvpro-1', runningContext);
     service.contexts.set('srvpro-2', startingContext);
-    service.startWindBot('current', '新版', {
+    service.startWindBot('current', 'Current', {
         port: 2399,
         runtimeDir: 'F:\\WindBot',
     });
@@ -1662,7 +1662,7 @@ test('score polling reads the SRVPro ranking every 15 seconds', async (context) 
         assert.equal(url.searchParams.get('pass'), 'management-secret');
         return Response.json({
             serverInstanceId: 'score-instance',
-            scores: [{ combo: 3, flee: 1, lose: 2, name: '新-Dragon', win: 4 }],
+            scores: [{ combo: 3, flee: 1, lose: 2, name: 'C-Dragon', win: 4 }],
         });
     };
     service.receiveRank = (receivedContext, rank) => {
@@ -1673,7 +1673,7 @@ test('score polling reads the SRVPro ranking every 15 seconds', async (context) 
 
     await service.pollScores(activeContext, 1);
     assert.deepEqual(received, [
-        [['新-Dragon', { combo: 3, flee: 1, lose: 2, win: 4 }]],
+        [['C-Dragon', { combo: 3, flee: 1, lose: 2, win: 4 }]],
     ]);
 });
 
@@ -1696,7 +1696,7 @@ test('score queries reject data from a restarted SRVPro instance', async (contex
     const originalFetch = global.fetch;
     context.after(() => { global.fetch = originalFetch; });
     global.fetch = async () => Response.json({
-        scores: [{ combo: 0, flee: 0, lose: 0, name: '新-Dragon', win: 1 }],
+        scores: [{ combo: 0, flee: 0, lose: 0, name: 'C-Dragon', win: 1 }],
         serverInstanceId: 'restarted-instance',
     });
     let rankRecorded = false;

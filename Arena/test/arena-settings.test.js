@@ -70,13 +70,13 @@ test('rooms created per second must be an integer in the supported range', () =>
     settings.srvpros[0].roomsPerSecond = 0;
     assert.throws(
         () => validateAndMergeArenaSettings(settings, settings),
-        /每秒创建房间数 必须是 1 到 100 之间的整数/,
+        /rooms per second must be an integer from 1 to 100/,
     );
 
     settings.srvpros[0].roomsPerSecond = 2.5;
     assert.throws(
         () => validateAndMergeArenaSettings(settings, settings),
-        /每秒创建房间数 必须是 1 到 100 之间的整数/,
+        /rooms per second must be an integer from 1 to 100/,
     );
 });
 
@@ -103,7 +103,7 @@ test('multiple SRVPro instances keep secrets by stable ID and require unique end
     input.srvpros[1].statusPort = input.srvpros[0].statusPort;
     assert.throws(
         () => validateAndMergeArenaSettings(input, existing),
-        /SRVPro 管理地址重复/,
+        /Duplicate SRVPro management endpoint/,
     );
 });
 
@@ -117,7 +117,7 @@ test('remote WindBot accepts an HTTP bot.conf URL instead of pasted content', ()
     settings.windbots.current.botConfUrl = 'file:///srv/windbot/bot.conf';
     assert.throws(
         () => validateAndMergeArenaSettings(settings, settings),
-        /只支持 HTTP 或 HTTPS/,
+        /supports only HTTP or HTTPS/,
     );
 });
 
@@ -174,6 +174,6 @@ test('configured WindBot definitions cannot point to the same endpoint', () => {
     settings.windbots.old.port = settings.windbots.current.port;
     assert.throws(
         () => validateAndMergeArenaSettings(settings, settings),
-        /不能使用同一服务地址与端口/,
+        /must not use the same service endpoint/,
     );
 });

@@ -55,12 +55,12 @@ test('run notes migrate existing records and persist across restarts', (context)
     database = new ArenaDatabase(databasePath);
     assert.equal(database.getRun('legacy').note, '');
     assert.equal(database.getRun('legacy').gamesPerMatchup, 10);
-    assert.equal(database.setRunNote('legacy', '新版测试 <备注>'), true);
-    assert.equal(database.setRunNote('missing', '备注'), false);
+    assert.equal(database.setRunNote('legacy', 'Current version test <note>'), true);
+    assert.equal(database.setRunNote('missing', 'Note'), false);
     database.close();
     database = new ArenaDatabase(databasePath);
-    assert.equal(database.getRun('legacy').note, '新版测试 <备注>');
-    assert.equal(database.listRuns()[0].note, '新版测试 <备注>');
+    assert.equal(database.getRun('legacy').note, 'Current version test <note>');
+    assert.equal(database.listRuns()[0].note, 'Current version test <note>');
     database.setRunNote('legacy', '');
     assert.equal(database.getRun('legacy').note, '');
 });
@@ -131,7 +131,7 @@ test('ArenaDatabase persists a run and applies rank statistics', (context) => {
                     endpointHost: '127.0.0.1',
                     endpointPort: 2399,
                     executionMode: 'local',
-                    rankName: '新-Dragon',
+                    rankName: 'New-Dragon',
                     slot: 1,
                     source: 'current',
                 },
@@ -142,7 +142,7 @@ test('ArenaDatabase persists a run and applies rank statistics', (context) => {
                     endpointHost: 'windbot-old.lan',
                     endpointPort: 2398,
                     executionMode: 'remote',
-                    rankName: '旧-Dragon',
+                    rankName: 'Old-Dragon',
                     slot: 2,
                     source: 'old',
                 },
@@ -151,11 +151,11 @@ test('ArenaDatabase persists a run and applies rank statistics', (context) => {
         }],
     });
     const rawRank = [
-        ['新-Dragon', { flee: 1, lose: 2, win: 7 }],
-        ['旧-Dragon', { flee: 0, lose: 7, win: 3 }],
+        ['New-Dragon', { flee: 1, lose: 2, win: 7 }],
+        ['Old-Dragon', { flee: 0, lose: 7, win: 3 }],
     ];
     database.recordRank('run-1', normalizeRank(rawRank), rawRank);
-    database.addEvent('run-1', 'info', 'legacy-wording', '已创建 1 个对局组');
+    database.addEvent('run-1', 'info', 'legacy-wording', '\u5df2\u521b\u5efa 1 \u4e2a\u5bf9\u5c40\u7ec4');
     const run = database.getRun('run-1');
 
     assert.equal(run.matchups[0].observedGames, 9);
@@ -292,10 +292,10 @@ test('ArenaDatabase records an event when an active run is marked interrupted', 
     assert.equal(database.markActiveRunsInterrupted(), 0);
     const run = database.getRun('interrupted-1');
     assert.equal(run.status, 'interrupted');
-    assert.equal(run.stopReason, 'Arena 服务进程已重新启动');
+    assert.equal(run.stopReason, 'Skynet Arena restarted');
     assert.equal(run.events.length, 2);
     assert.equal(run.events.at(-1).level, 'warning');
-    assert.equal(run.events.at(-1).message, 'Arena 服务进程已重新启动，任务已中断');
+    assert.equal(run.events.at(-1).message, 'Skynet Arena restarted; the run was interrupted');
     assert.equal(run.events.at(-1).type, 'interrupted');
 });
 
@@ -325,14 +325,14 @@ test('ArenaDatabase represents unlimited ranking entries and counts launched pai
         kind: 'ranking',
         srvproId: 'srvpro-1',
         matchups: [
-            { aiLevel: 4, competitors: [competitor('Dragon', '排001')], label: 'Dragon' },
-            { aiLevel: 2, competitors: [competitor('Spellbook', '排002')], label: 'Spellbook' },
+            { aiLevel: 4, competitors: [competitor('Dragon', 'Rank001')], label: 'Dragon' },
+            { aiLevel: 2, competitors: [competitor('Spellbook', 'Rank002')], label: 'Spellbook' },
         ],
     });
     database.recordLaunch('ranking-1', run.matchups.map((item) => item.id));
     const rawRank = [
-        ['排001', { flee: 1, lose: 3, win: 6 }],
-        ['排002', { flee: 0, lose: 6, win: 3 }],
+        ['Rank001', { flee: 1, lose: 3, win: 6 }],
+        ['Rank002', { flee: 0, lose: 6, win: 3 }],
     ];
     database.recordRank('ranking-1', normalizeRank(rawRank), rawRank);
     const updated = database.getRun('ranking-1');

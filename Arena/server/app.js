@@ -63,7 +63,7 @@ function createApp(config, database, arenaService, shutdownSignal) {
         const { settings: existing } = database.getArenaSettings();
         let settings;
         try {
-            if (request.body?.mode !== 'webhook') throw new Error('请选择 Webhook 模式');
+            if (request.body?.mode !== 'webhook') throw new Error('Select Webhook mode');
             settings = validateAndMergeArenaSettings({ ...existing, notifications: request.body }, existing).notifications;
         } catch (error) {
             response.status(400).json({ error: error.message });
@@ -72,14 +72,14 @@ function createApp(config, database, arenaService, shutdownSignal) {
         const srvproId = existing.srvpros[0].id;
         try {
             await arenaService.notifications.deliver({
-                title: 'WindBot Arena · 测试通知',
-                body: `这是一条测试通知（${srvproId}）`,
+                title: 'Skynet Arena · Test notification',
+                body: `This is a test notification (${srvproId})`,
                 runId: 'notification-test', status: 'completed',
-                finishedAt: new Date().toISOString(), srvproId, note: '这是一条测试通知',
+                finishedAt: new Date().toISOString(), srvproId, note: 'This is a test notification',
             }, settings);
-            response.json({ message: '测试通知请求已成功发送，请在接收端确认。' });
+            response.json({ message: 'Test notification sent successfully. Check the receiving service.' });
         } catch {
-            response.status(502).json({ error: '测试通知发送失败，请检查 URL、模板、HTTP 请求头和网络。' });
+            response.status(502).json({ error: 'Test notification could not be sent. Check the URL, template, HTTP headers and network.' });
         }
     });
 
@@ -120,7 +120,7 @@ function createApp(config, database, arenaService, shutdownSignal) {
     app.get('/api/runs/:id', (request, response) => {
         const run = database.getRun(request.params.id);
         if (!run) {
-            response.status(404).json({ error: '测试记录不存在' });
+            response.status(404).json({ error: 'Test run not found' });
             return;
         }
         response.json({ run });
@@ -248,7 +248,8 @@ function createApp(config, database, arenaService, shutdownSignal) {
         });
     } else {
         app.get('/', (request, response) => {
-            response.status(503).type('text').send('Web 界面尚未构建，请运行 npm run build');
+            response.set('Cache-Control', 'no-cache');
+            response.status(503).type('text').send('The web interface has not been built. Run npm run build.');
         });
     }
 
@@ -261,7 +262,7 @@ function createApp(config, database, arenaService, shutdownSignal) {
         if (statusCode >= 500) {
             console.error(error.stack || error.message);
         }
-        response.status(statusCode).json({ error: error.message || '服务器内部错误' });
+        response.status(statusCode).json({ error: error.message || 'Internal server error' });
     });
     return app;
 }

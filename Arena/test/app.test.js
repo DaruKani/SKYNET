@@ -156,11 +156,11 @@ test('settings, room, WindBot and run APIs return service data', async (context)
     const noteResponse = await fetch(`${baseUrl}/api/runs/run-21/note`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: '手动备注' }),
+        body: JSON.stringify({ note: 'Manual note' }),
     });
     assert.equal(noteResponse.status, 200);
-    assert.deepEqual(await noteResponse.json(), { run: { id: 'run-21', note: '手动备注' } });
-    assert.deepEqual(noteUpdate, { id: 'run-21', note: '手动备注' });
+    assert.deepEqual(await noteResponse.json(), { run: { id: 'run-21', note: 'Manual note' } });
+    assert.deepEqual(noteUpdate, { id: 'run-21', note: 'Manual note' });
 
 });
 

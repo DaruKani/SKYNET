@@ -185,7 +185,7 @@ class ArenaDatabase {
                     );
                 }
             });
-            this.addEvent(run.id, 'info', 'created', `测试已创建，使用 ${run.matchups.length} 个卡组`);
+            this.addEvent(run.id, 'info', 'created', `Test created with ${run.matchups.length} decks`);
         });
         return this.getRun(run.id);
     }
@@ -209,7 +209,7 @@ class ArenaDatabase {
         const values = [status];
         for (const [key, value] of Object.entries(fields)) {
             if (!allowed.has(key)) {
-                throw new Error(`不支持更新 runs.${key}`);
+                throw new Error(`Updating runs.${key} is not supported`);
             }
             assignments.push(`${allowed.get(key)} = ?`);
             values.push(value);
@@ -376,7 +376,8 @@ class ArenaDatabase {
             at: event.created_at,
             id: event.id,
             level: event.level,
-            message: event.message.replaceAll('对局组', '卡组'),
+            // Preserve wording normalization for historical imported events.
+            message: event.message.replaceAll('\u5bf9\u5c40\u7ec4', '\u5361\u7ec4'),
             type: event.event_type,
         }));
         return run;
@@ -436,12 +437,12 @@ class ArenaDatabase {
             this.db.prepare(`
                 UPDATE runs
                 SET status = 'interrupted', finished_at = ?,
-                    stop_reason = 'Arena 服务进程已重新启动'
+                    stop_reason = 'Skynet Arena restarted'
                 WHERE status IN (${placeholders})
             `).run(interruptedAt, ...activeStatuses);
             const insertEvent = this.db.prepare(`
                 INSERT INTO run_events (run_id, level, event_type, message, created_at)
-                VALUES (?, 'warning', 'interrupted', 'Arena 服务进程已重新启动，任务已中断', ?)
+                VALUES (?, 'warning', 'interrupted', 'Skynet Arena restarted; the run was interrupted', ?)
             `);
             for (const run of activeRuns) {
                 insertEvent.run(run.id, interruptedAt);

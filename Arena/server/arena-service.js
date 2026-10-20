@@ -18,8 +18,10 @@ const {
     loadBotConfigText,
 } = require('./bot-config');
 const { normalizeRank } = require('./stats');
+const { SkynetRuntime } = require('./skynet-runtime');
+const { validateSkynetRuntime } = require('./skynet-config');
 
-// M#… 与 T#… 分别创建 Match 和 Tag 房间，长度应小于 YGOPro / WindBot 的 20 字符房名字段。
+// M# and T# create Match and Tag rooms; keep names inside the 20-character protocol field.
 const DUEL_ROOM_MIN = 100000000;
 const DUEL_ROOM_MAX = 999999999;
 const MAX_WINDBOT_OUTPUT_LENGTH = 2000000;
@@ -28,7 +30,7 @@ const SCHEDULE_POLL_MS = 1000;
 const SETTLE_TIMEOUT_MS = 10 * 60 * 1000;
 const WINDBOT_REQUEST_ATTEMPTS = 3;
 const WINDBOT_REQUEST_TIMEOUT_MS = 3000;
-const USER_STOP_REASON = '用户从 Web 界面停止了测试';
+const USER_STOP_REASON = 'User stopped the run from the web interface';
 const TERMINAL_RUN_STATUSES = new Set(['completed', 'stopped', 'failed', 'interrupted']);
 const INTERRUPTION_ERROR_CODES = new Set([
     'SRVPRO_INSTANCE_CHANGED',
@@ -46,10 +48,10 @@ function getServerInstanceId(response, body) {
     const headerId = response.headers?.get?.('x-server-instance-id');
     const serverInstanceId = bodyId || headerId;
     if (typeof serverInstanceId !== 'string' || serverInstanceId === '') {
-        throw new Error('SRVPro API 响应中没有有效的 serverInstanceId');
+        throw new Error('SRVPro API response has no valid serverInstanceId');
     }
     if (bodyId && headerId && bodyId !== headerId) {
-        throw new Error('SRVPro API 响应中的 serverInstanceId 不一致');
+        throw new Error('SRVPro API serverInstanceId values do not match');
     }
     return serverInstanceId;
 }
@@ -106,22 +108,22 @@ async function fetchSrvproApi(url, label, timeoutMs, signal) {
         const endpoint = `${url.origin}${url.pathname}`;
         if (error?.name === 'TimeoutError') {
             throw new Error(
-                `${label}请求超时（${timeoutMs / 1000} 秒）：${endpoint}；请确认 SRVPro 已启动且管理端口可访问`,
+                `${label}request timed out (${timeoutMs / 1000} seconds): ${endpoint}; confirm SRVPro is running and the management port is reachable`,
                 { cause: error },
             );
         }
 
         const code = findNetworkErrorCode(error);
         const reason = {
-            ECONNREFUSED: '目标拒绝连接（ECONNREFUSED），请确认 SRVPro 已启动且管理端口配置正确',
-            ECONNRESET: '连接被目标重置（ECONNRESET）',
-            ENETUNREACH: '目标网络不可达（ENETUNREACH）',
-            EHOSTUNREACH: '目标主机不可达（EHOSTUNREACH）',
-            ENOTFOUND: '无法解析目标主机名（ENOTFOUND）',
-            EAI_AGAIN: '目标主机名解析暂时失败（EAI_AGAIN）',
+            ECONNREFUSED: 'Connection refused (ECONNREFUSED); confirm SRVPro is running and its management port is configured correctly',
+            ECONNRESET: 'Connection reset by peer (ECONNRESET)',
+            ENETUNREACH: 'Destination network unreachable (ENETUNREACH)',
+            EHOSTUNREACH: 'Destination host unreachable (EHOSTUNREACH)',
+            ENOTFOUND: 'Cannot resolve destination hostname (ENOTFOUND)',
+            EAI_AGAIN: 'Temporary hostname resolution failure (EAI_AGAIN)',
         }[code] || (code ? `${error.message}（${code}）` : error.message);
         throw new Error(
-            `${label}请求失败：${endpoint}；${reason || String(error)}`,
+            `${label}request failed: ${endpoint}; ${reason || String(error)}`,
             { cause: error },
         );
     }
@@ -172,6 +174,12 @@ class ArenaService {
             old: { active: false, output: '', updatedAt: null },
         };
         this.windbotErrorLineBuffers = { current: '', old: '' };
+        this.skynetRuntime = new SkynetRuntime((context, competitor, text) => {
+            const name = competitor.source === 'old'
+                || (competitor.source === 'target' && context.challengerVersion === 'old')
+                ? 'old' : 'current';
+            this.appendWindBotOutput(name, text);
+        });
     }
 
     initialize() {
@@ -201,9 +209,9 @@ class ArenaService {
             })),
             windbots: Object.fromEntries(
                 Object.entries(settings.windbots).map(([name, instance]) => [name, {
-                    host: instance.mode === 'local' ? '127.0.0.1' : instance.host,
+                    host: instance.mode !== 'remote' ? '127.0.0.1' : instance.host,
                     mode: instance.mode,
-                    port: instance.port,
+                    port: instance.mode === 'skynet' ? null : instance.port,
                 }]),
             ),
         };
@@ -212,7 +220,7 @@ class ArenaService {
     getBotConfigFingerprints(settings) {
         return Object.fromEntries(Object.entries(settings.windbots).map(([name, instance]) => {
             try {
-                const content = loadBotConfigText(instance, name === 'current' ? '新版' : '旧版');
+                const content = loadBotConfigText(instance, name === 'current' ? 'Current' : 'Baseline');
                 return [name, crypto.createHash('sha256').update(content).digest('hex')];
             } catch {
                 return [name, null];
@@ -232,7 +240,7 @@ class ArenaService {
     getSrvpro(settings, srvproId) {
         const srvpro = settings.srvpros.find((item) => item.id === srvproId);
         if (!srvpro) {
-            throw requestError('SRVPro 实例不存在', 404);
+            throw requestError('SRVPro instance does not exist', 404);
         }
         return srvpro;
     }
@@ -245,7 +253,7 @@ class ArenaService {
         try {
             ({ enableHalfwayWatch, rooms } = await this.fetchRooms(srvpro));
         } catch (error) {
-            throw requestError(`无法查询 SRVPro 房间: ${error.message}`, 502);
+            throw requestError(`Cannot query SRVPro rooms: ${error.message}`, 502);
         }
         return {
             enableHalfwayWatch,
@@ -281,14 +289,14 @@ class ArenaService {
 
     async updateHalfwayWatch(srvproId, enabled) {
         if (typeof enabled !== 'boolean') {
-            throw requestError('是否允许观战必须是布尔值');
+            throw requestError('Spectating permission must be a boolean');
         }
         const record = this.database.getArenaSettings();
         const srvpro = this.getSrvpro(record.settings, srvproId || record.settings.srvpros[0].id);
         try {
             await this.setSrvproHalfwayWatch(srvpro, enabled);
         } catch (error) {
-            throw requestError(`无法设置 SRVPro 观战选项: ${error.message}`, 502);
+            throw requestError(`Cannot set the SRVPro spectating option: ${error.message}`, 502);
         }
 
         return {
@@ -299,7 +307,7 @@ class ArenaService {
 
     getWindBotOutput(name) {
         if (!['current', 'old'].includes(name)) {
-            throw requestError('未知的 WindBot 实例', 404);
+            throw requestError('Unknown bot instance', 404);
         }
         const { settings } = this.database.getArenaSettings();
         const instance = settings.windbots[name];
@@ -314,8 +322,16 @@ class ArenaService {
         }
         return {
             ...this.windbotOutputs[name],
+            ...(instance.mode === 'skynet' ? {
+                active: this.skynetRuntime.records().some((record) => {
+                    const sourceName = record.competitor.source === 'old'
+                        || (record.competitor.source === 'target' && record.room.context.challengerVersion === 'old')
+                        ? 'old' : 'current';
+                    return sourceName === name;
+                }),
+            } : {}),
             available: true,
-            mode: 'local',
+            mode: instance.mode,
         };
     }
 
@@ -334,8 +350,8 @@ class ArenaService {
             if (!match) {
                 continue;
             }
-            // 本地 WindBot 由并发任务共享，stderr 无法可靠关联到具体 SRVPro 任务；
-            // 少量误归属只影响冒烟提示，不值得为此限制任务并发或改造 WindBot 协议。
+            // Concurrent runs share local WindBot servers; stderr cannot identify the originating run.
+            // Treat these shared diagnostics as smoke-check hints, not per-duel evidence.
             for (const context of this.contexts.values()) {
                 if (
                     context.kind !== 'tag'
@@ -349,7 +365,7 @@ class ArenaService {
                     context.id,
                     'error',
                     'windbot-output-error',
-                    `WindBot 输出错误: ${match[1]}`,
+                    `WindBot output error: ${match[1]}`,
                 );
                 recorded = true;
             }
@@ -361,7 +377,7 @@ class ArenaService {
 
     async updateSettings(input) {
         if (this.contexts.size > 0) {
-            throw requestError('测试运行期间不能修改系统配置', 409);
+            throw requestError('System settings cannot be changed while a run is active', 409);
         }
         const record = this.database.getArenaSettings();
         let settings;
@@ -372,7 +388,7 @@ class ArenaService {
         }
         await this.fetchRemoteBotConfigs(settings);
         if (this.contexts.size > 0) {
-            throw requestError('测试运行期间不能修改系统配置', 409);
+            throw requestError('System settings cannot be changed while a run is active', 409);
         }
         const saved = this.database.saveArenaSettings(settings);
         this.markChanged('settings');
@@ -388,34 +404,34 @@ class ArenaService {
                     response = await fetchWithTimeout(instance.botConfUrl, 10000);
                 } catch (error) {
                     throw requestError(
-                        `${name === 'current' ? '新版' : '旧版'} bot.conf URL 获取失败: ${error.message}`,
+                        `${name === 'current' ? 'Current' : 'Baseline'} bot.conf URL fetch failed: ${error.message}`,
                         502,
                     );
                 }
                 if (!response.ok) {
                     throw requestError(
-                        `${name === 'current' ? '新版' : '旧版'} bot.conf URL 返回 HTTP ${response.status}`,
+                        `${name === 'current' ? 'Current' : 'Baseline'} bot.conf URL returned HTTP ${response.status}`,
                         502,
                     );
                 }
                 const contentLength = Number(response.headers.get('content-length'));
                 if (Number.isFinite(contentLength) && contentLength > 2 * 1024 * 1024) {
-                    throw requestError(`${name === 'current' ? '新版' : '旧版'} bot.conf 超过 2 MB`, 502);
+                    throw requestError(`${name === 'current' ? 'Current' : 'Baseline'} bot.conf exceeds 2 MB`, 502);
                 }
                 let content;
                 try {
                     content = await response.text();
                 } catch (error) {
                     throw requestError(
-                        `${name === 'current' ? '新版' : '旧版'} bot.conf URL 读取失败: ${error.message}`,
+                        `${name === 'current' ? 'Current' : 'Baseline'} bot.conf URL read failed: ${error.message}`,
                         502,
                     );
                 }
                 if (Buffer.byteLength(content, 'utf8') > 2 * 1024 * 1024) {
-                    throw requestError(`${name === 'current' ? '新版' : '旧版'} bot.conf 超过 2 MB`, 502);
+                    throw requestError(`${name === 'current' ? 'Current' : 'Baseline'} bot.conf exceeds 2 MB`, 502);
                 }
                 if (!content.trim()) {
-                    throw requestError(`${name === 'current' ? '新版' : '旧版'} bot.conf URL 返回了空内容`, 502);
+                    throw requestError(`${name === 'current' ? 'Current' : 'Baseline'} bot.conf URL returned empty content`, 502);
                 }
                 return [name, content, content !== instance.botConfText];
             });
@@ -458,29 +474,29 @@ class ArenaService {
 
     createRun(input = {}) {
         if (!input || typeof input !== 'object' || Array.isArray(input)) {
-            throw requestError('测试配置必须是对象');
+            throw requestError('Run settings must be an object');
         }
         const kind = input.kind || 'regression';
         if (!['challenge', 'ranking', 'regression', 'tag'].includes(kind)) {
-            throw requestError('不支持的测试类型');
+            throw requestError('Unsupported run type');
         }
         if (input.decks !== undefined && !Array.isArray(input.decks)) {
-            throw requestError('decks 必须是卡组名称数组');
+            throw requestError('decks must be an array of deck names');
         }
         if (input.decks?.some((deck) => typeof deck !== 'string' || deck.trim() === '')) {
-            throw requestError('卡组名称不能为空');
+            throw requestError('Deck names must not be empty');
         }
         if (
             kind === 'challenge'
             && (typeof input.targetDeck !== 'string' || input.targetDeck.trim() === '')
         ) {
-            throw requestError('挑战者卡组名称不能为空');
+            throw requestError('Challenger deck name must not be empty');
         }
         const challengerVersion = kind === 'challenge'
             ? input.challengerVersion || 'current'
             : null;
         if (kind === 'challenge' && !['current', 'old'].includes(challengerVersion)) {
-            throw requestError('挑战者版本无效');
+            throw requestError('Invalid challenger version');
         }
         let gamesPerMatchup = 0;
         if (kind === 'challenge' || kind === 'regression') {
@@ -489,7 +505,7 @@ class ArenaService {
                 : Number(input.gamesPerMatchup);
             if (!Number.isInteger(gamesPerMatchup) || gamesPerMatchup < 1 || gamesPerMatchup > 10000) {
                 throw requestError(
-                    `${kind === 'challenge' ? '每个对手' : '每个卡组'}的局数必须是 1 到 10000 之间的整数`,
+                    `${kind === 'challenge' ? 'Per-opponent' : 'Per-deck'} game count must be an integer from 1 to 10000`,
                 );
             }
         }
@@ -500,13 +516,13 @@ class ArenaService {
             : settings.srvpros[0].id;
         const srvpro = this.getSrvpro(settings, srvproId);
         if (this.contexts.has(srvproId)) {
-            throw requestError(`${srvpro.name} 已有测试正在运行`, 409);
+            throw requestError(`${srvpro.name} already has an active run`, 409);
         }
         const modeConfiguration = inspectConfiguration(settings, srvpro).modes[
             kind === 'challenge' && challengerVersion === 'old' ? 'challengeOld' : kind
         ];
         if (!modeConfiguration.valid) {
-            throw requestError(`系统配置未完成：${modeConfiguration.issues.join('；')}`);
+            throw requestError(`System configuration is incomplete: ${modeConfiguration.issues.join('; ')}`);
         }
         let matchups;
         let normalizedTargetDeck = null;
@@ -538,8 +554,10 @@ class ArenaService {
                 srvproName: srvpro.name,
                 windbots: Object.fromEntries(
                     Object.entries(settings.windbots).map(([name, instance]) => [name, {
-                        endpoint: `${instance.mode === 'local' ? '127.0.0.1' : instance.host}:${instance.port}`,
+                        endpoint: instance.mode === 'skynet' ? null
+                            : `${instance.mode === 'local' ? '127.0.0.1' : instance.host}:${instance.port}`,
                         mode: instance.mode,
+                        ...(instance.mode === 'skynet' ? { skynet: structuredClone(instance.skynet) } : {}),
                     }]),
                 ),
                 selection: input.decks?.length ? 'selected' : 'all',
@@ -564,7 +582,7 @@ class ArenaService {
             id,
             kind,
             latestObserved: new Map(),
-            // 调度只使用创建时的对局快照，刷新 bot.conf 不应改变活动任务的卡组或启动参数。
+            // Schedule from the creation snapshot so refreshed catalogs cannot alter active run parameters.
             matchups: matchups.map((matchup) => ({
                 ...matchup,
                 id: storedMatchupsByLabel.get(matchup.label).id,
@@ -599,27 +617,34 @@ class ArenaService {
     async execute(context) {
         const { signal } = context.abortController;
         try {
-            this.database.addEvent(context.id, 'info', 'preparing', '正在重启 SRVPro');
+            this.database.addEvent(context.id, 'info', 'preparing', 'Restarting SRVPro');
             this.markChanged('preparing');
             await this.rebootServer(context);
-            this.database.addEvent(context.id, 'info', 'server-ready', 'SRVPro 已重启并恢复服务');
+            this.database.addEvent(context.id, 'info', 'server-ready', 'SRVPro restarted and is ready');
             this.markChanged('run-event');
 
-            const instances = [['current', '新版', context.settings.windbots.current]];
+            const instances = [['current', 'Current', context.settings.windbots.current]];
             if (
                 context.kind === 'regression'
                 || (context.kind === 'challenge' && context.challengerVersion === 'old')
             ) {
-                instances.push(['old', '旧版', context.settings.windbots.old]);
+                instances.push(['old', 'Baseline', context.settings.windbots.old]);
             }
             const readiness = instances.map(([name, label, instance]) => {
+                if (instance.mode === 'skynet') {
+                    validateSkynetRuntime(instance);
+                    this.database.addEvent(context.id, 'info', 'local-skynet',
+                        `${label}: SKYNET one-process-per-duel, frozen inference, maximum ${instance.skynet.maxProcesses} processes`);
+                    this.markChanged('run-event');
+                    return Promise.resolve();
+                }
                 const endpointHost = instance.mode === 'local' ? '127.0.0.1' : instance.host;
                 if (instance.mode === 'remote') {
                     this.database.addEvent(
                         context.id,
                         'info',
                         'remote-windbot',
-                        `${label}使用远程 WindBot ${endpointHost}:${instance.port}`,
+                        `${label} uses remote WindBot ${endpointHost}:${instance.port}`,
                     );
                     this.markChanged('run-event');
                     return this.waitForWindBot(label, endpointHost, instance.port, null, signal);
@@ -636,7 +661,7 @@ class ArenaService {
                 context.id,
                 'info',
                 'running',
-                `${instances.length === 2 ? '两套' : '新版'} WindBot 已就绪，开始创建对局`,
+                `${instances.length === 2 ? 'Both' : 'Current'} AI runtimes are ready; creating games`,
             );
             this.markChanged('running');
             if (context.kind !== 'tag') {
@@ -645,19 +670,19 @@ class ArenaService {
             await this.scheduleGames(context);
 
             if (!context.gracefulStop && (context.kind === 'ranking' || context.kind === 'tag')) {
-                throw new Error('无限测试的调度意外结束');
+                throw new Error('Unbounded-run scheduling ended unexpectedly');
             }
             if (!context.gracefulStop) {
                 this.database.setRunStatus(context.id, 'settling');
-                this.database.addEvent(context.id, 'info', 'settling', '对局已全部创建，正在等待决斗完成');
+                this.database.addEvent(context.id, 'info', 'settling', 'All games have been created; waiting for duels to finish');
                 this.markChanged('settling');
             }
             const fullyObserved = await this.waitForResults(context);
             if (!fullyObserved) {
-                this.database.addEvent(context.id, 'warning', 'settle-timeout', '等待决斗完成超时，已保留现有结果');
+                this.database.addEvent(context.id, 'warning', 'settle-timeout', 'Timed out waiting for duels; existing results have been retained');
             }
             await this.finish(context, context.gracefulStop ? 'stopped' : 'completed',
-                context.gracefulStop ? '所有对局已结束，测试已完成' : '测试已完成');
+                context.gracefulStop ? 'All duels finished; run complete' : 'Run complete');
         } catch (error) {
             if (isAbortError(error) && context.stopReason) {
                 await this.finish(context, 'stopped', context.stopReason);
@@ -665,10 +690,10 @@ class ArenaService {
             }
             const message = error?.message || String(error);
             if (INTERRUPTION_ERROR_CODES.has(error?.code)) {
-                await this.finish(context, 'interrupted', `测试中断: ${message}`);
+                await this.finish(context, 'interrupted', `Run interrupted: ${message}`);
                 return;
             }
-            await this.finish(context, 'failed', `测试失败: ${message}`, message);
+            await this.finish(context, 'failed', `Run failed: ${message}`, message);
         }
     }
 
@@ -698,7 +723,7 @@ class ArenaService {
             updatedAt: new Date().toISOString(),
         };
         this.windbotErrorLineBuffers[name] = '';
-        // .NET Framework WindBot 在 Windows 重定向输出时使用系统中文代码页，而不是 UTF-8。
+        // .NET Framework WindBot redirects Windows console output using the Chinese system code page.
         const captureOutput = (stream, outputPrefix, logPrefix, destination, scanErrors = false) => {
             const decoder = new TextDecoder('gbk');
             const write = (output, flush = false) => {
@@ -714,20 +739,20 @@ class ArenaService {
             stream.on('end', () => write(decoder.decode(), true));
         };
         captureOutput(child.stdout, '', `[${label}] `, process.stdout);
-        captureOutput(child.stderr, '[错误] ', `[${label}:错误] `, process.stderr, true);
+        captureOutput(child.stderr, '[error] ', `[${label}:error] `, process.stderr, true);
         child.on('error', (error) => {
             child.startError = error;
-            this.appendWindBotOutput(name, `\n[启动失败] ${error.message}\n`);
+            this.appendWindBotOutput(name, `\n[Launch failed] ${error.message}\n`);
         });
         child.on('exit', (code, signal) => {
             if (this.localWindbots.get(name) === child) {
                 this.windbotOutputs[name].active = false;
                 this.localWindbots.delete(name);
-                this.appendWindBotOutput(name, `\n[进程已退出] code=${code}, signal=${signal || 'none'}\n`);
+                this.appendWindBotOutput(name, `\n[Process exited] code=${code}, signal=${signal || 'none'}\n`);
             }
             if (!child.stopping) {
                 const error = new Error(
-                    `${label} WindBot 进程在任务运行期间退出，code=${code}, signal=${signal || 'none'}`,
+                    `${label} WindBot exited during an active run，code=${code}, signal=${signal || 'none'}`,
                 );
                 error.code = 'WINDBOT_UNAVAILABLE';
                 for (const context of this.contexts.values()) {
@@ -744,7 +769,7 @@ class ArenaService {
                     }
                 }
             }
-            console.log(`[${label}] WindBot 已退出: code=${code}, signal=${signal}`);
+            console.log(`[${label}] WindBot exited: code=${code}, signal=${signal}`);
         });
         return child;
     }
@@ -766,7 +791,7 @@ class ArenaService {
                 throw child.startError;
             }
             if (child && child.exitCode !== null) {
-                throw new Error(`${label} WindBot 在 HTTP 服务就绪前退出，code=${child.exitCode}`);
+                throw new Error(`${label} WindBot exited before its HTTP server was ready，code=${child.exitCode}`);
             }
             try {
                 await fetchWithTimeout(url, 1000, signal);
@@ -778,23 +803,23 @@ class ArenaService {
                 await sleep(250, signal);
             }
         }
-        throw new Error(`${label} WindBot HTTP 服务在 15 秒内没有就绪: ${host}:${port}`);
+        throw new Error(`${label} WindBot HTTP server was not ready within 15 seconds: ${host}:${port}`);
     }
 
     async fetchRooms(srvpro, signal) {
         const url = makeHttpUrl(srvpro.host, srvpro.statusPort, '/api/getrooms');
         url.searchParams.set('username', srvpro.username);
         url.searchParams.set('pass', srvpro.password);
-        const response = await fetchSrvproApi(url, 'SRVPro 房间 API ', 5000, signal);
+        const response = await fetchSrvproApi(url, 'SRVPro room API ', 5000, signal);
         if (!response.ok) {
-            throw new Error(`房间 API 返回 HTTP ${response.status}`);
+            throw new Error(`Room API returned HTTP ${response.status}`);
         }
         const body = await response.json();
         if (!Array.isArray(body.rooms)) {
-            throw new Error('房间 API 响应中没有 rooms 数组');
+            throw new Error('Room API response has no rooms array');
         }
         if (typeof body.enableHalfwayWatch !== 'boolean') {
-            throw new Error('房间 API 响应中没有有效的 enableHalfwayWatch');
+            throw new Error('Room API response has no valid enableHalfwayWatch');
         }
         return {
             enableHalfwayWatch: body.enableHalfwayWatch,
@@ -808,13 +833,13 @@ class ArenaService {
         url.searchParams.set('username', srvpro.username);
         url.searchParams.set('pass', srvpro.password);
         url.searchParams.set('enabled', String(enabled));
-        const response = await fetchSrvproApi(url, 'SRVPro 观战设置 API ', 5000, signal);
+        const response = await fetchSrvproApi(url, 'SRVPro spectator settings API ', 5000, signal);
         if (!response.ok) {
-            throw new Error(`观战设置 API 返回 HTTP ${response.status}`);
+            throw new Error(`Spectator settings API returned HTTP ${response.status}`);
         }
         const body = await response.json();
         if (body?.enableHalfwayWatch !== enabled) {
-            throw new Error('观战设置 API 未返回预期状态');
+            throw new Error('Spectator settings API did not return the expected state');
         }
         return getServerInstanceId(response, body);
     }
@@ -823,13 +848,13 @@ class ArenaService {
         const url = makeHttpUrl(srvpro.host, srvpro.statusPort, '/api/getroomscount');
         url.searchParams.set('username', srvpro.username);
         url.searchParams.set('pass', srvpro.password);
-        const response = await fetchSrvproApi(url, 'SRVPro 房间计数 API ', 5000, signal);
+        const response = await fetchSrvproApi(url, 'SRVPro room-count API ', 5000, signal);
         if (!response.ok) {
-            throw new Error(`房间计数 API 返回 HTTP ${response.status}`);
+            throw new Error(`Room-count API returned HTTP ${response.status}`);
         }
         const body = await response.json();
         if (!Number.isSafeInteger(body?.count) || body.count < 0) {
-            throw new Error('房间计数 API 响应中没有有效的 count');
+            throw new Error('Room-count API response has no valid count');
         }
         return {
             count: body.count,
@@ -842,21 +867,21 @@ class ArenaService {
         const url = makeHttpUrl(srvpro.host, srvpro.statusPort, '/api/getscores');
         url.searchParams.set('username', srvpro.username);
         url.searchParams.set('pass', srvpro.password);
-        const response = await fetchSrvproApi(url, 'SRVPro 排行 API ', 5000, signal);
+        const response = await fetchSrvproApi(url, 'SRVPro scores API ', 5000, signal);
         if (!response.ok) {
-            throw new Error(`排行 API 返回 HTTP ${response.status}`);
+            throw new Error(`Scores API returned HTTP ${response.status}`);
         }
         const body = await response.json();
         if (!Array.isArray(body?.scores)) {
-            throw new Error('排行 API 响应格式无效');
+            throw new Error('Invalid scores API response');
         }
         this.assertServerInstance(context, getServerInstanceId(response, body));
         const rank = body.scores.map((score, index) => {
             if (!score || typeof score !== 'object' || Array.isArray(score)) {
-                throw new Error(`排行 API 的 scores[${index}] 不是对象`);
+                throw new Error(`Scores API scores[${index}] is not an object`);
             }
             if (typeof score.name !== 'string') {
-                throw new Error(`排行 API 的 scores[${index}].name 不是字符串`);
+                throw new Error(`Scores API scores[${index}].name is not a string`);
             }
             return [score.name, {
                 combo: score.combo,
@@ -883,7 +908,7 @@ class ArenaService {
             context.id,
             'warning',
             'score-poll-error',
-            `查询 SRVPro 排行失败: ${error.message}`,
+            `SRVPro scores query failed: ${error.message}`,
         );
         this.markChanged('score-poll-error');
     }
@@ -925,13 +950,13 @@ class ArenaService {
 
     assertServerInstance(context, serverInstanceId) {
         if (!context.serverInstanceId) {
-            throw new Error('任务尚未记录 SRVPro serverInstanceId');
+            throw new Error('The run has not recorded an SRVPro serverInstanceId');
         }
         if (serverInstanceId === context.serverInstanceId) {
             return;
         }
         const error = new Error(
-            `SRVPro 实例已变化（${context.serverInstanceId} -> ${serverInstanceId}），服务可能在任务运行期间重启`,
+            `SRVPro instance changed (${context.serverInstanceId} -> ${serverInstanceId}); the service may have restarted during the run`,
         );
         error.code = 'SRVPRO_INSTANCE_CHANGED';
         if (!context.abortController.signal.aborted) {
@@ -961,14 +986,14 @@ class ArenaService {
             if (context.abortController.signal.aborted) {
                 throw context.abortController.signal.reason;
             }
-            // SRVPro 会在写入 reboot 响应后立即退出，响应体可能在客户端读取完成前被截断。
+            // SRVPro exits immediately after writing the reboot response; the body may be truncated.
         }
         if (responseRead) {
-            if (!response.ok || body.includes('密码错误') || body.includes('reboot fail')) {
-                throw new Error(`服务端拒绝重启: HTTP ${response.status} ${body}`);
+            if (!response.ok || body.includes('\u5bc6\u7801\u9519\u8bef') || body.includes('reboot fail')) {
+                throw new Error(`Server refused to restart: HTTP ${response.status} ${body}`);
             }
             if (!body.includes('reboot ok')) {
-                throw new Error(`无法确认服务端重启: ${body}`);
+                throw new Error(`Cannot confirm server restart: ${body}`);
             }
         }
 
@@ -1004,7 +1029,7 @@ class ArenaService {
             }
             await sleep(pollIntervalMs, context.abortController.signal);
         }
-        throw new Error('服务端在重启后 120 秒内没有恢复');
+        throw new Error('Server did not recover within 120 seconds of restart');
     }
 
     nextDuelPassword(context) {
@@ -1017,6 +1042,9 @@ class ArenaService {
     }
 
     async addBot(context, competitor, password) {
+        if (competitor.executionMode === 'skynet') {
+            return this.skynetRuntime.launch(context, competitor, password);
+        }
         const srvpro = context.settings.srvpro;
         const url = makeHttpUrl(competitor.endpointHost, competitor.endpointPort);
         url.searchParams.set('name', competitor.rankName);
@@ -1041,8 +1069,8 @@ class ArenaService {
             }
             const requestError = new Error(
                 error?.name === 'TimeoutError'
-                    ? `${competitor.rankName} 调用 WindBot 超时（${WINDBOT_REQUEST_TIMEOUT_MS / 1000} 秒）`
-                    : `${competitor.rankName} 调用 WindBot 失败: ${error.message}`,
+                    ? `${competitor.rankName} WindBot request timed out (${WINDBOT_REQUEST_TIMEOUT_MS / 1000} seconds)`
+                    : `${competitor.rankName} WindBot request failed: ${error.message}`,
                 { cause: error },
             );
             requestError.code = 'WINDBOT_REQUEST_FAILED';
@@ -1053,12 +1081,12 @@ class ArenaService {
                 const isChallengeTarget = context.kind === 'challenge'
                     && competitor.source === 'target';
                 const error = new Error(isChallengeTarget
-                    ? `挑战者卡组“${competitor.deck}”在对应的 WindBot 中不存在`
-                    : `${competitor.rankName} 使用的卡组“${competitor.deck}”在对应的 WindBot 中不存在，请检查 bot.conf 与 WindBot 版本是否匹配`);
+                    ? `Challenger deck “${competitor.deck}” does not exist in the selected WindBot`
+                    : `${competitor.rankName} deck “${competitor.deck}” does not exist in the selected WindBot; check that bot.conf matches its version`);
                 error.code = 'WINDBOT_DECK_NOT_FOUND';
                 throw error;
             }
-            throw new Error(`${competitor.rankName} 调用 WindBot 返回 HTTP ${response.status}`);
+            throw new Error(`${competitor.rankName} WindBot request returned HTTP ${response.status}`);
         }
     }
 
@@ -1068,14 +1096,14 @@ class ArenaService {
         url.searchParams.set('username', srvpro.username);
         url.searchParams.set('pass', srvpro.password);
         url.searchParams.set('kick', password);
-        const response = await fetchSrvproApi(url, 'SRVPro 关房 API ', 5000);
+        const response = await fetchSrvproApi(url, 'SRVPro close-room API ', 5000);
         const body = await response.text();
         this.assertServerInstance(context, getServerInstanceId(response));
-        if (!response.ok || body.includes('密码错误')) {
-            throw new Error(`SRVPro 拒绝关闭房间: HTTP ${response.status} ${body}`);
+        if (!response.ok || body.includes('\u5bc6\u7801\u9519\u8bef')) {
+            throw new Error(`SRVPro refused to close the room: HTTP ${response.status} ${body}`);
         }
         if (!body.includes('kick ok') && !body.includes('room not found')) {
-            throw new Error(`无法确认 SRVPro 已关闭房间: ${body}`);
+            throw new Error(`Cannot confirm SRVPro closed the room: ${body}`);
         }
     }
 
@@ -1085,19 +1113,21 @@ class ArenaService {
         for (let attempt = 1; attempt <= WINDBOT_REQUEST_ATTEMPTS; attempt++) {
             const password = this.nextDuelPassword(context);
             try {
+                await this.skynetRuntime.reserveRoom(context, players, password);
                 for (const player of players) {
                     await this.addBot(context, player, password);
                     await sleep(joinDelayMs, context.abortController.signal);
                 }
                 return;
             } catch (error) {
+                await this.skynetRuntime.stopRoom(context, password);
                 let launchError = error;
                 try {
                     await this.closeDuelRoom(context, password);
                 } catch (cleanupError) {
                     if (!isAbortError(error)) {
                         launchError = new Error(
-                            `${error.message}；关闭约战房间失败: ${cleanupError.message}`,
+                            `${error.message}; Failed to close the challenge room: ${cleanupError.message}`,
                             { cause: error },
                         );
                         launchError.code = cleanupError.code || error.code;
@@ -1108,7 +1138,7 @@ class ArenaService {
                 }
                 if (attempt === WINDBOT_REQUEST_ATTEMPTS) {
                     const unavailableError = new Error(
-                        `WindBot 连续 ${WINDBOT_REQUEST_ATTEMPTS} 个约战房间请求失败: ${launchError.message}`,
+                        `WindBot failed ${WINDBOT_REQUEST_ATTEMPTS} consecutive challenge-room requests: ${launchError.message}`,
                         { cause: launchError },
                     );
                     unavailableError.code = 'WINDBOT_UNAVAILABLE';
@@ -1236,7 +1266,7 @@ class ArenaService {
                 this.database.addEvent(context.id, 'warning', 'schedule-error', error.message);
                 this.markChanged('schedule-error');
                 if (consecutiveErrors >= 10) {
-                    throw new Error('连续 10 次无法查询房间或创建 bot，已停止调度');
+                    throw new Error('Stopped scheduling after 10 consecutive room-query or bot-launch failures');
                 }
             }
             if (
@@ -1272,7 +1302,7 @@ class ArenaService {
                 }
             }
             emptyPolls = roomCount === 0 ? emptyPolls + 1 : 0;
-            // WindBot 接受启动请求后可能尚未入房，优雅停止需再次确认房间仍为空。
+            // An accepted WindBot may not have joined yet; graceful stop confirms rooms remain empty.
             if (context.gracefulStop && emptyPolls < 2) {
                 await sleep(SCHEDULE_POLL_MS, context.abortController.signal);
                 continue;
@@ -1304,7 +1334,7 @@ class ArenaService {
                     context.id,
                     'warning',
                     'settle-empty-rooms',
-                    'SRVPro 房间数已为 0，任务提前完成；可能有对局未被排行统计记录',
+                    'SRVPro room count is zero; run completed early, and some games may be missing from the rankings',
                 );
                 this.markChanged('run-event');
                 return true;
@@ -1332,7 +1362,7 @@ class ArenaService {
     stopRun(runId, reason = USER_STOP_REASON) {
         const context = [...this.contexts.values()].find((item) => item.id === runId);
         if (!context) {
-            throw requestError('该测试当前不在运行', 409);
+            throw requestError('This run is not currently active', 409);
         }
         if (!context.stopReason) {
             clearTimeout(context.stopTimer);
@@ -1349,32 +1379,32 @@ class ArenaService {
     scheduleStopRun(runId, minutes) {
         const context = [...this.contexts.values()].find((item) => item.id === runId);
         if (!context || context.finished || !context.running || context.stopReason || context.gracefulStop) {
-            throw requestError('只能为正在调度的任务设置定时停止', 409);
+            throw requestError('Scheduled stop can only be set for actively scheduling runs', 409);
         }
         if (context.kind !== 'ranking' && context.kind !== 'tag') {
-            throw requestError('定时停止仅适用于无限数量的模式');
+            throw requestError('Scheduled stop only applies to unbounded modes');
         }
         if (!Number.isInteger(minutes) || minutes < 1 || minutes > 10080) {
-            throw requestError('定时停止时长必须是 1 到 10080 分钟之间的整数');
+            throw requestError('Scheduled stop duration must be an integer from 1 to 10080 minutes');
         }
         const stopAt = new Date(Date.now() + minutes * 60_000).toISOString();
         this.database.setRunStopAt(runId, stopAt);
         clearTimeout(context.stopTimer);
         context.stopTimer = setTimeout(() => {
             if (!context.finished && !context.stopReason && !context.gracefulStop) {
-                this.gracefulStopRun(runId, '定时停止已到期：不再创建新对局，等待所有对局结束后完成统计');
+                this.gracefulStopRun(runId, 'Scheduled stop reached: no new games; waiting for existing duels before finalizing results');
             }
         }, minutes * 60_000);
         context.stopTimer.unref();
-        this.database.addEvent(runId, 'info', 'scheduled-stop', `已设置 ${minutes} 分钟后优雅停止`);
+        this.database.addEvent(runId, 'info', 'scheduled-stop', `Graceful stop scheduled in ${minutes} minutes`);
         this.markChanged('scheduled-stop');
         return this.database.getRun(runId);
     }
 
-    gracefulStopRun(runId, reason = '已请求优雅停止：不再创建新对局，等待所有对局结束后完成统计') {
+    gracefulStopRun(runId, reason = 'Graceful stop requested: no new games; waiting for existing duels before finalizing results') {
         const context = [...this.contexts.values()].find((item) => item.id === runId);
         if (!context || context.finished) {
-            throw requestError('该测试当前不在运行', 409);
+            throw requestError('This run is not currently active', 409);
         }
         if (!context.running) {
             return this.stopRun(runId);
@@ -1391,10 +1421,10 @@ class ArenaService {
 
     updateRunNote(runId, note) {
         if (typeof note !== 'string' || note.length > 200) {
-            throw requestError('备注必须是最多 200 个字符的文本', 400);
+            throw requestError('Note must be text of at most 200 characters', 400);
         }
         if (!this.database.setRunNote(runId, note.trim())) {
-            throw requestError('运行记录不存在', 404);
+            throw requestError('Run record does not exist', 404);
         }
         this.markChanged('note');
         return this.database.getRun(runId);
@@ -1403,13 +1433,13 @@ class ArenaService {
     deleteRun(runId) {
         const run = this.database.getRun(runId);
         if (!run) {
-            throw requestError('运行记录不存在', 404);
+            throw requestError('Run record does not exist', 404);
         }
         if (!TERMINAL_RUN_STATUSES.has(run.status)) {
-            throw requestError('运行中的任务不能删除，请先停止任务', 409);
+            throw requestError('Active runs cannot be deleted; stop the run first', 409);
         }
         if (!this.database.deleteRun(runId)) {
-            throw requestError('运行记录不存在', 404);
+            throw requestError('Run record does not exist', 404);
         }
         this.revisions.runs++;
         return run;
@@ -1423,7 +1453,12 @@ class ArenaService {
         clearTimeout(context.stopTimer);
         context.running = false;
         if (!context.abortController.signal.aborted) {
-            context.abortController.abort(new DOMException('任务已结束', 'AbortError'));
+            context.abortController.abort(new DOMException('Run ended', 'AbortError'));
+        }
+        if (!await this.skynetRuntime.stopContext(context)) {
+            status = 'failed';
+            error = 'SKYNET did not confirm owned process termination within the cleanup deadline';
+            reason = error;
         }
         await context.scorePoller;
         if (status === 'stopped' && context.queryScoresBeforeStop && context.scorePoller) {
@@ -1458,10 +1493,10 @@ class ArenaService {
                 try {
                     await this.notifications.send(this.database.getRun(context.id));
                 } catch {
-                    // 通知等待期间，已结束的任务可能被用户删除。
+                    // A finished run may be deleted while its notification is pending.
                     if (!this.database.getRun(context.id)) return;
                     // Delivery errors can contain secret endpoint URLs; keep task logs generic.
-                    this.database.addEvent(context.id, 'warning', 'notification-error', '任务已结束，但通知发送失败，请检查通知配置和网络');
+                    this.database.addEvent(context.id, 'warning', 'notification-error', 'Run finished, but notification delivery failed; check notification settings and connectivity');
                     this.markChanged('notification-error');
                 }
             })();
@@ -1497,9 +1532,10 @@ class ArenaService {
             this.stopLocalWindBots();
         }
         for (const context of contexts) {
-            this.stopRun(context.id, 'Arena 服务正在关闭');
+            this.stopRun(context.id, 'Arena is shutting down');
         }
         await Promise.all(contexts.map((context) => context.done));
+        await this.skynetRuntime.shutdown();
         await Promise.all(this.pendingNotifications);
     }
 }

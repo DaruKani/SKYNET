@@ -5,7 +5,7 @@ function calculateStats(raw) {
     const lose = Number(raw?.lose) || 0;
     const flee = Number(raw?.flee) || 0;
     const combo = Number(raw?.combo) || 0;
-    // SRVPro 在异常断开时独立累加 flee，它不是与胜负互斥的第三种赛果。
+    // SRVPro counts disconnects separately; flee is not a third outcome exclusive of wins and losses.
     const games = win + lose;
     return {
         combo,
@@ -18,14 +18,14 @@ function calculateStats(raw) {
 
 function normalizeRank(rank) {
     if (!Array.isArray(rank)) {
-        throw new Error('rank 不是数组');
+        throw new Error('rank is not an array');
     }
     return rank.map((entry, index) => {
         if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string') {
-            throw new Error(`rank[${index}] 不是 [名称, 统计]`);
+            throw new Error(`rank[${index}] is not [name, statistics]`);
         }
         if (!entry[1] || typeof entry[1] !== 'object' || Array.isArray(entry[1])) {
-            throw new Error(`rank[${index}] 的统计不是对象`);
+            throw new Error(`Statistics in rank[${index}] are not an object`);
         }
         return [entry[0], calculateStats(entry[1])];
     });

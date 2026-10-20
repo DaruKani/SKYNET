@@ -1,6 +1,7 @@
 'use strict';
 
 const { DEFAULT_WEBHOOK_TEMPLATE, renderWebhookTemplate, renderWebhookUrl } = require('./notifications');
+const { defaultSkynetSettings, normalizeSkynetSettings } = require('./skynet-config');
 
 function createDefaultArenaSettings() {
     return {
@@ -25,6 +26,7 @@ function createDefaultArenaSettings() {
                 mode: 'local',
                 port: 2399,
                 runtimeDir: '',
+                skynet: defaultSkynetSettings(),
             },
             old: {
                 botConfPath: '',
@@ -34,6 +36,7 @@ function createDefaultArenaSettings() {
                 mode: 'local',
                 port: 2398,
                 runtimeDir: '',
+                skynet: defaultSkynetSettings(),
             },
         },
     };
@@ -42,7 +45,7 @@ function createDefaultArenaSettings() {
 function readInteger(value, label, minimum, maximum) {
     const number = Number(value);
     if (!Number.isInteger(number) || number < minimum || number > maximum) {
-        throw new Error(`${label} 必须是 ${minimum} 到 ${maximum} 之间的整数`);
+        throw new Error(`${label} must be an integer from ${minimum} to ${maximum}`);
     }
     return number;
 }
@@ -50,17 +53,19 @@ function readInteger(value, label, minimum, maximum) {
 function readWindBot(input, existing, label) {
     const source = input || {};
     const mode = source.mode;
-    if (!['local', 'remote'].includes(mode)) {
-        throw new Error(`${label}运行模式无效`);
+    if (!['local', 'remote', 'skynet'].includes(mode)) {
+        throw new Error(`${label}execution mode is invalid`);
     }
     const result = {
         ...existing,
         mode,
-        port: readInteger(source.port, `${label}服务端口`, 1, 65535),
+        port: readInteger(source.port ?? existing.port, `${label}service port`, 1, 65535),
     };
     if (mode === 'local') {
         result.botConfPath = String(source.botConfPath || '').trim();
         result.runtimeDir = String(source.runtimeDir || '').trim();
+    } else if (mode === 'skynet') {
+        result.skynet = normalizeSkynetSettings(source.skynet || existing.skynet);
     } else {
         result.botConfText = String(source.botConfText || '');
         result.botConfUrl = String(source.botConfUrl || '').trim();
@@ -70,13 +75,13 @@ function readWindBot(input, existing, label) {
             try {
                 url = new URL(result.botConfUrl);
             } catch {
-                throw new Error(`${label}bot.conf URL 无效`);
+                throw new Error(`${label}bot.conf URL is invalid`);
             }
             if (!['http:', 'https:'].includes(url.protocol)) {
-                throw new Error(`${label}bot.conf URL 只支持 HTTP 或 HTTPS`);
+                throw new Error(`${label}bot.conf URL supports only HTTP or HTTPS`);
             }
             if (result.botConfUrl.length > 2000) {
-                throw new Error(`${label}bot.conf URL 不能超过 2000 个字符`);
+                throw new Error(`${label}bot.conf URL must not exceed 2000 characters`);
             }
         }
     }
@@ -85,14 +90,14 @@ function readWindBot(input, existing, label) {
 
 function validateAndMergeArenaSettings(input, existing) {
     if (!input || typeof input !== 'object') {
-        throw new Error('配置内容无效');
+        throw new Error('Invalid settings');
     }
     const previous = existing || createDefaultArenaSettings();
     if (!Array.isArray(input.srvpros) || input.srvpros.length === 0) {
-        throw new Error('至少需要配置一个 SRVPro 实例');
+        throw new Error('Configure at least one SRVPro instance');
     }
     if (input.srvpros.length > 100) {
-        throw new Error('SRVPro 实例不能超过 100 个');
+        throw new Error('At most 100 SRVPro instances are supported');
     }
     const previousSrvpros = new Map(previous.srvpros.map((srvpro) => [srvpro.id, srvpro]));
     const ids = new Set();
@@ -101,23 +106,23 @@ function validateAndMergeArenaSettings(input, existing) {
         const id = String(source?.id || '').trim();
         const name = String(source?.name || '').trim();
         if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
-            throw new Error(`第 ${index + 1} 个 SRVPro 实例 ID 无效`);
+            throw new Error(`SRVPro instance ${index + 1} has an invalid ID`);
         }
         if (ids.has(id)) {
-            throw new Error(`SRVPro 实例 ID 重复: ${id}`);
+            throw new Error(`Duplicate SRVPro instance ID: ${id}`);
         }
         ids.add(id);
         if (!name) {
-            throw new Error(`第 ${index + 1} 个 SRVPro 实例名称不能为空`);
+            throw new Error(`SRVPro instance ${index + 1} name must not be empty`);
         }
         if (name.length > 100) {
-            throw new Error(`SRVPro 实例名称不能超过 100 个字符: ${name}`);
+            throw new Error(`SRVPro instance names must not exceed 100 characters: ${name}`);
         }
         const host = String(source.host || '').trim();
-        const statusPort = readInteger(source.statusPort, `${name} 管理端口`, 1, 65535);
+        const statusPort = readInteger(source.statusPort, `${name} management port`, 1, 65535);
         const managementEndpoint = `${host.toLocaleLowerCase()}:${statusPort}`;
         if (host && managementEndpoints.has(managementEndpoint)) {
-            throw new Error(`SRVPro 管理地址重复: ${host}:${statusPort}`);
+            throw new Error(`Duplicate SRVPro management endpoint: ${host}:${statusPort}`);
         }
         managementEndpoints.add(managementEndpoint);
         const existingSrvpro = previousSrvpros.get(id);
@@ -125,13 +130,13 @@ function validateAndMergeArenaSettings(input, existing) {
             ? source.password
             : existingSrvpro?.password || '';
         return {
-            duelPort: readInteger(source.duelPort, `${name} 对战端口`, 1, 65535),
+            duelPort: readInteger(source.duelPort, `${name} duel port`, 1, 65535),
             host,
             id,
-            maxRooms: readInteger(source.maxRooms, `${name} 房间上限`, 1, 100000),
+            maxRooms: readInteger(source.maxRooms, `${name} room limit`, 1, 100000),
             name,
             password,
-            roomsPerSecond: readInteger(source.roomsPerSecond, `${name} 每秒创建房间数`, 1, 100),
+            roomsPerSecond: readInteger(source.roomsPerSecond, `${name} rooms per second`, 1, 100),
             statusPort,
             username: String(source.username || '').trim(),
         };
@@ -142,10 +147,10 @@ function validateAndMergeArenaSettings(input, existing) {
         ...input.notifications,
     };
     if (!['off', 'frontend', 'webhook'].includes(notifications.mode)) {
-        throw new Error('通知模式无效');
+        throw new Error('Invalid notification mode');
     }
     notifications.webhookMethod ??= 'POST';
-    if (!['GET', 'POST'].includes(notifications.webhookMethod)) throw new Error('Webhook 请求方式必须是 GET 或 POST');
+    if (!['GET', 'POST'].includes(notifications.webhookMethod)) throw new Error('Webhook method must be GET or POST');
     notifications.webhookUrl = String(notifications.webhookUrl ?? '').trim();
     notifications.webhookTemplate = String(notifications.webhookTemplate ?? '');
     notifications.webhookHeaders = String(notifications.webhookHeaders ?? '').trim();
@@ -153,26 +158,26 @@ function validateAndMergeArenaSettings(input, existing) {
         let url;
         try {
             url = new URL(renderWebhookUrl(notifications.webhookUrl, {}));
-        } catch { throw new Error('Webhook URL 或模板变量无效'); }
+        } catch { throw new Error('Webhook: Invalid URL or template variable'); }
         if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || notifications.webhookUrl.length > 2000) {
-            throw new Error('Webhook 必须是无内嵌账号密码的 HTTP(S) URL，且不超过 2000 个字符');
+            throw new Error('Webhook URL must use HTTP(S), contain no embedded credentials, and be at most 2000 characters');
         }
     }
     if (notifications.mode === 'webhook' && !notifications.webhookUrl) {
-        throw new Error('请填写 Webhook URL');
+        throw new Error('Webhook URL must not be empty');
     }
     if (notifications.webhookTemplate.length > 20000 || notifications.webhookHeaders.length > 10000) {
-        throw new Error('Webhook JSON 模板或请求头过长');
+        throw new Error('Webhook JSON template or headers exceed the size limit');
     }
     if (notifications.mode === 'webhook' && notifications.webhookMethod === 'POST' && !notifications.webhookTemplate.trim()) {
-        throw new Error('POST 请求体模板不能为空');
+        throw new Error('Request body template must not be empty');
     }
     if (notifications.webhookTemplate.trim()) {
         try {
             const body = renderWebhookTemplate(notifications.webhookTemplate, {});
             if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error();
         } catch {
-            throw new Error('Webhook 模板必须是 JSON 对象，且只使用支持的变量');
+            throw new Error('Webhook template must be a JSON object using supported variables only');
         }
     }
     try {
@@ -183,7 +188,7 @@ function validateAndMergeArenaSettings(input, existing) {
             new Headers({ [key]: value });
         }
     } catch {
-        throw new Error('Webhook 请求头必须是字符串值的 JSON 对象，不能覆盖 Host、Content-Type 或传输控制头');
+        throw new Error('Webhook headers must be a JSON object with string values and cannot override Host, Content-Type or transport-control headers');
     }
     const settings = {
         notifications: {
@@ -195,26 +200,32 @@ function validateAndMergeArenaSettings(input, existing) {
         },
         srvpros,
         windbots: {
-            current: readWindBot(input.windbots?.current, previous.windbots.current, '新版 WindBot '),
-            old: readWindBot(input.windbots?.old, previous.windbots.old, '旧版 WindBot '),
+            current: readWindBot(input.windbots?.current, previous.windbots.current, 'Candidate agent '),
+            old: readWindBot(input.windbots?.old, previous.windbots.old, 'Baseline agent '),
         },
     };
     const old = settings.windbots.old;
-    const oldConfigured = old.mode === 'local'
+    const oldConfigured = old.mode === 'skynet' ? false : old.mode === 'local'
         ? old.runtimeDir !== '' && old.botConfPath !== ''
         : old.host !== '' && (old.botConfText.trim() !== '' || old.botConfUrl !== '');
     if (
         oldConfigured
-        && getWindBotEndpoint(settings.windbots.current) === getWindBotEndpoint(old)
+        && sameWindBotEndpoint(settings.windbots.current, old)
     ) {
-        throw new Error('新版和旧版 WindBot 不能使用同一服务地址与端口');
+        throw new Error('Current and baseline WindBot must not use the same service endpoint');
     }
     return settings;
 }
 
 function getWindBotEndpoint(windbot) {
+    if (windbot.mode === 'skynet') return null;
     const host = windbot.mode === 'local' ? '127.0.0.1' : windbot.host;
     return `${host}:${windbot.port}`;
+}
+
+function sameWindBotEndpoint(left, right) {
+    return left.mode !== 'skynet' && right.mode !== 'skynet'
+        && getWindBotEndpoint(left) === getWindBotEndpoint(right);
 }
 
 function getPublicArenaSettings(settings, updatedAt) {
@@ -237,6 +248,7 @@ function getPublicArenaSettings(settings, updatedAt) {
     delete result.development;
     for (const instance of Object.values(result.windbots)) {
         instance.botConfUrl ||= '';
+        instance.skynet = { ...defaultSkynetSettings(), ...instance.skynet };
     }
     return {
         secretStatus,
@@ -249,5 +261,6 @@ module.exports = {
     createDefaultArenaSettings,
     getPublicArenaSettings,
     getWindBotEndpoint,
+    sameWindBotEndpoint,
     validateAndMergeArenaSettings,
 };

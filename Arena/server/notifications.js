@@ -9,21 +9,21 @@ const TEMPLATE_FIELDS = ['title', 'body', 'runId', 'status', 'finishedAt', 'srvp
 
 function renderWebhookUrl(template, payload) {
     const rendered = template.replace(/\{\{([^{}]+)\}\}/g, (match, field) => {
-        if (!TEMPLATE_FIELDS.includes(field)) throw new Error(`未知通知模板变量: ${field}`);
+        if (!TEMPLATE_FIELDS.includes(field)) throw new Error(`Unknown notification template variable: ${field}`);
         return encodeURIComponent(String(payload[field] ?? ''));
     });
     const url = new URL(rendered);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
-        throw new Error('Webhook 必须是无内嵌账号密码和片段的 HTTP(S) URL');
+        throw new Error('Webhook must be an HTTP(S) URL without embedded credentials or fragments');
     }
     return rendered;
 }
 
 function renderWebhookTemplate(template, payload) {
-    // 在解析后的字符串中替换，避免任务文本中的引号、换行改变 JSON 结构。
+    // Substitute parsed string values so quotes and newlines in run text cannot change the JSON structure.
     return JSON.parse(template, (key, value) => typeof value === 'string'
         ? value.replace(/\{\{([^{}]+)\}\}/g, (match, field) => {
-            if (!TEMPLATE_FIELDS.includes(field)) throw new Error(`未知通知模板变量: ${field}`);
+            if (!TEMPLATE_FIELDS.includes(field)) throw new Error(`Unknown notification template variable: ${field}`);
             return String(payload[field] ?? '');
         })
         : value);
@@ -40,11 +40,11 @@ class Notifications extends EventEmitter {
     async send(run) {
         const settings = this.database.getArenaSettings().settings.notifications;
         if (!settings || settings.mode === 'off') return;
-        const statusLabel = { completed: '完成', failed: '失败', stopped: '停止', interrupted: '中断' }[run.status];
+        const statusLabel = { completed: 'completed', failed: 'failed', stopped: 'stopped', interrupted: 'interrupted' }[run.status];
         if (!statusLabel) return;
         const payload = {
-            title: `WindBot Arena · 任务${statusLabel}`,
-            body: `${run.note || run.id}（${run.srvproId}）`,
+            title: `Skynet Arena · Run ${statusLabel}`,
+            body: `${run.note || run.id} (${run.srvproId})`,
             runId: run.id, status: run.status, finishedAt: run.finishedAt,
             srvproId: run.srvproId, note: run.note || '',
         };

@@ -43,7 +43,7 @@ test('POST templates are required and defaults contain only title and body', asy
     for (const template of ['', ' \n ', null]) {
         const input = structuredClone(settings);
         input.notifications.webhookTemplate = template;
-        assert.throws(() => validateAndMergeArenaSettings(input, settings), /请求体模板不能为空/);
+        assert.throws(() => validateAndMergeArenaSettings(input, settings), /Request body template must not be empty/);
         input.notifications.webhookMethod = 'GET';
         assert.doesNotThrow(() => validateAndMergeArenaSettings(input, settings));
     }
@@ -73,7 +73,7 @@ test('webhook renders nested JSON safely and posts custom tokens without followi
         webhookHeaders: '{"Authorization":"Bearer header-token"}',
         webhookTemplate: '{"accessToken":"body-token","items":[{"text":"{{note}} / {{status}}"}],"enabled":true}',
     };
-    const note = '"quoted"\n中文 {{runId}}';
+    const note = '"quoted"\nUnicode café {{runId}}';
     const notifications = new Notifications({ getArenaSettings: () => ({ settings }) }, async (url, options) => {
         assert.equal(url, settings.notifications.webhookUrl);
         assert.equal(options.method, 'POST');
@@ -104,7 +104,7 @@ test('frontend and disabled modes never call external services', async () => {
         await notifications.send({ id: status, status, srvproId: 'srvpro-1' });
     }
     assert.deepEqual(received.map((payload) => payload.status), ['completed', 'failed', 'stopped', 'interrupted']);
-    assert.equal(received[3].title, 'WindBot Arena · 任务中断');
+    assert.equal(received[3].title, 'Skynet Arena · Run interrupted');
 });
 
 test('POST renders URL templates and persists blank HTTP headers', async (t) => {
@@ -122,16 +122,16 @@ test('POST renders URL templates and persists blank HTTP headers', async (t) => 
     let calls = 0;
     const notifications = new Notifications(database, async (url, options) => {
         calls++;
-        assert.equal(url, 'https://example.com/run%2F1?note=%E4%B8%AD%E6%96%87%26%23');
+        assert.equal(url, 'https://example.com/run%2F1?note=Unicode%20caf%C3%A9%26%23');
         assert.equal(options.method, 'POST');
         assert.deepEqual(options.headers, { 'Content-Type': 'application/json' });
-        assert.equal(JSON.parse(options.body).body, '中文&#（srvpro-1）');
+        assert.equal(JSON.parse(options.body).body, 'Unicode café&# (srvpro-1)');
         return new Response(null, { status: 204 });
     });
-    await notifications.send({ id: 'run/1', status: 'completed', note: '中文&#', srvproId: 'srvpro-1' });
+    await notifications.send({ id: 'run/1', status: 'completed', note: 'Unicode café&#', srvproId: 'srvpro-1' });
     assert.equal(calls, 1);
     input.notifications.webhookUrl = 'https://example.com/?text={{unknown}}';
-    assert.throws(() => validateAndMergeArenaSettings(input, settings), /URL 或模板变量无效/);
+    assert.throws(() => validateAndMergeArenaSettings(input, settings), /Invalid URL or template variable/);
     for (const headers of ['{}', '', '{"Authorization":"Bearer keep"}']) {
         settings.notifications.webhookHeaders = headers;
         database.saveArenaSettings(settings);
@@ -149,7 +149,7 @@ test('GET webhook encodes URL template values and sends headers without a body',
         webhookHeaders: '{"Authorization":"Bearer token"}',
     });
     const saved = validateAndMergeArenaSettings(settings, settings);
-    const note = '中文 &x=1#fragment /?\n{{status}}';
+    const note = 'Unicode café &x=1#fragment /?\n{{status}}';
     let calls = 0;
     const notifications = new Notifications({ getArenaSettings: () => ({ settings: saved }) }, async (url, options) => {
         calls++;
@@ -223,7 +223,7 @@ test('delivery failure preserves final status and logs no endpoint credentials',
     service.notifications.send = async () => { throw new Error('https://example.com?token=private'); };
     const context = { id: 'run', srvproId: 'srvpro-1', abortController: new AbortController() };
     service.contexts.set(context.srvproId, context);
-    await service.finish(context, 'completed', '完成');
+    await service.finish(context, 'completed', 'Completed');
     const run = database.getRun('run');
     assert.equal(run.status, 'completed');
     assert.equal(service.contexts.size, 0);
@@ -244,9 +244,9 @@ test('manual immediate stop skips notification while other endings still notify'
             service.contexts.set(context.srvproId, context);
             if (outcome === 'graceful' || outcome === 'manual-after-graceful') service.gracefulStopRun('run');
             if (outcome.startsWith('manual')) service.stopRun('run');
-            if (outcome === 'shutdown') service.stopRun('run', 'Arena 服务正在关闭');
+            if (outcome === 'shutdown') service.stopRun('run', 'Skynet Arena is shutting down');
             const status = ['completed', 'failed', 'interrupted'].includes(outcome) ? outcome : 'stopped';
-            await service.finish(context, status, context.stopReason || '任务结束');
+            await service.finish(context, status, context.stopReason || 'Run ended');
             assert.deepEqual(sent, outcome.startsWith('manual') ? [] : [status]);
             assert.equal(database.getRun('run').status, status);
             assert.equal(service.contexts.size, 0);
@@ -275,7 +275,7 @@ test('shutdown waits for notifications after tasks leave the active list', async
             };
             const context = { id: 'run', srvproId: 'srvpro-1', abortController: new AbortController() };
             service.contexts.set(context.srvproId, context);
-            context.done = service.finish(context, 'completed', '完成');
+            context.done = service.finish(context, 'completed', 'Completed');
             await started;
             assert.equal(service.contexts.size, 0);
             assert.equal(database.getRun('run').status, 'completed');
@@ -315,10 +315,10 @@ test('frontend notifications reach SSE clients and remove listeners on shutdown'
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api/events`);
     const reader = response.body.getReader();
     await reader.read();
-    notifications.emit('notification', { title: '完成', body: '测试', runId: 'run' });
+    notifications.emit('notification', { title: 'Completed', body: 'Test', runId: 'run' });
     const chunk = new TextDecoder().decode((await reader.read()).value);
     assert.match(chunk, /event: notification/);
-    assert.match(chunk, /"title":"完成"/);
+    assert.match(chunk, /"title":"Completed"/);
     shutdown.abort();
     assert.equal(notifications.listenerCount('notification'), 0);
     await reader.cancel();
@@ -351,14 +351,14 @@ test('webhook test API uses unsaved GET/POST settings and reports failures witho
             }),
         });
         assert.equal(response.status, 200);
-        assert.match((await response.json()).message, /成功发送/);
+        assert.match((await response.json()).message, /sent successfully/);
         const request = requests.at(-1);
         assert.equal(request.options.method, method);
         assert.equal(request.options.headers.Authorization, 'Bearer draft-token');
         assert.equal(new URL(request.url).pathname, '/notification-test');
-        assert.equal(new URL(request.url).searchParams.get('title'), 'WindBot Arena · 测试通知');
+        assert.equal(new URL(request.url).searchParams.get('title'), 'Skynet Arena · Test notification');
         if (method === 'POST') assert.deepEqual(JSON.parse(request.options.body), {
-            title: 'WindBot Arena · 测试通知', body: '这是一条测试通知（srvpro-1）',
+            title: 'Skynet Arena · Test notification', body: 'This is a test notification (srvpro-1)',
         });
         else assert.equal('body' in request.options, false);
     }
@@ -367,7 +367,7 @@ test('webhook test API uses unsaved GET/POST settings and reports failures witho
         body: JSON.stringify({ ...original.settings.notifications, mode: 'webhook', webhookUrl: 'https://example.com', webhookTemplate: '' }),
     });
     assert.equal(invalid.status, 400);
-    assert.match((await invalid.json()).error, /不能为空/);
+    assert.match((await invalid.json()).error, /must not be empty/);
     assert.equal(requests.length, 2);
     service.notifications.fetch = async () => { throw new Error('https://example.com/?token=private-secret'); };
     const failed = await fetch(endpoint, {
@@ -376,7 +376,7 @@ test('webhook test API uses unsaved GET/POST settings and reports failures witho
     });
     assert.equal(failed.status, 502);
     const error = await failed.json();
-    assert.match(error.error, /发送失败/);
+    assert.match(error.error, /could not be sent/);
     assert.equal(JSON.stringify(error).includes('private-secret'), false);
     assert.deepEqual(database.getArenaSettings(), original);
     assert.equal(database.getRunCount(), 0);

@@ -15,8 +15,8 @@ test('calculateStats normalizes the raw SRVPro counters', () => {
 });
 
 test('normalizeRank validates and normalizes ranking tuples', () => {
-    const rank = normalizeRank([['新-Dragon', { flee: '1', lose: 2, win: 4 }]]);
-    assert.equal(rank[0][0], '新-Dragon');
+    const rank = normalizeRank([['New-Dragon', { flee: '1', lose: 2, win: 4 }]]);
+    assert.equal(rank[0][0], 'New-Dragon');
     assert.equal(rank[0][1].games, 6);
-    assert.throws(() => normalizeRank([{ name: 'invalid' }]), /不是 \[名称, 统计\]/);
+    assert.throws(() => normalizeRank([{ name: 'invalid' }]), /is not \[name, statistics\]/);
 });

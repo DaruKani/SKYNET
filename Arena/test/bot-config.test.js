@@ -38,9 +38,9 @@ test('configuration inspection reports incomplete settings without throwing', ()
 
     assert.equal(result.valid, false);
     assert.equal(result.modes.ranking.valid, false);
-    assert.ok(result.issues.includes('SRVPro 地址未配置'));
-    assert.ok(result.issues.includes('新版 WindBot 运行目录未配置'));
-    assert.ok(result.issues.includes('新版 bot.conf 路径未配置'));
+    assert.ok(result.issues.includes('SRVPro host is not configured'));
+    assert.ok(result.issues.includes('Current WindBot runtime directory is not configured'));
+    assert.ok(result.issues.includes('Current bot.conf path is not configured'));
 });
 
 test('parseBotConfig parses supported entries and filters manual bots', () => {
@@ -85,8 +85,8 @@ test('buildRegressionMatchups creates generalized competitors', (context) => {
     const matchups = buildRegressionMatchups(settings, ['Dragon']);
 
     assert.equal(matchups.length, 1);
-    assert.equal(matchups[0].competitors[0].rankName, '新-Dragon Bot');
-    assert.equal(matchups[0].competitors[1].rankName, '旧-Legacy Dragon');
+    assert.equal(matchups[0].competitors[0].rankName, 'C-Dragon Bot');
+    assert.equal(matchups[0].competitors[1].rankName, 'B-Legacy Dragon');
     assert.equal(matchups[0].aiLevel, 4);
     assert.equal(matchups[0].competitors[0].dialog, 'dragon');
     assert.equal(matchups[0].competitors[1].dialog, null);
@@ -183,7 +183,7 @@ test('challenge shares the target rank and keeps opponent bot names', () => {
     assert.equal(matchups[0].competitors[0].rankName, 'ManualExecutor');
     assert.equal(matchups[0].competitors[1].rankName, 'Dragon Bot');
     assert.ok(matchups.every((item) => item.competitors[0].rankName === 'ManualExecutor'));
-    assert.equal(matchups.at(-1).competitors[1].rankName, '对手-ManualExecutor');
+    assert.equal(matchups.at(-1).competitors[1].rankName, 'Opp-ManualExecutor');
     assert.equal(new Set(matchups.flatMap((item) => item.competitors.map((bot) => bot.rankName))).size, 5);
 
     const [oldTargetMatchup] = buildChallengeMatchups(
@@ -203,13 +203,13 @@ test('challenge shares the target rank and keeps opponent bot names', () => {
 
     const aliasSettings = structuredClone(settings);
     aliasSettings.windbots.current.botConfText += `
-!艾克莉西娅-阿不思
-Name=艾克莉西娅 Deck=Albaz Dialog=ecclesia.zh-CN
+!Écclesia-Albaz
+Name=Écclesia Deck=Albaz Dialog=ecclesia.zh-CN
 AI_LV4
 `;
     const [albazMatchup] = buildChallengeMatchups(
         aliasSettings,
-        'Albaz — 艾克莉西娅-阿不思',
+        'Albaz — Écclesia-Albaz',
         ['Dragon'],
     );
     assert.equal(albazMatchup.competitors[0].deck, 'Albaz');
@@ -221,7 +221,7 @@ AI_LV4
             'ManualExecutorWithAnExtremelyLongName',
             ['Dragon'],
         ),
-        /超过 20 个字符的排行榜名称: “ManualExecutorWithAnExtremelyLongName”/,
+        /ranking names exceeding 20 characters: “ManualExecutorWithAnExtremelyLongName”/,
     );
 });
 
@@ -240,7 +240,7 @@ test('ranking creates one current WindBot entry per selected deck', () => {
     assert.equal(entries[0].competitors[0].rankName, 'Dragon Bot');
     assert.equal(entries[1].competitors[0].rankName, 'Beginner Bot');
     assert.notEqual(entries[0].competitors[0].rankName, entries[1].competitors[0].rankName);
-    assert.throws(() => buildRankingEntries(settings, ['Dragon']), /至少需要两个卡组/);
+    assert.throws(() => buildRankingEntries(settings, ['Dragon']), /requires at least two decks/);
 });
 
 test('tag smoke test creates one current WindBot entry for each candidate deck', () => {

@@ -15,7 +15,7 @@ async function main() {
     const arenaService = new ArenaService(config, database);
     const interrupted = arenaService.initialize();
     if (interrupted > 0) {
-        console.warn(`已将 ${interrupted} 个未正常结束的测试标记为中断`);
+        console.warn(`Marked ${interrupted} unfinished experiments as interrupted.`);
     }
 
     const shutdownController = new AbortController();
@@ -29,11 +29,11 @@ async function main() {
         server.once('error', reject);
         server.listen(config.listenPort, config.listenHost, resolve);
     });
-    console.log(`WindBot Arena 已启动: ${
+    console.log(`Skynet Arena is ready: ${
         config.clientDevUrl || `http://${config.listenHost}:${config.listenPort}`
     }`);
     if (config.clientDevUrl) {
-        console.log(`Arena API 已启动: http://${config.listenHost}:${config.listenPort}`);
+        console.log(`Arena API is ready: http://${config.listenHost}:${config.listenPort}`);
     }
 
     let shuttingDown = false;
@@ -42,7 +42,7 @@ async function main() {
             return;
         }
         shuttingDown = true;
-        console.log(`收到 ${signal}，正在关闭服务`);
+        console.log(`Received ${signal}; shutting down.`);
         const serverClosed = new Promise((resolve, reject) => {
             server.close((error) => (error ? reject(error) : resolve()));
         });
@@ -56,6 +56,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error(`启动失败: ${error.stack || error.message}`);
+    console.error(`Startup failed: ${error.stack || error.message}`);
     process.exitCode = 1;
 });
