@@ -1,69 +1,202 @@
 <div align="center">
-  <img src="Branding/asterion-icon.png" width="200" alt="Asterion: a guiding star above a labyrinth and cards">
-  <h1>Asterion</h1>
-  <p><strong>A new path for duel intelligence.</strong></p>
-  <p>Deck-independent decision making for MDPro4 and the future Duel Expedition.</p>
+  <img src="Branding/skynet-logo.png" width="380" alt="SKYNET — Adaptive Duel Intelligence — MDPro4 AI Systems">
+  <h1>SKYNET</h1>
+  <p><strong>Adaptive Duel Intelligence · MDPro4 AI Systems</strong></p>
+  <p>Build a strategy. Change the deck. Learn from the duel.</p>
 </div>
 
 ---
 
-**Status: early implementation in progress.** This private repository is available
-to its invited collaborators. It is not yet a release or a claim of competitive
-performance.
+**SKYNET is an experimental, deck-independent duel AI for MDPro4.** It has its own
+`SKYNET.exe`, solution, policy and learning tools. It is designed as the AI
+foundation for **Duel Expedition**, where decks evolve during a single-player run.
 
-Asterion is a new AI policy built on the WindBot protocol client. The goal is to
-play changing decks without writing an entire executor for every deck, making
-it useful for a single-player expedition where opponents and rewards evolve.
+The first implementation is functional, with a deliberately bounded card library.
+It is not yet a competitive general-purpose player or a trained neural model.
 
-## The approach
+## Why a different AI
 
-1. **Let the game own the rules.** Rank only the legal actions offered by the
-   server; use only information available to the bot's client.
-2. **Share card knowledge across decks.** Small, reviewed card-effect semantics
-   describe useful actions and selections without baking them into one deck's
-   expansion route.
-3. **Compare decisions.** A strategic policy evaluates development, pressure,
-   interaction, resources and risk across the offered actions.
-4. **Learn from completed duels.** Opt-in training records decisions and the
-   authoritative result. Offline learning produces candidate weights; frozen
-   evaluation measures them before promotion.
-5. **Keep a working integration boundary.** Reuse the YGOPro transport and normal
-   duels. MDPro4 will own an explicitly selected external bot process.
+A deck-specific executor encodes one deck's route in ordered card handlers.
+SKYNET instead compares the legal actions offered by the server using shared
+card knowledge and strategic features. Changing a deck does not require a new
+executor class. Knowledge added for a supported card is available to every deck.
 
-## What this does not promise
+```mermaid
+flowchart LR
+  A[MDPro4 / ocgcore] -->|Public client state + legal offers| B[Protocol adapter]
+  B --> C[Reviewed card semantics]
+  C --> D[Strategic action policy]
+  D -->|Offered action + legal selections| A
+  D -->|Opt-in decisions + completed result| E[Episode store]
+  E --> F[Offline training]
+  F --> G[Candidate checkpoint]
+  G --> H[Fresh frozen evaluation]
+  H -->|Explicit model selection| D
+```
 
-An unfamiliar deck is loadable before every unfamiliar effect is understood.
-The first policy will use basic summons, battle and a small supported card
-library; unknown optional effects are conservatively declined. Complex combos,
-general Lua effect understanding, core-backed search, and strong self-play
-training remain future work. Learning strategic weights does not automatically
-teach the bot a new card's rules.
+The engine owns legality and resolution. SKYNET does not read an opponent's hidden
+cards or assume it can execute a Lua effect in its head. The existing MDPro4 core
+API has no state-clone primitive, so perfect lookahead is not silently assumed.
 
-## Expedition direction
+## What works now
 
-The intended game loop is starter deck -> route choice -> duel -> curated card
-bundle -> deck revision -> themed boss, with saved runs and limited defeats.
-This repository owns the AI foundation. The Expedition route UI, reward economy,
-save format and game content belong to MDPro4 and are not implemented here yet.
+| Capability | Current behavior |
+| --- | --- |
+| Arbitrary `.ydk` input | One policy, without a deck executor or prior deck training |
+| Main-phase decisions | Rank all offered summons, sets, position changes, supported effects and phase exits |
+| Chaining | Rank optional offers; always honor mandatory offers |
+| Card selection | Select from actual server candidates using hint and the correct activation/resolution context |
+| Basic combat | Reuses observed-state battle helpers |
+| Strategy | Development, pressure, advantage, interaction, recovery, protection, conservation, risk and modest race cohesion |
+| Learning | Optional softmax exploration; completed-duel episodes; offline linear residual updates |
+| Frozen play | Greedy inference; no training-file writes or automatic checkpoint promotion |
+| MDPro4 | Optional Windows external opponent through the ocgcore Solo adapter |
 
-## Development
+The bootstrap library covers Pot of Greed, Raigeki, Dark Hole, Monster Reborn,
+Mystical Space Typhoon, Mirror Force, Trap Hole, Fissure, Smashing Ground,
+Reinforcement of the Army and Sangan. Prompt timing was checked against local
+`ygopro-scripts` sources. Mandatory selections do not depend on an activation
+handler having run.
 
-The initial implementation retains C# and the existing .NET Framework 4.8 host
-for compatibility. Python tools handle training and evaluation. Source,
-build instructions, validated capabilities and integration instructions will
-arrive in the following commits.
+**Unfamiliar cards have limits.** Basic monster play can work, but unknown optional
+effects are declined. General extra-deck procedure planning, complex combos and
+unreviewed effect target/option choices are not solved. The included Vanguard
+starter is an unrestricted research deck, not a current tournament-format deck.
 
-Updates use descriptive commit titles and bodies. An implementation commit
-will distinguish successful builds, real duel checks, and remaining limitations.
+## Build and run
 
-## Heritage and license
+Windows prerequisites: Visual Studio/MSBuild with .NET Framework 4.8 targeting
+support. This is a classic C# project, not an SDK project. Python 3.11+ is needed
+only for the development tools.
 
-Built on [WindBot](https://github.com/IceYGO/windbot) and its contributors'
-YGOPro/YGOSharp protocol implementation. Existing attribution and the
-[MIT license](LICENSE) are retained. The inherited executable name `WindBot.exe`
-is kept for launcher compatibility; Asterion is the new policy/project identity.
-Yu-Gi-Oh! card artwork, databases and game assets are not included as new project
-branding or training data.
+```powershell
+msbuild Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+.\bin\Release\SKYNET.exe --help
+.\bin\Release\SKYNET.exe "DeckFile=Decks/AI_Skynet.ydk" `
+  "DbPath=D:/YourGame/Data/locales/en-US/cards.cdb" `
+  Host=127.0.0.1 Port=7911 Version=4962 Chat=false
+```
 
-The original Asterion icon was generated with the built-in ImageGen tool:
-a cyan/violet star, labyrinth and abstract card emblem on midnight navy.
+The duel host must already be listening. Runtime databases and game scripts are
+provided by the game and are not shipped in this repository. Missing input files
+or a failed connection return a nonzero process exit code.
+
+Useful options: `Name`, `DeckFile`, `DbPath`, `Host`, `Port`, `HostInfo`, `Version`,
+`Hand`, `Debug`, `Chat`, `Config`, `PolicyModel`, `PolicyTraining`, `PolicyData`,
+`PolicySeed`, and `PolicyGroup`. Chat is off by default. The optional `Deck=SKYNET`
+argument used by MDPro4 identifies this policy; it does not select a legacy deck AI.
+
+## Install into MDPro4
+
+The game checkout needs the corresponding `SoloSelector.Skynet` host adapter and
+its three call sites. The adapter source is mirrored in
+[`Tools/Skynet/SoloSelector.Skynet.cs`](Tools/Skynet/SoloSelector.Skynet.cs).
+This task installs those changes in the companion MDPro4 checkout; copying only
+an executable into an older game build does not add the menu integration.
+
+```powershell
+.\Tools\Skynet\Install-MDPro4.ps1 -GameRoot 'D:/YourGame' -Configuration Release
+```
+
+This copies an explicit payload into `Data/Skynet`. Select **ocgcore**, then
+**SKYNET** in Solo and choose the opponent's deck. The adapter uses the game's
+locale database, disables training for normal play, and owns the exact external
+process through completion, connection replacement, destruction and application
+exit. It does not replace native Master Duel CPU behavior. Windows is the initial
+integrated platform; other platform packaging remains future work.
+
+## Can it teach itself?
+
+It can learn **preferences among supported legal actions**. It does not learn new
+card rules, target selection, battle tactics or combo procedures from these
+weights. Those require richer representations and further implementation.
+
+```powershell
+# Collect completed episodes against a running duel host.
+.\bin\Release\SKYNET.exe "DbPath=D:/YourGame/Data/locales/en-US/cards.cdb" `
+  "DeckFile=Decks/AI_Skynet.ydk" Host=127.0.0.1 Port=7911 `
+  PolicyTraining=true PolicyData=Training PolicySeed=42 `
+  PolicyGroup=vanguard-vs-dragon
+
+# After collecting varied deck/encounter cohorts from the SAME source model:
+python Tools/Skynet/train.py --episodes Training --output Models/local/candidate-001.json
+
+# Evaluate fresh matches with training disabled and PolicyModel=<candidate path>.
+python Tools/Skynet/evaluate.py Artifacts/evaluation/results.csv
+```
+
+Training uses an episodic policy-gradient update over nine bounded features.
+Checkpoint formats and features are validated; incomplete/disconnected duels do
+not become losses. Each completed episode is published atomically under a unique
+name. The offline trainer refuses mixed behavior-model versions, duplicate
+records, invalid values and an empty training/holdout partition. Use stable,
+distinct deck/encounter `PolicyGroup` values, not a different label for every duel.
+Held-out groups do not contribute to the update. Candidate files never overwrite
+a live checkpoint. Promotion is a separate, explicit choice after fresh frozen
+duels; a small training win count is not evidence of improvement.
+
+## Validation
+
+```powershell
+msbuild Tests/Skynet.Tests.csproj /p:Configuration=Debug
+.\Tests\bin\Debug\Skynet.Tests.exe 'D:/YourGame/Data/locales/en-US/cards.cdb'
+python Tools/Skynet/test_learning.py
+
+python Tools/Skynet/native_smoke.py `
+  --server 'D:/YourGame/Assets/Plugins/Windows/ygoserver.dll' `
+  --data-root 'D:/YourGame/Data' --bot-exe bin/Release/SKYNET.exe `
+  --deck Decks/AI_Skynet.ydk --opponent-deck Decks/AI_Skynet.ydk `
+  --games 2 --output-dir Artifacts/qa/my-run
+```
+
+The native fixture requires an existing compatible Windows server DLL. It runs
+isolated server/client processes with deadlines, records authoritative seats and
+results, and checks normal retirement. It disables deck checks and shuffling for
+a bounded smoke test. The core RNG seed is unavailable through this server API;
+`PolicySeed` controls only policy sampling. Results with unknown core seeds are
+reported as such, with independent match IDs.
+
+Current checks: Debug and Release builds; 14 C# regression cases; 8 Python tests;
+four prototype native duels, including supported effects and terminal training
+records; two final Release starter duels with authoritative results and normal
+exits; and 11 Unity host launch/connection-retirement assertions. The Unity
+fixture preserved the checked settings and released its exact process. A separate
+Play-session warning reported a common-menu sound loading timeout; the SKYNET
+fixture itself logged no warnings or errors. These are correctness checks, not a strength benchmark.
+Without a database, the C# harness explicitly skips its five card-backed cases.
+
+## The path to Duel Expedition
+
+1. Expand reusable card capabilities, precise costs, targeting and material logic.
+2. Build a varied opponent/deck benchmark with separate training and evaluation.
+3. Add bounded planning using an isolated core harness and reproducible public
+   observations; preserve hidden-information boundaries.
+4. Develop stronger policy/value models and measure them against frozen baselines.
+5. Build Expedition in MDPro4: starter decks, branching encounters, curated reward
+   bundles, deck revisions, boss previews, limited defeats and persistent runs.
+
+The Expedition UI, run save format, reward economy and unlock content are not
+implemented by this AI milestone. Curated pools and tested opponent pairings
+remain the practical way to make the first playable expedition coherent.
+
+## Project map
+
+- `Game/AI/Strategy/`: SKYNET policy, shared semantics, learning session and adapter.
+- `Game/SkynetDecisionAdapter.cs`: legal-offer integration and terminal lifecycle.
+- `Game/`, `YGOSharp.*`: protocol and client-visible duel state.
+- `Tools/Skynet/`: training, evaluation, native QA and MDPro4 installation.
+- `Tests/`: dependency-free .NET Framework regression harness.
+- `Branding/`: project logo, caption and application icon.
+
+## Credits
+
+SKYNET reuses WindBot/YGOSharp transport, state handling and general battle helpers;
+the original MIT attribution is retained in [LICENSE](LICENSE). Its build contains
+no legacy specialized deck-executor collection or BotWrapper launcher. The old
+workspace copy is preserved locally outside the build and publication payload.
+
+Branding follows the SKYNET artwork supplied by the project owner. The caption
+was edited with the built-in ImageGen tool to read **ADAPTIVE DUEL INTELLIGENCE**
+and **MDPRO4 AI SYSTEMS**. These branding assets are separate from the inherited
+source-code license. No card database, native game DLL or proprietary game artwork
+is included in the repository.

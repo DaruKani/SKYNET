@@ -164,7 +164,8 @@ $RECYCLE.BIN/
 # Asterion local learning and QA artifacts
 Training/
 Models/local/
-Artifacts/
+[Aa]rtifacts/
+LegacyWindBot/
 __pycache__/
 *.pyc
 AGENTS.local.md
