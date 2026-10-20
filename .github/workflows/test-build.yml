@@ -1,0 +1,42 @@
+name: SKYNET validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+      - uses: microsoft/setup-msbuild@v3
+      - name: Build Debug
+        run: msbuild Skynet.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
+      - name: Build Release
+        run: msbuild Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Build regression harness
+        run: msbuild Tests/Skynet.Tests.csproj /p:Configuration=Debug
+      - name: Run database-independent assertions
+        run: ./Tests/bin/Debug/Skynet.Tests.exe
+      - name: Validate learning tools
+        run: python Tools/Skynet/test_learning.py
+      - name: Stage explicit product payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path Artifacts/package/Data -Force | Out-Null
+          ./Tools/Skynet/Install-MDPro4.ps1 -GameRoot Artifacts/package -Configuration Release
+      - uses: actions/upload-artifact@v6
+        with:
+          name: SKYNET-windows
+          path: Artifacts/package/Data/Skynet/
+          if-no-files-found: error
+  mono:
+    runs-on: ubuntu-latest
+    container:
+      image: mono:6.8.0.123
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build with legacy Mono
+        run: msbuild Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"

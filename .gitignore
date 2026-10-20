@@ -161,7 +161,7 @@ $RECYCLE.BIN/
 # Mac desktop service store files
 .DS_Store
 
-# Asterion local learning and QA artifacts
+# SKYNET local learning and QA artifacts
 Training/
 Models/local/
 [Aa]rtifacts/
