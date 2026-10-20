@@ -22,6 +22,16 @@ namespace Skynet.Game.AI.Shadow
         public ShadowObservation Observation;
         [DataMember(Name = "offers", EmitDefaultValue = false)]
         public List<ShadowOffer> Offers;
+        [DataMember(Name = "selection", EmitDefaultValue = false)]
+        public ShadowSelection Selection;
+        [DataMember(Name = "selectedCandidateIds", EmitDefaultValue = false)]
+        public int[] SelectedCandidateIds;
+        [DataMember(Name = "responseBytes", EmitDefaultValue = false)]
+        public int[] ResponseBytes;
+        [DataMember(Name = "responseSource", EmitDefaultValue = false)]
+        public string ResponseSource;
+        [DataMember(Name = "cancelled", EmitDefaultValue = false)]
+        public bool Cancelled;
         [DataMember(Name = "selectedOfferId")]
         public int? SelectedOfferId;
         [DataMember(Name = "selectedWireResponse")]
@@ -42,6 +52,57 @@ namespace Skynet.Game.AI.Shadow
         public int MaxBytes;
         [DataMember(Name = "maxRowBytes", EmitDefaultValue = false)]
         public int MaxRowBytes;
+    }
+
+    [DataContract]
+    public sealed class ShadowSelection
+    {
+        [DataMember(Name = "min")]
+        public int Min;
+        [DataMember(Name = "max")]
+        public int Max;
+        [DataMember(Name = "cancelable")]
+        public bool Cancelable;
+        [DataMember(Name = "hint")]
+        public int Hint;
+        [DataMember(Name = "candidates")]
+        public List<ShadowSelectionCandidate> Candidates;
+        [DataMember(Name = "solvingChainIndex")]
+        public int SolvingChainIndex;
+        [DataMember(Name = "chain")]
+        public List<ShadowChainLink> Chain = new List<ShadowChainLink>();
+    }
+
+    [DataContract]
+    public sealed class ShadowSelectionCandidate
+    {
+        [DataMember(Name = "id")]
+        public int Id;
+        [DataMember(Name = "known")]
+        public bool Known;
+        [DataMember(Name = "code")]
+        public int Code;
+        // This is the prompt's wire reference. Deck sequences can be virtual;
+        // they must not be treated as persistent field slots or card identities.
+        [DataMember(Name = "card")]
+        public ShadowCardReference Card;
+        [DataMember(Name = "position")]
+        public int Position;
+    }
+
+    [DataContract]
+    public sealed class ShadowChainLink
+    {
+        [DataMember(Name = "index")]
+        public int Index;
+        [DataMember(Name = "activatePlayer")]
+        public int ActivatePlayer;
+        [DataMember(Name = "code")]
+        public int Code;
+        [DataMember(Name = "description")]
+        public int Description;
+        [DataMember(Name = "activation")]
+        public ShadowCardReference Activation;
     }
 
     [DataContract]

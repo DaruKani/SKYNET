@@ -577,11 +577,16 @@ list; that does not prove correct card behavior or model support.
 An opt-in **shadow capture and offline mapper** is now implemented. Pass
 `ShadowData=<absolute directory>` to either policy, or add `--shadow --agent skynet
 --opponent-agent expert-oldschool` to the native fixture. Each duel gets its own
-JSONL file with detached predecision state, all raw main-phase offers, the actual
-wire response and authoritative outcome events. Captures exclude deck identities
-and hidden opponent properties; I/O failures disable capture without changing
-decisions. Limits are 4,096 rows, 16 MiB per duel and 1 MiB per row. Other prompt
-types are explicitly marked unsupported.
+JSONL file with detached predecision state, all raw main-phase offers, ordinary
+card-selection candidates, the actual wire response and authoritative outcome
+events. Selection records include min/max, cancelability, hint, immutable chain
+activation facts and the resolving link. Candidate IDs preserve raw wire order,
+including duplicate card codes; deck references may be virtual prompt positions.
+Whole-deck observations and hidden opponent properties remain masked. An own-deck
+card identity explicitly offered for a search is recorded only in that prompt's
+candidate list. I/O failures disable capture without changing decisions. Limits
+are 4,096 rows, 16 MiB per duel and 1 MiB per row. Other prompt types remain
+explicitly unsupported.
 
 ```powershell
 python Tools/Skynet/ygo_agent_shadow.py `
@@ -592,7 +597,33 @@ python Tools/Skynet/ygo_agent_shadow.py `
 The mapper checks the pinned encoder contract, card visibility, vocabulary,
 action order, raw response indices and feature limits. It never executes imported
 code or loads a model. Twelve Python regression tests and eighteen local C#
-scratch assertions cover these boundaries.
+scratch assertions covered the original main-phase capture boundaries.
+
+Audit ordinary card-selection demonstrations independently of the YGO Agent
+mapper:
+
+```powershell
+python Tools/Skynet/inspect_demonstrations.py `
+  --capture 'Artifacts/qa/client/shadow/duel.jsonl' `
+  --output Artifacts/demonstration-audit.json
+```
+
+Repeat `--capture` for up to 32 explicit files. The auditor checks raw candidate
+IDs against the response bytes, public visibility, prompt constraints and
+completed outcomes. It separates policy choices from protocol fallback and
+automatic cancellation; incomplete captures contribute no completed policy
+selections. A completed capture belongs to one client, so both sides of one duel
+produce two captures. This does **not** certify an expert's choices as optimal or
+make observations ready for neural training.
+
+The selection update passed Debug/Release builds, eight Python audit regressions,
+the twelve existing mapper regressions and 34 local C# scratch assertions.
+Two native expert-Swordsoul versus SKYNET duels completed across both host seats
+with normal process exits. Their four client captures contained 14 audited
+ordinary selections, including 12 expert selections; all had valid wire labels.
+This is capture validation, not a strength benchmark. Chain, battle, option,
+yes/no, sum and select/unselect prompts still need their own complete recording
+and mapping before neural training.
 
 Real native captures exposed concrete blockers: **all 50 captured main-phase
 decisions included the legal shuffle action**, which this YGO Agent input schema

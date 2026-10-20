@@ -22,6 +22,8 @@ jobs:
         run: python Tools/Skynet/test_ygo_agent_inspection.py
       - name: Validate public-observation shadow mapping
         run: python Tools/Skynet/test_ygo_agent_shadow.py
+      - name: Validate card-selection demonstration audits
+        run: python Tools/Skynet/test_demonstrations.py
       - name: Validate owned Arena process cleanup
         run: python Tools/Skynet/test_arena_process_owner.py
       - name: Stage explicit product payload

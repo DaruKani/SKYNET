@@ -67,7 +67,7 @@ namespace Skynet.Game.AI.Shadow
                 Write(new ShadowRecord
                 {
                     Kind = "start",
-                    Coverage = new[] { "select_idlecmd" },
+                    Coverage = new[] { "select_idlecmd", "select_card" },
                     MaxRows = MaximumRows,
                     MaxBytes = MaximumBytes,
                     MaxRowBytes = MaximumRowBytes
@@ -86,7 +86,8 @@ namespace Skynet.Game.AI.Shadow
             if (message == GameMessage.AddCounter || message == GameMessage.RemoveCounter)
                 _counterObserved = true;
             int value = (int)message;
-            if ((value >= 10 && value <= 26 && message != GameMessage.SelectIdleCmd)
+            if ((value >= 10 && value <= 26 && message != GameMessage.SelectIdleCmd
+                && message != GameMessage.SelectCard)
                 || (value >= 140 && value <= 143))
             {
                 Write(new ShadowRecord
@@ -212,6 +213,120 @@ namespace Skynet.Game.AI.Shadow
             {
                 Disable(exception.GetType().Name);
                 return null;
+            }
+        }
+
+        public void AddSelectionCandidate(List<ShadowSelectionCandidate> candidates, int index,
+            int code, int controller, int location, int sequence, int position)
+        {
+            if (!Enabled || candidates == null)
+                return;
+            try
+            {
+                if (candidates.Count >= 255)
+                    throw new InvalidDataException("Selection candidate limit.");
+                bool overlay = (location & (int)CardLocation.Overlay) != 0;
+                bool faceup = !overlay && (position & (int)CardPosition.FaceUp) != 0;
+                bool known = code > 0 && (controller == 0 || (!overlay
+                    && location != (int)CardLocation.Deck && location != (int)CardLocation.Hand
+                    && (location == (int)CardLocation.Grave || faceup)));
+                candidates.Add(new ShadowSelectionCandidate
+                {
+                    Id = index,
+                    Known = known,
+                    Code = known ? code : 0,
+                    Card = new ShadowCardReference
+                    {
+                        Controller = controller,
+                        Location = location,
+                        Sequence = sequence,
+                        OverlaySequence = overlay ? position : -1
+                    },
+                    Position = overlay || location == (int)CardLocation.Deck
+                        || location == (int)CardLocation.Hand ? 0 : position
+                });
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        public ShadowRecord PrepareSelection(Duel duel, List<ShadowSelectionCandidate> candidates,
+            int min, int max, bool cancelable, int hint)
+        {
+            if (!Enabled || candidates == null)
+                return null;
+            try
+            {
+                ShadowRecord record = Prepare(duel, new List<ShadowOffer>());
+                if (record == null)
+                    return null;
+                record.Prompt = "select_card";
+                record.Selection = new ShadowSelection
+                {
+                    Min = min,
+                    Max = max,
+                    Cancelable = cancelable,
+                    Hint = hint,
+                    Candidates = candidates,
+                    SolvingChainIndex = duel.SolvingChainIndex
+                };
+                // Activation snapshots survive source movement and reverse resolution.
+                // Targets, relations and unhandled prompts remain explicitly incomplete.
+                for (int i = 0; i < duel.CurrentChainInfo.Count; ++i)
+                {
+                    if (i >= MaximumCards)
+                        throw new InvalidDataException("Chain limit.");
+                    ChainInfo info = duel.CurrentChainInfo[i];
+                    record.Selection.Chain.Add(new ShadowChainLink
+                    {
+                        Index = i + 1,
+                        ActivatePlayer = info.ActivatePlayer,
+                        Code = Math.Max(0, info.ActivateId),
+                        Description = info.ActivateId > 0 ? info.ActivateDescription : -1,
+                        Activation = new ShadowCardReference
+                        {
+                            Controller = info.ActivateController,
+                            Location = (int)info.ActivateLocation,
+                            Sequence = info.ActivateSequence
+                        }
+                    });
+                }
+                if (candidates.Any(candidate => candidate.Card.OverlaySequence >= 0))
+                    AddUnsupported(record, "overlay-selection-not-mapped");
+                return record;
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+                return null;
+            }
+        }
+
+        public void CommitSelection(ShadowRecord record, byte[] response, bool cancelled, string source)
+        {
+            if (!Enabled || record == null)
+                return;
+            try
+            {
+                record.ResponseBytes = response.Select(value => (int)value).ToArray();
+                record.ResponseSource = source;
+                record.Cancelled = cancelled;
+                record.SelectedCandidateIds = cancelled ? new int[0] : record.ResponseBytes.Skip(1).ToArray();
+                bool valid = cancelled
+                    ? record.Selection.Cancelable && record.ResponseBytes.SequenceEqual(new[] { 255, 255, 255, 255 })
+                    : response.Length > 0 && response[0] == record.SelectedCandidateIds.Length
+                        && response[0] >= record.Selection.Min && response[0] <= record.Selection.Max
+                        && record.SelectedCandidateIds.Distinct().Count() == record.SelectedCandidateIds.Length
+                        && record.SelectedCandidateIds.All(id => record.Selection.Candidates.Any(candidate => candidate.Id == id));
+                if (!valid)
+                    AddUnsupported(record, "invalid-card-selection-response");
+                Write(record);
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
             }
         }
 

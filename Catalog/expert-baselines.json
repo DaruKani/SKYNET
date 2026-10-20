@@ -2253,5 +2253,82 @@
         "Local scratch sources, executable payloads and raw runtime receipts remain ignored; this tracked receipt preserves their hashes and measured conclusions."
       ]
     }
+  ],
+  "demonstrationCaptureUpdates": [
+    {
+      "id": "ordinary-card-selection-v1",
+      "date": "2026-10-20",
+      "policyRevision": "skynet-policy-v4",
+      "purpose": "Capture real card-selection labels for later teaching; no policy behavior change or neural training.",
+      "coverage": [
+        "select_idlecmd",
+        "select_card"
+      ],
+      "builds": [
+        "Debug Any CPU passed",
+        "Release Any CPU passed"
+      ],
+      "validation": {
+        "pythonAuditTests": 8,
+        "existingMapperTests": 12,
+        "scratchAssertions": 34,
+        "nativeDuels": 2,
+        "completedClientCaptures": 4,
+        "auditedSelections": 14,
+        "expertSelections": 12,
+        "policyFallbacks": 0,
+        "hostSeats": [
+          0,
+          1
+        ],
+        "allProcessExitCodesZero": true
+      },
+      "botSha256": "82ed4a9485c206b8e1c4905b705e709abf9f5992cf1dfe5f1250c08d246b10a7",
+      "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+      "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+      "receipts": [
+        {
+          "path": "Artifacts/teacher-selection-native/result.json",
+          "sha256": "5fa63632a48d19b0457a53467c6054b21146f3d250b0ff90d09e4c72a5ab8100"
+        },
+        {
+          "path": "Artifacts/teacher-selection-native/audit-final.json",
+          "sha256": "bb17ec5e64358b55df729355a4beef8f1bdf1d0d7eb42a998d6d1401ee761106"
+        },
+        {
+          "path": "Artifacts/teacher-selection-qa/ShadowProbe.cs",
+          "sha256": "c77f1d2c9a4161efd705b608c89465e0c1b7e03a8d35a936d82329aa5e7787ed"
+        },
+        {
+          "path": "Artifacts/teacher-selection-qa/probe.log",
+          "sha256": "61a6c50c6ff16109ffa112b786f65aa208839cd4e1e42e510cdb4873e5d36125"
+        }
+      ],
+      "captureHashes": [
+        {
+          "agent": "expert-swordsoul",
+          "sha256": "e9c8d831bc9c7f52cc9cd1bf1c4b179a1fd198bd13912ba78ec9a70341d797cd"
+        },
+        {
+          "agent": "skynet",
+          "sha256": "c7894a010bef8d8081b2c758ae118c52a29a0bf7a1e763b75747da98b27a0b8d"
+        },
+        {
+          "agent": "skynet",
+          "sha256": "844664524c93f67c25ef539fc838eec3c19bdab0e2903b1ef580f7c721d3ad38"
+        },
+        {
+          "agent": "expert-swordsoul",
+          "sha256": "177ee0bd39de91da3474fc5507dc277b8ec51a64939176a11a12176fb1559c82"
+        }
+      ],
+      "limitations": [
+        "Completed client captures are not independent duels; both perspectives were captured.",
+        "Legal wire labels do not establish optimal expert decisions.",
+        "Chain, battle, option, yes/no, sum and select/unselect prompts remain unsupported; counter/relation/history observations are incomplete.",
+        "No model trained and no neural-ready dataset claimed.",
+        "Raw captures, harness and runtime receipts remain local ignored artifacts."
+      ]
+    }
   ]
 }

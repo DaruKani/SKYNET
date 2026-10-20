@@ -1254,6 +1254,8 @@ namespace Skynet.Game
 
             IList<ClientCard> cards = new List<ClientCard>();
             IList<int> candidateIndexes = new List<int>();
+            List<ShadowSelectionCandidate> shadowCandidates = _shadow.Enabled && !isTribute
+                ? new List<ShadowSelectionCandidate>() : null;
             int count = packet.ReadByte();
             for (int i = 0; i < count; ++i)
             {
@@ -1262,6 +1264,7 @@ namespace Skynet.Game
                 CardLocation loc = (CardLocation)packet.ReadByte();
                 int seq = packet.ReadByte();
                 int param = packet.ReadByte();
+                _shadow.AddSelectionCandidate(shadowCandidates, i, id, player, (int)loc, seq, param);
                 ClientCard card;
                 if (((int)loc & (int)CardLocation.Overlay) != 0)
                 {
@@ -1289,21 +1292,24 @@ namespace Skynet.Game
                 candidateIndexes.Add(i);
             }
 
+            ShadowRecord observation = _shadow.PrepareSelection(_duel, shadowCandidates, min, max, cancelable, _select_hint);
             if (_select_hint == 575 && cancelable) // HINTMSG_FIELD_FIRST
             {
                 _select_hint = 0;
                 Connection.Send(CtosMessage.Response, -1);
+                _shadow.CommitSelection(observation, new byte[] { 255, 255, 255, 255 }, true, "automatic-field-first-cancel");
                 return;
             }
 
             IList<ClientCard> selected = func(cards, min, max, _select_hint, cancelable);
             _select_hint = 0;
 
-            SendCardSelectionResponse(cards, candidateIndexes, selected, min, max, cancelable, isTribute);
+            SendCardSelectionResponse(cards, candidateIndexes, selected, min, max, cancelable, isTribute, observation);
         }
 
         private void SendCardSelectionResponse(IList<ClientCard> cards, IList<int> candidateIndexes,
-            IList<ClientCard> selected, int min, int max, bool cancelable, bool isTribute = false)
+            IList<ClientCard> selected, int min, int max, bool cancelable, bool isTribute = false,
+            ShadowRecord observation = null)
         {
             bool validCount = selected != null
                 && (isTribute ? _ai.IsValidTributeSelection(selected, min, max) : selected.Count >= min && selected.Count <= max);
@@ -1351,6 +1357,8 @@ namespace Skynet.Game
             if (selected.Count == 0 && cancelable)
             {
                 Connection.Send(CtosMessage.Response, -1);
+                _shadow.CommitSelection(observation, new byte[] { 255, 255, 255, 255 }, true,
+                    isValid ? "policy" : "legal-fallback");
                 return;
             }
 
@@ -1365,6 +1373,7 @@ namespace Skynet.Game
             BinaryWriter reply = GamePacketFactory.Create(CtosMessage.Response);
             reply.Write(result);
             Connection.Send(reply);
+            _shadow.CommitSelection(observation, result, false, isValid ? "policy" : "legal-fallback");
         }
 
         private void OnSelectUnselectCard(BinaryReader packet)
