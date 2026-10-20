@@ -1,56 +1,56 @@
-# WindBot Arena 只读任务 API
+# Skynet Arena read-only run API
 
-本文档定义 WindBot Arena 对外提供的只读任务数据 API。当前公开范围仅包括：
+This document defines the read-only run-data API exposed by Skynet Arena. Its supported public scope is limited to:
 
-- 查询任务列表；
-- 查询活动任务；
-- 查询单个任务的完整数据。
+- Listing runs.
+- Listing active runs.
+- Reading the complete details of one run.
 
-其他 `/api` 路径属于 Arena 控制台的内部管理接口。即使能够访问，也不属于本文档承诺的公开 API，尤其不应由外部程序调用创建任务、停止任务、修改配置或刷新配置的接口。
+Other `/api` paths are internal management interfaces for the Arena console. Even if accessible, they are outside this public API contract. External programs must not call the internal endpoints that create or stop runs, change settings or refresh configuration.
 
-## 基本约定
+## Conventions
 
-API 与 Arena 网页使用同一个来源。假设网页地址为：
+The API uses the same origin as the Arena website. For example, if the website is:
 
 ```text
 https://arena.example.com/
 ```
 
-则 API 基础地址为：
+then the API base URL is:
 
 ```text
 https://arena.example.com/api
 ```
 
-所有普通响应均为 JSON，时间字段均为 ISO 8601 格式的 UTC 时间，例如 `2026-08-13T08:30:00.000Z`。响应带有 `Cache-Control: no-store`，调用方不应依赖 HTTP 缓存。
+All ordinary responses are JSON. Timestamp fields use UTC in ISO 8601 format, such as `2026-08-13T08:30:00.000Z`. Responses include `Cache-Control: no-store`; clients must not rely on HTTP caching.
 
-当前应用本身不要求 API Key。如果站点前方的反向代理配置了登录、Basic Auth 或其他访问控制，API 请求也必须携带对应凭据。
+The application currently does not require an API key. If its reverse proxy enforces login, Basic Auth or another access-control mechanism, API requests must provide the corresponding credentials. The local console defaults to a loopback listener; protect any externally reachable deployment with access controls.
 
-服务端目前没有启用跨域资源共享（CORS）。地址栏访问、curl 和服务端程序不受影响；其他域名中的浏览器脚本应通过同源反向代理访问。
+The server does not enable Cross-Origin Resource Sharing (CORS). Direct browser navigation, curl and server-side programs are unaffected. Browser scripts on another origin should use a same-origin reverse proxy.
 
-建议调用方忽略不认识的响应字段，以便兼容后续新增数据。
+Clients should ignore unknown response fields to remain compatible with future additions. Human-readable messages are descriptive text, not stable machine identifiers. Persisted records may retain messages or labels from earlier versions.
 
-## 快速开始
+## Quick start
 
-直接在浏览器中查询最近任务：
+Read recent runs directly in a browser:
 
 ```text
 https://arena.example.com/api/runs?limit=10&offset=0
 ```
 
-使用 curl：
+Using curl:
 
 ```bash
 curl "https://arena.example.com/api/runs?limit=10&offset=0"
 ```
 
-查询指定任务：
+Read one run:
 
 ```bash
 curl "https://arena.example.com/api/runs/42cc5a41-3b25-46e5-b010-9cf47c9a61ea"
 ```
 
-在与 Arena 同源的网页脚本中查询：
+From a script hosted on the same origin as Arena:
 
 ```js
 const response = await fetch('/api/runs?limit=10&offset=0');
@@ -60,22 +60,22 @@ if (!response.ok) {
 const { runs, total } = await response.json();
 ```
 
-## 查询任务列表
+## List runs
 
 ```http
 GET /api/runs?limit=30&offset=0
 ```
 
-任务按创建时间从新到旧排列。
+Runs are ordered by creation time, newest first.
 
-### 查询参数
+### Query parameters
 
-| 参数 | 类型 | 默认值 | 说明 |
+| Parameter | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `limit` | integer | `30` | 返回条数，取值范围为 1–100 |
-| `offset` | integer | `0` | 跳过的任务数量，不得小于 0 |
+| `limit` | integer | `30` | Number of records to return, from 1 to 100 |
+| `offset` | integer | `0` | Number of records to skip; must be at least 0 |
 
-### 响应示例
+### Example response
 
 ```json
 {
@@ -106,7 +106,7 @@ GET /api/runs?limit=30&offset=0
       "srvproId": "srvpro-1",
       "startedAt": "2026-08-13T08:30:08.000Z",
       "status": "completed",
-      "stopReason": "测试已完成",
+      "stopReason": "Experiment completed",
       "totalGames": 100
     }
   ],
@@ -114,21 +114,25 @@ GET /api/runs?limit=30&offset=0
 }
 ```
 
-`runs` 中的记录是任务摘要，不包含 `matchups`、`observedGames` 和 `events`。需要胜负统计时，应继续请求单个任务接口。`total` 是全部任务数量，不受 `limit` 和 `offset` 影响。
+Entries in `runs` are summaries. They do not include `matchups`, `observedGames` or `events`. Request an individual run for win/loss statistics. `total` is the total number of runs and is unaffected by `limit` or `offset`.
 
-`deckName` 只用于列表摘要；完整卡组和对阵信息以单个任务接口的 `matchups` 为准。
+`deckName` is only a list-summary field. The authoritative deck and pairing details are in the individual run's `matchups`.
 
-## 查询活动任务
+The `windbots` key remains for compatibility. Each configured instance can use `local` or `remote` WindBot mode, or native `skynet` mode. For `skynet`, the configuration snapshot has `endpoint: null` and a `skynet` object containing the explicit executable/database paths, version, process limit, timeout and profile configuration. Profiles identify their deck path, agent and optional model. These snapshots can contain local filesystem paths; apply the same access controls as the console.
+
+Native SKYNET uses one owned process per participant through `server/skynet-runtime.js`, with training disabled. Its console lifecycle markers diagnose completion; results still come from the dedicated arena-srvpro cumulative rankings. Neither these read-only APIs nor the native runtime eliminate the arena-srvpro requirement.
+
+## List active runs
 
 ```http
 GET /api/runs/active
 ```
 
-返回所有 SRVPro 实例上尚未结束的任务，按创建时间从新到旧排列。由于不同 SRVPro 可以并行运行，`runs` 可能包含多个任务。
+Returns unfinished runs across all configured SRVPro instances, ordered by creation time, newest first. Different instances can run experiments concurrently, so `runs` may contain multiple entries.
 
-响应结构为 `{ "runs": RunDetail[] }`，其中每个任务对象与单个任务接口中的 `run` 使用相同的完整结构。
+The response is `{ "runs": RunDetail[] }`. Each entry has the same complete structure as `run` in the individual-run endpoint.
 
-没有活动任务时返回：
+When no runs are active:
 
 ```json
 {
@@ -136,22 +140,22 @@ GET /api/runs/active
 }
 ```
 
-以下状态属于活动状态：
+Active statuses:
 
-| 状态 | 含义 |
+| Status | Meaning |
 | --- | --- |
-| `preparing` | 正在准备环境 |
-| `running` | 正在对局 |
-| `settling` | 已停止调度，正在等待结果稳定 |
-| `stopping` | 正在停止 |
+| `preparing` | Preparing the environment |
+| `running` | Running duels |
+| `settling` | Scheduling has stopped; waiting for results to stabilize |
+| `stopping` | Stopping the run |
 
-## 查询单个任务
+## Read one run
 
 ```http
 GET /api/runs/{id}
 ```
 
-成功时返回：
+Successful response:
 
 ```json
 {
@@ -174,7 +178,7 @@ GET /api/runs/{id}
         "at": "2026-08-13T08:30:00.000Z",
         "id": 101,
         "level": "info",
-        "message": "测试已创建，使用 1 个卡组",
+        "message": "Experiment created with 1 deck",
         "type": "created"
       }
     ],
@@ -200,7 +204,7 @@ GET /api/runs/{id}
             "games": 37,
             "id": 201,
             "lose": 15,
-            "rankName": "新-Dragon",
+            "rankName": "Current-Dragon",
             "slot": 1,
             "source": "current",
             "win": 22
@@ -217,7 +221,7 @@ GET /api/runs/{id}
             "games": 37,
             "id": 202,
             "lose": 22,
-            "rankName": "旧-Dragon",
+            "rankName": "Previous-Dragon",
             "slot": 2,
             "source": "old",
             "win": 15
@@ -242,100 +246,102 @@ GET /api/runs/{id}
 }
 ```
 
-任务不存在时返回 HTTP `404`：
+If the run does not exist, the endpoint returns HTTP `404`:
 
 ```json
 {
-  "error": "测试记录不存在"
+  "error": "Run not found"
 }
 ```
 
-### 任务字段
+### Run fields
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Meaning |
 | --- | --- | --- |
-| `id` | string | 任务 UUID |
-| `kind` | string | `regression`、`challenge` 或 `ranking` |
-| `status` | string | 当前任务状态 |
-| `srvproId` | string | 使用的 SRVPro 实例 ID |
-| `config` | object | 创建任务时保存的环境和选择快照 |
-| `gamesPerMatchup` | integer | 每个卡组或对手的计划局数；排行任务为 0 |
-| `totalGames` | integer | 计划总局数；无限排行任务为 0 |
-| `launchedGames` | integer | 已调度的对局组数量 |
-| `observedGames` | integer | 已从累计排行确认的对局数量 |
-| `roomCount` | integer | 最近一次查询到的 SRVPro 房间数 |
-| `createdAt` | string | 创建时间 |
-| `startedAt` | string \| null | 开始运行时间 |
-| `finishedAt` | string \| null | 结束时间 |
-| `latestRankAt` | string \| null | 最近一次成功读取排行的时间 |
-| `stopReason` | string \| null | 停止或完成原因 |
-| `error` | string \| null | 失败详情 |
-| `matchups` | array | 卡组或对阵统计 |
-| `events` | array | 最近最多 30 条任务事件，按时间正序排列 |
-| `challengeTargetFlee` | integer | 仅挑战任务提供，挑战者累计异常次数 |
+| `id` | string | Run UUID |
+| `kind` | string | `regression`, `challenge`, `ranking` or compatible WindBot `tag` experiment |
+| `status` | string | Current run status |
+| `srvproId` | string | ID of the selected SRVPro instance |
+| `config` | object | Environment and selection snapshot saved when the run was created |
+| `gamesPerMatchup` | integer | Planned games per deck or opponent; 0 for ranking/tag experiments |
+| `totalGames` | integer | Planned total games; 0 for open-ended ranking/tag experiments |
+| `launchedGames` | integer | Number of duel groups already scheduled |
+| `observedGames` | integer | Number of games confirmed from cumulative rankings |
+| `roomCount` | integer | Most recently queried SRVPro room count |
+| `createdAt` | string | Creation time |
+| `startedAt` | string \| null | Start time |
+| `finishedAt` | string \| null | Finish time |
+| `latestRankAt` | string \| null | Time of the latest successful ranking query |
+| `stopReason` | string \| null | Stop or completion reason |
+| `error` | string \| null | Failure details |
+| `matchups` | array | Deck or pairing statistics |
+| `events` | array | Up to the 30 most recent run events, in chronological order |
+| `challengeTargetFlee` | integer | Challenge runs only: cumulative anomaly count for the challenger |
 
-终态包括：
+Terminal statuses:
 
-| 状态 | 含义 |
+| Status | Meaning |
 | --- | --- |
-| `completed` | 正常完成 |
-| `stopped` | 被用户停止 |
-| `failed` | 执行失败，详情见 `error` |
-| `interrupted` | Arena 进程重启等原因造成任务中断 |
+| `completed` | Completed normally |
+| `stopped` | Stopped by the user |
+| `failed` | Execution failed; see `error` |
+| `interrupted` | Interrupted, for example by an Arena process restart |
 
-### 对阵字段
+### Matchup fields
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Meaning |
 | --- | --- | --- |
-| `id` | integer | 对阵记录 ID |
-| `label` | string | 卡组或对手的显示名称 |
-| `aiLevel` | integer \| null | AI 等级；无法识别时为 `null` |
-| `targetGames` | integer | 计划局数；排行任务为 0 |
-| `launchedGames` | integer | 已调度次数 |
-| `observedGames` | integer | 已确认的胜负局数 |
-| `currentWinRate` | number | 第一方胜率，范围为 0–1，不是百分数 |
-| `competitors` | array | 参赛方统计 |
+| `id` | integer | Matchup record ID |
+| `label` | string | Display name of the deck or opponent |
+| `aiLevel` | integer \| null | AI level, or `null` when unavailable |
+| `targetGames` | integer | Planned games; 0 for open-ended ranking/tag experiments |
+| `launchedGames` | integer | Number of scheduled duels |
+| `observedGames` | integer | Number of confirmed win/loss games |
+| `currentWinRate` | number | First participant's win rate, from 0 to 1, not a percentage |
+| `competitors` | array | Participant statistics |
 
-`currentWinRate` 的分母只包含双方胜场，不包含 `flee`。例如值 `0.5946` 表示约 `59.46%`。没有已判定对局时该字段为 `0`。
+The denominator of `currentWinRate` includes only wins by the two sides, excluding `flee`. For example, `0.5946` means approximately `59.46%`. The field is `0` when there are no decided games.
 
-### 参赛方字段
+### Participant fields
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Meaning |
 | --- | --- | --- |
-| `id` | integer | 参赛方记录 ID |
-| `slot` | integer | 对阵位置，取值为 1 或 2 |
-| `source` | string | 参赛方来源，例如 `current`、`old`、`target` 或 `opponent` |
-| `deck` | string | 卡组名称 |
-| `botLabel` | string | Bot 显示名称 |
-| `rankName` | string | SRVPro 排行中的名称 |
-| `dialog` | string \| null | WindBot Dialog |
-| `executionMode` | string | `local` 或 `remote` |
-| `endpointHost` | string | WindBot 主机地址 |
-| `endpointPort` | integer | WindBot 端口 |
-| `win` | integer | 胜场 |
-| `lose` | integer | 负场 |
-| `flee` | integer | 异常断开次数，独立统计，不计入胜率分母 |
-| `combo` | integer | SRVPro 返回的 combo 统计 |
+| `id` | integer | Participant record ID |
+| `slot` | integer | Matchup slot, 1 or 2 |
+| `source` | string | Participant source, such as `current`, `old`, `target` or `opponent` |
+| `deck` | string | WindBot deck name or SKYNET profile ID |
+| `botLabel` | string | Bot display name |
+| `rankName` | string | Name used in the SRVPro rankings |
+| `dialog` | string \| null | WindBot dialogue resource; `null` for native SKYNET |
+| `executionMode` | string | `local`, `remote` or `skynet` |
+| `endpointHost` | string | WindBot host, or compatibility metadata for native SKYNET |
+| `endpointPort` | integer | WindBot port, or compatibility metadata for native SKYNET |
+| `win` | integer | Wins |
+| `lose` | integer | Losses |
+| `flee` | integer | Abnormal disconnect count, tracked separately and excluded from the win-rate denominator |
+| `combo` | integer | Combo statistic returned by SRVPro |
 | `games` | integer | `win + lose` |
 
-回归任务中 `slot = 1` 是新版，`slot = 2` 是旧版。挑战任务中第一方是挑战者，第二方是对手。排行任务的每个 `matchup` 通常只有一个参赛方。
+For `executionMode: "skynet"`, `endpointHost` and `endpointPort` do not identify a callable WindBot HTTP endpoint. Native clients are launched by Arena with explicit local paths and connect directly to the selected duel server. The run configuration snapshot describes that runtime.
 
-## 错误响应
+In regression runs, `slot = 1` is the current version and `slot = 2` the previous version. In challenge runs, the first side is the challenger and the second is its opponent. Each `matchup` in a ranking run usually contains one participant. Native SKYNET tag experiments are currently disabled; retained WindBot tag behavior does not establish SKYNET tag support.
 
-错误响应统一使用 JSON：
+## Error responses
+
+Errors use a consistent JSON envelope:
 
 ```json
 {
-  "error": "错误说明"
+  "error": "Error description"
 }
 ```
 
-公开查询接口常见状态码：
+Common status codes for public read endpoints:
 
-| 状态码 | 说明 |
+| Status code | Meaning |
 | --- | --- |
-| `200` | 查询成功 |
-| `404` | 指定任务不存在 |
-| `500` | Arena 内部错误 |
+| `200` | Query succeeded |
+| `404` | Requested run does not exist |
+| `500` | Internal Arena error |
 
-调用方应先检查 HTTP 状态码，再读取响应内容，不应仅根据 JSON 是否能够解析来判断请求成功。
+Check the HTTP status before interpreting the response. Successful JSON parsing alone does not mean the request succeeded.

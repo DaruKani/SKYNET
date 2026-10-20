@@ -3,8 +3,8 @@ import {
     NConfigProvider,
     NMessageProvider,
     darkTheme,
-    dateZhCN,
-    zhCN,
+    dateEnUS,
+    enUS,
 } from 'naive-ui';
 import App from './App.vue';
 import './styles.css';
@@ -25,16 +25,16 @@ const componentThemeOverrides = {
 const darkThemeOverrides = {
     ...componentThemeOverrides,
     Radio: {
-        buttonColorActive: '#63e6d3',
-        buttonTextColorActive: '#071015',
-        buttonBorderColorActive: '#63e6d3',
+        buttonColorActive: '#ff6875',
+        buttonTextColorActive: '#0d1017',
+        buttonBorderColorActive: '#ff6875',
     },
     common: {
-        bodyColor: '#071015',
-        cardColor: '#0d191f',
-        primaryColor: '#63e6d3',
-        primaryColorHover: '#89f0e0',
-        primaryColorPressed: '#40c8b5',
+        bodyColor: '#0d1017',
+        cardColor: '#151922',
+        primaryColor: '#ff6875',
+        primaryColorHover: '#ff98a1',
+        primaryColorPressed: '#e84a5b',
         successColor: '#70e29a',
         warningColor: '#f2c56d',
         errorColor: '#ff7b7b',
@@ -46,16 +46,16 @@ const darkThemeOverrides = {
 const lightThemeOverrides = {
     ...componentThemeOverrides,
     Radio: {
-        buttonColorActive: '#137f73',
+        buttonColorActive: '#b32941',
         buttonTextColorActive: '#ffffff',
-        buttonBorderColorActive: '#137f73',
+        buttonBorderColorActive: '#b32941',
     },
     common: {
         bodyColor: '#f2f7f7',
         cardColor: '#ffffff',
-        primaryColor: '#137f73',
-        primaryColorHover: '#0f9586',
-        primaryColorPressed: '#0b6c63',
+        primaryColor: '#b32941',
+        primaryColorHover: '#c33b52',
+        primaryColorPressed: '#962137',
         successColor: '#218950',
         warningColor: '#ad7316',
         errorColor: '#c94747',
@@ -68,11 +68,12 @@ const lightThemeOverrides = {
     },
 };
 
-let initialDarkMode = false;
+let initialDarkMode = true;
 try {
-    initialDarkMode = localStorage.getItem('windbot-arena-theme') === 'dark';
+    initialDarkMode = (localStorage.getItem('skynet-arena-theme')
+        || localStorage.getItem('windbot-arena-theme') || 'dark') === 'dark';
 } catch {
-    // 浏览器禁止本地存储时仍可在当前页面切换主题。
+    // Theme switching remains available when browser storage is disabled.
 }
 
 createApp({
@@ -83,17 +84,17 @@ createApp({
             document.documentElement.dataset.theme = theme;
             document.documentElement.style.colorScheme = theme;
             document.querySelector('meta[name="theme-color"]')
-                ?.setAttribute('content', enabled ? '#071015' : '#eef4f4');
+                ?.setAttribute('content', enabled ? '#0d1017' : '#eef4f4');
             try {
-                localStorage.setItem('windbot-arena-theme', theme);
+                localStorage.setItem('skynet-arena-theme', theme);
             } catch {
-                // 主题切换本身不依赖本地存储。
+                // Switching themes does not depend on browser storage.
             }
         }, { immediate: true });
 
         return () => h(NConfigProvider, {
-            dateLocale: dateZhCN,
-            locale: zhCN,
+            dateLocale: dateEnUS,
+            locale: enUS,
             theme: darkMode.value ? darkTheme : null,
             themeOverrides: darkMode.value ? darkThemeOverrides : lightThemeOverrides,
         }, {

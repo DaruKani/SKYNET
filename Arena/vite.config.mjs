@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-const backendPort = process.env.WINDBOT_ARENA_PORT || 3000;
+const backendPort = process.env.SKYNET_ARENA_PORT || process.env.WINDBOT_ARENA_PORT || 3000;
 
 export default defineConfig({
     plugins: [vue()],

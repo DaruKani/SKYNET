@@ -4,13 +4,13 @@
 }
 
 @font-face {
-    font-family: 'Noto Sans SC';
-    src: local('Microsoft YaHei UI'), local('PingFang SC');
+    font-family: 'Segoe UI';
+    src: local('Segoe UI'), local('Arial');
 }
 
 :root {
     color-scheme: dark;
-    font-family: 'Noto Sans SC', system-ui, sans-serif;
+    font-family: 'Segoe UI', system-ui, sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
 }
@@ -22,7 +22,7 @@
 html {
     min-width: 320px;
     min-height: 100%;
-    background: #071015;
+    background: #0d1017;
 }
 
 body {
@@ -31,8 +31,8 @@ body {
     margin: 0;
     color: #dce7ea;
     background:
-        radial-gradient(circle at 74% -10%, rgba(69, 203, 185, 0.11), transparent 34rem),
-        #071015;
+        radial-gradient(circle at 74% -10%, rgba(240, 70, 92, 0.11), transparent 34rem),
+        #0d1017;
 }
 
 body::before {
@@ -139,8 +139,8 @@ input {
 }
 
 .theme-icon.active {
-    color: #63e6d3;
-    filter: drop-shadow(0 0 5px rgba(99, 230, 211, 0.3));
+    color: #ff6875;
+    filter: drop-shadow(0 0 5px rgba(255, 104, 117, 0.3));
 }
 
 .live-dot {
@@ -151,8 +151,8 @@ input {
 }
 
 .live-state.connected .live-dot {
-    background: #63e6d3;
-    box-shadow: 0 0 0 4px rgba(99, 230, 211, 0.08), 0 0 12px rgba(99, 230, 211, 0.45);
+    background: #ff6875;
+    box-shadow: 0 0 0 4px rgba(255, 104, 117, 0.08), 0 0 12px rgba(255, 104, 117, 0.45);
 }
 
 .hero {
@@ -165,7 +165,7 @@ input {
 
 .eyebrow,
 .future-panel > span {
-    color: #63e6d3;
+    color: #ff6875;
     font-family: 'DM Mono', monospace;
     font-size: 12px;
     letter-spacing: 0.18em;
@@ -181,7 +181,7 @@ input {
 }
 
 .hero h1 em {
-    color: #63e6d3;
+    color: #ff6875;
     font-style: normal;
     font-weight: 500;
 }
@@ -238,8 +238,8 @@ input {
 
 .readout-heading button:hover,
 .readout-heading button:focus-visible {
-    color: #63e6d3;
-    background: rgba(99, 230, 211, 0.08);
+    color: #ff6875;
+    background: rgba(255, 104, 117, 0.08);
     outline: none;
 }
 
@@ -422,7 +422,7 @@ input {
     padding: 2px 4px;
     border: 0;
     border-radius: 3px;
-    color: #63e6d3;
+    color: #ff6875;
     background: transparent;
     cursor: copy;
     font: inherit;
@@ -435,7 +435,7 @@ input {
 
 .room-name-button:hover,
 .room-name-button:focus-visible {
-    background: rgba(99, 230, 211, 0.09);
+    background: rgba(255, 104, 117, 0.09);
     outline: none;
 }
 
@@ -448,7 +448,7 @@ input {
     border: 1px solid #1c3038;
     border-radius: 8px;
     color: #bfd0d4;
-    background: #071015;
+    background: #0d1017;
     font: 11px/1.65 'DM Mono', monospace;
     white-space: pre-wrap;
     word-break: break-word;
@@ -553,7 +553,7 @@ input {
 }
 
 .deck-list-toggle:hover {
-    background: rgba(99, 230, 211, 0.035);
+    background: rgba(255, 104, 117, 0.035);
 }
 
 .deck-list-toggle small {
@@ -631,9 +631,9 @@ input {
 
 .recent-deck {
     padding: 2px 5px;
-    border: 1px solid rgba(99, 230, 211, 0.22);
+    border: 1px solid rgba(255, 104, 117, 0.22);
     border-radius: 999px;
-    color: #63e6d3;
+    color: #ff6875;
     font-family: 'DM Mono', monospace;
     font-size: 12px;
 }
@@ -747,7 +747,7 @@ input {
     min-width: 0;
     gap: 8px;
     align-items: baseline;
-    font-family: 'Noto Sans SC', sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     font-size: 24px;
 }
 
@@ -765,7 +765,7 @@ input {
 }
 
 .primary-metric strong {
-    color: #63e6d3;
+    color: #ff6875;
 }
 
 .primary-metric .progress-value {
@@ -815,7 +815,7 @@ input {
 }
 
 .result-table tbody tr:hover {
-    background: rgba(99, 230, 211, 0.025);
+    background: rgba(255, 104, 117, 0.025);
 }
 
 .result-table tbody tr:last-child td {
@@ -829,7 +829,7 @@ input {
 
 .result-table .deck-cell strong {
     color: #d8e4e7;
-    font-family: 'Noto Sans SC', sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     font-size: 12px;
 }
 
@@ -841,7 +841,7 @@ input {
 
 .result-table .current-score,
 .progress-number {
-    color: #63e6d3;
+    color: #ff6875;
 }
 
 .result-table .flee-count.is-nonzero {
@@ -861,7 +861,7 @@ input {
 }
 
 .result-table .deck-win-rate.is-significant-win {
-    color: #63e6d3;
+    color: #ff6875;
     font-weight: 700;
 }
 
@@ -936,7 +936,7 @@ input {
 }
 
 .history-entry.active .history-item {
-    box-shadow: inset 2px 0 #63e6d3;
+    box-shadow: inset 2px 0 #ff6875;
 }
 
 .run-note-edit {
@@ -1016,8 +1016,8 @@ input {
 .status-running,
 .status-preparing,
 .status-settling {
-    --status-pulse-color: 99, 230, 211;
-    background: #63e6d3;
+    --status-pulse-color: 255, 104, 117;
+    background: #ff6875;
     animation: history-status-pulse 1.8s ease-out infinite;
 }
 
@@ -1114,7 +1114,7 @@ input {
     padding: 25px;
     border: 1px dashed #28424b;
     border-radius: 16px;
-    background: linear-gradient(145deg, rgba(99, 230, 211, 0.055), rgba(12, 24, 30, 0.5));
+    background: linear-gradient(145deg, rgba(255, 104, 117, 0.055), rgba(12, 24, 30, 0.5));
 }
 
 .future-panel::after {
@@ -1123,9 +1123,9 @@ input {
     bottom: -45px;
     width: 120px;
     height: 120px;
-    border: 1px solid rgba(99, 230, 211, 0.14);
+    border: 1px solid rgba(255, 104, 117, 0.14);
     border-radius: 50%;
-    background: rgba(99, 230, 211, 0.025);
+    background: rgba(255, 104, 117, 0.025);
     content: '';
 }
 
@@ -1259,7 +1259,7 @@ html[data-theme='light'] body .instance-heading h3 {
 [data-theme='light'] .result-table .current-score,
 [data-theme='light'] .progress-number,
 [data-theme='light'] .result-table .deck-win-rate.is-significant-win {
-    color: #137f73;
+    color: #b32941;
 }
 
 [data-theme='light'] .live-state.connected .live-dot,
@@ -1285,7 +1285,7 @@ html[data-theme='light'] body .instance-heading h3 {
 [data-theme='light'] .readout-heading button:hover,
 [data-theme='light'] .readout-heading button:focus-visible,
 [data-theme='light'] .room-name-button {
-    color: #137f73;
+    color: #b32941;
 }
 
 [data-theme='light'] .room-table-wrap,
@@ -1349,7 +1349,7 @@ html[data-theme='light'] body .instance-heading span {
 }
 
 [data-theme='light'] .history-entry.active .history-item {
-    box-shadow: inset 2px 0 #137f73;
+    box-shadow: inset 2px 0 #b32941;
 }
 
 [data-theme='light'] .history-delete {
@@ -1383,7 +1383,7 @@ html[data-theme='light'] body .instance-heading span {
 
 [data-theme='light'] .recent-deck {
     border-color: rgba(19, 127, 115, 0.25);
-    color: #137f73;
+    color: #b32941;
 }
 
 @media (max-width: 1120px) {

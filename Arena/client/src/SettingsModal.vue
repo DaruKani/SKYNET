@@ -11,6 +11,7 @@ import {
     NModal,
     NRadioButton,
     NRadioGroup,
+    NSelect,
     NTabPane,
     NTabs,
 } from 'naive-ui';
@@ -26,15 +27,25 @@ const draft = ref(null);
 const cancelButton = ref(null);
 const notificationTestResult = ref('');
 const testingNotification = ref(false);
-const webhookHeadersExample = JSON.stringify({ Authorization: 'Bearer 你的 token' });
+const webhookHeadersExample = JSON.stringify({ Authorization: 'Bearer your token' });
 const webhookExample = JSON.stringify({
     title: '{{title}}',
     body: '{{body}}',
 }, null, 2);
 const windbotLabels = {
-    current: '新版 WindBot',
-    old: '旧版 WindBot',
+    current: 'Candidate agent',
+    old: 'Baseline agent',
 };
+const policyOptions = [
+    { label: 'SKYNET · general policy', value: 'skynet' },
+    { label: 'Expert · OldSchool baseline', value: 'expert-oldschool' },
+];
+
+function addProfile(name) {
+    draft.value.windbots[name].skynet.profiles.push({
+        id: '', label: '', deckPath: '', agent: 'skynet', modelPath: '',
+    });
+}
 
 function cloneSettings(value) {
     return JSON.parse(JSON.stringify(value));
@@ -61,22 +72,22 @@ async function testNotification() {
     try {
         if (draft.value.notifications.mode === 'frontend') {
             if (!window.isSecureContext || !('Notification' in window)) {
-                notificationTestResult.value = '当前浏览器不支持浏览器通知，或页面未使用 HTTPS / localhost。';
+                notificationTestResult.value = 'Browser notifications require a supported browser and HTTPS or localhost.';
                 return;
             }
             const permission = Notification.permission === 'default'
                 ? await Notification.requestPermission() : Notification.permission;
             if (permission !== 'granted') {
-                notificationTestResult.value = '未获得浏览器通知权限，可在浏览器站点设置中允许通知后重试。';
+                notificationTestResult.value = 'Allow notifications in browser site settings, then try again.';
                 return;
             }
             try {
-                new Notification('WindBot Arena · 测试通知', {
-                    body: '这是一条浏览器测试通知。', tag: 'arena-notification-test', icon: '/arena.ico',
+                new Notification('Skynet Arena · Test notification', {
+                    body: 'This is a Skynet Arena test notification.', tag: 'arena-notification-test', icon: '/skynet.ico',
                 });
-                notificationTestResult.value = '已请求显示浏览器通知，请检查设备的通知中心。';
+                notificationTestResult.value = 'Notification requested. Check your device notification center.';
             } catch {
-                notificationTestResult.value = '当前浏览器无法显示浏览器通知。';
+                notificationTestResult.value = 'This browser cannot display notifications.';
             }
         } else if (draft.value.notifications.mode === 'webhook') {
             const response = await fetch('/api/notifications/test', {
@@ -84,11 +95,11 @@ async function testNotification() {
                 body: JSON.stringify(draft.value.notifications),
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || '测试通知发送失败');
+            if (!response.ok) throw new Error(result.error || 'Could not send test notification');
             notificationTestResult.value = result.message;
         }
     } catch (error) {
-        notificationTestResult.value = error.message || '测试通知失败';
+        notificationTestResult.value = error.message || 'Notification test failed';
     } finally {
         testingNotification.value = false;
     }
@@ -144,7 +155,7 @@ function removeSrvpro(index) {
             class="settings-card"
             :content-style="{ minHeight: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '0' }"
             :segmented="{ action: true }"
-            title="Arena 系统配置"
+            title="Skynet Arena settings"
             :bordered="false"
             role="dialog"
             aria-modal="true"
@@ -153,63 +164,64 @@ function removeSrvpro(index) {
                 v-if="show"
                 type="line"
                 class="settings-tabs"
+                default-value="windbots"
                 :pane-style="{ flex: '1', minHeight: '0', overflowY: 'auto', scrollbarGutter: 'stable', paddingLeft: 'var(--n-padding-left)', paddingRight: 'var(--n-padding-left)', paddingBottom: '22px' }"
             >
-                <n-tab-pane name="notifications" tab="通知">
+                <n-tab-pane name="notifications" tab="Notifications">
                     <n-form label-placement="top" class="settings-form" :show-feedback="false">
                         <n-alert type="info" :bordered="false">
-                            任务完成、中断或失败时通知。浏览器通知需要页面保持打开；Webhook 由 Arena 后端发送，关闭页面后仍可发送。
+                            Notify on completion, interruption, or failure. Browser notifications need this page open. Webhooks are sent by the server.
                         </n-alert>
-                        <n-form-item label="通知模式">
+                        <n-form-item label="Notification mode">
                             <n-radio-group v-model:value="draft.notifications.mode">
-                                <n-radio-button value="off">关闭</n-radio-button>
-                                <n-radio-button value="frontend">浏览器通知</n-radio-button>
+                                <n-radio-button value="off">Close</n-radio-button>
+                                <n-radio-button value="frontend">Browser notifications</n-radio-button>
                                 <n-radio-button value="webhook">Webhook</n-radio-button>
                             </n-radio-group>
                         </n-form-item>
                         <template v-if="draft.notifications.mode === 'frontend'">
-                            <n-form-item label="浏览器通知">
+                            <n-form-item label="Browser notifications">
                                 <div class="notification-test-row">
-                                    <n-button :loading="testingNotification" @click="testNotification">测试通知</n-button>
+                                    <n-button :loading="testingNotification" @click="testNotification">Test notification</n-button>
                                     <n-alert v-if="notificationTestResult" type="info" :bordered="false">{{ notificationTestResult }}</n-alert>
                                 </div>
                             </n-form-item>
-                            <p>首次使用请先测试一次通知以申请浏览器通知权限。页面需要保持打开才能接收通知。</p>
+                            <p>Test once to request browser permission. Keep this page open to receive notifications.</p>
                         </template>
                         <template v-if="draft.notifications.mode === 'webhook'">
-                            <n-form-item label="请求方式">
+                            <n-form-item label="HTTP method">
                                 <n-radio-group v-model:value="draft.notifications.webhookMethod">
                                     <n-radio-button value="POST">POST</n-radio-button>
                                     <n-radio-button value="GET">GET</n-radio-button>
                                 </n-radio-group>
                             </n-form-item>
-                            <n-form-item label="Webhook URL 模板">
+                            <n-form-item label="Webhook URL template">
                                 <n-input v-model:value="draft.notifications.webhookUrl"
                                     placeholder="https://example.com/notify?access_token=…" />
                             </n-form-item>
-                            <n-form-item v-if="draft.notifications.webhookMethod === 'POST'" label="JSON 请求体模板">
+                            <n-form-item v-if="draft.notifications.webhookMethod === 'POST'" label="JSON body template">
                                 <n-input v-model:value="draft.notifications.webhookTemplate" type="textarea" :autosize="{ minRows: 6, maxRows: 16 }"
                                     :placeholder="webhookExample" />
                             </n-form-item>
-                            <p v-if="draft.notifications.webhookMethod === 'POST'">POST 支持嵌套 JSON 和固定字段（例如 accessToken）；请求体模板不能为空。</p>
-                            <p v-pre>模板变量：{{title}}、{{body}}、{{runId}}、{{status}}、{{finishedAt}}、{{srvproId}}、{{note}}。</p>
-                            <p v-pre>{{title}} 内容为“WindBot Arena · 任务完成/失败/停止/中断”，根据任务状态显示对应文本。{{body}} 内容为“任务备注（SRVPro 实例 ID）”，没有备注时使用任务 ID，例如“新版回归测试（srvpro-1）”。</p>
-                            <n-form-item label="自定义 HTTP 请求头（可选）">
+                            <p v-if="draft.notifications.webhookMethod === 'POST'">POST supports nested JSON and fixed fields such as accessToken. Its body template must not be empty.</p>
+                            <p v-pre>Template variables: {{title}}, {{body}}, {{runId}}, {{status}}, {{finishedAt}}, {{srvproId}}, {{note}}.</p>
+                            <p v-pre>{{title}} identifies Skynet Arena and the final status. {{body}} contains the experiment note (or its ID) and SRVPro instance ID.</p>
+                            <n-form-item label="HTTP headers (optional)">
                                 <n-input v-model:value="draft.notifications.webhookHeaders" type="textarea" :autosize="{ minRows: 2, maxRows: 6 }"
                                     :placeholder="webhookHeadersExample" />
                             </n-form-item>
-                            <p>以 JSON 格式填写 HTTP 请求头；留空不进行自定义。<span v-if="draft.notifications.webhookMethod === 'POST'">POST 的 Content-Type 固定为 application/json。</span></p>
+                            <p>Enter HTTP headers as JSON, or leave empty for defaults. <span v-if="draft.notifications.webhookMethod === 'POST'">POST always uses application/json.</span></p>
                             <div class="notification-test-row">
-                                <n-button :loading="testingNotification" @click="testNotification">测试通知</n-button>
+                                <n-button :loading="testingNotification" @click="testNotification">Test notification</n-button>
                                 <n-alert v-if="notificationTestResult" type="info" :bordered="false">{{ notificationTestResult }}</n-alert>
                             </div>
-                            <p>使用当前表单配置发送测试通知，无需先保存设置。</p>
+                            <p>Send a test with the values in this form; saving is not required.</p>
                         </template>
                     </n-form>
                 </n-tab-pane>
                 <n-tab-pane name="srvpro" tab="SRVPro">
                     <n-alert type="info" :bordered="false">
-                        SRVPro 需自行安装和运行。每个实例都应仅供 Arena 使用。任务会独占所选实例；不同实例上的任务可以同时运行。
+                        Install and run a dedicated arena-srvpro server. Each experiment exclusively uses its selected instance. Separate instances can run concurrently.
                     </n-alert>
                     <div class="srvpro-settings">
                         <section
@@ -220,7 +232,7 @@ function removeSrvpro(index) {
                             <div class="instance-heading">
                                 <div>
                                     <span>INSTANCE {{ String(index + 1).padStart(2, '0') }}</span>
-                                    <h3>{{ srvpro.name || '未命名 SRVPro' }}</h3>
+                                    <h3>{{ srvpro.name || 'Unnamed SRVPro' }}</h3>
                                 </div>
                                 <n-button
                                     size="small"
@@ -229,38 +241,38 @@ function removeSrvpro(index) {
                                     :disabled="draft.srvpros.length === 1"
                                     @click="removeSrvpro(index)"
                                 >
-                                    删除实例
+                                    Remove instance
                                 </n-button>
                             </div>
                             <n-form label-placement="top" :show-feedback="false">
                                 <div class="settings-grid">
-                                    <n-form-item label="实例名称">
-                                        <n-input v-model:value="srvpro.name" placeholder="例如 本机、NAS-2" />
+                                    <n-form-item label="Instance name">
+                                        <n-input v-model:value="srvpro.name" placeholder="For example: local, NAS-2" />
                                     </n-form-item>
-                                    <n-form-item label="服务地址">
-                                        <n-input v-model:value="srvpro.host" placeholder="srvpro.lan 或 192.168.1.20" />
+                                    <n-form-item label="Host">
+                                        <n-input v-model:value="srvpro.host" placeholder="srvpro.lan or 192.168.1.20" />
                                     </n-form-item>
-                                    <n-form-item label="对战端口">
+                                    <n-form-item label="Duel port">
                                         <n-input-number v-model:value="srvpro.duelPort" :min="1" :max="65535" />
                                     </n-form-item>
-                                    <n-form-item label="管理端口">
+                                    <n-form-item label="Management port">
                                         <n-input-number v-model:value="srvpro.statusPort" :min="1" :max="65535" />
                                     </n-form-item>
-                                    <n-form-item label="管理账号">
+                                    <n-form-item label="Management username">
                                         <n-input v-model:value="srvpro.username" />
                                     </n-form-item>
-                                    <n-form-item label="管理密码">
+                                    <n-form-item label="Management password">
                                         <n-input
                                             v-model:value="srvpro.password"
                                             type="password"
                                             show-password-on="click"
-                                            :placeholder="record.secretStatus.srvpros[srvpro.id]?.passwordConfigured ? '留空则保留当前密码' : '尚未配置'"
+                                            :placeholder="record.secretStatus.srvpros[srvpro.id]?.passwordConfigured ? 'Leave empty to keep the saved password' : 'Not configured'"
                                         />
                                     </n-form-item>
-                                    <n-form-item label="最大房间数">
+                                    <n-form-item label="Maximum rooms">
                                         <n-input-number v-model:value="srvpro.maxRooms" :min="1" />
                                     </n-form-item>
-                                    <n-form-item label="每秒创建房间数">
+                                    <n-form-item label="Rooms created per second">
                                         <n-input-number
                                             v-model:value="srvpro.roomsPerSecond"
                                             :min="1"
@@ -270,63 +282,109 @@ function removeSrvpro(index) {
                                 </div>
                             </n-form>
                         </section>
-                        <n-button dashed block @click="addSrvpro">添加 SRVPro 实例</n-button>
+                        <n-button dashed block @click="addSrvpro">Add SRVPro instance</n-button>
                     </div>
                 </n-tab-pane>
 
-                <n-tab-pane name="windbots" tab="WindBot">
+                <n-tab-pane name="windbots" tab="Agents">
                     <n-alert type="info" :bordered="false">
-                        大部分任务默认使用新版 WindBot；旧版 WindBot 为可选配置。
+                        Configure a candidate first. Add a baseline for regression comparisons. Native SKYNET launches one owned process per duel seat.
                     </n-alert>
                     <div class="windbot-settings">
                         <section v-for="name in ['current', 'old']" :key="name" class="windbot-instance">
                             <div class="instance-heading">
                                 <div>
-                                    <span>{{ name === 'current' ? 'CURRENT' : 'BASELINE' }}</span>
+                                    <span>{{ name === 'current' ? 'CANDIDATE' : 'BASELINE' }}</span>
                                     <h3>{{ windbotLabels[name] }}</h3>
                                 </div>
                                 <n-radio-group v-model:value="draft.windbots[name].mode" size="small">
-                                    <n-radio-button value="local">本地拉起</n-radio-button>
-                                    <n-radio-button value="remote">远程服务</n-radio-button>
+                                    <n-radio-button value="skynet">SKYNET</n-radio-button>
+                                    <n-radio-button value="local">Local WindBot</n-radio-button>
+                                    <n-radio-button value="remote">Remote WindBot</n-radio-button>
                                 </n-radio-group>
                             </div>
 
                             <n-form label-placement="top" :show-feedback="false">
                                 <div class="settings-grid">
-                                    <template v-if="draft.windbots[name].mode === 'local'">
-                                        <n-form-item label="WindBot 运行目录" class="span-2">
+                                    <template v-if="draft.windbots[name].mode === 'skynet'">
+                                        <n-form-item label="SKYNET executable" class="span-2">
+                                            <n-input v-model:value="draft.windbots[name].skynet.executablePath" placeholder="Absolute path to SKYNET.exe" />
+                                        </n-form-item>
+                                        <n-form-item label="Card database" class="span-2">
+                                            <n-input v-model:value="draft.windbots[name].skynet.databasePath" placeholder="Absolute path to cards.cdb" />
+                                        </n-form-item>
+                                        <n-form-item label="Protocol version">
+                                            <n-input-number v-model:value="draft.windbots[name].skynet.version" :min="1" :max="65535" :precision="0" />
+                                        </n-form-item>
+                                        <n-form-item label="Maximum processes">
+                                            <n-input-number v-model:value="draft.windbots[name].skynet.maxProcesses" :min="2" :max="32" :precision="0" />
+                                        </n-form-item>
+                                        <n-form-item label="Duel timeout (seconds)">
+                                            <n-input-number v-model:value="draft.windbots[name].skynet.duelTimeoutSeconds" :min="10" :max="3600" :precision="0" />
+                                        </n-form-item>
+                                        <div class="span-2 profile-help">
+                                            <h4>Deck profiles</h4>
+                                            <p>Give the same matchup ID to matching candidate and baseline decks. Choose a policy for each deck; model files are optional frozen SKYNET weights. Evaluation never trains a model. Participants using the same executable share its process limit.</p>
+                                        </div>
+                                        <section v-for="(profile, index) in draft.windbots[name].skynet.profiles" :key="index" class="span-2 deck-profile">
+                                            <div class="profile-heading">
+                                                <strong>Profile {{ index + 1 }}</strong>
+                                                <n-button size="small" quaternary type="error" @click="draft.windbots[name].skynet.profiles.splice(index, 1)">Remove</n-button>
+                                            </div>
+                                            <div class="settings-grid">
+                                                <n-form-item label="Matchup ID">
+                                                    <n-input v-model:value="profile.id" :maxlength="64" placeholder="oldschool" />
+                                                </n-form-item>
+                                                <n-form-item label="Display name">
+                                                    <n-input v-model:value="profile.label" :maxlength="17" show-count placeholder="OldSchool" />
+                                                </n-form-item>
+                                                <n-form-item label="Deck file" class="span-2">
+                                                    <n-input v-model:value="profile.deckPath" placeholder="Absolute path to a .ydk file" />
+                                                </n-form-item>
+                                                <n-form-item label="Decision policy" class="span-2">
+                                                    <n-select v-model:value="profile.agent" :options="policyOptions" @update:value="profile.modelPath = ''" />
+                                                </n-form-item>
+                                                <n-form-item v-if="profile.agent === 'skynet'" label="Model file (optional)" class="span-2">
+                                                    <n-input v-model:value="profile.modelPath" placeholder="Leave empty for built-in weights" />
+                                                </n-form-item>
+                                            </div>
+                                        </section>
+                                        <n-button class="span-2" dashed block @click="addProfile(name)">Add deck profile</n-button>
+                                    </template>
+                                    <template v-else-if="draft.windbots[name].mode === 'local'">
+                                        <n-form-item label="WindBot runtime directory" class="span-2">
                                             <n-input
                                                 v-model:value="draft.windbots[name].runtimeDir"
-                                                placeholder="包含 WindBot.exe、Decks 和 Dialogs 的目录"
+                                                placeholder="Directory containing WindBot.exe, Decks, and Dialogs"
                                             />
                                         </n-form-item>
-                                        <n-form-item label="bot.conf 路径" class="span-2">
+                                        <n-form-item label="bot.conf path" class="span-2">
                                             <n-input v-model:value="draft.windbots[name].botConfPath" />
                                         </n-form-item>
                                     </template>
                                     <template v-else>
-                                        <n-form-item label="远程服务地址" class="span-2">
+                                        <n-form-item label="Remote host" class="span-2">
                                             <n-input
                                                 v-model:value="draft.windbots[name].host"
-                                                placeholder="远程 WindBot 主机名或 IP"
+                                                placeholder="Remote WindBot hostname or IP"
                                             />
                                         </n-form-item>
-                                        <n-form-item label="远程 bot.conf URL（可选）" class="span-2">
+                                        <n-form-item label="Remote bot.conf URL (optional)" class="span-2">
                                             <n-input
                                                 v-model:value="draft.windbots[name].botConfUrl"
-                                                placeholder="例如 https://windbot.example.com/bot.conf"
+                                                placeholder="https://windbot.example.com/bot.conf"
                                             />
                                         </n-form-item>
-                                        <n-form-item label="远程 bot.conf 内容（手动或 URL 缓存）" class="span-2">
+                                        <n-form-item label="Remote bot.conf (pasted or fetched)" class="span-2">
                                             <n-input
                                                 v-model:value="draft.windbots[name].botConfText"
                                                 type="textarea"
                                                 :autosize="{ minRows: 8, maxRows: 16 }"
-                                                placeholder="可直接粘贴；填写 URL 时，保存配置会自动获取并覆盖这里的内容"
+                                                placeholder="Paste a catalog, or set a URL to replace this content when saving."
                                             />
                                         </n-form-item>
                                     </template>
-                                    <n-form-item label="HTTP 服务端口">
+                                    <n-form-item v-if="draft.windbots[name].mode !== 'skynet'" label="HTTP port">
                                         <n-input-number v-model:value="draft.windbots[name].port" :min="1" :max="65535" />
                                     </n-form-item>
                                 </div>
@@ -337,7 +395,7 @@ function removeSrvpro(index) {
                                 type="warning"
                                 :bordered="false"
                             >
-                                测试前需在远端手动启动 ServerMode。填写 bot.conf URL 后，保存配置会立即获取一次，主界面的刷新按钮可再次拉取。
+                                Start the remote WindBot in ServerMode before testing. Saving fetches a configured bot.conf URL; Refresh catalog fetches it again.
                             </n-alert>
                         </section>
                     </div>
@@ -349,12 +407,12 @@ function removeSrvpro(index) {
                 <div class="settings-footer">
                     <div v-if="disabled" class="settings-footer-alerts">
                         <n-alert v-if="disabled" type="warning" :bordered="false">
-                            当前测试结束后才能保存系统配置。
+                            Finish active experiments before saving settings.
                         </n-alert>
                     </div>
                     <div class="settings-actions">
-                        <n-button ref="cancelButton" @click="close">取消</n-button>
-                        <n-button type="primary" :disabled="disabled" :loading="saving" @click="save">保存配置</n-button>
+                        <n-button ref="cancelButton" @click="close">Cancel</n-button>
+                        <n-button type="primary" :disabled="disabled" :loading="saving" @click="save">Save settings</n-button>
                     </div>
                 </div>
             </template>
@@ -418,6 +476,26 @@ function removeSrvpro(index) {
     grid-column: span 2;
 }
 
+.profile-help p {
+    color: var(--n-text-color);
+    line-height: 1.6;
+    opacity: 0.75;
+}
+
+.deck-profile {
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--n-border-color);
+    border-radius: 10px;
+}
+
+.profile-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
 .windbot-settings {
     display: grid;
     gap: 18px;
@@ -428,7 +506,7 @@ function removeSrvpro(index) {
     padding: 20px;
     border: 1px solid #1d333c;
     border-radius: 12px;
-    background: #0a171d;
+    background: #11151d;
 }
 
 .srvpro-settings {

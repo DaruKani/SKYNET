@@ -34,7 +34,8 @@ const emit = defineEmits(['update:darkMode']);
 const message = useMessage();
 let storedRecentDecks = [];
 try {
-    const value = JSON.parse(localStorage.getItem('windbot-arena-recent-decks') || '[]');
+    const value = JSON.parse(localStorage.getItem('skynet-arena-recent-decks')
+        || localStorage.getItem('windbot-arena-recent-decks') || '[]');
     if (Array.isArray(value)) {
         storedRecentDecks = [...new Set(value.filter((deck) => typeof deck === 'string'))];
     }
@@ -59,12 +60,12 @@ const experimentKind = ref('regression');
 const targetDeck = ref('');
 const challengerVersion = ref('current');
 const deckListExpanded = ref(true);
-const gamesPerMatchup = ref(500);
+const gamesPerMatchup = ref(20);
 const stopAfterMinutes = ref(60);
 const timerRunId = ref('');
 const timerSaving = ref(false);
 const stopConfirmationRunId = ref('');
-const challengeGamesPerMatchup = ref(100);
+const challengeGamesPerMatchup = ref(20);
 const configuredGamesPerMatchup = computed({
     get: () => (
         experimentKind.value === 'challenge'
@@ -110,14 +111,14 @@ const allRefreshDomains = ['system', 'runs', 'active'];
 
 const terminalStatuses = new Set(['completed', 'stopped', 'failed', 'interrupted']);
 const statusLabels = {
-    completed: '已完成',
-    failed: '失败',
-    interrupted: '已中断',
-    preparing: '准备环境',
-    running: '正在对局',
-    settling: '等待完成',
-    stopped: '已停止',
-    stopping: '停止中',
+    completed: 'Completed',
+    failed: 'Failed',
+    interrupted: 'Interrupted',
+    preparing: 'Preparing',
+    running: 'Running',
+    settling: 'Finishing',
+    stopped: 'Stopped',
+    stopping: 'Stopping',
 };
 const statusTypes = {
     completed: 'success',
@@ -130,10 +131,10 @@ const statusTypes = {
     stopping: 'warning',
 };
 const runKindLabels = {
-    regression: '新旧回归',
-    challenge: '卡组挑战',
-    ranking: '胜率排行',
-    tag: '双打冒烟',
+    regression: 'Regression',
+    challenge: 'Challenge',
+    ranking: 'Ranking',
+    tag: 'Tag smoke test',
 };
 const runKindIndexes = {
     regression: '01',
@@ -142,10 +143,10 @@ const runKindIndexes = {
     ranking: '04',
 };
 const runKindDescriptions = {
-    regression: '新版与旧版使用同一卡组，按计划局数进行回归对战。',
-    challenge: '指定卡组按列表顺序轮流对战全部或选中的对手，每组达到计划局数后自动完成。',
-    tag: '从选中卡组中每局随机组队进行双打，直到手动停止；创建房间速度自动减半，不统计胜率。',
-    ranking: '从选中卡组中每局随机抽取两个对战，直到手动停止。',
+    regression: 'Compare candidate and baseline policies on matching deck profiles for a fixed number of duels.',
+    challenge: 'Challenge selected opponents in sequence with one deck. Each matchup ends after the requested number of duels.',
+    tag: 'Form random tag teams until stopped. Room creation runs at half speed; this checks stability without scoring wins.',
+    ranking: 'Play random pairings from the selected decks until stopped.',
 };
 
 const regressionDeckOptions = computed(() => (system.value?.configuration.decks || []).map((item) => ({
@@ -264,7 +265,7 @@ const launchPanelState = computed(() => {
     return activeRun.value ? 'running' : 'ready';
 });
 const terminalRunActionLabel = computed(() => (
-    `任务${statusLabels[displayedRun.value?.status] || '已结束'}`
+    `Experiment ${statusLabels[displayedRun.value?.status] || 'Finished'}`
 ));
 const stopCountdown = computed(() => {
     const run = activeRun.value;
@@ -277,14 +278,14 @@ const stopMenuOptions = computed(() => {
     const run = activeRun.value;
     const options = [];
     if (stopCountdown.value) {
-        options.push({ label: '立即停止', key: 'immediate', disabled: stopping.value });
+        options.push({ label: 'Stop immediately', key: 'immediate', disabled: stopping.value });
     }
-    options.push({ label: '优雅停止', key: 'graceful', disabled: stopping.value || run?.status !== 'running',
-        description: '停止创建新对局，等待所有对局全部结束后完成最终统计。' });
+    options.push({ label: 'Finish active duels', key: 'graceful', disabled: stopping.value || run?.status !== 'running',
+        description: 'Stop creating rooms and let all active duels finish before collecting results.' });
     if (['ranking', 'tag'].includes(run?.kind)) {
-        options.push({ label: stopCountdown.value ? '修改定时停止' : '定时停止', key: 'timer',
+        options.push({ label: stopCountdown.value ? 'Edit stop timer' : 'Stop timer', key: 'timer',
             disabled: stopping.value || run?.status !== 'running',
-            description: '倒计时结束后优雅停止测试。' });
+            description: 'Finish active duels when the timer expires.' });
     }
     return options;
 });
@@ -293,7 +294,7 @@ const srvproOptions = computed(() => (system.value?.srvpros || []).map((srvpro) 
     const busy = activeRuns.value.some((run) => run.srvproId === srvpro.id);
     return {
         disabled: busy,
-        label: `${srvpro.name} — ${srvpro.host || '未配置'}:${srvpro.duelPort}${busy ? '（运行中）' : ''}`,
+        label: `${srvpro.name} — ${srvpro.host || 'Not configured'}:${srvpro.duelPort}${busy ? ' (busy)' : ''}`,
         value: srvpro.id,
     };
 }));
@@ -308,8 +309,8 @@ const modeConfiguration = computed(() => (
 const configurationReady = computed(() => modeConfiguration.value.valid === true);
 const inspectorTitle = computed(() => (
     inspectorKind.value === 'srvpro'
-        ? `${selectedSrvpro.value?.name || 'SRVPro'} 房间列表（${inspectorRooms.value.length}）`
-        : `${inspectorKind.value === 'current' ? '新版' : '旧版'} WindBot 命令行输出`
+        ? `${selectedSrvpro.value?.name || 'SRVPro'} Rooms (${inspectorRooms.value.length})`
+        : `${inspectorKind.value === 'current' ? 'Candidate' : 'Baseline'} agent output`
 ));
 const canStart = computed(() => {
     if (!selectedSrvpro.value || !configurationReady.value || activeRun.value) {
@@ -416,9 +417,9 @@ const regressionRetestDecks = computed(() => {
 });
 const rankingLeader = computed(() => rankingRows.value.find((item) => item.observedGames > 0) || null);
 const resultDownloadOptions = [
-    { label: '下载文本', key: 'text' },
-    { label: '下载 Markdown', key: 'markdown' },
-    { label: '下载 JSON', key: 'json' },
+    { label: 'Download text', key: 'text' },
+    { label: 'Download Markdown', key: 'markdown' },
+    { label: 'Download JSON', key: 'json' },
 ];
 const elapsedMilliseconds = computed(() => {
     return getRunElapsedMilliseconds(displayedRun.value);
@@ -456,7 +457,10 @@ function formatWindBotEndpoint(windbot) {
     if (!windbot) {
         return '—';
     }
-    return `${windbot.mode === 'local' ? '本地' : '远程'} ${windbot.host}:${windbot.port}`;
+    if (windbot.mode === 'skynet') {
+        return 'SKYNET · local duel processes';
+    }
+    return `${windbot.mode === 'local' ? 'Local' : 'Remote'} ${windbot.host}:${windbot.port}`;
 }
 
 async function api(path, options) {
@@ -467,7 +471,7 @@ async function api(path, options) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-        throw new Error(body.error || `请求失败: HTTP ${response.status}`);
+        throw new Error(body.error || `Request failed: HTTP ${response.status}`);
     }
     return body;
 }
@@ -633,7 +637,7 @@ async function saveRunNote() {
         if (selectedRun.value?.id === run.id) selectedRun.value.note = run.note;
         editingNoteRun.value = null;
         await refresh(['runs', 'active']);
-        message.success('备注已保存');
+        message.success('Note saved');
     } catch (error) {
         message.error(error.message);
     } finally {
@@ -653,7 +657,7 @@ async function deleteRun(runId) {
         const lastPage = Math.max(1, Math.ceil(remainingTotal / historyPageSize));
         historyPage.value = Math.min(historyPage.value, lastPage);
         await refresh(['runs', 'active']);
-        message.success('运行历史已删除');
+        message.success('Experiment history deleted');
     } catch (error) {
         message.error(error.message);
     } finally {
@@ -750,7 +754,7 @@ async function updateHalfwayWatch(enabled) {
             return;
         }
         inspectorHalfwayWatchEnabled.value = result.enableHalfwayWatch;
-        message.success(result.enableHalfwayWatch ? '已启用新建房间的观战' : '已禁用新建房间的观战');
+        message.success(result.enableHalfwayWatch ? 'Spectating enabled for new rooms' : 'Spectating disabled for new rooms');
     } catch (error) {
         if (
             request === inspectorRequest
@@ -791,7 +795,7 @@ async function saveSettings(settings) {
             method: 'PUT',
         });
         settingsOpen.value = false;
-        message.success('系统配置已保存');
+        message.success('Settings saved');
         await refresh(['system']);
     } catch (error) {
         message.error(error.message);
@@ -808,8 +812,8 @@ async function refreshBotConfigs() {
             !== JSON.stringify(result.botConfigFingerprints);
         const catalogChanged = JSON.stringify(system.value?.configuration || null)
             !== JSON.stringify(result.configuration);
-        message.success(`bot.conf 已刷新，内容${
-            result.contentChanged || fingerprintChanged || catalogChanged ? '有变化' : '无变化'
+        message.success(`Catalog refreshed: ${
+            result.contentChanged || fingerprintChanged || catalogChanged ? 'changed' : 'unchanged'
         }`);
         await refresh(['system']);
     } catch (error) {
@@ -845,9 +849,9 @@ async function startRun() {
                 .filter((option) => selected.has(option.value))
                 .map((option) => option.value);
             try {
-                localStorage.setItem('windbot-arena-recent-decks', JSON.stringify(recentDecks.value));
+                localStorage.setItem('skynet-arena-recent-decks', JSON.stringify(recentDecks.value));
             } catch {
-                // 最近选择仍会保留到当前页面关闭。
+                // Recent selections remain available until this page closes.
             }
         }
         runSelectionRequest += 1;
@@ -857,7 +861,7 @@ async function startRun() {
         ];
         selectedRun.value = body.run;
         historyPage.value = 1;
-        message.success(`${runKindLabels[experimentKind.value]}已创建`);
+        message.success(`${runKindLabels[experimentKind.value]} created`);
         await refresh(['runs', 'active']);
     } catch (error) {
         message.error(error.message);
@@ -889,7 +893,7 @@ async function saveScheduledStop() {
         timerRunId.value = '';
         clockNow.value = Date.now();
         await refresh(['runs', 'active']);
-        message.success('已设置定时停止');
+        message.success('Stop timer scheduled');
     } catch (error) {
         message.error(error.message);
     } finally {
@@ -905,7 +909,7 @@ async function stopRun(graceful = false, runId = activeRun.value?.id) {
     stopping.value = true;
     try {
         await api(`/api/runs/${runId}/${graceful ? 'graceful-stop' : 'stop'}`, { method: 'POST' });
-        message.info(graceful ? '已请求优雅停止，等待所有对局结束后完成统计' : '正在完成统计并停止测试');
+        message.info(graceful ? 'Stop requested. Waiting for active duels before collecting results.' : 'Collecting results and stopping the experiment.');
         await refresh(['runs', 'active']);
     } catch (error) {
         message.error(error.message);
@@ -922,7 +926,7 @@ function formatDate(value, timeOnly = false) {
     if (!value) {
         return '—';
     }
-    return new Intl.DateTimeFormat('zh-CN', timeOnly ? {
+    return new Intl.DateTimeFormat('en-GB', timeOnly ? {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -944,15 +948,15 @@ function formatDuration(value) {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     if (days > 0) {
-        return `${days}天 ${hours}小时`;
+        return `${days}d ${hours}h`;
     }
     if (hours > 0) {
-        return `${hours}小时 ${minutes}分`;
+        return `${hours}h ${minutes}m`;
     }
     if (minutes > 0) {
-        return `${minutes}分 ${seconds}秒`;
+        return `${minutes}m ${seconds}s`;
     }
-    return `${seconds}秒`;
+    return `${seconds}s`;
 }
 
 function getRunElapsedMilliseconds(run) {
@@ -973,14 +977,14 @@ function formatHistoryTitle(run) {
 function formatHistoryNote(run) {
     const matchupCount = run.matchupCount ?? run.matchups?.length ?? 0;
     if (run.kind === 'challenge') {
-        const version = run.config?.challengerVersion === 'old' ? '旧版' : '新版';
-        return `${version} ${run.config?.targetDeck || '—'} VS ${matchupCount} 个卡组`;
+        const version = run.config?.challengerVersion === 'old' ? 'Baseline' : 'Candidate';
+        return `${version} ${run.config?.targetDeck || '—'} VS ${matchupCount} decks`;
     }
     const deckName = run.deckName || run.matchups?.[0]?.label;
     if (run.kind === 'regression' && matchupCount === 1 && deckName) {
-        return `${deckName} · 1 个卡组`;
+        return `${deckName} · 1 decks`;
     }
-    return `${matchupCount} 个卡组`;
+    return `${matchupCount} decks`;
 }
 
 async function writeClipboard(text) {
@@ -989,7 +993,7 @@ async function writeClipboard(text) {
             await navigator.clipboard.writeText(text);
             return;
         } catch {
-            // 在非安全来源下改用兼容复制方式。
+            // Use the fallback clipboard method on insecure origins.
         }
     }
     const textarea = document.createElement('textarea');
@@ -1001,16 +1005,16 @@ async function writeClipboard(text) {
     const copied = document.execCommand('copy');
     textarea.remove();
     if (!copied) {
-        throw new Error('浏览器拒绝了复制请求');
+        throw new Error('The browser denied clipboard access');
     }
 }
 
 async function copyRoomName(name) {
     try {
         await writeClipboard(name);
-        message.success('房名已复制');
+        message.success('Room name copied');
     } catch (error) {
-        message.error(`复制失败：${error.message}`);
+        message.error(`Copy failed: ${error.message}`);
     }
 }
 
@@ -1021,7 +1025,7 @@ function serializeResults(run, format) {
             run: {
                 id: run.id,
                 kind: run.kind,
-                kindLabel: runKindLabels[run.kind] || '实验结果',
+                kindLabel: runKindLabels[run.kind] || 'Results',
                 status: run.status,
                 statusLabel: statusLabels[run.status] || run.status,
                 createdAt: run.createdAt,
@@ -1052,43 +1056,43 @@ function serializeResults(run, format) {
     }
 
     const summary = [
-        ['任务 ID', run.id],
-        ['状态', statusLabels[run.status] || run.status],
-        ['创建时间', formatDate(run.createdAt)],
-        ['已完成对局', run.kind === 'tag' ? '不统计' : run.observedGames],
-        ['已创建对局', `${run.launchedGames}${
+        ['Experiment ID', run.id],
+        ['Status', statusLabels[run.status] || run.status],
+        ['Created at', formatDate(run.createdAt)],
+        ['Completed duels', run.kind === 'tag' ? 'Not scored' : run.observedGames],
+        ['Launched duels', `${run.launchedGames}${
             !['ranking', 'tag'].includes(run.kind) ? ` / ${run.totalGames}` : ''
         }`],
     ];
     if (run.kind === 'ranking') {
-        summary.push(['当前榜首', rankingLeader.value
-            ? `${rankingLeader.value.label}（${formatPercent(rankingLeader.value.currentWinRate)}）`
-            : '统计中']);
+        summary.push(['Leading deck', rankingLeader.value
+            ? `${rankingLeader.value.label} (${formatPercent(rankingLeader.value.currentWinRate)})`
+            : 'Collecting']);
     } else if (run.kind === 'tag') {
-        summary.push(['测试卡组', run.matchups.length]);
+        summary.push(['Test decks', run.matchups.length]);
         summary.push([
-            'WindBot 错误次数',
-            tagWindBotOutputScannable.value ? tagIssueCount.value : '无法读取远程输出',
+            'Agent errors',
+            tagWindBotOutputScannable.value ? tagIssueCount.value : 'Remote output unavailable',
         ]);
     } else {
         if (run.kind === 'challenge') {
-            summary.push(['挑战者卡组', run.config?.targetDeck || '—']);
-            summary.push(['挑战者版本', run.config?.challengerVersion === 'old' ? '旧版' : '新版']);
+            summary.push(['Challenger deck', run.config?.targetDeck || '—']);
+            summary.push(['Challenger policy', run.config?.challengerVersion === 'old' ? 'Baseline' : 'Candidate']);
             if (run.challengeTargetFlee > 0) {
-                summary.push(['挑战者卡组合计逃跑', run.challengeTargetFlee]);
+                summary.push(['Challenger disconnects', run.challengeTargetFlee]);
             }
         }
         summary.push([
-            `${run.kind === 'challenge' ? '挑战者卡组' : '新版'}总胜率`,
+            `${run.kind === 'challenge' ? 'Challenger deck' : 'Candidate'} win rate`,
             formatPercent(currentWinRate.value),
         ]);
     }
-    summary.push(['已用时间', formatDuration(elapsedMilliseconds.value)]);
+    summary.push(['Elapsed time', formatDuration(elapsedMilliseconds.value)]);
 
     let columns;
     let rows;
     if (run.kind === 'regression') {
-        columns = ['卡组', '等级 / Bot', '统计进度', '胜 / 负 / 逃', '新版胜率'];
+        columns = ['Deck', 'Level / Bot', 'Results collected', 'W / L / disconnects', 'Candidate win rate'];
         rows = regressionRows.value.map((matchup) => {
             const competitor = matchup.competitors[0];
             return [
@@ -1100,7 +1104,7 @@ function serializeResults(run, format) {
             ];
         });
     } else if (run.kind === 'challenge') {
-        columns = ['对手卡组', '等级 / Bot', '统计进度', '挑战者卡组 胜 / 负', '对手逃跑', '挑战者卡组胜率'];
+        columns = ['Opponent decks', 'Level / Bot', 'Results collected', 'Challenger W / L', 'Opponent disconnects', 'Challenger win rate'];
         rows = challengeRows.value.map((matchup) => {
             const competitor = matchup.competitors[0];
             return [
@@ -1113,14 +1117,14 @@ function serializeResults(run, format) {
             ];
         });
     } else if (run.kind === 'tag') {
-        columns = ['测试卡组', '等级 / Bot', '参与对局'];
+        columns = ['Test decks', 'Level / Bot', 'Duels played'];
         rows = tagRows.value.map((entry) => [
             entry.label,
             `${entry.aiLevel ? `LV${entry.aiLevel} / ` : ''}${entry.competitors[0]?.botLabel || '—'}`,
             entry.launchedGames,
         ]);
     } else {
-        columns = ['排名', '卡组', '等级 / Bot', '已统计 / 已创建', '胜 / 负 / 逃', '胜率'];
+        columns = ['Rank', 'Deck', 'Level / Bot', 'Collected / launched', 'W / L / disconnects', 'Win rate'];
         rows = rankingRows.value.map((entry, index) => {
             const competitor = entry.competitors[0];
             return [
@@ -1137,9 +1141,9 @@ function serializeResults(run, format) {
     if (format === 'markdown') {
         const escapeCell = (value) => String(value).replaceAll('|', '\\|').replaceAll('\n', '<br>');
         return [
-            `# WindBot Arena · ${runKindLabels[run.kind] || '实验结果'}`,
+            `# Skynet Arena · ${runKindLabels[run.kind] || 'Results'}`,
             '',
-            ...summary.map(([label, value]) => `- ${label}：${value}`),
+            ...summary.map(([label, value]) => `- ${label}: ${value}`),
             '',
             `| ${columns.map(escapeCell).join(' | ')} |`,
             `| ${columns.map(() => '---').join(' | ')} |`,
@@ -1149,8 +1153,8 @@ function serializeResults(run, format) {
     }
 
     return [
-        `WindBot Arena · ${runKindLabels[run.kind] || '实验结果'}`,
-        ...summary.map(([label, value]) => `${label}：${value}`),
+        `Skynet Arena · ${runKindLabels[run.kind] || 'Results'}`,
+        ...summary.map(([label, value]) => `${label}: ${value}`),
         '',
         columns.join('\t'),
         ...rows.map((row) => row.join('\t')),
@@ -1165,9 +1169,9 @@ async function copyResults() {
 
     try {
         await writeClipboard(serializeResults(run, 'text'));
-        message.success('实验结果已复制为文本');
+        message.success('Results copied as text');
     } catch (error) {
-        message.error(`复制失败：${error.message}`);
+        message.error(`Copy failed: ${error.message}`);
     }
 }
 
@@ -1193,12 +1197,12 @@ function downloadResults(format) {
     const link = document.createElement('a');
     link.href = url;
     const note = (run.note || '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
-    link.download = `windbot-arena-${run.kind}-${note ? `${note}-` : ''}${run.id.slice(0, 8)}.${fileType.extension}`;
+    link.download = `skynet-arena-${run.kind}-${note ? `${note}-` : ''}${run.id.slice(0, 8)}.${fileType.extension}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    message.success(`实验结果已下载为 ${fileType.extension.toUpperCase()}`);
+    message.success(`Results downloaded as ${fileType.extension.toUpperCase()}`);
 }
 
 function handleDeckSelection(deck, checked) {
@@ -1211,15 +1215,16 @@ function selectRegressionRetestDecks() {
     allDecks.value = false;
     selectedDecks.value = [...regressionRetestDecks.value];
     deckListExpanded.value = true;
-    message.success(`已选中 ${selectedDecks.value.length} 个胜率异常卡组`);
+    message.success(`Selected ${selectedDecks.value.length} decks with unusual win rates`);
 }
 
 function clearRecentDecks() {
     recentDecks.value = [];
     try {
+        localStorage.removeItem('skynet-arena-recent-decks');
         localStorage.removeItem('windbot-arena-recent-decks');
     } catch {
-        // 当前页面仍会立即清除最近使用标记。
+        // Clear recent-use markers immediately in this page.
     }
 }
 
@@ -1281,10 +1286,10 @@ onMounted(async () => {
                 new Notification(notification.title, {
                     body: notification.body,
                     tag: `arena-${notification.runId}`,
-                    icon: '/arena.ico',
+                    icon: '/skynet.ico',
                 });
             } catch {
-                // 部分移动浏览器不支持 Notification 构造器，跳过通知以免影响状态刷新。
+                // Some mobile browsers cannot construct notifications; keep refreshing normally.
             }
         }
     });
@@ -1311,13 +1316,13 @@ onBeforeUnmount(() => {
     <div class="app-shell">
         <header class="topbar">
             <a class="brand" href="#">
-                <span class="brand-mark"><img src="/arena.ico" alt=""></span>
+                <span class="brand-mark"><img src="/skynet.ico" alt=""></span>
                 <span>
-                    <strong>WindBot Arena</strong>
+                    <strong>Skynet Arena</strong>
                 </span>
             </a>
             <div class="topbar-actions">
-                <div class="theme-control" title="切换日间 / 夜间模式">
+                <div class="theme-control" title="Switch light / dark theme">
                     <svg class="theme-icon" :class="{ active: !darkMode }" viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="12" cy="12" r="4"></circle>
                         <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
@@ -1325,14 +1330,14 @@ onBeforeUnmount(() => {
                     <n-switch
                         :value="darkMode"
                         size="small"
-                        aria-label="切换日间 / 夜间模式"
+                        aria-label="Switch light / dark theme"
                         @update:value="emit('update:darkMode', $event)"
                     />
                     <svg class="theme-icon" :class="{ active: darkMode }" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M20.6 15.7A9 9 0 0 1 8.3 3.4 9 9 0 1 0 20.6 15.7Z"></path>
                     </svg>
                 </div>
-                <n-button size="small" quaternary @click="openSettings">系统配置</n-button>
+                <n-button size="small" quaternary @click="openSettings">Settings</n-button>
             </div>
         </header>
 
@@ -1340,14 +1345,14 @@ onBeforeUnmount(() => {
             <section class="hero">
                 <div class="hero-copy">
                     <span class="eyebrow">DUEL EXPERIMENT LAB</span>
-                    <h1>让每一次 AI 变更<br><em>都有数据可循</em></h1>
-                    <p>运行新旧版本回归、单卡组挑战、双打冒烟与随机胜率排行，实时观察卡组表现并完整留档。</p>
+                    <h1>Better decisions.<br><em>Measured in duels.</em></h1>
+                    <p>Compare policies, challenge opponents, and follow every result. Build evidence for a stronger SKYNET.</p>
                 </div>
                 <div class="system-readout">
                     <div>
                         <div class="readout-heading">
                             <span>SRVPRO</span>
-                            <button type="button" title="查看房间列表" aria-label="查看 SRVPro 房间列表" @click="openInspector('srvpro')">
+                            <button type="button" title="View rooms" aria-label="View SRVPro rooms" @click="openInspector('srvpro')">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <circle cx="11" cy="11" r="6"></circle>
                                     <path d="m16 16 4 4"></path>
@@ -1360,8 +1365,8 @@ onBeforeUnmount(() => {
                     </div>
                     <div>
                         <div class="readout-heading">
-                            <span>CURRENT WINDBOT</span>
-                            <button type="button" title="查看命令行输出" aria-label="查看 Current WindBot 命令行输出" @click="openInspector('current')">
+                            <span>CANDIDATE AGENT</span>
+                            <button type="button" title="View agent output" aria-label="View candidate output" @click="openInspector('current')">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <circle cx="11" cy="11" r="6"></circle>
                                     <path d="m16 16 4 4"></path>
@@ -1372,8 +1377,8 @@ onBeforeUnmount(() => {
                     </div>
                     <div>
                         <div class="readout-heading">
-                            <span>BASELINE WINDBOT</span>
-                            <button type="button" title="查看命令行输出" aria-label="查看 Baseline WindBot 命令行输出" @click="openInspector('old')">
+                            <span>BASELINE AGENT</span>
+                            <button type="button" title="View agent output" aria-label="View baseline output" @click="openInspector('old')">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <circle cx="11" cy="11" r="6"></circle>
                                     <path d="m16 16 4 4"></path>
@@ -1395,24 +1400,22 @@ onBeforeUnmount(() => {
                                 name="experiment-kind"
                                 :disabled="!!activeRun"
                             >
-                                <n-radio-button value="regression">新旧回归</n-radio-button>
-                                <n-radio-button value="challenge">卡组挑战</n-radio-button>
-                                <n-radio-button value="tag">双打冒烟</n-radio-button>
-                                <n-radio-button value="ranking">胜率排行</n-radio-button>
+                                <n-radio-button value="regression">Regression</n-radio-button>
+                                <n-radio-button value="challenge">Challenge</n-radio-button>
+                                <n-radio-button value="tag">Tag smoke test</n-radio-button>
+                                <n-radio-button value="ranking">Ranking</n-radio-button>
                             </n-radio-group>
                             <n-alert
                                 v-if="system && !configurationReady"
                                 class="configuration-alert"
-                                title="运行配置尚未就绪"
-                                type="error"
+                                title="Complete your setup"
+                                type="info"
                                 :bordered="false"
                             >
                                 <ul class="issue-list">
                                     <li v-for="issue in modeConfiguration.issues" :key="issue">{{ issue }}</li>
                                 </ul>
-                                <template #action>
-                                    <n-button size="small" type="error" ghost @click="openSettings">打开配置</n-button>
-                                </template>
+                                <n-button size="small" type="primary" ghost @click="openSettings">Open settings</n-button>
                             </n-alert>
                             <div class="panel-heading">
                                 <div>
@@ -1420,13 +1423,13 @@ onBeforeUnmount(() => {
                                     <div>
                                         <div class="results-title-line">
                                             <h2>{{ runKindLabels[experimentKind] }}</h2>
-                                            <n-tag v-if="!activeRun" size="small">可创建</n-tag>
+                                            <n-tag v-if="!activeRun" size="small">Ready</n-tag>
                                             <n-tag
                                                 v-else-if="displayedRun?.id !== activeRun.id"
                                                 size="small"
                                                 type="warning"
                                             >
-                                                历史
+                                                History
                                             </n-tag>
                                         </div>
                                         <p>{{ runKindDescriptions[experimentKind] }}</p>
@@ -1439,42 +1442,42 @@ onBeforeUnmount(() => {
                                     v-if="system?.srvpros.length > 1"
                                     class="field field-wide srvpro-field"
                                 >
-                                    <span>SRVPro 实例</span>
+                                    <span>Duel server</span>
                                     <n-select
                                         :value="selectedSrvproId"
                                         :options="srvproOptions"
-                                        placeholder="选择本次任务使用的 SRVPro"
+                                        placeholder="Choose a dedicated duel server"
                                         @update:value="selectSrvpro"
                                     />
                                 </label>
                                 <div v-if="experimentKind === 'challenge'" class="challenge-target-row">
                                     <label class="field target-deck-field">
-                                        <span>挑战者卡组</span>
+                                        <span>Challenger deck</span>
                                         <n-auto-complete
                                             v-model:value="targetDeck"
                                             :disabled="!!activeRun"
                                             :options="targetDeckOptions"
                                             :render-label="(option) => option.displayLabel"
                                             clearable
-                                            placeholder="输入执行器名称，可不在 bot.conf 列表中"
+                                            placeholder="Choose a profile or enter a WindBot executor name"
                                         />
                                     </label>
                                     <div class="field challenger-version-field">
-                                        <span>挑战者 WindBot</span>
+                                        <span>Challenger agent</span>
                                         <n-radio-group
                                             v-model:value="challengerVersion"
                                             :disabled="!!activeRun"
                                             name="challenger-version"
                                             size="small"
                                         >
-                                            <n-radio-button value="current">新版</n-radio-button>
-                                            <n-radio-button value="old">旧版</n-radio-button>
+                                            <n-radio-button value="current">Candidate</n-radio-button>
+                                            <n-radio-button value="old">Baseline</n-radio-button>
                                         </n-radio-group>
                                     </div>
                                 </div>
                                 <div class="field field-wide deck-picker">
                                     <div class="field-heading">
-                                        <span>{{ experimentKind === 'challenge' ? '对手卡组' : '测试卡组' }}</span>
+                                        <span>{{ experimentKind === 'challenge' ? 'Opponent decks' : 'Test decks' }}</span>
                                         <div class="field-heading-actions">
                                             <n-button
                                                 v-if="experimentKind === 'regression'
@@ -1486,7 +1489,7 @@ onBeforeUnmount(() => {
                                                 :disabled="!!activeRun || regressionRetestDecks.length === 0"
                                                 @click="selectRegressionRetestDecks"
                                             >
-                                                一键复测
+                                                Retest outliers
                                             </n-button>
                                             <n-button
                                                 text
@@ -1495,7 +1498,7 @@ onBeforeUnmount(() => {
                                                 :disabled="recentDecks.length === 0"
                                                 @click="clearRecentDecks"
                                             >
-                                                清空最近使用
+                                                Clear recent decks
                                             </n-button>
                                             <n-button
                                                 text
@@ -1504,7 +1507,7 @@ onBeforeUnmount(() => {
                                                 :loading="refreshingDecks"
                                                 @click="refreshBotConfigs"
                                             >
-                                                刷新 bot.conf
+                                                Refresh catalog
                                             </n-button>
                                         </div>
                                     </div>
@@ -1518,12 +1521,12 @@ onBeforeUnmount(() => {
                                         >
                                             <span>
                                                 {{ allDecks
-                                                    ? `全部卡组（不含 LV1，共 ${allDeckCount} 个）`
+                                                    ? `All decks (excluding LV1; ${allDeckCount})`
                                                     : selectedDecks.length
-                                                        ? `已选择 ${selectedDecks.length} / ${deckOptions.length}`
-                                                        : `请选择卡组（共 ${deckOptions.length} 个）` }}
+                                                        ? `Selected ${selectedDecks.length} / ${deckOptions.length}`
+                                                        : `Choose decks (${deckOptions.length})` }}
                                             </span>
-                                            <small>{{ deckListExpanded ? '收起' : '展开' }}</small>
+                                            <small>{{ deckListExpanded ? 'Collapse' : 'Expand' }}</small>
                                         </button>
                                         <div v-show="deckListExpanded" id="deck-options" class="deck-options">
                                             <n-checkbox
@@ -1543,12 +1546,12 @@ onBeforeUnmount(() => {
                                                     <small>{{ option.currentLabel }}</small>
                                                 </span>
                                                 <span class="deck-option-tags">
-                                                    <span v-if="recentDeckSet.has(option.value)" class="recent-deck">最近</span>
+                                                    <span v-if="recentDeckSet.has(option.value)" class="recent-deck">Recent</span>
                                                     <span v-if="option.aiLevel" class="ai-level">LV{{ option.aiLevel }}</span>
                                                 </span>
                                             </n-checkbox>
                                             <span v-if="deckOptions.length === 0" class="deck-options-empty">
-                                                没有可用卡组
+                                                No deck profiles available
                                             </span>
                                         </div>
                                     </div>
@@ -1558,7 +1561,7 @@ onBeforeUnmount(() => {
                                         v-model:checked="allDecks"
                                         :disabled="!!activeRun"
                                     >
-                                        {{ experimentKind === 'regression' ? '全部共同卡组' : '全部新版卡组' }}
+                                        {{ experimentKind === 'regression' ? 'All matching profiles' : 'All candidate decks' }}
                                     </n-checkbox>
                                     <span class="ai-level-controls">
                                         <n-checkbox
@@ -1569,7 +1572,7 @@ onBeforeUnmount(() => {
                                             :disabled="!!activeRun"
                                             @update:checked="handleAiLevelSelection(aiLevel, $event)"
                                         >
-                                            {{ aiLevel === null ? '无分级' : `LV${aiLevel}` }}
+                                            {{ aiLevel === null ? 'Unrated' : `LV${aiLevel}` }}
                                         </n-checkbox>
                                     </span>
                                 </div>
@@ -1578,7 +1581,7 @@ onBeforeUnmount(() => {
                                         v-if="!['ranking', 'tag'].includes(experimentKind)"
                                         class="field games-field"
                                     >
-                                        <span>{{ experimentKind === 'challenge' ? '每个对手局数' : '每卡组局数' }}</span>
+                                        <span>{{ experimentKind === 'challenge' ? 'Duels per opponent' : 'Duels per deck' }}</span>
                                         <n-input-number
                                             v-model:value="configuredGamesPerMatchup"
                                             :disabled="!!activeRun"
@@ -1594,7 +1597,7 @@ onBeforeUnmount(() => {
                                         :loading="starting"
                                         @click="startRun"
                                     >
-                                        启动{{ runKindLabels[experimentKind] }}
+                                        Start {{ runKindLabels[experimentKind] }}
                                     </n-button>
                                     <n-button v-else-if="launchPanelState === 'terminal'" disabled>
                                         {{ terminalRunActionLabel }}
@@ -1619,15 +1622,15 @@ onBeforeUnmount(() => {
                                                     {{ stopCountdown }}
                                                 </n-button>
                                             </template>
-                                            到时优雅停止，点击修改时间；下拉菜单可立即停止。
+                                            Finish active duels when the timer ends. Click to edit, or use the menu to stop immediately.
                                         </n-tooltip>
                                         <n-popconfirm v-else @positive-click="stopRun(false)">
                                             <template #trigger>
-                                                <n-button type="error" ghost :loading="stopping" :disabled="activeRun?.status === 'stopping'" @click.stop>停止测试</n-button>
+                                                <n-button type="error" ghost :loading="stopping" :disabled="activeRun?.status === 'stopping'" @click.stop>Stop experiment</n-button>
                                             </template>
-                                            未完成的对局将不计入结果统计。确认停止测试？
+                                            Unfinished duels will be excluded from results. Stop the experiment?
                                         </n-popconfirm>
-                                            <n-button class="stop-menu-trigger" type="error" ghost :disabled="stopping || activeRun?.status === 'stopping'" aria-label="停止选项">
+                                            <n-button class="stop-menu-trigger" type="error" ghost :disabled="stopping || activeRun?.status === 'stopping'" aria-label="Stop options">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                                     <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
                                                 </svg>
@@ -1643,7 +1646,7 @@ onBeforeUnmount(() => {
                                 <div>
                                     <div>
                                         <div class="results-title-line">
-                                            <h2>结果统计</h2>
+                                            <h2>Results</h2>
                                             <n-tag size="small" :type="statusTypes[displayedRun.status]">
                                                 {{ statusLabels[displayedRun.status] || displayedRun.status }}
                                             </n-tag>
@@ -1653,8 +1656,8 @@ onBeforeUnmount(() => {
                                             <button
                                                 class="run-note-edit"
                                                 type="button"
-                                                title="修改备注"
-                                                aria-label="修改实验备注"
+                                                title="Edit note"
+                                                aria-label="Edit experiment note"
                                                 @click="editingNoteRun = displayedRun; noteDraft = displayedRun.note || formatHistoryNote(displayedRun)"
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1663,9 +1666,9 @@ onBeforeUnmount(() => {
                                             </button>
                                             · <code>{{ displayedRun.id.slice(0, 8).toUpperCase() }}</code>
                                             · {{ displayedRun.config?.srvproName || displayedRun.config?.duelServer || 'SRVPro' }}
-                                            · 创建于 {{ formatDate(displayedRun.createdAt) }}
+                                            · Created {{ formatDate(displayedRun.createdAt) }}
                                             <template v-if="displayedRun.config?.stopAt">
-                                                · 定时停止于 {{ formatDate(displayedRun.config.stopAt) }}
+                                                · Stop scheduled for {{ formatDate(displayedRun.config.stopAt) }}
                                             </template>
                                         </p>
                                     </div>
@@ -1680,8 +1683,8 @@ onBeforeUnmount(() => {
                                             @select="downloadResults"
                                         >
                                         <n-button-group size="small">
-                                            <n-button secondary @click.stop="copyResults">复制文本</n-button>
-                                            <n-button secondary aria-label="下载实验结果">
+                                            <n-button secondary @click.stop="copyResults">Copy text</n-button>
+                                            <n-button secondary aria-label="Download results">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                                     <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
                                                 </svg>
@@ -1693,8 +1696,8 @@ onBeforeUnmount(() => {
 
                             <div class="metric-grid">
                                 <div class="metric primary-metric">
-                                    <span v-if="displayedRun.kind === 'tag'">测试卡组</span>
-                                    <span v-else>{{ displayedRun.kind !== 'ranking' ? '任务进度' : '已完成对局' }}</span>
+                                    <span v-if="displayedRun.kind === 'tag'">Test decks</span>
+                                    <span v-else>{{ displayedRun.kind !== 'ranking' ? 'Progress' : 'Completed duels' }}</span>
                                     <strong v-if="displayedRun.kind === 'tag'">{{ displayedRun.matchups.length }}</strong>
                                     <strong v-else-if="displayedRun.kind !== 'ranking'" class="progress-value">
                                         {{ displayedRun.observedGames }}<span> / {{ displayedRun.totalGames }}</span>
@@ -1710,21 +1713,21 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
                                 <div class="metric">
-                                    <span>已创建对局</span>
+                                    <span>Launched duels</span>
                                     <strong>{{ displayedRun.launchedGames }}</strong>
                                 </div>
                                 <div class="metric">
-                                    <span v-if="displayedRun.kind === 'ranking'">当前榜首</span>
+                                    <span v-if="displayedRun.kind === 'ranking'">Leading deck</span>
                                     <span
                                         v-else-if="displayedRun.kind === 'tag'"
-                                        title="扫描本次任务运行期间新版 WindBot 写入 stderr 的错误记录"
+                                        title="Count errors written to candidate stderr during this experiment"
                                     >
-                                        WindBot 错误次数
+                                        Agent errors
                                     </span>
-                                    <span v-else>{{ displayedRun.kind === 'challenge' ? '挑战卡组总胜率' : '新版总胜率' }}</span>
+                                    <span v-else>{{ displayedRun.kind === 'challenge' ? 'Challenger win rate' : 'Candidate win rate' }}</span>
                                     <strong v-if="displayedRun.kind === 'ranking'" class="leader-value">
                                         <span :title="rankingLeader?.label || ''">
-                                            {{ rankingLeader?.label || '统计中' }}
+                                            {{ rankingLeader?.label || 'Collecting' }}
                                         </span>
                                         <small v-if="rankingLeader">{{ formatPercent(rankingLeader.currentWinRate) }}</small>
                                     </strong>
@@ -1732,38 +1735,38 @@ onBeforeUnmount(() => {
                                         v-else-if="displayedRun.kind === 'tag'"
                                         :class="{ 'unavailable-value': !tagWindBotOutputScannable }"
                                     >
-                                        {{ tagWindBotOutputScannable ? tagIssueCount : '无法读取远程输出' }}
+                                        {{ tagWindBotOutputScannable ? tagIssueCount : 'Remote output unavailable' }}
                                     </strong>
                                     <strong v-else-if="displayedRun.kind === 'challenge'" class="challenge-rate-value">
                                         <span :title="displayedRun.config?.targetDeck || ''">
                                             {{ displayedRun.config?.targetDeck || '—' }}
-                                            · {{ displayedRun.config?.challengerVersion === 'old' ? '旧版' : '新版' }}
+                                            · {{ displayedRun.config?.challengerVersion === 'old' ? 'Baseline' : 'Candidate' }}
                                         </span>
                                         <small>
                                             {{ formatPercent(currentWinRate) }}
                                             <template v-if="displayedRun.challengeTargetFlee > 0">
-                                                · 逃跑 {{ displayedRun.challengeTargetFlee }}
+                                                · Disconnects {{ displayedRun.challengeTargetFlee }}
                                             </template>
                                         </small>
                                     </strong>
                                     <strong v-else>{{ formatPercent(currentWinRate) }}</strong>
                                 </div>
                                 <div class="metric">
-                                    <span>已用时间</span>
+                                    <span>Elapsed time</span>
                                     <strong class="time-value">{{ formatDuration(elapsedMilliseconds) }}</strong>
                                 </div>
                                 <div class="metric">
                                     <span>
                                         {{ terminalStatuses.has(displayedRun.status)
-                                            ? '完成时间'
-                                            : !['ranking', 'tag'].includes(displayedRun.kind) ? '预计完成时间' : '运行方式' }}
+                                            ? 'Finished at'
+                                            : !['ranking', 'tag'].includes(displayedRun.kind) ? 'Estimated finish' : 'Run mode' }}
                                     </span>
                                     <strong class="time-value">
                                         {{ terminalStatuses.has(displayedRun.status)
                                             ? formatDate(displayedRun.finishedAt)
                                             : !['ranking', 'tag'].includes(displayedRun.kind)
-                                                ? estimatedCompletionAt ? formatDate(estimatedCompletionAt) : '估算中'
-                                                : '手动停止' }}
+                                                ? estimatedCompletionAt ? formatDate(estimatedCompletionAt) : 'Estimating'
+                                                : 'Manual stop' }}
                                     </strong>
                                 </div>
                             </div>
@@ -1772,10 +1775,10 @@ onBeforeUnmount(() => {
                                 <table class="result-table">
                                     <thead>
                                         <tr>
-                                            <th>卡组</th>
-                                            <th>统计进度</th>
-                                            <th>胜/负/逃</th>
-                                            <th>新版胜率</th>
+                                            <th>Deck</th>
+                                            <th>Results collected</th>
+                                            <th>W / L / disconnects</th>
+                                            <th>Candidate win rate</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1821,11 +1824,11 @@ onBeforeUnmount(() => {
                                 <table class="result-table">
                                     <thead>
                                         <tr>
-                                            <th>对手卡组</th>
-                                            <th>统计进度</th>
-                                            <th>挑战卡组 胜/负</th>
-                                            <th>对手逃跑</th>
-                                            <th>挑战卡组胜率</th>
+                                            <th>Opponent decks</th>
+                                            <th>Results collected</th>
+                                            <th>Challenger W / L</th>
+                                            <th>Opponent disconnects</th>
+                                            <th>Challenger win rate</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1865,8 +1868,8 @@ onBeforeUnmount(() => {
                                 <table class="result-table">
                                     <thead>
                                         <tr>
-                                            <th>测试卡组</th>
-                                            <th>参与对局</th>
+                                            <th>Test decks</th>
+                                            <th>Duels played</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1887,11 +1890,11 @@ onBeforeUnmount(() => {
                                 <table class="result-table ranking-table">
                                     <thead>
                                         <tr>
-                                            <th>排名</th>
-                                            <th>卡组</th>
-                                            <th>已统计 / 已创建</th>
-                                            <th>胜/负/逃</th>
-                                            <th>胜率</th>
+                                            <th>Rank</th>
+                                            <th>Deck</th>
+                                            <th>Collected / launched</th>
+                                            <th>W / L / disconnects</th>
+                                            <th>Win rate</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1927,7 +1930,7 @@ onBeforeUnmount(() => {
                         </article>
 
                         <article v-else class="panel empty-panel">
-                            <n-empty description="还没有测试记录，配置上方参数后启动第一次实验" />
+                            <n-empty description="No experiments yet. Configure your agents and start a comparison." />
                         </article>
                     </div>
 
@@ -1935,7 +1938,7 @@ onBeforeUnmount(() => {
                         <article class="panel history-panel">
                             <div class="aside-heading">
                                 <div>
-                                    <h2>运行历史</h2>
+                                    <h2>History</h2>
                                 </div>
                                 <span>{{ historyTotal }}</span>
                             </div>
@@ -1968,15 +1971,15 @@ onBeforeUnmount(() => {
                                             <button
                                                 class="history-delete"
                                                 type="button"
-                                                title="删除运行历史"
-                                                :aria-label="`删除运行历史 ${formatHistoryTitle(run)}`"
+                                                title="Delete experiment history"
+                                                :aria-label="`Delete experiment history ${formatHistoryTitle(run)}`"
                                                 :disabled="deletingRunId === run.id"
                                                 @click.stop="!shouldConfirmRunDeletion(run) && deleteRun(run.id)"
                                             >
                                                 ×
                                             </button>
                                         </template>
-                                        确定删除这项运行历史？此操作无法撤销。
+                                        Delete this experiment history? This cannot be undone.
                                     </n-popconfirm>
                                 </div>
                                 <div
@@ -2001,7 +2004,7 @@ onBeforeUnmount(() => {
                                     :disabled="historyPage === 1"
                                     @click="selectHistoryPage(historyPage - 1)"
                                 >
-                                    上一页
+                                    Previous
                                 </n-button>
                                 <span>{{ historyPage }} / {{ historyPageCount }}</span>
                                 <n-button
@@ -2010,16 +2013,16 @@ onBeforeUnmount(() => {
                                     :disabled="historyPage === historyPageCount"
                                     @click="selectHistoryPage(historyPage + 1)"
                                 >
-                                    下一页
+                                    Next
                                 </n-button>
                             </div>
-                            <n-empty v-if="!runs.length" size="small" description="暂无历史记录" />
+                            <n-empty v-if="!runs.length" size="small" description="No previous experiments" />
                         </article>
 
                         <article v-if="displayedRun" class="panel event-panel">
                             <div class="aside-heading">
                                 <div>
-                                    <h2>任务事件</h2>
+                                    <h2>Activity</h2>
                                 </div>
                             </div>
                             <ol class="event-list">
@@ -2032,8 +2035,8 @@ onBeforeUnmount(() => {
 
                         <article class="future-panel">
                             <span>EXTENSIBLE CORE</span>
-                            <strong>下一类实验，无需重做底层</strong>
-                            <p>卡组与参赛方已独立建模，可继续扩展新的实验方式。</p>
+                            <strong>A repeatable path to improvement</strong>
+                            <p>Choose a deck, a policy, and an opponent. Save results before promoting a new model.</p>
                         </article>
                     </aside>
                 </section>
@@ -2041,15 +2044,15 @@ onBeforeUnmount(() => {
         </main>
 
         <footer>
-            <span>WINDBOT ARENA / SELF-HOSTED CONTROL PLANE</span>
+            <span>SKYNET ARENA / MDPRO4 AI SYSTEMS</span>
             <div class="footer-status">
                 <span>
-                    {{ hasActiveRuns ? `${activeRuns.length} 个活动任务` : '当前详情数据' }}：
+                    {{ hasActiveRuns ? `${activeRuns.length} active experiments` : 'Selected experiment' }}:
                     {{ formatDate(displayedRun?.latestRankAt, true) }}
                 </span>
                 <div class="live-state" :class="{ connected: liveConnected }" role="status">
                     <span class="live-dot"></span>
-                    {{ liveConnected ? '实时数据已连接' : '正在重新连接' }}
+                    {{ liveConnected ? 'Live updates connected' : 'Reconnecting' }}
                 </div>
             </div>
         </footer>
@@ -2057,9 +2060,9 @@ onBeforeUnmount(() => {
         <n-modal
             :show="!!timerRunId"
             preset="dialog"
-            title="定时停止"
-            positive-text="开始倒计时"
-            negative-text="取消"
+            title="Stop timer"
+            positive-text="Start timer"
+            negative-text="Cancel"
             :positive-button-props="{ loading: timerSaving, disabled: timerSaving || !Number.isInteger(stopAfterMinutes) || stopAfterMinutes < 1 || stopAfterMinutes > 10080 }"
             :mask-closable="!timerSaving"
             :closable="!timerSaving"
@@ -2068,25 +2071,25 @@ onBeforeUnmount(() => {
             @positive-click="saveScheduledStop"
             @update:show="!$event && !timerSaving && (timerRunId = '')"
         >
-            <p>从现在开始倒计时，到时停止创建新对局，等待所有对局结束后完成统计。</p>
-            <n-input-number v-model:value="stopAfterMinutes" :min="1" :max="10080" :precision="0" :disabled="timerSaving" aria-label="定时停止时长">
-                <template #suffix>分钟</template>
+            <p>Start a countdown now. When it ends, stop creating rooms and wait for active duels before collecting results.</p>
+            <n-input-number v-model:value="stopAfterMinutes" :min="1" :max="10080" :precision="0" :disabled="timerSaving" aria-label="Stop timer duration">
+                <template #suffix>minutes</template>
             </n-input-number>
         </n-modal>
         <n-modal
             :show="!!stopConfirmationRunId"
             preset="dialog"
-            title="立即停止"
-            content="未完成的对局将不计入结果统计。确认立即停止测试？"
-            positive-text="确认"
-            negative-text="取消"
+            title="Stop immediately"
+            content="Unfinished duels will be excluded from results. Stop immediately?"
+            positive-text="Confirm"
+            negative-text="Cancel"
             @positive-click="stopRun(false, stopConfirmationRunId)"
             @update:show="!$event && (stopConfirmationRunId = '')"
         />
         <n-modal
             :show="!!editingNoteRun"
             preset="card"
-            title="修改实验备注"
+            title="Edit experiment note"
             style="width: min(480px, calc(100vw - 32px))"
             :mask-closable="!savingNote"
             :closable="!savingNote"
@@ -2096,14 +2099,14 @@ onBeforeUnmount(() => {
             <form style="display: flex; flex-direction: column; align-items: flex-start; gap: 16px" @submit.prevent="saveRunNote">
                 <n-input
                     v-model:value="noteDraft"
-                    aria-label="实验备注"
-                    placeholder="留空恢复自动描述"
+                    aria-label="Experiment note"
+                    placeholder="Leave empty to use the automatic description"
                     :maxlength="200"
                     :disabled="savingNote"
                     clearable
                     show-count
                 />
-                <n-button type="primary" attr-type="submit" :loading="savingNote">保存</n-button>
+                <n-button type="primary" attr-type="submit" :loading="savingNote">Save</n-button>
             </form>
         </n-modal>
 
@@ -2130,7 +2133,7 @@ onBeforeUnmount(() => {
                 <template #header-extra>
                     <div class="inspector-header-actions">
                         <label v-if="inspectorKind === 'srvpro'" class="halfwaywatch-control">
-                            <span>允许观战</span>
+                            <span>Allow spectators</span>
                             <n-switch
                                 :value="inspectorHalfwayWatchEnabled === true"
                                 :disabled="inspectorHalfwayWatchEnabled === null"
@@ -2139,7 +2142,7 @@ onBeforeUnmount(() => {
                                 @update:value="updateHalfwayWatch"
                             />
                         </label>
-                        <n-button size="small" secondary @click="closeInspector">关闭</n-button>
+                        <n-button size="small" secondary @click="closeInspector">Close</n-button>
                     </div>
                 </template>
                 <n-alert v-if="inspectorError" type="error" :bordered="false">
@@ -2151,11 +2154,11 @@ onBeforeUnmount(() => {
                             <table class="room-table">
                                 <thead>
                                     <tr>
-                                        <th>序号</th>
-                                        <th>房名</th>
-                                        <th>玩家（队伍 A）</th>
-                                        <th>玩家（队伍 B）</th>
-                                        <th>状态</th>
+                                        <th>#</th>
+                                        <th>Room</th>
+                                        <th>Players (team A)</th>
+                                        <th>Players (team B)</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2166,7 +2169,7 @@ onBeforeUnmount(() => {
                                                 v-if="inspectorHalfwayWatchEnabled"
                                                 type="button"
                                                 class="room-name-button"
-                                                title="点击复制房名"
+                                                title="Copy room name"
                                                 @click="copyRoomName(room.name)"
                                             >
                                                 {{ room.name }}
@@ -2192,7 +2195,7 @@ onBeforeUnmount(() => {
                                 </tbody>
                             </table>
                         </div>
-                        <n-empty v-else-if="!inspectorLoading && !inspectorError" description="当前没有房间" />
+                        <n-empty v-else-if="!inspectorLoading && !inspectorError" description="No active rooms" />
                     </template>
                     <template v-else>
                         <n-alert
@@ -2200,19 +2203,19 @@ onBeforeUnmount(() => {
                             type="warning"
                             :bordered="false"
                         >
-                            远程 WindBot 的命令行不由 Arena 管理，无法读取输出。
+                            Remote WindBot output is managed on its own host and is unavailable here.
                         </n-alert>
                         <pre v-else-if="inspectorOutput?.output" class="command-output">{{ inspectorOutput.output }}</pre>
                         <n-empty
                             v-else-if="!inspectorLoading && !inspectorError"
-                            description="本地 WindBot 尚无命令行输出"
+                            description="No local agent output yet"
                         />
                     </template>
                 </n-spin>
                 <template #footer>
                     <div class="inspector-footer">
-                        <span>每 2 秒自动刷新</span>
-                        <n-button size="small" :loading="inspectorLoading" @click="loadInspector()">立即刷新</n-button>
+                        <span>Refreshes every 2 seconds</span>
+                        <n-button size="small" :loading="inspectorLoading" @click="loadInspector()">Refresh now</n-button>
                     </div>
                 </template>
             </n-card>

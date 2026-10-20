@@ -1,37 +1,43 @@
-# WindBot Arena 项目说明
+# Skynet Arena contributor instructions
 
-WindBot Arena 是一个自托管的 Node.js 对战实验控制台。它通过网页管理实验，调用两套 WindBot Server 向用户选择的专用 SRVPro 实例创建约战模式对局，主动查询对应 SRVPro 排行，并把配置、实验过程和统计保存到 SQLite。
+Skynet Arena is a self-hosted Node.js duel experiment console derived from WindBot Arena. It manages experiments through a browser, launches native SKYNET clients or calls two compatible WindBot Servers to create match-mode duels on a user-selected, dedicated [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance, actively polls that server's rankings, and stores configuration, experiment history and statistics in SQLite. A dedicated arena-srvpro instance is required; a generic duel server is not a substitute for its management and cumulative-ranking APIs.
 
-## 技术结构
+## Architecture
 
-- `client/`：Vue 3 + Naive UI 前端，通过同源 JSON API 和 Server-Sent Events 与服务端通信；SSE 心跳只传递分域版本索引，前端按变化获取 `system`、运行列表或活动任务。
-- `server/app.js`：网站、API 和实时事件入口。
-- `server/arena-service.js`：SRVPro 重启、WindBot 生命周期、房间调度及结果等待。
-- `server/arena-settings.js`：存储在 SQLite 中的业务配置模型、校验和敏感字段脱敏。
-- `server/database.js` 与 `server/migrations/`：SQLite 数据访问和当前初始结构。
-- `server/bot-config.js`：解析本地文件或远程模式粘贴的 `bot.conf`。
+- `client/`: Vue 3 + Naive UI frontend, communicating with the server through same-origin JSON APIs and Server-Sent Events. SSE heartbeats carry only version counters for separate data domains; the frontend fetches `system`, run lists or active runs when their counters change.
+- `server/app.js`: website, API and live-event entry points.
+- `server/arena-service.js`: SRVPro restarts, AI lifecycle coordination, room scheduling and result settlement.
+- `server/skynet-runtime.js`: native SKYNET process ownership, whole-room capacity reservations, launch arguments, bounded diagnostics, deadlines and cancellation.
+- `server/skynet-config.js`: explicit SKYNET executable, database and deck-profile configuration and validation.
+- `server/arena-settings.js`: application settings stored in SQLite, validation and sensitive-field redaction.
+- `server/database.js` and `server/migrations/`: SQLite access and versioned schema migrations.
+- `server/bot-config.js`: local or pasted remote `bot.conf` parsing, explicit SKYNET profile catalogs and matchup construction.
 
-服务启动阶段只有监听地址、HTTP 端口和 SQLite 路径属于环境基础信息。SRVPro、WindBot 和调度参数都应通过网页配置并保存在 SQLite，不要重新引入 `settings.js` 一类项目配置文件。
+Only the listening address, HTTP port and SQLite path are environment-level startup settings. SRVPro, AI runtime and scheduling settings must be configured through the browser and saved in SQLite. Do not reintroduce project configuration files such as `settings.js`.
 
-WindBot 有两种运行方式：
+There are three runtime modes:
 
-- 本地模式：Arena 负责启动和关闭 `WindBot.exe`，并直接读取本地 `bot.conf`。
-- 远程模式：用户手动运行 WindBot Server，Arena 只调用远程 HTTP 端点；由于无法读取远端文件系统，`bot.conf` 内容由用户在网页粘贴并保存在 SQLite。
+- `skynet`: Arena starts one owned `SKYNET.exe` process per duel participant, using explicitly configured executable, database, deck and optional model paths. `Agent=skynet` is the general policy; `Agent=expert-oldschool` is an explicit, frozen expert comparison. Expert mode does not accept a learned model. Arena forces training off, reserves all local participant slots for a room together, and enforces process limits and a deadline covering capacity wait and execution. Do not discover files outside the configured paths or silently enable archived executors. SKYNET tag duels remain disabled until validated.
+- `local`: Arena starts and stops a compatible `WindBot.exe` HTTP server and reads its local `bot.conf` directly.
+- `remote`: the user runs WindBot Server manually. Arena only calls its remote HTTP endpoint. Because Arena cannot read that host's filesystem, the user pastes `bot.conf` into the browser and its contents are stored in SQLite.
 
-Arena 为每组 Bot 生成 `M#123456789` 形式的唯一约战房名并传给双方。SRVPro 会保证相同房名的双方进入同一房间，并把普通约战结果记录到累计排行。约战房名不是用户配置。任务运行中 Arena 使用 `GET /api/getroomscount` 查询轻量房间计数，并每 15 秒使用管理凭据通过 `GET /api/getscores` 主动查询累计排行；清理房间和重启服务同样使用管理接口。
+The existing `windbots.current` and `windbots.old` configuration keys remain for compatibility and can select any supported mode. Do not rename persisted keys or remove upstream WindBot compatibility as part of presentation changes.
 
-## 对局配对与统计限制
+Arena generates a unique match room name such as `M#123456789` for each group of bots and passes it to both sides. SRVPro places participants using that name in the same room and records ordinary match results in its cumulative rankings. Room names are generated internally, not configured by users. While a run is active, Arena uses `GET /api/getroomscount` for lightweight room counts and polls `GET /api/getscores` with administrative credentials every 15 seconds for cumulative rankings. Room cleanup and server restarts also use administrative APIs. Compatible tag experiments use generated `T#...` room names.
 
-- 每组 Bot 使用相同的唯一约战房名，因此可以保证组内双方进入同一房间；不同组不得复用房名。
-- WindBot Server 的 HTTP 请求只能确认某一方已接受启动请求，无法直接撤销已经加入的 Bot；若任一方启动失败或超时，Arena 应使用 SRVPro 的关房 API 清理该组唯一房间。只有关房也失败时，先加入的一方才会暂时留在不会与后续对局错配的孤立房间。
-- SRVPro 房间列表不包含尚未 established 的房间，因此快速调度时可能短暂超过 `maxRooms`；少量瞬时超额可以接受，不要仅为消除这一偏差引入在途房间预留。无需处理全部 100 个房间同时永久卡死、导致调度不再前进的极端情况。
-- 当前没有独立的逐局结果来源，胜负只能使用 SRVPro 的累计约战排行。
+## Pairing and statistics constraints
 
-## 手动读取 SQLite 胜率
+- Each group uses one unique room name, ensuring its participants join the same room. Different groups must never reuse room names.
+- A WindBot Server HTTP response only confirms that a participant's launch request was accepted; it cannot directly undo a bot that already joined. If either participant fails to start or times out, Arena must use SRVPro's room-close API to clean up that group's unique room. Only if room cleanup also fails may the first participant temporarily remain in an isolated room, which must not be paired with a later duel.
+- Native SKYNET launch rollback must also stop its owned participant processes. Do not terminate unrelated processes. Keep process capacity occupied until actual process termination is confirmed; failed cleanup must be reported rather than treated as success.
+- SRVPro's room list excludes rooms that are not yet established, so fast scheduling can temporarily exceed `maxRooms`. A small transient overshoot is acceptable. Do not introduce reservations for in-flight SRVPro rooms solely to remove this discrepancy. This is distinct from the required native SKYNET process-capacity reservations. The extreme case where all 100 rooms become permanently stuck and scheduling cannot advance does not need separate handling.
+- There is currently no independent per-duel scoring source: wins and losses must come from SRVPro's cumulative match rankings. SKYNET console markers diagnose process completion; they do not replace the ranking source or turn disconnects into losses.
 
-默认数据库是 `data/arena.sqlite`。可在项目根目录使用项目依赖 `better-sqlite3` 以只读方式打开数据库；不要直接读取已废弃的预计算胜率字段。`competitors.slot = 1` 是新版，`slot = 2` 是旧版。界面中的新版胜率统一按“新版胜场 /（新版胜场 + 旧版胜场）”计算，`flee` 只作为异常次数单独查看，不要再次加入分母而重复惩罚。
+## Reading win rates from SQLite manually
 
-读取最新任务的总体胜率：
+The default database is `data/arena.sqlite`. Open it read-only from the Arena directory using the project's `better-sqlite3` dependency. Do not read deprecated precomputed win-rate fields. In regression runs, `competitors.slot = 1` identifies the current version and `slot = 2` the previous version. The displayed current-version win rate is always `current wins / (current wins + previous wins)`. Inspect `flee` separately as an anomaly count; do not add it to the denominator and penalize it twice.
+
+Overall win rate for the most recent run:
 
 ```sql
 WITH latest_run AS (
@@ -52,7 +58,7 @@ JOIN competitors ON competitors.matchup_id = matchups.id
 GROUP BY latest_run.id;
 ```
 
-读取最新任务中每个卡组的胜率与完成次数：
+Per-deck win rates and observed completion counts for the most recent run:
 
 ```sql
 WITH latest_run AS (
@@ -76,25 +82,26 @@ GROUP BY matchups.id, matchups.label, matchups.ai_level
 ORDER BY matchups.ai_level IS NULL, matchups.ai_level DESC, matchups.label;
 ```
 
-## 开发要求
+## Development requirements
 
-- 用户在配置中提供的 SRVPro 仅用于本项目，可以随意连接、查询、重启和清理房间，不需要保护其中的其他任务。
-- 同一个 SRVPro 实例同一时间只运行一个实验；不同 SRVPro 实例可以并行运行。两套 WindBot 端点由并行任务共享，本地 WindBot 进程应在最后一个活动任务结束后再清理。
-- 运行记录不得保存 SRVPro 管理密码；配置读取 API 也不得把它返回浏览器。
-- 本地模式启动的进程必须由 Arena 在任务结束、失败、停止或服务关闭时清理；远程模式的进程不归 Arena 管理。
-- NAS/反向代理部署保持同源 API。普通控制台应由反向代理保护；Arena 主动访问 SRVPro 管理端口查询排行，无需为此对外开放额外入口。
-- 新增或修改数据库字段时，必须同时提供在服务启动时自动运行的迁移代码，确保已有数据库能够升级并保留现有数据；不能仅修改初始迁移，也不能要求用户手动迁移。迁移应记录执行状态，避免重复执行。
+- The SRVPro instances supplied by the user in this project's configuration are dedicated to Arena. Connecting, querying, restarting and cleaning their rooms is allowed; no unrelated tasks on those instances need preservation.
+- Run only one experiment at a time on each SRVPro instance. Experiments on different instances may run concurrently. Concurrent runs share the two WindBot endpoints; clean up local WindBot server processes only after the last active run finishes. Native SKYNET processes instead belong to their individual rooms and runs, while their shared capacity limits apply across concurrent runs.
+- Never store SRVPro administrative passwords in run records. Settings-read APIs must not return them to the browser.
+- Arena must clean up locally owned processes when runs complete, fail or stop, and when the service shuts down. Remote-mode processes are not owned by Arena.
+- Keep the API same-origin when deploying on a NAS or behind a reverse proxy. Protect the console with the reverse proxy's access controls. Arena actively queries the SRVPro management port for rankings; this does not require exposing any additional inbound endpoint. The local console defaults to loopback.
+- Every database field addition or change must include a migration that runs automatically during startup, upgrades existing databases and preserves their data. Do not only edit the initial migration or require users to migrate manually. Record migration execution so it cannot run twice.
 
-## 关联源码
+## Related source
 
-在开发中，可以读取以下项目的源码。相对本项目根目录：
+Use explicitly selected source locations; do not search parent or sibling directories automatically at runtime.
 
-- `../arena-srvpro`：SRVPro 源码。房间与排行 API 行为参考 `index.js`；房间计数和约战排行分别通过 `/api/getroomscount` 与 `/api/getscores` 查询。
-- `../windbot`：WindBot 源码。ServerMode 的 HTTP 请求协议参考 `Program.cs`，卡组与运行资源也以该项目的实现为准。
+- The SKYNET repository root is `..` relative to `Arena/`. `Program.cs` defines the native one-process-per-duel CLI. `Game/AI/AgentFactory.cs` selects the general or explicit expert lifecycle.
+- The upstream development layout places `arena-srvpro` beside the Arena checkout (`../arena-srvpro`). If that checkout is present at an explicitly configured location, inspect its `index.js` for room and ranking API behavior. Room counts and match rankings are queried through `/api/getroomscount` and `/api/getscores` respectively. This repository does not assume that upstream layout or provide the server automatically.
+- The upstream layout similarly uses `../windbot` for a separate WindBot source checkout. When a compatible checkout has been explicitly supplied, its `Program.cs` defines the ServerMode HTTP protocol and its own implementation defines deck/runtime resource behavior. The ignored `LegacyWindBot` archive in SKYNET is reference material, not an automatically enabled runtime collection.
 
-## 验证重点
+## Validation priorities
 
-- 修改配置模型时，覆盖配置校验、敏感字段脱敏和 SQLite 持久化测试。
-- 修改对局构建时，同时覆盖本地与远程 WindBot，确认卡组交集、Dialog 和端点正确。
-- 修改调度时，不要在测试中真实重启 SRVPro 或启动 WindBot；使用单元测试和不访问外部服务的 HTTP 冒烟检查。
-- 前端改动至少运行 `npm.cmd run build`，后端与数据层改动至少运行 `npm.cmd test`。
+- When changing the settings model, cover validation, sensitive-field redaction and SQLite persistence.
+- When changing matchup construction, cover native SKYNET plus local and remote WindBot. Verify deck intersections, dialogs, profiles and endpoints.
+- Scheduling tests must not actually restart SRVPro or launch WindBot. Use unit tests and HTTP smoke checks that do not access external services. Exercise SKYNET process ownership and cancellation with controlled fixtures; distinguish these from explicitly requested real-duel validation.
+- Frontend changes require at least `npm.cmd run build`. Backend and data-layer changes require at least `npm.cmd test`.

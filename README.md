@@ -101,6 +101,18 @@ Two supported migration directions are intended:
   and resets, into a pure proposal / commit / prompt interface. Keep deck goals
   separate so the same effect knowledge works across deck lists.
 
+The first **implemented** expert mode is `Agent=expert-oldschool`. It preserves
+the complete small OldSchool executor, its ordering, callbacks and instance
+state. Its original research deck is included. This is a simple comparison
+opponent for testing the integration, not the chosen modern competitive baseline.
+The [review receipt](Catalog/expert-baselines.json) records source hashes,
+limitations, script checks and two native completion fixtures. Recent executors
+remain candidates for review; age alone does not establish quality.
+
+Expert mode is frozen and rejects `PolicyModel` and `PolicyTraining`. Exactly
+one policy owns the whole duel's decisions and selection callbacks. Choosing a
+different `.ydk` does not teach that expert additional cards.
+
 Never call arbitrary legacy `bool` handlers as competing scores. They can mutate
 state or queue selections even when returning false. The Swordsoul boss-selection
 sequence, for example, accumulates candidates through several ordered handlers.
@@ -187,6 +199,9 @@ engine behavior and concurrent duels.
 | Learning | Optional softmax exploration; completed-duel episodes; offline linear residual updates |
 | Frozen play | Greedy inference; no training-file writes or automatic checkpoint promotion |
 | MDPro4 | Optional Windows external opponent through the ocgcore Solo adapter |
+| Expert comparison | Explicit `expert-oldschool` mode with its full executor lifecycle |
+| Skynet Arena | English dashboard, deck-profile forms, native bounded SKYNET launches and WindBot comparison modes |
+| YGO Agent research | Pinned source and bounded vocabulary/format inspection; no imported model inference yet |
 
 The bootstrap library covers Pot of Greed, Raigeki, Dark Hole, Monster Reborn,
 Mystical Space Typhoon, Mirror Force, Trap Hole, Fissure, Smashing Ground,
@@ -217,10 +232,11 @@ The duel host must already be listening. Runtime databases and game scripts are
 provided by the game and are not shipped in this repository. Missing input files
 or a failed connection return a nonzero process exit code.
 
-Useful options: `Name`, `DeckFile`, `DbPath`, `Host`, `Port`, `HostInfo`, `Version`,
+Useful options: `Name`, `Agent`, `DeckFile`, `DbPath`, `Host`, `Port`, `HostInfo`, `Version`,
 `Hand`, `Debug`, `Chat`, `Config`, `PolicyModel`, `PolicyTraining`, `PolicyData`,
 `PolicySeed`, and `PolicyGroup`. Chat is off by default. The optional `Deck=SKYNET`
-argument used by MDPro4 identifies this policy; it does not select a legacy deck AI.
+argument identifies the SKYNET product. `Agent=skynet` is the default;
+`Agent=expert-oldschool` explicitly selects the included expert comparison.
 
 ## Install into MDPro4
 
@@ -274,9 +290,9 @@ duels; a small training win count is not evidence of improvement.
 ## Validation
 
 ```powershell
-msbuild Tests/Skynet.Tests.csproj /p:Configuration=Debug
-.\Tests\bin\Debug\Skynet.Tests.exe 'D:/YourGame/Data/locales/en-US/cards.cdb'
+msbuild Skynet.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
 python Tools/Skynet/test_learning.py
+python Tools/Skynet/test_ygo_agent_inspection.py
 
 python Tools/Skynet/native_smoke.py `
   --server 'D:/YourGame/Assets/Plugins/Windows/ygoserver.dll' `
@@ -292,20 +308,97 @@ a bounded smoke test. The core RNG seed is unavailable through this server API;
 `PolicySeed` controls only policy sampling. Results with unknown core seeds are
 reported as such, with independent match IDs.
 
-Current checks: Debug and Release builds; 14 C# regression cases; 8 Python tests;
-four prototype native duels, including supported effects and terminal training
-records; two final Release starter duels with authoritative results and normal
-exits; and 11 Unity host launch/connection-retirement assertions. The Unity
-fixture preserved the checked settings and released its exact process. A separate
-Play-session warning reported a common-menu sound loading timeout; the SKYNET
-fixture itself logged no warnings or errors. These are correctness checks, not a strength benchmark.
-Without a database, the C# harness explicitly skips its five card-backed cases.
+The old standalone C# Tests project was removed. CI builds Debug and Release,
+checks the Python tools, and tests/builds Arena. The expert integration also
+passed ten local scratch assertions and two native duels, one per seat, against
+the general policy on the identical OldSchool deck. Both clients and the server
+retired normally in each fixture. Fixed-order duels check completion and
+lifecycle behavior; they do not establish playing strength.
+
+Earlier local checks covered starter duels, terminal training records and eleven
+Unity host launch/connection-retirement assertions. Those receipts are historical;
+this Arena update does not claim a fresh Unity session or a dedicated SRVPro
+strength benchmark.
+
+## Skynet Arena
+
+The imported Arena now lives in [`Arena/`](Arena/README.md), with an English
+interface, SKYNET branding and a Windows launcher:
+
+```powershell
+cd Arena
+npm ci
+.\Start-SkynetArena.ps1
+```
+
+Open `http://127.0.0.1:3000`. After the first install, double-click
+`Arena/Skynet Arena.cmd` to launch it. Node.js 24 is the validated runtime.
+
+In **Settings → Agents**, choose **SKYNET** and enter the executable, card
+database and deck profiles. Each profile selects a `.ydk`, `skynet` or
+`expert-oldschool`, and optional frozen SKYNET weights. Matching candidate and
+baseline profile IDs form regression pairings. These are launch profiles, not
+the future strategy-authoring format described above.
+
+The native adapter launches `SKYNET.exe` directly, bounds concurrent processes
+and duel time, and cleans up owned children on completion, failure or shutdown.
+Evaluation disables learning. Existing local/remote WindBot modes remain
+available for comparing other executors.
+
+Full Arena experiments require a configured, dedicated
+[arena-srvpro](https://github.com/mercury233/arena-srvpro) instance. The MDPro4
+native smoke fixture is a separate server path and cannot provide Arena's
+management APIs. Arena scores come from SRVPro's cumulative results; process
+exit alone is never a victory. Native SKYNET tag duels are currently disabled.
+
+The upstream source pin, archive hash and original file hashes are recorded in
+[`Arena/UPSTREAM.json`](Arena/UPSTREAM.json). These describe the imported base;
+subsequent SKYNET changes are tracked by Git.
+
+## YGO Agent: useful research, explicit integration limits
+
+[`Research/ygo-agent/`](Research/ygo-agent/README.md) contains the pinned
+[YGO Agent](https://github.com/sbl1996/ygo-agent) source and original notices.
+Its card/action encoders, history-aware Transformer/recurrent policy, masked
+legal actions and self-play training are useful foundations for richer strategy
+learning than SKYNET's current nine linear weights. Card-text embeddings encode
+text offline; they do not provide live language reasoning through every effect.
+
+The import is **research source**, not an activated model. Inspection found:
+
+- The supplied vocabulary has 13,473 entries in `code hasScript` format, while
+  inference/embedding readers at this pin expect one integer per line.
+- Checkpoint architecture and vocabulary order must match. The inference
+  constructor's default embedding size cannot be assumed to match this list.
+- Inference limits include 24 legal actions, 160 card rows and 32 history actions;
+  some selection prompts are unsupported.
+- Public-state masking, legal wire-index mapping, per-duel recurrent state and
+  compatible core/script/database versions need an explicit adapter.
+
+Inspect selected decks without importing or executing the research code:
+
+```powershell
+python Tools/Skynet/inspect_ygo_agent.py `
+  --source-root Research/ygo-agent --deck Decks/AI_Skynet.ydk `
+  --output Artifacts/ygo-agent-inspection.json
+```
+
+The tool caps reads and counts, hashes inputs and reports vocabulary coverage
+separately from compatibility. All 17 unique starter IDs appear in this pin's
+list; that does not prove correct card behavior or model support.
+
+The next experiment is a public-observation **shadow adapter**: capture real
+legal prompts and check feature/action mappings without controlling the duel.
+Only after matching a checkpoint and handling unsupported prompts should a
+bounded frozen inference process compete in Arena. No GPU environment, model
+weights or embeddings were downloaded for this import.
 
 ## Testing and improvement roadmap
 
-The next implementation milestone is one complete expert-to-shared-policy slice,
-with a compatible comparison opponent and decision diagnostics. The source audit
-and inventory above are complete; the following runtime work is planned:
+The next implementation milestone is one complete expert-to-shared-policy slice
+with decision diagnostics and a stronger modern comparison opponent. The source
+inventory, OldSchool compatibility mode and native Arena adapter are implemented;
+the following work is planned:
 
 1. **Choose reviewed expertise.** Compare local and recent upstream versions,
    record provenance, fix known defects and pin the exact baseline. Start with a
@@ -331,21 +424,10 @@ and inventory above are complete; the following runtime work is planned:
    cannot express the full intended strategy system. Card/effect representations
    and generic prompt handling are prerequisites for stronger unseen-card play.
 
-[WindBot Arena](https://github.com/mercury233/windbot-arena) is the preferred
-evaluation integration to investigate: it already supports regression and
-challenge experiments. Its current local launcher hardcodes `WindBot.exe` and
-HTTP server mode; SKYNET currently runs one duel per process. The planned bridge
-is a bounded, separately owned SKYNET service compatible with Arena's remote
-endpoint mode, keeping the `SKYNET.exe` identity. This needs implementation and
-verification against Arena's dedicated SRVPro; no Arena duel has run in this task.
-See its [launcher source](https://github.com/mercury233/windbot-arena/blob/master/server/arena-service.js)
-and [documented read-only results API](https://github.com/mercury233/windbot-arena/blob/master/API.md).
-
-For the richer learning research, [YGO Agent](https://github.com/sbl1996/ygo-agent)
-is a relevant implementation reference: it combines an engine environment with
-learned agents and card-text embeddings. Its documentation still identifies
-supported-card limits and unseen-card generalization as ongoing work. It has not
-been integrated, benchmarked or adopted as a dependency here.
+Skynet Arena supplies the experiment UI and native launcher for that work.
+Dedicated SRVPro experiments and a competitive modern expert baseline still
+need to be configured and measured. The imported YGO Agent supplies a research
+reference for contextual learning, with the concrete compatibility gates above.
 
 Each completed update gets a descriptive commit and its actual validation
 results. The project scope is the duel AI and its MDPro4 integration; an Expedition
@@ -357,15 +439,23 @@ mode, progression economy and campaign content are outside this roadmap.
 - `Game/SkynetDecisionAdapter.cs`: legal-offer integration and terminal lifecycle.
 - `Game/`, `YGOSharp.*`: protocol and client-visible duel state.
 - `Tools/Skynet/`: training, evaluation, native QA and MDPro4 installation.
-- `Tests/`: dependency-free .NET Framework regression harness.
+- `Game/AI/Experts/`: explicitly selected complete expert baselines.
+- `Arena/`: Skynet Arena dashboard, native launch adapter and backend tests.
+- `Research/ygo-agent/`: attributed, pinned learning/inference research source.
 - `Branding/`: project logo, caption and application icon.
 
 ## Credits
 
 SKYNET reuses WindBot/YGOSharp transport, state handling and general battle helpers;
 the original MIT attribution is retained in [LICENSE](LICENSE). Its build contains
-no legacy specialized deck-executor collection or BotWrapper launcher. The old
+one explicitly selected OldSchool expert, and no BotWrapper launcher. The old
 workspace copy is preserved locally outside the build and publication payload.
+
+Skynet Arena derives from
+[mercury233/windbot-arena](https://github.com/mercury233/windbot-arena).
+YGO Agent is by Hastur and its contributors. Each import retains upstream
+notices and an `UPSTREAM.json` receipt; the root license does not relicense
+third-party content.
 
 Branding follows the SKYNET artwork supplied by the project owner. The caption
 was edited with the built-in ImageGen tool to read **ADAPTIVE DUEL INTELLIGENCE**

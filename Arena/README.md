@@ -1,68 +1,128 @@
-# WindBot Arena
+# Skynet Arena
 
-WindBot Arena 是面向 [WindBot](https://github.com/IceYGO/windbot) 的自托管自动对战实验控制台，使用专用的 [arena-srvpro](https://github.com/mercury233/arena-srvpro) 实例承载对局。
+An English experiment dashboard for **MDPro4 AI Systems**. Compare SKYNET policies
+and expert executors, watch experiment progress, inspect process output, and
+export results. Configuration and history persist in SQLite.
 
-通过网页即可创建实验、查看进度和导出结果，配置与运行记录保存在 SQLite。
+Derived from [WindBot Arena](https://github.com/mercury233/windbot-arena), pinned
+at `371e62de0b0b29a8f097f84293e9f8f0f15a7509`. Original file hashes and provenance
+are in [UPSTREAM.json](UPSTREAM.json); Git tracks our changes after import.
+Upstream package metadata declares MIT; its snapshot has no separate LICENSE
+file. Upstream attribution remains applicable.
 
-项目将开发者希望验证的 WindBot 称为“新版”，将用于对照的基线版本称为“旧版”。两者可以是不同的 AI 策略或卡组；新旧回归会让它们使用同名卡组反复对战，通过胜率和异常记录判断改动是否造成退化。
+## Start
 
-## 实验模式
-
-- **新旧回归**：新版和旧版使用同名卡组进行指定局数的对战；
-- **卡组挑战**：新版或旧版的指定卡组依次挑战选中的对手；
-- **双打冒烟**：从选中卡组中随机抽取四个卡组组队双打；
-- **胜率排行**：从选中卡组中持续随机配对。
-
-## 安装与启动
-
-环境要求：
-
-- Node.js 20.19 或更高版本；
-- SQLite 数据目录可持久写入；
-- 使用 Arena 专用版本的 SRVPro；
-- 本地 WindBot 模式需要系统能直接运行 `WindBot.exe`。
-
-安装、构建并启动：
+Use Node.js 24 (validated), then:
 
 ```powershell
+cd Arena
 npm ci
-npm run build
-npm start
+.\Start-SkynetArena.ps1
 ```
 
-打开 `http://127.0.0.1:3000`，在“系统配置”中填写所需信息。
+Open **http://127.0.0.1:3000**. The launcher builds the interface if necessary.
+After installing dependencies, `Skynet Arena.cmd` provides a double-click entry
+point. Keep its console open; Ctrl+C shuts down Arena and its owned processes.
+Use `-Build` after frontend changes, or `-Port 3137` for another port.
 
-服务启动会读取三个基础环境变量：
+```powershell
+.\Start-SkynetArena.ps1 -Build -Port 3137
+```
 
-| 环境变量 | 默认值 | 用途 |
+You can also run `npm run build` and `npm start` directly. No private runtime
+paths, model files, card databases or server credentials are shipped.
+
+## Configure a comparison
+
+1. Build `../Skynet.sln` in Release with Visual Studio MSBuild.
+2. In **Settings → Agents**, select **SKYNET** for the candidate.
+3. Enter the absolute `SKYNET.exe` path and a compatible `cards.cdb`.
+4. Add a profile: a unique matchup ID, a display name (up to 17 characters),
+   an absolute `.ydk` path, a decision policy, and optional frozen model weights.
+5. Configure the baseline with the same matchup ID. For a first integration
+   comparison, use `Decks/AI_ExpertOldSchool.ydk` for both participants,
+   `skynet` for the candidate and `expert-oldschool` for the baseline.
+6. In **Settings → SRVPro**, configure an already running, dedicated
+   [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance.
+7. Select **Regression**, choose the matching profile and start a small run.
+
+The included OldSchool executor is a simple historical baseline, not a claim
+of modern competitive strength. Review and benchmark newer executors before
+using their decisions as training demonstrations.
+
+Native launch profiles configure participants. They do not yet author card
+effects, combo routes or strategy goals. Those remain separate SKYNET work.
+
+## Participant modes
+
+| Mode | Behavior |
+| --- | --- |
+| SKYNET | Direct, owned `SKYNET.exe` process for each duel seat; no HTTP bridge |
+| Local WindBot | Arena owns a WindBot Server process and reads its `bot.conf` |
+| Remote WindBot | Connects to a manually started WindBot Server; catalog is pasted or fetched from a configured URL |
+
+Candidate and baseline can use different modes. WindBot HTTP endpoints must be
+distinct. Native SKYNET profiles accept `skynet` or `expert-oldschool`; an expert
+cannot use a learned model. Evaluation always forces training and chat off.
+
+SKYNET process limits are 2–32 (default 4), shared by executable path; when slots
+share an executable, the stricter active limit applies. A global cap of 32
+applies across executable paths. Room reservations
+take all required seats together, avoiding partial-slot deadlocks. A 10–3600
+second deadline (default 300) bounds queueing and process lifetime. Failed,
+cancelled or expired launches release their owned children; unrelated bots
+are never killed. Output buffers are bounded.
+
+## Experiments and results
+
+- **Regression:** candidate versus baseline on matching profile IDs.
+- **Challenge:** one chosen profile versus a list of opponents.
+- **Ranking:** continuously sample candidate deck pairs until stopped.
+- **Tag smoke test:** WindBot-only stability checks; native SKYNET tag play is
+  disabled until its lifecycle is validated.
+
+Arena requires the dedicated SRVPro management and cumulative-score APIs.
+MDPro4's `ygoserver.dll` smoke-test host is a separate integration and does not
+replace that server.
+
+Wins come from SRVPro scores. A successful process exit is not a win. Regression
+win rate is candidate wins divided by candidate plus baseline wins; disconnects
+are shown separately. Each SRVPro instance runs one experiment at a time.
+Different dedicated instances can run concurrently.
+
+Process-fixture tests and native fixed-order duels verify plumbing and cleanup.
+They do not establish strength. For strength evaluation, use varied decks,
+both seats, controlled versions, sufficient completed matches, and separate
+held-out comparisons before promoting a model.
+
+The read-only results contract is documented in [API.md](API.md).
+
+## Local data and hosting
+
+| Environment variable | Default | Purpose |
 | --- | --- | --- |
-| `WINDBOT_ARENA_HOST` | `0.0.0.0` | HTTP 监听地址 |
-| `WINDBOT_ARENA_PORT` | `3000` | 网站和 API 端口 |
-| `WINDBOT_ARENA_DATABASE` | `data/arena.sqlite` | SQLite 文件路径 |
+| `SKYNET_ARENA_HOST` | `127.0.0.1` | HTTP bind address |
+| `SKYNET_ARENA_PORT` | `3000` | UI and API port |
+| `SKYNET_ARENA_DATABASE` | `data/arena.sqlite` | SQLite path, relative to Arena or absolute |
 
-## WindBot 配置
+The former `WINDBOT_ARENA_*` variables remain fallback aliases. Business settings
+belong in the UI and SQLite. Database migrations preserve earlier configuration
+and history; native SKYNET settings are additive.
 
-- **本地模式**：Arena 负责启停 `WindBot.exe`，需要填写运行目录、`bot.conf` 路径和服务端口。
-- **远程模式**：用户自行运行 WindBot Server，Arena 需要其地址、端口，以及粘贴或通过 URL 提供的 `bot.conf`。
+The application has no built-in login. Keep the default loopback binding for
+local use; a shared deployment needs authenticated reverse-proxy access.
+Enable SSE streaming without proxy buffering and persist/backup `data/`.
+The included PM2 example also binds to localhost.
 
-新版和旧版可以分别使用本地或远程模式，但不能指向同一个服务端点；新旧回归和使用旧版挑战者的卡组挑战需要两套 WindBot，其他模式只需要新版 WindBot。
-
-## 结果统计
-
-需要胜负结果的实验使用 SRVPro 累计排行；新旧回归中的“新版胜率”为 `新版胜场 /（新版胜场 + 旧版胜场）`，卡组挑战同理计算挑战者胜率，逃跑则单独展示。双打冒烟不统计胜率。
-
-## 自托管
-
-建议仅在 NAS 或容器网络中监听，由 Nginx、Caddy 等反向代理提供 HTTPS 和域名。
-
-- 项目没有内置登录，不要将服务端口直接暴露到公网；应通过反向代理登录、单点登录或私有网络保护。
-- 反向代理需要支持实时连接并关闭响应缓冲。
-- 将 `data/` 挂载到持久卷并定期备份。
-
-## 开发
+## Development
 
 ```powershell
 npm run dev
 npm test
 npm run build
 ```
+
+Tests use owned process fixtures and mocked SRVPro responses. They do not restart
+a real duel server. Native SKYNET launch tests use Node as a harmless executable
+fixture; actual binary/protocol completion is checked separately by the parent
+project's native-duel tool.
