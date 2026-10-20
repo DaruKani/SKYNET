@@ -85,9 +85,13 @@ Training is opt-in. Frozen inference never writes episodes/checkpoints. Only a
 server-reported completed outcome supplies a reward; disconnections are not
 losses. Preserve draw=2 when converting player perspective. Publish unique
 completed episode files atomically. Validate schema, bounded finite features,
-model identity and stable deck/encounter holdout cohorts. Candidate training and
-fresh frozen evaluation are separate; never automatically promote a checkpoint
-or claim strength from protocol smoke tests.
+model identity, policy revision and stable deck/encounter holdout cohorts. Bump
+the matching PolicyRevision/POLICY_REVISION constants when changing hardcoded
+scores, admitted actions or other behavior that affects collected episodes.
+Do not relabel old episodes to make them trainable. Compatible weights may
+initialize new episodes; weights alone do not identify the complete policy.
+Candidate training and fresh frozen evaluation are separate; never automatically
+promote a checkpoint or claim strength from protocol smoke tests.
 
 `Tools/Skynet/native_smoke.py` runs bounded native fixtures with owned processes.
 Never kill unrelated processes or overwrite user game settings. Core RNG seed
@@ -96,16 +100,21 @@ is currently unknown; a policy seed must not be mislabeled as a duel seed.
 ## Validation and collaboration
 
 For protocol, common state or selection changes, build Debug Any CPU. Release is
-also checked in CI. Run the focused C# and Python harnesses as relevant:
+also checked in CI. Run the focused Python tools as relevant:
 
 ```powershell
 msbuild Skynet.sln /p:Configuration=Debug /p:Platform="Any CPU"
-msbuild Tests/Skynet.Tests.csproj /p:Configuration=Debug
-.\Tests\bin\Debug\Skynet.Tests.exe <cards.cdb>
+msbuild Skynet.sln /p:Configuration=Release /p:Platform="Any CPU"
 python Tools/Skynet/test_learning.py
+python Tools/Skynet/test_ygo_agent_inspection.py
+python Tools/Skynet/test_ygo_agent_shadow.py
+python Tools/Skynet/test_arena_process_owner.py
 ```
 
-Without a database, five policy fixtures are explicitly skipped. Builds,
+The old standalone Tests project was removed by the owner; do not restore it.
+For card behavior changes, focused local C# harnesses can live under ignored
+Artifacts/ with exact inputs and result receipts. Use an explicitly configured
+cards.cdb for database-dependent checks and report any skipped cases. Builds,
 regressions, real duels, Unity lifetime checks and visual acceptance are separate
 evidence; report what actually ran. Normal Unity compilation is not a player or
 bundle build. Follow the companion MDPro4 instructions when editing that repo.

@@ -230,6 +230,762 @@
           }
         ],
         "interpretation": "A functioning, frozen evaluation baseline with a substantial card-coverage gap. The 20-match result is 2 candidate wins and 18 expert wins; the separate pilot is not pooled. This is not a promotion test, controlled paired-seed experiment, or proof of performance on other decks."
+      },
+      "sharedEffectMigration": {
+        "format": "skynet-four-effect-review-v1",
+        "reviewDate": "2026-10-20",
+        "scriptCheckoutCommit": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+        "scriptArchive": "Configured MDPro4 Data/script.zip; not distributed",
+        "scriptArchiveRead": "Only the four exact named Lua entries; 65536-byte metadata and actual-read limit per entry. No discovery outside configured paths.",
+        "scripts": [
+          {
+            "cardId": 26412047,
+            "localSha256": "5fffc779c38051324c1ca7c8d5d4731059f20dde51b9e5a990ed7951f75edbe1",
+            "deployedEntry": "script/c26412047.lua",
+            "deployedSha256": "6f2f6713e08e667bc5dc8f987dd9a43427cd17b7a0d4a12322eaf18ba3451fc4",
+            "exactMatch": false,
+            "normalizedMatch": true,
+            "deployedBytes": 1143
+          },
+          {
+            "cardId": 43422537,
+            "localSha256": "f597e55834432a41e617776a88a114eade325661ec473000d74a3ca1f95257ee",
+            "deployedEntry": "script/c43422537.lua",
+            "deployedSha256": "3281052a5933452d1bb67d09255c945d2cad206a6bc661c2fb383f1997900c2f",
+            "exactMatch": false,
+            "normalizedMatch": true,
+            "deployedBytes": 827
+          },
+          {
+            "cardId": 72302403,
+            "localSha256": "f8b8fb1a876a6590c03c8707d97d5f8204be36bf524893f138ad7154aeaa82fe",
+            "deployedEntry": "script/c72302403.lua",
+            "deployedSha256": "c45da8bf7cc0346e6f0e0b8bfa2322fbb5e6770a152e6f6c2d3bb7fde89f06b4",
+            "exactMatch": false,
+            "normalizedMatch": true,
+            "deployedBytes": 2184
+          },
+          {
+            "cardId": 70342110,
+            "localSha256": "39fef8803c51b2c2bc8d55550c79a0421b499142f87070c3bda6c29b510bf0cd",
+            "deployedEntry": "script/c70342110.lua",
+            "deployedSha256": "7e58b9c8bab14d0b3f18747806371af88997345cbbab80b390f514c0b4426573",
+            "exactMatch": false,
+            "normalizedMatch": true,
+            "deployedBytes": 991
+          }
+        ],
+        "reviewedSources": [
+          {
+            "path": "Game/AI/DefaultExecutor.cs",
+            "sha256": "a95d965fbe7b189bcae38b31516f1a19a51bdcfb806cf5bb36c97a2390e3b472"
+          },
+          {
+            "path": "Game/AI/AIUtil.cs",
+            "sha256": "aad383650f179bfd8d56e28afa43be6897d4226cdc8491f8f0f5e4e6d45d1a51"
+          },
+          {
+            "path": "Game/AI/Experts/OldSchoolExecutor.cs",
+            "sha256": "f6f4771ba22e251c41493fe162ade0910738d3548084b1e93fa5d6d7a04bee80"
+          },
+          {
+            "path": "Game/AI/Strategy/CardSemantics.cs",
+            "sha256": "bb2ddd286c3488739564b9e35edfd50bc3acaf6aa214dd39d154bc0bd6d1357c"
+          },
+          {
+            "path": "Game/AI/Strategy/SkynetAgent.cs",
+            "sha256": "376eadcfbb553cec6f2426e2614adcd05d5afdf407970d4e616f2ba882ec482a"
+          },
+          {
+            "path": "Game/AI/Strategy/SkynetPolicy.cs",
+            "sha256": "75f57923c53a3c1918f9bc3e786f5e922aa97a509ca726a34e1aa7a049c8a846"
+          }
+        ],
+        "expertOrigin": {
+          "path": "LegacyWindBot/Game/AI/Decks/OldSchoolExecutor.cs",
+          "sha256": "d3f2baff435e3cc340b294915d771a4d870576cf51abbda4af3c06842e9eb913",
+          "upstreamHistoryVerified": false,
+          "status": "Historical local source is an inspiration only, not an optimal teacher or verified recent implementation."
+        },
+        "behaviorReview": {
+          "26412047": {
+            "effect": "Destroy one faceup attack-position monster with global maximum current ATK across both players. No targeting.",
+            "choice": "Only ties generate resolution HintMsg.Destroy; choose opponent from actual offered ties or lowest-value own unavoidable card if board changed.",
+            "limitations": "Does not simulate responses, immunity, or destruction replacement."
+          },
+          "43422537": {
+            "effect": "Set current-turn normal summon/set cap to 2, not add one to cap; no once-per-turn activation restriction.",
+            "choice": "No card choice. Stateless policy requires two distinct currently offered level 1-4 hand developments and two empty main zones, scored before ordinary development.",
+            "limitations": "Conservative partial support: excludes opportunities after first normal summon/set, tribute continuations, special summon-count mechanisms and restrictions after the first development."
+          },
+          "72302403": {
+            "effect": "Normal Spell remains on field, flips facedown enemy monsters at resolution, prevents opponent attack declarations while its field effect applies, self-destructs after third opponent end phase.",
+            "choice": "No card choice. Avoid duplicate active faceup copy; accept reveal or visible battle threat.",
+            "limitations": "No forecast of future removal, re-enabling negated copy, piercing, attack effects or future enemy draws."
+          },
+          "70342110": {
+            "effect": "On opponent attack declaration, automatically targets attacker; banishes at resolution if it remains related, attackable and attack not cancelled.",
+            "choice": "No card choice or pending target queue. Observe current enemy attacker and UnderAttack; preserve defense-position attackers.",
+            "limitations": "Own pending Prison target or Mirror Force is a conservation heuristic, not proof of outcome. No broad trap-immunity guard because inherited ImmuneTrapMonster means trap destruction immunity."
+          }
+        },
+        "findingSummary": "No blocking issue in reviewed current three-file implementation. Validation and Arena result are separate evidence to be supplied by validation/root agents.",
+        "reviewScope": [
+          "Current deployed Lua prompt stages and automatic target behavior",
+          "Pure evaluation and absence of speculative usage flags",
+          "Public visible state only",
+          "Physical offered-object selections and no preselection duplication",
+          "Opponent/own controller localization and observed attack lifecycle",
+          "Comparison of inherited helper semantics; no speculative recency claim"
+        ],
+        "untestedByReviewer": [
+          "Compiled C# fixture results",
+          "Native duels and live Arena results"
+        ],
+        "validation": {
+          "focusedAssertions": {
+            "kind": "focused-synthetic-client-state-regression",
+            "source": "Artifacts/four-card-qa/FourCardProbe.cs",
+            "sourceSha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6",
+            "framework": ".NET Framework 4.8",
+            "languageVersion": "C# 6",
+            "debugBuild": "passed Any CPU",
+            "releaseBuild": "passed Any CPU",
+            "debugExecutableSha256": "bed7efd3e33dc2d912bb35e6dbfee070dfda6cb83ca580df47f763535a8b05ab",
+            "releaseExecutableSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+            "database": "Configured MDPro4 en-US/cards.cdb; not distributed",
+            "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+            "assertionsPassed": 79,
+            "assertionsSkipped": 0,
+            "resultsLog": "Artifacts/four-card-qa/results.log",
+            "resultsSha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f",
+            "limitations": [
+              "Synthetic visible client state and legal offers; not native engine or competitive evidence.",
+              "Double Summon after spending the initial normal summon and tribute continuations intentionally unsupported.",
+              "No generic effect immunity model: Prison legality does not prove successful effect resolution.",
+              "Real engine callback order, authoritative summon-count grant/reset and three-turn Swords expiry require native evidence."
+            ],
+            "learningProvenanceAssertionsPassed": 7,
+            "pythonLearningTestsPassed": 13,
+            "policyRevision": "skynet-policy-v2",
+            "runtimeSerializationTrainerInterop": "passed synthetic cohort duplicate of real serialized draw episode",
+            "learningProvenanceSource": "Artifacts/four-card-qa/LearningProvenanceProbe.cs",
+            "learningProvenanceSourceSha256": "45c902066db50ddd15b510fa10ef3323c4d546f5d7c01d7c4d054f8217d70aaa"
+          },
+          "nativeFixtures": [
+            {
+              "name": "double",
+              "receipt": "Artifacts/four-card-native-double/result.json",
+              "receiptSha256": "0e56a2054d573a307f9cfe20602bb7e37b61b71172fa30b3dbe519558685207c",
+              "botSha256": "d365979f9944b6d8ff41b5ca0ce5057816060ffe8c97226938a2cc4e90ad1b3e",
+              "opponentSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "mainDeck": {
+                "openingFive": [
+                  43422537,
+                  43096270,
+                  43096270,
+                  11091375,
+                  11091375
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "opponentMainDeck": {
+                "openingFive": [
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "deckSha256": "442caf0978293df0fcb7f1d527c53fdffe41859f1848b82757cdf3d7298aab1a",
+              "opponentDeckSha256": "0f3bc0d622b4fffc44a95760eefbc14a36f26a9e38113ac0fedc66a2cdcfb99c",
+              "coreSeed": null,
+              "noShuffle": true,
+              "noDeckCheck": true,
+              "strengthEvidence": false,
+              "duels": [
+                {
+                  "duel": 1,
+                  "matchId": "9cd280de-d2ff-49c4-a5f8-5e440d5a2c57",
+                  "targetSeat": 0,
+                  "policySeed": 20261021,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 63561,
+                  "result": "win",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                },
+                {
+                  "duel": 2,
+                  "matchId": "20684854-89f4-4c6a-8455-2d7e8cb4228f",
+                  "targetSeat": 1,
+                  "policySeed": 20261022,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 58048,
+                  "result": "win",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                }
+              ],
+              "effectEvidence": [
+                {
+                  "seat": 0,
+                  "effectActivations": 1,
+                  "log": "Artifacts/four-card-native-double/duel-01/client-0.log",
+                  "logSha256": "b47b73da55b4d63f85bb04dc47fe5418baa1e6341fd5e01b1e2bf3bbb8b6699a",
+                  "wholeDuelSelectCardPrompts": 1
+                },
+                {
+                  "seat": 1,
+                  "effectActivations": 1,
+                  "log": "Artifacts/four-card-native-double/duel-02/client-1.log",
+                  "logSha256": "9032a6741b09a3a19da2b2ab0a8c0ebde2793d73df7d81185b4a27375db3217f",
+                  "wholeDuelSelectCardPrompts": 1
+                }
+              ]
+            },
+            {
+              "name": "hammer",
+              "receipt": "Artifacts/four-card-native-hammer/result.json",
+              "receiptSha256": "5534f5f8a095c4dc59adc4072b122c7a05ab3270a5690aeac6a13965dd947a2e",
+              "botSha256": "d365979f9944b6d8ff41b5ca0ce5057816060ffe8c97226938a2cc4e90ad1b3e",
+              "opponentSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "mainDeck": {
+                "openingFive": [
+                  26412047,
+                  26412047,
+                  35052053,
+                  35052053,
+                  35052053
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 35052053,
+                    "copies": 35
+                  }
+                ]
+              },
+              "opponentMainDeck": {
+                "openingFive": [
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "deckSha256": "e1d6071c67e03118ac676d88be1de60cfe85a1036aa157abb34775f98eddae62",
+              "opponentDeckSha256": "0f3bc0d622b4fffc44a95760eefbc14a36f26a9e38113ac0fedc66a2cdcfb99c",
+              "coreSeed": null,
+              "noShuffle": true,
+              "noDeckCheck": true,
+              "strengthEvidence": false,
+              "duels": [
+                {
+                  "duel": 1,
+                  "matchId": "70e3d933-37c8-4a50-b828-3f1f27adfece",
+                  "targetSeat": 0,
+                  "policySeed": 20261021,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 58077,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                },
+                {
+                  "duel": 2,
+                  "matchId": "be6b6458-e2f7-48f6-8e9d-9207d8cc8660",
+                  "targetSeat": 1,
+                  "policySeed": 20261022,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 58084,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                }
+              ],
+              "effectEvidence": [
+                {
+                  "seat": 0,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-hammer/duel-01/client-0.log",
+                  "logSha256": "435eb9e308c8857ec43a6c1045d74c2f05ddeb4de3c0077946b88b4c628e28ac",
+                  "wholeDuelSelectCardPrompts": 0
+                },
+                {
+                  "seat": 1,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-hammer/duel-02/client-1.log",
+                  "logSha256": "4d026a9c694260bf5d143168cdda3e54cbc22a0ea8b1b8bcdc9684c55a60b6b5",
+                  "wholeDuelSelectCardPrompts": 0
+                }
+              ]
+            },
+            {
+              "name": "prison",
+              "receipt": "Artifacts/four-card-native-prison/result.json",
+              "receiptSha256": "8db9c5604b65371e2311fd9be85644e11cb993b98db55b64167e0f114dbad573",
+              "botSha256": "d365979f9944b6d8ff41b5ca0ce5057816060ffe8c97226938a2cc4e90ad1b3e",
+              "opponentSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "mainDeck": {
+                "openingFive": [
+                  70342110,
+                  70342110,
+                  35052053,
+                  35052053,
+                  35052053
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 35052053,
+                    "copies": 35
+                  }
+                ]
+              },
+              "opponentMainDeck": {
+                "openingFive": [
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "deckSha256": "b6d51ee495f67b1c28977dbd56400f2fac1641dddb458652a2c060f20708e683",
+              "opponentDeckSha256": "0f3bc0d622b4fffc44a95760eefbc14a36f26a9e38113ac0fedc66a2cdcfb99c",
+              "coreSeed": null,
+              "noShuffle": true,
+              "noDeckCheck": true,
+              "strengthEvidence": false,
+              "duels": [
+                {
+                  "duel": 1,
+                  "matchId": "e14548fa-42aa-424f-b219-e0c28e6c67a4",
+                  "targetSeat": 0,
+                  "policySeed": 20261021,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 58096,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                },
+                {
+                  "duel": 2,
+                  "matchId": "1e6bb8ad-8884-430c-b8a7-2ddac8b4260d",
+                  "targetSeat": 1,
+                  "policySeed": 20261022,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 58103,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                }
+              ],
+              "effectEvidence": [
+                {
+                  "seat": 0,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-prison/duel-01/client-0.log",
+                  "logSha256": "d668c7694eb57bbf5d0dbdee10665f8155f1f172050f1dd53ad5bb10448de170",
+                  "wholeDuelSelectCardPrompts": 0
+                },
+                {
+                  "seat": 1,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-prison/duel-02/client-1.log",
+                  "logSha256": "621c94f62e97987bcff8d393cf2bd2a8760176da27df9a88114ce474b55c12a5",
+                  "wholeDuelSelectCardPrompts": 0
+                }
+              ]
+            },
+            {
+              "name": "swords",
+              "receipt": "Artifacts/four-card-native-swords/result.json",
+              "receiptSha256": "447540c93d95c0cf035f533e97a81af621c2eb6ab67dff19a6ccd39895af1040",
+              "botSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+              "opponentSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "mainDeck": {
+                "openingFive": [
+                  72302403,
+                  72302403,
+                  72302403,
+                  32864,
+                  32864
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 32864,
+                    "copies": 35
+                  }
+                ]
+              },
+              "opponentMainDeck": {
+                "openingFive": [
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "deckSha256": "954d6eb944a96279f9c7d942e00826d5d10dbaca6a13a137448893342bb004cb",
+              "opponentDeckSha256": "0f3bc0d622b4fffc44a95760eefbc14a36f26a9e38113ac0fedc66a2cdcfb99c",
+              "coreSeed": null,
+              "noShuffle": true,
+              "noDeckCheck": true,
+              "strengthEvidence": false,
+              "duels": [
+                {
+                  "duel": 1,
+                  "matchId": "b3ce2c9b-471d-4abe-bf42-beeff46bf5cc",
+                  "targetSeat": 0,
+                  "policySeed": 20261021,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 59781,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                },
+                {
+                  "duel": 2,
+                  "matchId": "c9ec9a4b-3ee5-4fbe-9daf-c92bd2be8116",
+                  "targetSeat": 1,
+                  "policySeed": 20261022,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 60929,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                }
+              ],
+              "effectEvidence": [
+                {
+                  "seat": 0,
+                  "effectActivations": 3,
+                  "log": "Artifacts/four-card-native-swords/duel-01/client-0.log",
+                  "logSha256": "60bb93376957f1616a279fd976dc225a9f04a9c447a34487a935a592f1670831",
+                  "wholeDuelSelectCardPrompts": 1
+                },
+                {
+                  "seat": 1,
+                  "effectActivations": 3,
+                  "log": "Artifacts/four-card-native-swords/duel-02/client-1.log",
+                  "logSha256": "e95399ae80fc6fdcffe2147a9e7a64e01ba3a18547f8d3e959e97c7ef13d4a7c",
+                  "wholeDuelSelectCardPrompts": 1
+                }
+              ]
+            },
+            {
+              "name": "hammer-ties",
+              "receipt": "Artifacts/four-card-native-hammer-ties/result.json",
+              "receiptSha256": "8ac8ce2034a05f7cee6d8dfaab44cadf4c29c50e8878837b0328cbcb4bb91f1d",
+              "botSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+              "opponentSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+              "serverSha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+              "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+              "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+              "mainDeck": {
+                "openingFive": [
+                  26412047,
+                  26412047,
+                  35052053,
+                  35052053,
+                  35052053
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 35052053,
+                    "copies": 35
+                  }
+                ]
+              },
+              "opponentMainDeck": {
+                "openingFive": [
+                  43422537,
+                  43096270,
+                  43096270,
+                  43096270,
+                  43096270
+                ],
+                "remainingCards": [
+                  {
+                    "cardId": 43096270,
+                    "copies": 35
+                  }
+                ]
+              },
+              "deckSha256": "e1d6071c67e03118ac676d88be1de60cfe85a1036aa157abb34775f98eddae62",
+              "opponentDeckSha256": "c60a6a4bd7973d717ed3c62a3a00b9d413a87ee4f33953381dbd290413e8cb26",
+              "coreSeed": null,
+              "noShuffle": true,
+              "noDeckCheck": true,
+              "strengthEvidence": false,
+              "duels": [
+                {
+                  "duel": 1,
+                  "matchId": "f6fa9dee-c6ff-47e1-84b4-06aa608d05f6",
+                  "targetSeat": 0,
+                  "policySeed": 20261021,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 60940,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                },
+                {
+                  "duel": 2,
+                  "matchId": "a562dba7-106f-46bd-a9ad-5af2d8534d27",
+                  "targetSeat": 1,
+                  "policySeed": 20261022,
+                  "agent": "skynet",
+                  "opponentAgent": "expert-oldschool",
+                  "coreSeed": null,
+                  "noDeckCheck": true,
+                  "noShuffle": true,
+                  "status": "passed",
+                  "port": 60947,
+                  "result": "loss",
+                  "seatSource": "authoritative STOC_TYPE_CHANGE",
+                  "forcedCleanup": [],
+                  "exitCodes": [
+                    0,
+                    0
+                  ],
+                  "serverExitCode": 0
+                }
+              ],
+              "effectEvidence": [
+                {
+                  "seat": 0,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-hammer-ties/duel-01/client-0.log",
+                  "logSha256": "a4d6f74fd17033fc296aa4e792dc9f5cde417e8985da36ee2e2a6b388bed85c1",
+                  "wholeDuelSelectCardPrompts": 1
+                },
+                {
+                  "seat": 1,
+                  "effectActivations": 2,
+                  "log": "Artifacts/four-card-native-hammer-ties/duel-02/client-1.log",
+                  "logSha256": "e5c502d9fa52edbba737d3ac843395e29b47d91b1aac46236adbb114dec0fed9",
+                  "wholeDuelSelectCardPrompts": 1
+                }
+              ]
+            }
+          ],
+          "nativeInterpretation": "All ten duels completed with normal retirement. Logs confirm actual effect activation/resolution and tied Hammer selection; synthetic tests additionally cover mixed-side ties, changed identity, negated responses and pure probes. Fixtures deliberately favor their test condition; win/loss counts are not strength evidence. Both recorded host seats were exercised; opening-turn role was not forced. The first six duels used the effects-only binary; the final four used the same card behavior after the learning-provenance rebuild, as recorded by their hashes."
+        }
+      },
+      "sharedEffectArenaEvaluation": {
+        "date": "2026-10-20",
+        "sharedBehaviorCommit": "e5acf2d",
+        "learningProvenanceCommit": "0b419e2",
+        "policyRevision": "skynet-policy-v2",
+        "candidate": "Agent=skynet, built-in weights, PolicyTraining=False",
+        "candidateSha256": "3285f9a9ec9e0cb0bfb582bbb9271e3392c9b81e4bf93f83ba16d60dcde83571",
+        "baselineSourceCommit": "b0775feea5c77fc4f69a53ec92feaf217c08b697",
+        "baselineSha256": "08d7eaca8325a212dbc96d1191dc8b83dbf78a87801f1c3992f62171e620c769",
+        "bothDecks": "Decks/AI_ExpertOldSchool.ydk",
+        "deckSha256": "1b1f411fcfc7d187c7478855ee7c8e462dc03d33065b2fabb706756b22e84469",
+        "server": {
+          "gatewayCommit": "af87d3a8c4269c105144a67221728aa25a747910",
+          "nativeServerCommit": "9b65c3fc90a782742a92c3e9afa685aa0eb3feca",
+          "coreCommit": "25eb27f6292ea407f615958fd5ff1d1db77066dc",
+          "nativeLibrarySha256": "283cc04f3b9504d9b4b587ebfff8b575e1adc4c29d0126808d8939574f9fc45e",
+          "nativeHostSha256": "a98f769169e6ff378b53fd2082ca77db3346a90555fd2a6bdc084acd70f1d1a1",
+          "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+          "scriptsSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb"
+        },
+        "protocolVersion": 4962,
+        "unit": "best-of-three match (M# room)",
+        "hostOrder": "alternates each match; opening turn determined by protocol/policy",
+        "shuffleEnabled": true,
+        "deckChecksEnabled": false,
+        "coreSeed": null,
+        "pairedShuffleSeeds": false,
+        "maximumConcurrentRooms": 2,
+        "maximumClientProcesses": 4,
+        "results": [
+          {
+            "runId": "371ad735-52b4-4bde-955a-cdb18af6e178",
+            "opponent": "previous-skynet",
+            "startedAt": "2026-10-20T18:09:48.772Z",
+            "finishedAt": "2026-10-20T18:12:04.116Z",
+            "completedMatches": 20,
+            "candidateWins": 18,
+            "baselineWins": 2,
+            "candidateDisconnects": 0,
+            "baselineDisconnects": 0,
+            "candidateWinRateWilson95": [
+              0.698966,
+              0.972134
+            ],
+            "error": null,
+            "recordedRoomCountAtCompletion": 1,
+            "localReceipt": "Artifacts/four-card-arena-previous.json",
+            "localReceiptSha256": "1ed413875355ff4a13edeeb98624f825542815af5e0b04cd0c0b44544fc95a3f"
+          },
+          {
+            "runId": "b458fd9e-8274-4bfe-91f7-606ffa08a7d8",
+            "opponent": "expert-oldschool",
+            "startedAt": "2026-10-20T18:13:07.831Z",
+            "finishedAt": "2026-10-20T18:16:55.141Z",
+            "completedMatches": 20,
+            "candidateWins": 9,
+            "baselineWins": 11,
+            "candidateDisconnects": 0,
+            "baselineDisconnects": 0,
+            "candidateWinRateWilson95": [
+              0.258198,
+              0.657915
+            ],
+            "error": null,
+            "recordedRoomCountAtCompletion": 0,
+            "localReceipt": "Artifacts/four-card-arena-expert.json",
+            "localReceiptSha256": "c1d1a4836e8821e0bf8fedfce1abbe9199ce7c743a3ffce6d5be21058aefdd1f"
+          }
+        ],
+        "cleanup": {
+          "verifiedAt": "2026-10-20T18:18:41.074Z",
+          "nativeHostsRemaining": 0,
+          "clientsRemaining": 0,
+          "activeRunsRemaining": 0,
+          "liveGatewayRoomsRemaining": 0,
+          "gatewayListenAddress": "127.0.0.1",
+          "evidence": "Get-Process found no SKYNET/SKYNET_DUEL_HOST; Arena active-run API and live gateway rooms API returned empty lists. Stored first-run roomCount was 1 at completion, so final retirement is established by these independent live checks."
+        },
+        "interpretation": "Exploratory single-deck comparisons, without tuning weights or policy after observing the runs. Updated SKYNET beat its preserved predecessor 18-2 and scored 9-11 against the preserved expert, compared with the historical 2-18 initial expert comparison. Samples are independent and unseeded, not paired. No trained checkpoint or automatic promotion; no claim of competitive general deck play."
       }
     }
   ]

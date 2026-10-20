@@ -184,7 +184,15 @@ recorded disconnects. All clients/native rooms retired. The separately recorded
 four-match integration pilot finished 2–2. These unrestricted, unseeded runs
 establish a baseline, not model improvement; see the parent
 [evaluation receipt](../Catalog/expert-baselines.json) for exact inputs and
-known card-coverage gaps.
+the initial card-coverage gaps.
+
+After the four shared card behaviors were added, two fresh 20-match runs used
+the same deck and preserved baseline executable: updated SKYNET won **18–2
+against previous SKYNET** and **9–11 against the OldSchool expert**, with zero
+recorded disconnects in either run. Weights stayed frozen; no learning or
+checkpoint promotion occurred. These small unseeded comparisons remain separate
+from the initial baseline and correctness fixtures. They show progress on this
+deck, not general competitive strength.
 
 Process-fixture tests and native fixed-order duels verify plumbing and cleanup.
 They do not establish strength. For strength evaluation, use varied decks,

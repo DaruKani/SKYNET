@@ -205,9 +205,23 @@ engine behavior and concurrent duels.
 
 The bootstrap library covers Pot of Greed, Raigeki, Dark Hole, Monster Reborn,
 Mystical Space Typhoon, Mirror Force, Trap Hole, Fissure, Smashing Ground,
-Reinforcement of the Army and Sangan. Prompt timing was checked against local
-`ygopro-scripts` sources. Mandatory selections do not depend on an activation
+Reinforcement of the Army, Sangan, Hammer Shot, Double Summon, Swords of Revealing
+Light and Dimensional Prison: **15 supported cards**. Prompt timing was checked
+against local `ygopro-scripts` sources; the four new entries were also compared
+with the deployed scripts. Mandatory selections do not depend on an activation
 handler having run.
+
+The four newest shared behaviors reuse reviewed expert ideas across decks:
+
+| Card | Shared behavior and boundary |
+| --- | --- |
+| Hammer Shot | Compare both fields' highest current ATK in face-up attack position; choose from the actual tied group at resolution |
+| Double Summon | Prioritize the spell when two distinct low-level developments are currently offered and two main zones are free; post-normal and tribute-dependent routes remain unsupported |
+| Swords of Revealing Light | Respond to a visible battle threat or facedown opposing monster; conserve another copy while an active one remains; MST recognizes its persistent Normal Spell behavior |
+| Dimensional Prison | Respond to the observed attacker and conserve duplicate pending answers; the script targets automatically, so no target is preselected |
+
+These are reviewed heuristics, not simulated future resolutions or a complete
+immunity model. The policy does not call mutable expert predicates while scoring.
 
 **Unfamiliar cards have limits.** Basic monster play can work, but unknown optional
 effects are declined. General extra-deck procedure planning, complex combos and
@@ -280,8 +294,12 @@ python Tools/Skynet/evaluate.py Artifacts/evaluation/results.csv
 Training uses an episodic policy-gradient update over nine bounded features.
 Checkpoint formats and features are validated; incomplete/disconnected duels do
 not become losses. Each completed episode is published atomically under a unique
-name. The offline trainer refuses mixed behavior-model versions, duplicate
-records, invalid values and an empty training/holdout partition. Use stable,
+name. New episodes include `policyRevision: skynet-policy-v2`. The offline
+trainer refuses missing or different policy revisions, mixed behavior-model
+versions, duplicate records, invalid values and an empty training/holdout
+partition. Recollect older episodes; do not relabel them. Existing compatible
+weight files can still initialize fresh episodes under the current policy.
+The candidate's provenance and identity include the policy revision. Use stable,
 distinct deck/encounter `PolicyGroup` values, not a different label for every duel.
 Held-out groups do not contribute to the update. Candidate files never overwrite
 a live checkpoint. Promotion is a separate, explicit choice after fresh frozen
@@ -315,6 +333,13 @@ passed ten local scratch assertions and two native duels, one per seat, against
 the general policy on the identical OldSchool deck. Both clients and the server
 retired normally in each fixture. Fixed-order duels check completion and
 lifecycle behavior; they do not establish playing strength.
+
+The four-card extension passed **79 focused C# assertions**, Debug/Release builds
+and **ten native duels** across five fixtures, each run from both seats. Native
+logs show the second normal summon and next-turn reset, Hammer Shot's tied
+resolution choice, Prison's attacker banish, and Swords expiring before a later
+copy activates. The fixtures use deliberately unrestricted, fixed-order decks
+to expose those effects; their win/loss counts are not strength measurements.
 
 Earlier local checks covered starter duels, terminal training records and eleven
 Unity host launch/connection-retirement assertions. Those receipts are historical;
@@ -368,13 +393,25 @@ training was disabled, room host order alternated and no clients/native rooms
 remained afterwards. This is an initial unrestricted baseline with unknown core
 seeds, not a paired-seed strength or model-promotion test.
 
+After adding the four shared effects, two fresh frozen comparisons completed:
+
+| Updated SKYNET versus | Matches | SKYNET wins | Opponent wins | Disconnects |
+| --- | ---: | ---: | ---: | ---: |
+| Previous SKYNET executable | 20 | 18 | 2 | 0 |
+| Preserved OldSchool expert executable | 20 | 9 | 11 | 0 |
+
+All three comparisons use the identical OldSchool deck and built-in weights.
+The updated general policy performed better in these runs, but the expert still
+won more matches. These small, independent, unseeded samples are exploratory;
+they do not establish broad deck competence or neural learning. No checkpoint was
+trained or promoted. All match clients and native rooms retired.
+
 The [evaluation receipt](Catalog/expert-baselines.json) records engine, client,
-script and database hashes. It also identifies a concrete general-policy gap:
-Hammer Shot, Double Summon, Swords of Revealing Light and Dimensional Prison
-account for ten deck slots whose optional effects are not yet supported. Reviewing
-and porting those complete behaviors is the next useful comparison before tuning
-weights. The result does not establish that those missing effects explain every
-loss.
+script and database hashes. That initial executable lacked the optional effects
+of Hammer Shot, Double Summon, Swords of Revealing Light and Dimensional Prison,
+which account for ten deck slots. The shared library now supports the bounded
+behaviors described above. The initial result does not establish that those
+missing effects explained every loss.
 
 The upstream source pin, archive hash and original file hashes are recorded in
 [`Arena/UPSTREAM.json`](Arena/UPSTREAM.json). These describe the imported base;
@@ -449,10 +486,11 @@ weights or embeddings have been downloaded, and neural inference is not active.
 
 ## Testing and improvement roadmap
 
-The next implementation milestone is one complete expert-to-shared-policy slice
-with decision diagnostics and a stronger modern comparison opponent. The source
-inventory, OldSchool compatibility mode and native Arena adapter are implemented;
-the following work is planned:
+The first shared effect migration is implemented and checked in native duels:
+the four-card package above now works in the general policy. The next milestone
+is decision diagnostics and a compact supported plan, measured against a stronger
+modern comparison opponent. The source inventory, OldSchool compatibility mode
+and native Arena adapter are implemented; the following work is planned:
 
 1. **Choose reviewed expertise.** Compare local and recent upstream versions,
    record provenance, fix known defects and pin the exact baseline. Start with a
