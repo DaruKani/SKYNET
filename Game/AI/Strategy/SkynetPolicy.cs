@@ -158,8 +158,12 @@ namespace Skynet.Game.AI.Strategy
             IList<ClientCard> opponents, out string reason)
         {
             ClientCard card = action.Card;
-            reason = "The source is currently disabled.";
-            if (card.IsDisabled())
+            // The server refreshes field status after chains, but a moved card
+            // can retain its earlier disabled bit in the client snapshot. That
+            // bit alone does not establish negation of a new off-field effect.
+            // Keep the query state intact; only use this generic veto on field.
+            reason = "The field source is currently disabled.";
+            if (card.IsOnField() && card.IsDisabled())
                 return null;
             bool spell = CardSemantics.HasType(card, CardType.Spell);
             bool trap = CardSemantics.HasType(card, CardType.Trap);

@@ -6,7 +6,7 @@ using YGOSharp.OCGWrapper.Enums;
 namespace Skynet.Game.AI.Strategy
 {
     /// <summary>
-    /// Shared Chimera effects and a bounded two-material Fusion route. Legal
+    /// Shared Chimera effects and bounded two/three-material Fusion routes. Legal
     /// offers and activation snapshots own the decisions; no Lua is simulated.
     /// The compact board keeps Mirror and Coatl available as graveyard answers.
     /// </summary>
@@ -19,11 +19,15 @@ namespace Skynet.Game.AI.Strategy
         public const int ChimeraFusion = 63136489;
         public const int KingPhantom = 1769875;
         public const int BerfometFusion = 69601012;
+        public const int GuardianChimera = 11321089;
+        private const int MaterialCandidateLimit = 24;
         private readonly Duel _duel;
         private bool _normalSummonCommitted;
         private bool _coatlSearchCommitted;
+        private bool _guardianEffectCommitted;
         private ChainInfo _fusionSource;
         private int _fusionTarget;
+        private readonly List<ClientCard> _fusionMaterials = new List<ClientCard>();
 
         public ChimeraStrategy(Duel duel)
         {
@@ -42,12 +46,17 @@ namespace Skynet.Game.AI.Strategy
             if (action.Type == ExecutorType.Activate && action.Card.IsOriginalCode(CornfieldCoatl)
                 && action.Card.Location == CardLocation.Hand)
                 _coatlSearchCommitted = true;
+            if (action.Type == ExecutorType.Activate && action.Card.IsOriginalCode(GuardianChimera)
+                && action.Card.Location == CardLocation.MonsterZone
+                && (action.Description == -1 || action.Description == GuardianChimera * 16))
+                _guardianEffectCommitted = true;
         }
 
         public void ResetTurnState()
         {
             _normalSummonCommitted = false;
             _coatlSearchCommitted = false;
+            _guardianEffectCommitted = false;
             ResetPendingProcedure();
         }
 
@@ -55,6 +64,7 @@ namespace Skynet.Game.AI.Strategy
         {
             _fusionSource = null;
             _fusionTarget = 0;
+            _fusionMaterials.Clear();
         }
 
         public bool TryEvaluate(LegalAction action, out ActionEvaluation evaluation, out string reason)
@@ -67,10 +77,10 @@ namespace Skynet.Game.AI.Strategy
             int code = card.GetNonAltartCode();
             if (code != MirrorSwordknight && code != CornfieldCoatl && code != Gazelle
                 && code != BigWingedBerfomet && code != ChimeraFusion
-                && code != KingPhantom && code != BerfometFusion)
+                && code != KingPhantom && code != BerfometFusion && code != GuardianChimera)
                 return false;
             ClientField bot = _duel.Fields[0];
-            bool hasBoss = bot.GetMonsters().Any(IsReviewedBoss);
+            bool hasBoss = bot.GetMonsters().Any(IsEstablishedFusion);
             reason = "This Chimera offer has no reviewed continuation in the current visible state.";
 
             if (action.Type == ExecutorType.MonsterSet && hasBoss)
@@ -153,14 +163,24 @@ namespace Skynet.Game.AI.Strategy
                     evaluation = Decision(4.5, "Recover Chimera Fusion to hand for a later turn or response; do not select the vanilla-monster branch.", "recovery");
                 else if ((card.Location == CardLocation.Hand || card.Location == CardLocation.SpellZone) && firstEffect)
                 {
-                    bool threatened = bot.GetMonsters().Any(c => IsReviewedBoss(c) && IsTargetedByEnemy(c));
-                    if (hasBoss && !threatened)
+                    bool threatened = bot.GetMonsters().Any(IsTargetedByEnemy);
+                    int preferred = PreferredFusion();
+                    if (preferred == GuardianChimera)
+                        evaluation = Decision(threatened ? 8 : 6.8, threatened
+                            ? "Respond with Guardian Chimera using three distinct hand/field names; prefer threatened materials and seek draws plus non-targeting removal."
+                            : "Trade three distinct hand/field names for Guardian Chimera: the visible removal and draws justify the materials.", "advantage", "interaction");
+                    else if (hasBoss && !threatened)
                         reason = "Conserve Chimera Fusion and materials while the current Chimera board is healthy.";
-                    else if (PreferredFusion() != 0)
+                    else if (preferred != 0)
                         evaluation = Decision(threatened ? 7.8 : 6.3, threatened
-                            ? "Use a legal replacement Fusion to move a targeted Chimera out of the pending effect's reach; resolution still belongs to the core."
+                            ? "Respond with a legal replacement Fusion and prefer threatened materials; the core determines the pending effect's outcome."
                             : "Fuse the visible Beast/Fiend or two distinct Chimera races into a reviewed boss.", "develop", "synergy");
                 }
+            }
+            else if (code == GuardianChimera)
+            {
+                if (card.Location == CardLocation.MonsterZone && firstEffect)
+                    evaluation = Decision(8.6, "Resolve Guardian Chimera's offered Fusion trigger: draw first, then choose actual opposing cards for non-targeting destruction.", "advantage", "interaction");
             }
             else if (code == KingPhantom || code == BerfometFusion)
             {
@@ -202,7 +222,7 @@ namespace Skynet.Game.AI.Strategy
                 bool missingStarter = !_normalSummonCommitted
                     && !bot.Hand.Any(c => c.IsOriginalCode(MirrorSwordknight) || c.IsOriginalCode(Gazelle));
                 var resources = bot.Hand.Concat(bot.GetMonsters()).ToList();
-                bool missingFiend = !bot.GetMonsters().Any(IsReviewedBoss)
+                bool missingFiend = !bot.GetMonsters().Any(IsEstablishedFusion)
                     && bot.Hand.Concat(bot.GetSpells()).Any(c => c.IsOriginalCode(ChimeraFusion))
                     && resources.Any(c => (MaterialRace(c) & (int)CardRace.Beast) != 0)
                     && !resources.Any(c => (MaterialRace(c) & (int)CardRace.Fiend) != 0);
@@ -255,13 +275,51 @@ namespace Skynet.Game.AI.Strategy
                 if (hint == HintMsg.SpSummon && min == 1 && max == 1
                     && cards.All(c => c.Controller == 0 && c.Location == CardLocation.Extra))
                 {
-                    ClientCard selected = cards.FirstOrDefault(c => c.IsOriginalCode(KingPhantom))
+                    IList<ClientCard> guardianMaterials = FindGuardianMaterials(bot.Hand.Concat(bot.GetMonsters()), true);
+                    ClientCard selected = guardianMaterials == null ? null
+                        : cards.FirstOrDefault(c => c.IsOriginalCode(GuardianChimera));
+                    selected = selected ?? cards.FirstOrDefault(c => c.IsOriginalCode(KingPhantom))
                         ?? cards.FirstOrDefault(c => c.IsOriginalCode(BerfometFusion));
+                    // Resolution may remove the originally preferred Fusion.
+                    // If Guardian is the sole reviewed legal offer, honor the
+                    // core's offer and finish its actual material procedure.
+                    selected = selected ?? cards.FirstOrDefault(c => c.IsOriginalCode(GuardianChimera));
                     if (selected == null)
                         return null;
                     _fusionSource = source;
                     _fusionTarget = selected.GetNonAltartCode();
+                    _fusionMaterials.Clear();
+                    if (_fusionTarget == GuardianChimera)
+                    {
+                        guardianMaterials = guardianMaterials ?? FindGuardianMaterials(bot.Hand.Concat(bot.GetMonsters()), false);
+                        if (guardianMaterials != null)
+                            _fusionMaterials.AddRange(guardianMaterials);
+                    }
                     return new List<ClientCard> { selected };
+                }
+                if (hint == HintMsg.FusionMaterial && ReferenceEquals(source, _fusionSource)
+                    && _fusionTarget == GuardianChimera)
+                {
+                    if (cards.Any(c => c.Controller != 0
+                        || (c.Location != CardLocation.Hand && c.Location != CardLocation.MonsterZone)
+                        || !CardSemantics.HasType(c, CardType.Monster)))
+                        return null;
+                    if (min == 0 && cancelable)
+                        return new List<ClientCard>();
+                    if (min >= 3)
+                    {
+                        IList<ClientCard> triple = FindGuardianMaterials(cards, false);
+                        return triple != null && triple.Count >= min && triple.Count <= max ? triple : null;
+                    }
+                    // The server may narrow the next legal additions after
+                    // every selection. Never return a cached, unoffered card.
+                    var selected = cards.Where(c => _fusionMaterials.Contains(c))
+                        .OrderBy(GuardianMaterialValue).Take(count).ToList();
+                    if (selected.Count < count)
+                        selected.AddRange(cards.Except(selected).OrderBy(GuardianMaterialValue).Take(count - selected.Count));
+                    foreach (ClientCard material in selected)
+                        _fusionMaterials.Remove(material);
+                    return selected.Count >= min ? selected : null;
                 }
                 if (hint == HintMsg.FusionMaterial && ReferenceEquals(source, _fusionSource)
                     && (_fusionTarget == KingPhantom || _fusionTarget == BerfometFusion))
@@ -275,6 +333,16 @@ namespace Skynet.Game.AI.Strategy
                     }
                     ordered = cards.OrderBy(MaterialValue);
                 }
+            }
+            else if (source.IsActivateCode(GuardianChimera) && resolving
+                && source.ActivateLocation == CardLocation.MonsterZone && hint == HintMsg.Destroy
+                && IsEffect(source, GuardianChimera, 0)
+                && cards.All(c => c.Controller == 1 && c.IsOnField()))
+            {
+                // Guardian does not target. Target-immunity helpers would
+                // wrongly exclude valid choices here, including set Id=0 cards.
+                ordered = cards.OrderByDescending(DestructionValue);
+                count = min;
             }
             else if (source.IsActivateCode(BerfometFusion) && resolving
                 && source.ActivateLocation == CardLocation.MonsterZone && hint == HintMsg.ToGrave
@@ -321,11 +389,106 @@ namespace Skynet.Game.AI.Strategy
         {
             ClientField bot = _duel.Fields[0];
             IEnumerable<ClientCard> materials = bot.Hand.Concat(bot.GetMonsters());
+            if (bot.HasInExtra(GuardianChimera) && FindGuardianMaterials(materials, true) != null)
+                return GuardianChimera;
             if (bot.HasInExtra(KingPhantom) && FindPair(KingPhantom, materials) != null)
                 return KingPhantom;
             if (bot.HasInExtra(BerfometFusion) && FindPair(BerfometFusion, materials) != null)
                 return BerfometFusion;
             return 0;
+        }
+
+        private IList<ClientCard> FindGuardianMaterials(IEnumerable<ClientCard> candidates, bool requirePayoff)
+        {
+            if (requirePayoff && _guardianEffectCommitted)
+                return null;
+            var cards = candidates.Where(c => c != null && c.Controller == 0 && c.Id != 0
+                && (c.Location == CardLocation.Hand || c.Location == CardLocation.MonsterZone)
+                && CardSemantics.HasType(c, CardType.Monster)).Distinct()
+                .OrderBy(GuardianMaterialValue).Take(MaterialCandidateLimit).ToList();
+            // A resolving normal/Quick-Play Spell or normal Trap generally
+            // leaves the field before Guardian's next trigger window. Do not
+            // count it as durable destruction payoff for the material plan.
+            var enemies = _duel.Fields[1].GetMonsters().Concat(_duel.Fields[1].GetSpells())
+                .Where(c => DestructionValue(c) >= 1)
+                .OrderByDescending(DestructionValue).ToList();
+            IList<ClientCard> best = null;
+            double bestValue = double.MinValue;
+            // At most 24 choose 3 = 2,024 combinations. These are capability
+            // estimates from visible cards, not a substitute for core legality.
+            for (int i = 0; i < cards.Count; ++i)
+            {
+                for (int j = i + 1; j < cards.Count; ++j)
+                {
+                    for (int k = j + 1; k < cards.Count; ++k)
+                    {
+                        ClientCard first = cards[i];
+                        ClientCard second = cards[j];
+                        ClientCard third = cards[k];
+                        int firstName = first.Alias != 0 ? first.Alias : first.Id;
+                        int secondName = second.Alias != 0 ? second.Alias : second.Id;
+                        int thirdName = third.Alias != 0 ? third.Alias : third.Id;
+                        if (firstName == secondName || firstName == thirdName || secondName == thirdName)
+                            continue;
+                        int fieldCount = (first.Location == CardLocation.MonsterZone ? 1 : 0)
+                            + (second.Location == CardLocation.MonsterZone ? 1 : 0)
+                            + (third.Location == CardLocation.MonsterZone ? 1 : 0);
+                        if (fieldCount == 0 || fieldCount == 3
+                            || ((MaterialRace(first) | MaterialRace(second) | MaterialRace(third))
+                                & ((int)CardRace.Beast | (int)CardRace.Fiend)) == 0)
+                            continue;
+                        int handCount = 3 - fieldCount;
+                        double removedValue = enemies.Take(fieldCount).Sum(DestructionValue);
+                        double materialValue = GuardianMaterialValue(first) + GuardianMaterialValue(second) + GuardianMaterialValue(third);
+                        double value = removedValue * 1.5 + handCount * 1.5 + 1 - materialValue;
+                        if (requirePayoff && (enemies.Count < fieldCount || _duel.Fields[0].Deck.Count < handCount
+                            || removedValue < 1 || value <= 0))
+                            continue;
+                        if (value > bestValue)
+                        {
+                            bestValue = value;
+                            best = new List<ClientCard> { first, second, third };
+                        }
+                    }
+                }
+            }
+            return best;
+        }
+
+        private double GuardianMaterialValue(ClientCard card)
+        {
+            double value = SkynetPolicy.CardValue(card);
+            if (card.IsOriginalCode(Gazelle))
+                value -= 2;
+            else if (card.IsOriginalCode(BigWingedBerfomet))
+                value -= 1;
+            if (card.Location == CardLocation.MonsterZone)
+            {
+                if (IsTargetedByEnemy(card))
+                    value -= 4;
+                else if (!card.IsDisabled())
+                {
+                    if (IsReviewedBoss(card))
+                        value += 2.5;
+                    else if (card.IsOriginalCode(GuardianChimera))
+                        value += 6;
+                }
+            }
+            return value;
+        }
+
+        private static double DestructionValue(ClientCard card)
+        {
+            if (card == null || card.Controller != 1 || !card.IsOnField())
+                return 0;
+            if (card.Id == 0 || card.IsFacedown())
+                return 1.25;
+            if (card.Location == CardLocation.MonsterZone)
+                return SkynetPolicy.CardValue(card) + (!card.IsDisabled() && card.IsFloodgate() ? 3 : 0);
+            if (CardSemantics.HasType(card, CardType.Continuous) || CardSemantics.HasType(card, CardType.Field)
+                || CardSemantics.HasType(card, CardType.Equip) || CardSemantics.HasType(card, CardType.Pendulum))
+                return 1.5 + (!card.IsDisabled() && card.IsFloodgate() ? 3 : 0);
+            return 0.1;
         }
 
         private IList<ClientCard> FindPair(int fusion, IEnumerable<ClientCard> candidates)
@@ -367,7 +530,7 @@ namespace Skynet.Game.AI.Strategy
                 value -= 4;
             else if (card.IsOriginalCode(CornfieldCoatl) || card.IsOriginalCode(MirrorSwordknight))
                 value -= 1;
-            if (IsReviewedBoss(card))
+            if (IsEstablishedFusion(card))
                 value += IsTargetedByEnemy(card) ? -12 : 12;
             return value;
         }
@@ -383,6 +546,13 @@ namespace Skynet.Game.AI.Strategy
             return card != null && card.Controller == 0
                 && (card.Location != CardLocation.MonsterZone || card.IsFaceup())
                 && (card.IsOriginalCode(KingPhantom) || card.IsOriginalCode(BerfometFusion));
+        }
+
+        private static bool IsEstablishedFusion(ClientCard card)
+        {
+            return IsReviewedBoss(card) || (card != null && card.Controller == 0
+                && (card.Location != CardLocation.MonsterZone || card.IsFaceup())
+                && card.IsOriginalCode(GuardianChimera));
         }
 
         private ChainInfo EnemyLink(bool monster)

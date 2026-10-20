@@ -191,7 +191,7 @@ identities are redacted. Explanation reads do not sample RNG or queue selections
 
 These are explanations of the implemented scoring rules, not generated thoughts
 or complete traces of every battle/selection callback. Default is off; expert
-mode has no ranked-policy explanation. Fresh episodes now use `skynet-policy-v5`;
+mode has no ranked-policy explanation. Fresh episodes now use `skynet-policy-v6`;
 older episodes must be recollected, not relabeled. Learning is still optional
 and offline, and this strategy update uses frozen built-in weights.
 
@@ -228,7 +228,7 @@ No clients or native rooms remained after either experiment.
 ### Chimera as the second teaching deck
 
 Use [`Decks/AI_SkynetChimera.ydk`](Decks/AI_SkynetChimera.ydk) with
-`Agent=skynet` and `Explain=True`. This is a 40-card, six-card Extra Deck
+`Agent=skynet` and `Explain=True`. This is a 40-card, eight-card Extra Deck
 diagnostic list with supported staples and simple filler; it is not a competitive
 Fiendsmith list or a claim of current Master Duel banlist legality.
 
@@ -258,13 +258,33 @@ adjust nine general action-scoring weights after completed duels. It cannot
 invent missing effects or learn complete material/target strategies from those
 weights. The separate demonstration recorder is groundwork for a richer model.
 
-This first scope excludes Fiendsmith, Azamina, Hecahands, Guardian Chimera,
-Chimera the Illusion Beast and Nightmare Apprentice effects. It does not yet
+This scope excludes Fiendsmith, Azamina, Hecahands, Chimera the Illusion Beast
+and Nightmare Apprentice effects. It does not yet
 track a resolved Maxx "C" or Mulcharmy effect to optimize summon counts; the
 linked low-summon lines serve as examples, not proof of hand-trap awareness.
 An interrupted opener may correctly stop when no independent resources remain.
 
-Validation: Debug and Release builds passed, alongside 335 focused C# 6
+Guardian Chimera is now an additional Fusion choice. A bounded search compares
+three distinct current card names, using both hand and field, and checks whether
+potential draws and non-targeting removal justify the resources. It avoids
+counting visible nonpersistent Spell/Trap cards as future trigger targets. The
+server supplies legal materials and destruction choices; the strategy does not
+simulate resolution or promise that an opponent's response will fail.
+
+Interruption checks distinguish escaping a targeted effect by chaining Fusion
+from recovering after the effect actually negates the opener. The generic policy
+now uses the queried disabled bit as a veto only for field effects: this server
+can retain that bit after a monster moves to the graveyard. It leaves the server
+snapshot unchanged and evaluates the separately offered graveyard effect. This
+is not general recognition of off-field negation such as Called by the Grave.
+
+Replacing the last face-up King-name monster loses Mirror/Coatl's protection
+enabler. Guardian is a valuable body to preserve, but is not that enabler; a
+King-name monster in the graveyard can still enable Fusion's recovery. Illusion
+Beast remains deferred because its repeated attacks and mutual battle-destruction
+prevention require dedicated battle decisions.
+
+Initial core validation: Debug and Release builds passed, alongside 335 focused C# 6
 assertions (71 new Chimera checks). Six controlled native duels verified Mirror,
 Coatl and Gazelle openings from both seats, including Monster Reborn resource
 preservation. These fixed-order fixtures verify routes, not competitive strength.
@@ -294,9 +314,17 @@ matches do not establish a precise win rate. Arena shows the Swordsoul expert as
 
 Windows, Mono and Arena CI passed for implementation commit `ae913a5`. Results,
 participant/deck hashes and native receipts are in the validation catalog.
-No learned model was trained or promoted. The next bounded expansion is stronger
-Fusion finishers and explicit interruption/recovery fixtures, followed by fresh
-v5 learning cohorts and separate frozen evaluation of any candidate weights.
+No learned model was trained or promoted. The Guardian expansion uses policy v6.
+Future learning cohorts must use fresh v6 episodes, followed by separate frozen
+evaluation of any candidate weights.
+
+The v6 expansion passed Debug/Release builds, 404 focused C# 6 assertions and
+13 learning-tool tests. Six accepted native duels verified, from both seats:
+Guardian's three materials followed by draw-two/destroy-one; chaining Fusion to
+escape Veiler; and recovering with Gazelle's graveyard search after Veiler truly
+negated its field effect. These had no forced cleanup, captured selection
+fallbacks or hidden-identity violations. A two-destruction fixture did not reach
+Guardian, so that branch has synthetic checks but no accepted native coverage.
 
 ### Friendly strategy authoring
 
@@ -370,7 +398,7 @@ Mystical Space Typhoon, Mirror Force, Trap Hole, Fissure, Smashing Ground,
 Reinforcement of the Army, Sangan, Hammer Shot, Double Summon, Swords of Revealing
 Light and Dimensional Prison: **15 shared staple cards**. The separate shared
 Swordsoul module adds six effect cards and their token/material handling; Chimera
-adds seven effect cards covering the core King/Berfomet routes. Prompt timing was checked
+adds eight effect cards covering King/Berfomet routes and Guardian removal. Prompt timing was checked
 against local `ygopro-scripts` sources; the four staple additions were also compared
 with the deployed scripts. Mandatory selections do not depend on an activation
 handler having run.
@@ -459,7 +487,7 @@ python Tools/Skynet/evaluate.py Artifacts/evaluation/results.csv
 Training uses an episodic policy-gradient update over nine bounded features.
 Checkpoint formats and features are validated; incomplete/disconnected duels do
 not become losses. Each completed episode is published atomically under a unique
-name. New episodes include `policyRevision: skynet-policy-v5`. The offline
+name. New episodes include `policyRevision: skynet-policy-v6`. The offline
 trainer refuses missing or different policy revisions, mixed behavior-model
 versions, duplicate records, invalid values and an empty training/holdout
 partition. Recollect older episodes; do not relabel them. Existing compatible

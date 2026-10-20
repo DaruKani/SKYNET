@@ -17,7 +17,7 @@ FEATURES = (
     "protection", "conserve", "risk", "synergy",
 )
 SCHEMA = "skynet-public-v1"
-POLICY_REVISION = "skynet-policy-v5"
+POLICY_REVISION = "skynet-policy-v6"
 
 
 def require(condition, message):

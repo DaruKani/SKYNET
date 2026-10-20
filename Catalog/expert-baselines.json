@@ -2672,6 +2672,388 @@
         },
         "scope": "Bounded session output sliced at the first expert-challenge launch after regression completed. Lifecycle markers support diagnostics, not independent match scoring."
       }
+    },
+    {
+      "id": "chimera-guardian-recovery-v6",
+      "policyRevision": "skynet-policy-v6",
+      "date": "2026-10-20",
+      "status": "Reviewed shared strategy, focused regressions and native routes; frozen Arena comparison recorded separately.",
+      "behavior": [
+        "Guardian Chimera competes with King and fusion Berfomet using a bounded visible-material payoff estimate: at most 24 choose 3 combinations, distinct current names and a hand/field mix.",
+        "The core supplies legal choices. Material callbacks honor actual offered objects, and non-targeting destruction accepts facedown Id=0 candidates without hidden identity inference.",
+        "Commit Guardian trigger usage only after the action is chosen; reset per turn. Preserve healthy Guardian bodies without falsely treating them as Mirror/Coatl protection enablers.",
+        "Use the generic disabled-bit veto only on field effects. Preserve authoritative client state and procedure completion; do not reject a separately offered graveyard effect using a transitional field-negation snapshot."
+      ],
+      "deck": "Decks/AI_SkynetChimera.ydk",
+      "deckSha256": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e",
+      "deckCounts": {
+        "main": 40,
+        "extra": 8,
+        "side": 0
+      },
+      "deckChange": "Two Guardian Chimera added; main deck unchanged. Diagnostic unrestricted list, not a claim of competitive format legality.",
+      "scriptCheckoutRevision": "14745a5a3908861bba65d79cf9c542605c83d9cb",
+      "scripts": [
+        {
+          "card": 11321089,
+          "localSha256": "71df3a8a0c9f9de227023559cf804d4b17f9509dfd9137478d3d4105a43bbe1f",
+          "deployedSha256": "8fbea1714902fbc56f08984c438ea8c176ef92edca5c6370951a1ec40d197ef2",
+          "normalizedEqual": true
+        },
+        {
+          "card": 38264974,
+          "localSha256": "cc64605a91802d5d6dcb1d883592e0f62213470646682d2ab9260efa4267b664",
+          "deployedSha256": "59823cd8a1d42c2e9ddd482759a1cae991c520464fe1da3c3362d988a548e77c",
+          "normalizedEqual": true
+        },
+        {
+          "card": 63136489,
+          "localSha256": "f7a176abbda2fe02ddd0c259de417eab9023503d0cfbbe559ea04bddfbfefaa8",
+          "deployedSha256": "0fe7eaf702160bd05982ca83992e4be410aa25a79aeafe4acd5bfaafc673d108",
+          "normalizedEqual": true
+        },
+        {
+          "card": 28954097,
+          "localSha256": "76c36572d374ca0ec42648983fdd65bf9e10b09d38e66ea3722da0b5c1ff63b6",
+          "deployedSha256": "8fd38faf8bd881b53a225ef32b09597d5281d1a2e5a3e5c89f6501796859d054",
+          "normalizedEqual": true
+        },
+        {
+          "card": 23076639,
+          "localSha256": "5a1701bdf23f60ea46e3808588f3e2f3b91205fdb1fcd9aa39811da01ae841e7",
+          "deployedSha256": "71c7c64472799d119f55e02d5bdbac17b576acb5e66815c889fc2c95039ccfcb",
+          "normalizedEqual": true
+        },
+        {
+          "card": 10045474,
+          "localSha256": "87ae0f08634871fd8bbab8f83b8ec731019181b03be5ce4cab9e90f780e36cb8",
+          "deployedSha256": "d64a2fc97f99a05231ea4de0ef507355b702c959e16650ed6f506bd3aa858105",
+          "normalizedEqual": true
+        },
+        {
+          "card": 97268402,
+          "localSha256": "f79441a6fb194377e54f0e9a496be52962031c010636ab8499296781d23c608f",
+          "deployedSha256": "d283f6744376f17e4a71c64526dde0df7331f4625c393427f479ff725b295f4a",
+          "normalizedEqual": true
+        }
+      ],
+      "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+      "deployedScriptsArchiveSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+      "staticReview": {
+        "path": "Artifacts/chimera-expansion-review/review.json",
+        "sha256": "0489f2281ec10677f999b087812be64a2240b9f32319a6dfd1b5435f2367446e"
+      },
+      "guardianPromptContract": {
+        "cardId": 11321089,
+        "triggerDescription": 181137424,
+        "materialRule": "Exactly three monsters with distinct current Fusion codes; at least one hand and one own onfield material. Chimera Fusion adds at least one Beast or Fiend. Guardian script forbids other zones and enemy field material.",
+        "promptOrder": [
+          "Chimera Fusion resolution: HintMsg.SpSummon chooses one actually offered Extra Deck Fusion",
+          "HintMsg.FusionMaterial: SelectSubGroup emits legal next additions through SelectUnselect; classic adapter normalizes to min1/max1; group completes after third selection",
+          "Guardian optional spell-origin Fusion trigger: no targets selected at activation; hard once per turn",
+          "Guardian resolution: draw hand-material count; if at least one card actually drawn, HintMsg.Destroy selects field-material count from actual opposing onfield candidates"
+        ],
+        "protection": "Guardian alone does not become code4796100 and cannot enable Mirror/Coatl. Guardian target protection requires Polymerization in GY; not inferred for Chimera Fusion.",
+        "currentNameEvidence": "core card.cpp Query.Alias writes get_code(), libcard.cpp GetFusionCode includes get_code(), another code and additional Fusion codes. Client Alias conveys first current name only. Extra Fusion aliases remain a local estimate limitation; server choices stay authoritative."
+      },
+      "expertReference": {
+        "path": "LegacyWindBot/Game/AI/Decks/AlbazExecutor.cs",
+        "status": "read-only conceptual comparison; no copied code",
+        "sourceHistory": "unknown for this copied file",
+        "notes": "Guardian routines depend on Branded-specific dragons, helpers and mutable state; current script-driven shared module kept independent."
+      },
+      "disabledStatusReview": {
+        "path": "Artifacts/chimera-expansion-review/disabled-status-review.json",
+        "sha256": "3c423de4ae77a19fc8c0b6b7ce393b6c9266b6bc99cb39af94e2918be4b53017"
+      },
+      "disabledStatusProducerEvidence": [
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\ocgcore\\ocgapi.cpp",
+          "sha256": "4f3a72b0dc63305a0e4693df2e0230c0c1475331c163bc4b63bb3c3d35e6b0cb"
+        },
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\ocgcore\\processor.cpp",
+          "sha256": "fa87eecfd2d527a18b5f649ef94e588ad4f9407433aadbe6f86e4b2659576220"
+        },
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\ocgcore\\operations.cpp",
+          "sha256": "938ff59a6272565b225ef40598650da113d34c561f6930d0e275d05597e64e7c"
+        },
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\ocgcore\\card.cpp",
+          "sha256": "d9651571619b3134b92120fe4514ad0f77961fe9858024226577420829dc1c70"
+        },
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\gframe\\single_duel.cpp",
+          "sha256": "75a9a1cd07df4bcfa7d3c8c8d9672cc8f50fca47df3ff8ffcba3e164fdade43d"
+        },
+        {
+          "path": "D:\\Programs\\GitHub\\MDPro4_AI\\Artifacts\\arena-native-loopback-ready\\source\\gframe\\single_duel.h",
+          "sha256": "c513c362a5608ec5165a8ffee406d76ee3bd92fc191c149cbca41f0b5aae3f14"
+        }
+      ],
+      "disabledStatusFinding": "Client can receive a genuine but transitional off-field Disabled snapshot after a field-negated Gazelle moves to GY; no later grave refresh is guaranteed before its new optional GY trigger. Clearing client Disabled on movement would be overwritten by the subsequent RefreshSingle and would misstate authoritative status.",
+      "builds": {
+        "Debug Any CPU": "passed",
+        "Release Any CPU": "passed"
+      },
+      "pythonLearningTests": {
+        "passed": 13,
+        "failed": 0
+      },
+      "validationReceipt": {
+        "path": "Artifacts/chimera-expansion-qa/receipt.json",
+        "sha256": "c116fc81ca430ed8131827f62b43fca407d347950e6cb51eef8307dcad7f97fd"
+      },
+      "validation": {
+        "kind": "guardian-chimera-focused-and-native-validation",
+        "policyRevision": "skynet-policy-v6",
+        "binary": {
+          "path": "Artifacts/chimera-expansion-qa/runtime/SKYNET.exe",
+          "sha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726"
+        },
+        "database": {
+          "path": "D:/Programs/GitHub/MDPro_3/Data/locales/en-US/cards.cdb",
+          "sha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8"
+        },
+        "languageVersion": "C# 6",
+        "regressions": [
+          {
+            "name": "guardian",
+            "source": {
+              "path": "Artifacts/chimera-expansion-qa/GuardianProbe.cs",
+              "sha256": "daef338dd90b324f444279b034e08e45bd06ddf309fa09066eac85bd36dbf7b5"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/guardian-results.log",
+              "sha256": "b965f3fe8028c20035cd372d2c3af0739dedec32df06ad334a969c195e4abaaa"
+            },
+            "passed": 69,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "chimera",
+            "source": {
+              "path": "Artifacts/chimera-qa/ChimeraProbe.cs",
+              "sha256": "bcdffbabccbb5a6760b5ea54fa152f14421498785c6c8622a0f024b5119da347"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/chimera-results.log",
+              "sha256": "c258a9617902e919497b3f896b4b075acf5587c3407589e4d3ff7b4b79e5046d"
+            },
+            "passed": 71,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulExpanded",
+            "source": {
+              "path": "Artifacts/swordsoul-expansion-qa/SwordsoulExpansionProbe.cs",
+              "sha256": "9b68fb9c053c897f12612c9efa78fda973351f0cc46d891943f08a8981bb4d31"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/swordsoul-expanded-results.log",
+              "sha256": "2cc84561248ad19c07923d3704d93cd8c40ce837a95387f6c3c91160aaca2771"
+            },
+            "passed": 73,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "swordsoulOriginal",
+            "source": {
+              "path": "Artifacts/swordsoul-qa/SwordsoulProbe.cs",
+              "sha256": "7c6c754fdd4efe5c5f5c0cddfb444c43ed77fb569af15ac387573f141fba65b8"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/swordsoul-results.log",
+              "sha256": "7145434ca20af0a2e0d15b1a2a4e437a2a533bdc92858918aeb86d7e1ee964ef"
+            },
+            "passed": 74,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "sharedEffects",
+            "source": {
+              "path": "Artifacts/four-card-qa/FourCardProbe.cs",
+              "sha256": "ccf2e68ae2d070ae121fd11bf2aa710c9af80475bd230c1b4d2a86fd42f847c6"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/shared-results.log",
+              "sha256": "8b1a5722fd515253239786bed693a49bc12520e0db3026b822917840b7fa9c7f"
+            },
+            "passed": 79,
+            "failed": 0,
+            "skipped": 0
+          },
+          {
+            "name": "expertSwordsoul",
+            "source": {
+              "path": "Artifacts/swordsoul-expert-review/ExpertProbe.cs",
+              "sha256": "7338c17e5a87db1fb8bc410086c671645282f8a8b86b9fa3dba25290683b5df7"
+            },
+            "log": {
+              "path": "Artifacts/chimera-expansion-qa/expert-results.log",
+              "sha256": "6f0e3e7bafb104b467a3f4e249b203ec6758ad84ea015d66a2878a1f84f90c51"
+            },
+            "passed": 38,
+            "failed": 0,
+            "skipped": 0
+          }
+        ],
+        "native": [
+          {
+            "name": "guardian",
+            "receipt": {
+              "path": "Artifacts/chimera-expansion-native-guardian-accepted/result.json",
+              "sha256": "f2329f132fb110919f0ada831397b47aff8fbaef917b4636551f9c9f304f0bf3"
+            },
+            "review": {
+              "path": "Artifacts/chimera-expansion-qa/guardian-accepted-review.json",
+              "sha256": "9646148f18c412e0e750dd96e0f25a10b198e50834a0753baa3928bf6b8e0df0"
+            },
+            "deck": {
+              "path": "Artifacts/chimera-expansion-qa/guardian-three-materials.ydk",
+              "sha256": "21a714ed7d3ff71cb7a020934693950aa4fc9d857268e393300305819de2c1fb"
+            },
+            "opponentDeck": {
+              "path": "Artifacts/chimera-expansion-qa/opponent-warwolf.ydk",
+              "sha256": "af606ff70dc84e06e9438317ed10df6c122da6461def56bcc25a5226679c7467"
+            },
+            "botSha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726",
+            "opponentSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: three real materials from hand and field, Guardian summoned, draw-two log and exact-one resolution selection.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          },
+          {
+            "name": "veiler",
+            "receipt": {
+              "path": "Artifacts/chimera-expansion-native-veiler-accepted/result.json",
+              "sha256": "a3fece2684f9ee95eade957b507dd91aefc4013d2253dcc0bd743074df846e66"
+            },
+            "review": {
+              "path": "Artifacts/chimera-expansion-qa/veiler-accepted-review.json",
+              "sha256": "64d45c7d480bd55ce12bc50d3c94c9b794efe1692d70a213fb1b48719ac38fab"
+            },
+            "deck": {
+              "path": "Artifacts/chimera-expansion-qa/gazelle-veiler-recovery.ydk",
+              "sha256": "c1539772af786cf6a506cb7a320d374f1945e27d5aa6e3b1afcf4639a8e5106d"
+            },
+            "opponentDeck": {
+              "path": "Artifacts/chimera-expansion-qa/opponent-veiler.ydk",
+              "sha256": "9503f598a5b8c1388f9d495c3694b9caf33f5c9bd4d3c71c1badd676a5888d14"
+            },
+            "botSha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726",
+            "opponentSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: real expert Veiler chain2 targets Gazelle, Fusion chain3 moves Gazelle first, then original field search and fresh grave search resolve.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          },
+          {
+            "name": "resolved-veiler",
+            "receipt": {
+              "path": "Artifacts/chimera-expansion-native-resolved-veiler-accepted/result.json",
+              "sha256": "8ed4ab6e119450de7d72db457f34aedd401e802db7a68657c5fb126a2b5636d8"
+            },
+            "review": {
+              "path": "Artifacts/chimera-expansion-qa/resolved-veiler-accepted-review.json",
+              "sha256": "4a97b7599072a90509e546000e4ce3e8eea125539b49814adba14a52595b571c"
+            },
+            "deck": {
+              "path": "Artifacts/chimera-expansion-qa/gazelle-resolved-veiler.ydk",
+              "sha256": "7583e809cd61e213b642ab1bcfb90a1927d5099c8949ef57db1a9b097542288b"
+            },
+            "opponentDeck": {
+              "path": "Artifacts/chimera-expansion-qa/opponent-veiler.ydk",
+              "sha256": "9503f598a5b8c1388f9d495c3694b9caf33f5c9bd4d3c71c1badd676a5888d14"
+            },
+            "botSha256": "e731769ab955a2746aa55153177d4bbc415445c20936b3db6597a436c41d1726",
+            "opponentSha256": "d9742ec93029f9a64472187035947c99d81090be7fb2ebb7153ff0be48c23cf1",
+            "expectedBehaviorObserved": true,
+            "conclusion": "Both host seats: real expert Veiler resolves, Gazelle observed disabled and original field search absent; Pot draws Fusion, followed by new grave search after material movement.",
+            "duelsCompleted": 2,
+            "hostSeats": [
+              0,
+              1
+            ],
+            "forcedCleanup": 0,
+            "opponentHiddenIdentityViolations": 0,
+            "selectionFallbacks": 0
+          }
+        ],
+        "sourceFiles": {
+          "Game/AI/Strategy/ChimeraStrategy.cs": "b127fbc7aa15167af860662c3a1793b30aea6aa3af309a8862991e285bed3476",
+          "Game/AI/Strategy/SkynetPolicy.cs": "540a6ff141f0d40b74399f2b63a3c9bd778768ac6ec55cb435ce686d83e1dce4",
+          "Game/AI/Strategy/SkynetLearningSession.cs": "0e0ab9679699e9038b9f2297747ec798488bad63bd8d174ec76841c1d831bb88",
+          "Game/AI/Strategy/SkynetAgent.cs": "6a7214d8331d3c8e382de8a74135555f2fdf472aa0fc764c26136ade1f190af8",
+          "Game/ClientCard.cs": "2ea779691ce16192f729420c6cd9a0c4477b8f717b6da118a9db8ae16c2a209f",
+          "Game/GameBehavior.cs": "205c1fcc1723fa2dbf2bdec2c3493d341d205b4ea4dc15f11205538ccd68740b",
+          "Tools/Skynet/train.py": "08b106f2b57fbb636dc832b52011a0efb411e998d169c42a256bf731fd418905",
+          "Decks/AI_SkynetChimera.ydk": "468226305d8deacb372095bc502046a4db0920136ab8b3773e70188c0a7f6e4e"
+        },
+        "limitations": [
+          "All native inputs use noDeckCheck and noShuffle. Native wins/losses here are protocol completion outcomes, not strength benchmarks.",
+          "Both native host seats are covered; host seat is not a guaranteed turn order.",
+          "Only client-visible logs, public observations, and actual offered response snapshots are inspected.",
+          "Synthetic impossible candidate lists are defensive boundary checks, not claims that the current Lua offers illegal material.",
+          "Ordinary select_card capture does not label every iterative material or option/chain prompt.",
+          "Guardian draw count is observed from core log; destruction uses the actual min/max and immutable solving chain snapshot.",
+          "Core RNG seed remains unknown; the policy seed is not a duel seed.",
+          "No neural model trained or autonomous model promotion performed.",
+          "Exact-two destruction count and two-field-material plan are covered synthetically; exploratory native setup did not reach that path."
+        ],
+        "earlierFindings": [
+          {
+            "receipt": "Artifacts/chimera-expansion-native-resolved-veiler/result.json",
+            "review": "Artifacts/chimera-expansion-qa/resolved-veiler-initial-review.json",
+            "finding": "Duels completed, but actual resolved Veiler disabled Gazelle on field and stale Disabled blocked its offered fresh graveyard trigger after fusion. This is a policy/state failure despite the smoke outcome being passed."
+          },
+          {
+            "receipt": "Artifacts/chimera-expansion-native-double/result.json",
+            "finding": "Exploratory Double Summon fixture completed without Guardian summon; opposing Warwolf traded before setting backrow. It does not validate the two-destruction path."
+          },
+          {
+            "receipt": "Artifacts/chimera-expansion-native-two-destruction-accepted/result.json",
+            "finding": "Despite the prospective output-directory suffix, this follow-up diagnostic did not reach Guardian either: opponent Battle Ox traded with own Battle Ox before setting backrow. This is not accepted two-destruction coverage and is excluded from native accepted totals."
+          }
+        ],
+        "totals": {
+          "focusedAssertionsPassed": 404,
+          "focusedFailed": 0,
+          "focusedSkipped": 0,
+          "nativeDuelsCompleted": 6,
+          "nativeForcedCleanup": 0
+        }
+      },
+      "payload": {
+        "path": "Artifacts/chimera-expanded-payload/Data/Skynet/manifest.json",
+        "sha256": "b71bef0d6f926c8c91108f992a398a82031d0505c2d4569c173bdbdeefca8701"
+      },
+      "limitations": [
+        "No neural model trained or promoted; frozen policy evaluation. Changed policy requires fresh v6 episodes before opt-in learning.",
+        "No complete off-field negation, destruction-immunity, Maxx C or Mulcharmy model. Legality does not guarantee resolution succeeds.",
+        "Current Alias provides one current name, not every secondary Fusion name. The bounded estimate never replaces core legality.",
+        "Illusion Beast battle decisions, Fiendsmith, Azamina, Hecahands and Nightmare Apprentice effects remain unsupported.",
+        "Healthy Guardian conservation does not automatically develop a King alongside it; future measured changes may improve this tradeoff.",
+        "Scratch harnesses and raw runtime receipts remain ignored at the owner's request; this catalog preserves inputs, hashes and conclusions."
+      ]
     }
   ]
 }
