@@ -86,7 +86,7 @@ namespace Skynet.Game.AI.Strategy
 
         public void OnDuelStarted()
         {
-            _swordsoul.ResetPendingProcedure();
+            _swordsoul.ResetTurnState();
             if (Trace != null)
                 Trace.Reset();
             if (Learning != null)
@@ -95,7 +95,7 @@ namespace Skynet.Game.AI.Strategy
 
         public void OnDuelFinished(int result)
         {
-            _swordsoul.ResetPendingProcedure();
+            _swordsoul.ResetTurnState();
             if (Learning != null)
                 Learning.CompleteDuel(result);
         }
@@ -195,7 +195,7 @@ namespace Skynet.Game.AI.Strategy
 
         public override void OnNewTurn()
         {
-            _swordsoul.ResetPendingProcedure();
+            _swordsoul.ResetTurnState();
             base.OnNewTurn();
         }
 
@@ -203,6 +203,12 @@ namespace Skynet.Game.AI.Strategy
         {
             _swordsoul.ResetPendingProcedure();
             base.OnNewPhase();
+        }
+
+        public override void OnChainEnd()
+        {
+            _swordsoul.ResetPendingProcedure();
+            base.OnChainEnd();
         }
 
         public override void OnSpSummoning()
@@ -233,6 +239,9 @@ namespace Skynet.Game.AI.Strategy
 
         public override bool OnSelectYesNo(int desc)
         {
+            bool? selected = _swordsoul.SelectYesNo(desc);
+            if (selected.HasValue)
+                return selected.Value;
             // Unknown optional sub-effects are not safe exploration candidates.
             // Card-activation prompts use the ranked legal-offer path instead.
             return false;
