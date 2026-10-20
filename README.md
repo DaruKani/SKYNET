@@ -274,7 +274,29 @@ Hashes, script provenance and scope are recorded in
 For Arena, add a **Chimera Core** deck profile pointing to this `.ydk`, select
 **SKYNET · general policy**, and enable **Decision explanations**. Arena runs
 frozen evaluation. Use **Candidate output** above the experiment controls to
-inspect the chosen route and declined effects.
+inspect the chosen route and declined effects. The local Arena profile is saved
+as **Chimera Core** with explanations enabled.
+
+The first frozen Arena evaluations on October 20, 2026 produced:
+
+| Comparison | Chimera match wins/losses | Disconnects |
+| --- | ---: | ---: |
+| v5 versus frozen v4, identical diagnostic Chimera 40/6 list | 20 / 0 | 0 |
+| v5 Chimera versus reviewed Swordsoul Tenyi expert, different 40/6 and 40/15 lists | 2 / 8 | 0 |
+
+These are best-of-three matches with shuffled decks, unrestricted rules and
+unknown core RNG seeds. The first result measures newly supported effects
+against a weak older policy. The second measures the entire matchup, including
+different decks; its 95% Wilson interval is approximately 5.7%–51.0%, so ten
+matches do not establish a precise win rate. Arena shows the Swordsoul expert as
+**challenger** in that experiment: its displayed 8–2 corresponds to Chimera's
+2–8. All match processes retired and the room list was empty afterward.
+
+Windows, Mono and Arena CI passed for implementation commit `ae913a5`. Results,
+participant/deck hashes and native receipts are in the validation catalog.
+No learned model was trained or promoted. The next bounded expansion is stronger
+Fusion finishers and explicit interruption/recovery fixtures, followed by fresh
+v5 learning cohorts and separate frozen evaluation of any candidate weights.
 
 ### Friendly strategy authoring
 
