@@ -40,6 +40,7 @@ const windbotLabels = {
 const policyOptions = [
     { label: 'SKYNET · general policy', value: 'skynet' },
     { label: 'Expert · OldSchool baseline', value: 'expert-oldschool' },
+    { label: 'Expert · Swordsoul baseline', value: 'expert-swordsoul' },
 ];
 
 function addProfile(name) {
@@ -323,10 +324,13 @@ function removeSrvpro(index) {
                                         <n-form-item label="Match timeout (seconds)">
                                             <n-input-number v-model:value="draft.windbots[name].skynet.duelTimeoutSeconds" :min="10" :max="3600" :precision="0" />
                                         </n-form-item>
-                                        <n-form-item label="Decision explanations">
-                                            <n-checkbox v-model:checked="draft.windbots[name].skynet.explainDecisions">
-                                                Show choices and alternatives in agent output (general policy)
-                                            </n-checkbox>
+                                        <n-form-item label="Decision explanations" class="span-2">
+                                            <div class="profile-help">
+                                                <n-checkbox v-model:checked="draft.windbots[name].skynet.explainDecisions">
+                                                    Explain choices, alternatives and rejected actions
+                                                </n-checkbox>
+                                                <p>Off by default. Applies to the general policy in new duels after saving. Open <strong>{{ name === 'current' ? 'Candidate output' : 'Baseline output' }}</strong> at the top of Arena to read the explanations. Expert executors do not provide these scores.</p>
+                                            </div>
                                         </n-form-item>
                                         <div class="span-2 profile-help">
                                             <h4>Deck profiles</h4>

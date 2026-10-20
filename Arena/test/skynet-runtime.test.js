@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { PassThrough } = require('node:stream');
 const test = require('node:test');
-const { createDefaultArenaSettings, validateAndMergeArenaSettings } = require('../server/arena-settings');
+const { createDefaultArenaSettings, getPublicArenaSettings, validateAndMergeArenaSettings } = require('../server/arena-settings');
 const { buildRegressionMatchups, buildChallengeMatchups, buildTagEntries, inspectConfiguration } = require('../server/bot-config');
 const { SkynetRuntime, buildSkynetCommand } = require('../server/skynet-runtime');
 const { ArenaDatabase } = require('../server/database');
@@ -97,11 +97,36 @@ test('SKYNET rejects relative paths, invalid agents, duplicate profiles and expe
         () => { configuration.profiles.push(configuration.profiles[0]); },
         () => { configuration.maxProcesses = 1; },
         () => { configuration.profiles[0].agent = 'expert-oldschool'; configuration.profiles[0].modelPath = path.join(os.tmpdir(), 'model.json'); },
+        () => { configuration.profiles[0].agent = 'expert-swordsoul'; configuration.profiles[0].modelPath = path.join(os.tmpdir(), 'model.json'); },
     ]) {
         Object.assign(configuration, structuredClone(original));
         change();
         assert.throws(() => validateAndMergeArenaSettings(settings, settings));
     }
+});
+
+test('Swordsoul expert profiles persist, redact server secrets, and launch frozen without general-policy explanations', (t) => {
+    const { settings, directory } = settingsFixture(t);
+    settings.windbots.old.skynet.profiles[0].agent = 'expert-swordsoul';
+    settings.windbots.old.skynet.explainDecisions = true;
+    const merged = validateAndMergeArenaSettings(settings, settings);
+    const database = new ArenaDatabase(path.join(directory, 'swordsoul-expert.sqlite'));
+    try {
+        database.saveArenaSettings(merged);
+        const saved = database.getArenaSettings().settings;
+        assert.equal(saved.windbots.old.skynet.profiles[0].agent, 'expert-swordsoul');
+        const publicSettings = getPublicArenaSettings(saved, null);
+        assert.equal(publicSettings.settings.srvpros[0].password, '');
+        assert.equal(publicSettings.secretStatus.srvpros['srvpro-1'].passwordConfigured, true);
+        assert.equal(saved.srvpros[0].password, 'secret');
+        const match = buildRegressionMatchups(saved)[0];
+        const baseline = buildSkynetCommand(match.competitors[1], saved.srvpros[0], 'M#123456789');
+        assert.ok(baseline.args.includes('Agent=expert-swordsoul'));
+        assert.ok(baseline.args.includes('PolicyTraining=False'));
+        assert.ok(baseline.args.includes('PolicyModel='));
+        assert.ok(baseline.args.includes('Explain=False'));
+        assert.equal(inspectConfiguration(saved).modes.regression.valid, true);
+    } finally { database.close(); }
 });
 
 test('SKYNET launch uses fixed argument keys, absolute resources and disabled training without a shell', (t) => {

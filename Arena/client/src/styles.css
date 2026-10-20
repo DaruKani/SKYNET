@@ -223,27 +223,34 @@ input {
     margin-bottom: 0;
 }
 
-.readout-heading button {
-    display: grid;
-    width: 22px;
-    height: 22px;
-    padding: 3px;
-    border: 0;
+.readout-action {
+    display: inline-flex;
+    max-width: 100%;
+    min-height: 32px;
+    margin-top: 12px;
+    padding: 6px 8px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid #36404b;
     border-radius: 5px;
-    place-items: center;
-    color: #607780;
+    color: #ff8993;
     background: transparent;
     cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: left;
 }
 
-.readout-heading button:hover,
-.readout-heading button:focus-visible {
+.readout-action:hover,
+.readout-action:focus-visible {
     color: #ff6875;
     background: rgba(255, 104, 117, 0.08);
-    outline: none;
+    border-color: #ff6875;
 }
 
-.readout-heading svg {
+.readout-action svg {
+    flex-shrink: 0;
     width: 15px;
     height: 15px;
     fill: none;
@@ -437,6 +444,29 @@ input {
 .room-name-button:focus-visible {
     background: rgba(255, 104, 117, 0.09);
     outline: none;
+}
+
+.explanation-help {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.explanation-help p,
+.output-history-note {
+    margin: 0;
+    color: #92a4ab;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.explanation-help .n-button {
+    flex-shrink: 0;
+}
+
+.output-history-note {
+    margin-bottom: 12px;
 }
 
 .command-output {
@@ -1278,12 +1308,18 @@ html[data-theme='light'] body .instance-heading h3 {
     color: #29464f;
 }
 
-[data-theme='light'] .readout-heading button {
-    color: #5c747b;
+[data-theme='light'] .readout-action {
+    color: #9d2338;
+    border-color: #c5d8da;
 }
 
-[data-theme='light'] .readout-heading button:hover,
-[data-theme='light'] .readout-heading button:focus-visible,
+[data-theme='light'] .explanation-help p,
+[data-theme='light'] .output-history-note {
+    color: #526b72;
+}
+
+[data-theme='light'] .readout-action:hover,
+[data-theme='light'] .readout-action:focus-visible,
 [data-theme='light'] .room-name-button {
     color: #b32941;
 }
@@ -1415,6 +1451,12 @@ html[data-theme='light'] body .instance-heading span {
 }
 
 @media (max-width: 780px) {
+    .explanation-help {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
     html {
         text-size-adjust: 100%;
         -webkit-text-size-adjust: 100%;

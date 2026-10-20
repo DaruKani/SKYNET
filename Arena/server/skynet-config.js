@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const AGENTS = new Set(['skynet', 'expert-oldschool']);
+const AGENTS = new Set(['skynet', 'expert-oldschool', 'expert-swordsoul']);
 
 function defaultSkynetSettings() {
     return {

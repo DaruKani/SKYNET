@@ -1352,40 +1352,43 @@ onBeforeUnmount(() => {
                     <div>
                         <div class="readout-heading">
                             <span>SRVPRO</span>
-                            <button type="button" title="View rooms" aria-label="View SRVPro rooms" @click="openInspector('srvpro')">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <circle cx="11" cy="11" r="6"></circle>
-                                    <path d="m16 16 4 4"></path>
-                                </svg>
-                            </button>
                         </div>
                         <strong :title="selectedSrvpro ? selectedSrvproDisplay : undefined">
                             {{ selectedSrvproDisplay }}
                         </strong>
+                        <button class="readout-action" type="button" aria-label="View SRVPro rooms" @click="openInspector('srvpro')">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="11" cy="11" r="6"></circle>
+                                <path d="m16 16 4 4"></path>
+                            </svg>
+                            View rooms
+                        </button>
                     </div>
                     <div>
                         <div class="readout-heading">
                             <span>CANDIDATE AGENT</span>
-                            <button type="button" title="View agent output" aria-label="View candidate output" @click="openInspector('current')">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <circle cx="11" cy="11" r="6"></circle>
-                                    <path d="m16 16 4 4"></path>
-                                </svg>
-                            </button>
                         </div>
                         <strong>{{ formatWindBotEndpoint(system?.windbots.current) }}</strong>
+                        <button class="readout-action" type="button" @click="openInspector('current')">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="11" cy="11" r="6"></circle>
+                                <path d="m16 16 4 4"></path>
+                            </svg>
+                            Candidate output
+                        </button>
                     </div>
                     <div>
                         <div class="readout-heading">
                             <span>BASELINE AGENT</span>
-                            <button type="button" title="View agent output" aria-label="View baseline output" @click="openInspector('old')">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <circle cx="11" cy="11" r="6"></circle>
-                                    <path d="m16 16 4 4"></path>
-                                </svg>
-                            </button>
                         </div>
                         <strong>{{ formatWindBotEndpoint(system?.windbots.old) }}</strong>
+                        <button class="readout-action" type="button" @click="openInspector('old')">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="11" cy="11" r="6"></circle>
+                                <path d="m16 16 4 4"></path>
+                            </svg>
+                            Baseline output
+                        </button>
                     </div>
                 </div>
             </section>
@@ -2198,6 +2201,11 @@ onBeforeUnmount(() => {
                         <n-empty v-else-if="!inspectorLoading && !inspectorError" description="No active rooms" />
                     </template>
                     <template v-else>
+                        <div v-if="system?.windbots[inspectorKind]?.mode === 'skynet'" class="explanation-help">
+                            <p>To see why the general policy chose an action, enable <strong>Decision explanations</strong> in <strong>Settings → Agents → {{ inspectorKind === 'current' ? 'Candidate agent' : 'Baseline agent' }}</strong>, save, then start a new experiment. Explanations are off by default; expert executors do not report these scores.</p>
+                            <n-button size="small" @click="closeInspector(); openSettings()">Open agent settings</n-button>
+                        </div>
+                        <p class="output-history-note">Recent output from this Arena session. Restarting Arena clears it; selecting an experiment in history does not reload earlier logs.</p>
                         <n-alert
                             v-if="inspectorOutput && !inspectorOutput.available"
                             type="warning"

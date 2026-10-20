@@ -46,18 +46,30 @@ paths, model files, card databases or server credentials are shipped.
    [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance.
 7. Select **Regression**, choose the matching profile and start a small run.
 
-To inspect choices, enable **Decision explanations** under the candidate's SKYNET
-settings, save, then open **View candidate output**. It reports ranked choices,
-alternatives, exclusions and scores for the general policy, capped per duel.
-It is off by default and does not enable training. Existing settings and history
-are upgraded automatically; previously saved explanation choices are preserved.
+To inspect choices, open **Settings → Agents → Candidate agent**, enable
+**Decision explanations**, save, then start a new experiment. Click the visible
+**Candidate output** button under **CANDIDATE AGENT** at the top of Arena.
+The panel also links back to agent settings. **Baseline output** opens the
+corresponding baseline log.
+
+Explanations report choices, alternatives, exclusions and scores for the general
+policy, capped per duel. They are off by default, apply only to new duels, and
+do not enable training. Expert executors do not provide these scores. Output is
+a bounded recent buffer from the current Arena session: restarting Arena clears
+it, and choosing an old experiment does not reload its earlier output. Existing
+settings and result history are upgraded automatically; previously saved
+explanation choices are preserved.
 `Decks/AI_SkynetSwordsoul.ydk` supplies a compact modern research route; compare
 it with the same deck and an explicitly preserved previous binary before drawing
 strength conclusions. It is not a full Swordsoul/Tenyi executor.
 
-The included OldSchool executor is a simple historical baseline, not a claim
-of modern competitive strength. Review and benchmark newer executors before
-using their decisions as training demonstrations.
+The included OldSchool executor is a simple historical baseline. For a stronger
+comparison, choose **Expert · Swordsoul baseline** in the baseline profile and
+provide the absolute path to `Decks/AI_ExpertSwordsoul.ydk`. This compatibility mode runs the
+executor's complete decision and selection lifecycle; it cannot load a learned
+model. Match candidate and baseline profile IDs to compare them, and record both
+deck lists when they differ. Expert decisions still require review before use
+as training demonstrations.
 
 Native launch profiles configure participants. They do not yet author card
 effects, combo routes or strategy goals. Those remain separate SKYNET work.
@@ -153,8 +165,9 @@ remain meaningful.
 | Remote WindBot | Connects to a manually started WindBot Server; catalog is pasted or fetched from a configured URL |
 
 Candidate and baseline can use different modes. WindBot HTTP endpoints must be
-distinct. Native SKYNET profiles accept `skynet` or `expert-oldschool`; an expert
-cannot use a learned model. Evaluation always forces training and chat off.
+distinct. Native SKYNET profiles accept `skynet`, `expert-oldschool` or
+`expert-swordsoul`; an expert cannot use a learned model. Evaluation always
+forces training and chat off.
 
 SKYNET process limits are 2–32 (default 4), shared by executable path; when slots
 share an executable, the stricter active limit applies. A global cap of 32
