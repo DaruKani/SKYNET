@@ -16,7 +16,14 @@ literals without validating that toolchain.
 response. `GameBehavior` owns protocol parsing and client state; shared callbacks
 and battle helpers remain in `Game/AI`. SKYNET constructs `SkynetAgent` directly:
 there is no deck-executor registry or required class per deck. Do not restore the
-archived specialized collection, BotWrapper or HTTP launcher.
+old launcher or silently enable the archived collection. The revised direction
+explicitly reuses reviewed expert knowledge: per-effect modules, optional deck
+profiles and bounded planning, with richer learning above those capabilities.
+A selected whole expert executor may be ported behind an explicit compatibility
+mode that owns its full decision/callback lifecycle. Do not invoke its mutable
+predicates as competing pure scores or mix its pending selections with the planner.
+General deck play is the goal; user profiles are optional improvements, not a
+requirement for every new deck.
 
 The transport and general helpers derive from WindBot/YGOSharp. Keep the original
 license and attribution. The ignored `LegacyWindBot` directory preserves the
@@ -33,7 +40,10 @@ previous local workspace; it is not source for this build or publication.
   Bot.Deck's hidden placeholder slots. Counts alone may be read directly.
 - Scoring must be pure. No pending selections, usage flags or consumed resources
   on rejected candidates. Only the accepted action is committed.
-- Unknown optional effects are not safe training candidates. Mandatory effects
+- The current bootstrap excludes unknown optional effects from training. A future
+  generalized policy must be introduced and evaluated explicitly; do not equate
+  a parsed card description or a source-index entry with implemented semantics.
+  Mandatory effects
   must remain selectable even when unsupported or strategically undesirable.
 - Card knowledge must be checked against the matching Lua script. StringId
   offsets are prompt-string offsets, not printed effect paragraph numbers.
@@ -44,6 +54,30 @@ previous local workspace; it is not source for this build or publication.
 - Avoid duplicate preselection queues when a callback already handles a prompt.
 - Keep per-duel state on instances and reset it at the proper turn/chain/start
   boundary. No shared mutable agent state.
+
+## Reusing executor expertise
+
+Prioritize recently maintained, better-reviewed implementations, then verify
+their behavior against the current scripts and actual duels. Recency is a useful
+selection signal, not proof of correctness. Copied file timestamps are not source
+history. Record origin, exact revision/hash, review status and regression evidence;
+unknown provenance remains unknown.
+
+Migrate complete behavior: decision logic, targets/materials/options, helper
+dependencies, prompt stage, usage flags and reset events. Multi-effect cards need
+separate effect identities. Preserve original priority and state semantics in
+compatibility mode. Keep predictions separate from authoritative observed state.
+Use expert duels as demonstrations, with observed state and real legal choices;
+do not treat every expert action as an optimal label.
+
+The source catalog is a lexical migration inventory only. Explicitly select
+sources; do not search parents/siblings, read unbounded archives or compile
+downloaded/source-indexed code automatically. For RDA-derived planning, one
+absolute deadline must include queueing and every search phase, cancellation must
+reach duel/turn/state retirement, and work must have CPU/node/memory caps.
+Keep immutable card definitions separate from dynamic per-duel properties.
+Prefer unique completed records over shared mutable memory files; persistence
+failures must retain pending records or surface a bounded diagnostic.
 
 ## Learning and evidence
 
