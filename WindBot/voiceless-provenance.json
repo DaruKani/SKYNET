@@ -1,0 +1,731 @@
+{
+  "format": "voiceless-executor-review-v1",
+  "date": "2026-11-02",
+  "registration": {
+    "name": "Voiceless",
+    "deck": "AI_Voiceless",
+    "level": "NotFinished"
+  },
+  "origin": {
+    "baselineSourceRevision": "1871a48eba8663e596534f7b15c6a5650339137c",
+    "baselineExecutorSha256": "7b92aabd8c9fe9d9316118a3cd8352771fe7382af0edfb935f5c795a0571946c",
+    "baselineDeckSha256": "d5518113eeefda175edd009167a1aa69bb9ec0bb96b9c496f6be81d7b172e6bf",
+    "comboNotes": "User-supplied Voiceless Voice five-combo attachment",
+    "comboNotesSha256": "ac44179e21454798d14345c0d002fdad45d7e7559f2ab16087c922ad8d644024",
+    "plannerReference": "Templates/RdaPlannerExecutor.cs.template and TheCrimsonKingExecutor.cs"
+  },
+  "sourceHashes": {
+    "Game/AI/Decks/VoicelessExecutor.cs": "dd870e72319b54fce12deabd20c93c51e5a215f732f66fb23412d6487ce86ea2",
+    "Game/AI/Decks/VoicelessPlanner.cs": "f46c76601e7c86898f1af906293c41d4d9f361d9093812cfe8d899c6a3b74ced",
+    "Decks/AI_Voiceless.ydk": "598da712fae9c7ad7c1b62fa38d02dfc99f70124f984f73ab0fa20cd4c3e5463"
+  },
+  "deckChange": {
+    "main": 40,
+    "extra": 9,
+    "added": [
+      39114494,
+      41999284,
+      2220237
+    ],
+    "removed": {
+      "cardId": 40605147,
+      "copies": 1
+    }
+  },
+  "planner": {
+    "deadlineMilliseconds": 100,
+    "maxExpanded": 2048,
+    "beamWidth": 128,
+    "maxDepth": 24,
+    "maxCachedSnapshots": 24,
+    "mode": "synchronous observed-state search",
+    "state": "Per-effect usage, observed search locks, disabled cards, proper Ritual summons, persistent Trias redirect provenance, resources and public board threat presence"
+  },
+  "scriptReview": {
+    "database": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\locales\\en-US\\cards.cdb",
+    "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+    "scriptArchiveSha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+    "cards": [
+      {
+        "cardId": 25801745,
+        "entry": "script/c25801745.lua",
+        "sha256": "549e14c313e06f1aa0da7322a59a1bc50281cc6a06662b0db29434cf0d0b336c"
+      },
+      {
+        "cardId": 98477480,
+        "entry": "script/c98477480.lua",
+        "sha256": "8b84503992fd5ec23267b7588bfb8494637852c6e3fab697181ada25929fbd07"
+      },
+      {
+        "cardId": 51296484,
+        "entry": "script/c51296484.lua",
+        "sha256": "d190762b722b914fc6d06e4e7d81b8d0574619af6485f8640f9da3726972ec30"
+      },
+      {
+        "cardId": 10774240,
+        "entry": "script/c10774240.lua",
+        "sha256": "0d57b5ccd222faaf4f1807f2e167851aa8e4ac73a72c36113bb32c36c46007d6"
+      },
+      {
+        "cardId": 52472775,
+        "entry": "script/c52472775.lua",
+        "sha256": "244d394aad18fdd53da18ce4f4ac28a0f20837fc540fe14ff3f3fb9839c3cb54"
+      },
+      {
+        "cardId": 86310763,
+        "entry": "script/c86310763.lua",
+        "sha256": "6bc87e3946a20d79a2f266becde38864a920b05cc275b61e862db2acf4609727"
+      },
+      {
+        "cardId": 39114494,
+        "entry": "script/c39114494.lua",
+        "sha256": "181643269e91a12ed7c59919f1ceadaa2af151d4bc6859bfb64f042b32e00043"
+      },
+      {
+        "cardId": 88284599,
+        "entry": "script/c88284599.lua",
+        "sha256": "8eb221271d7abcdd2d0e20f4fb9679e1d474e597364a88025991775277f410d6"
+      },
+      {
+        "cardId": 4810828,
+        "entry": "script/c4810828.lua",
+        "sha256": "509957ab923ef97b730f5a9e5ee5c2154e79d94236c19bf7574fcd96fdb8a5c4"
+      },
+      {
+        "cardId": 92919429,
+        "entry": "script/c92919429.lua",
+        "sha256": "665d639f9a4313de02516e6adb03065669a421a2b8105deb22bfba80ccb0f159"
+      },
+      {
+        "cardId": 26866984,
+        "entry": "script/c26866984.lua",
+        "sha256": "e82d2248916fe8348941d962a4d041aba2c7054b96acbdb8db6eace4419216e8"
+      },
+      {
+        "cardId": 13048472,
+        "entry": "script/c13048472.lua",
+        "sha256": "8a326b54be4957642b0f2e358cc05d5c88c83ebec2044db658c42543ef569d2c"
+      },
+      {
+        "cardId": 73898890,
+        "entry": "script/c73898890.lua",
+        "sha256": "11396d521bc8dd44bcf91b6ee29a356ffff19066c490e88e97fa237c0bbbe74f"
+      },
+      {
+        "cardId": 41999284,
+        "entry": "script/c41999284.lua",
+        "sha256": "25567857971ca5d5286dd8a132bb3c9c2a0d9c0c42866e4dcf0625cfc689c95d"
+      },
+      {
+        "cardId": 2220237,
+        "entry": "script/c2220237.lua",
+        "sha256": "edfa8052af0ad94077c904a311e6e71f68118f21447252bf828f9262815dfa31"
+      },
+      {
+        "cardId": 79606837,
+        "entry": "script/c79606837.lua",
+        "sha256": "ea765433330052191db15d09e48e5e358641ce02d0c4dc264a5dfe3dc3f04407"
+      }
+    ]
+  },
+  "build": {
+    "debug": "passed",
+    "release": "passed",
+    "inheritedWarnings": 5,
+    "changedSourcesCSharp6Compilation": "passed; Roslyn /langversion:6",
+    "debugSha256": "de91f1992942c2441c28abd9041e95c598f8c96f2f2cf8e694e3a3bbd52d5f8d",
+    "releaseSha256": "dd040791c63a3dbb1c6699e7f70809b655f2129a11e1fa6599ac27d599d075d4"
+  },
+  "focusedValidation": {
+    "receipt": "Artifacts/voiceless-20261102/focused-final-v2/report.json",
+    "passed": true,
+    "checks": 27,
+    "scope": "Synthetic actual-dispatcher offers, callbacks, unknown optional descriptions and lifecycle checks"
+  },
+  "modelValidation": {
+    "receipt": "Artifacts/voiceless-planner/results.txt",
+    "assertions": 50,
+    "passed": true,
+    "scope": "Pure model routes, interruptions, cancellation, bounds, immutability and persistent Trias redirect"
+  },
+  "nativeValidation": {
+    "receipt": "Artifacts/voiceless-20261102/native-final-v2/result.json",
+    "passed": true,
+    "scenarios": [
+      {
+        "name": "combo1-lo-mondo",
+        "passed": true,
+        "assertions": 8,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "combo2-diviner-mondo",
+        "passed": true,
+        "assertions": 11,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "combo3-lo-spell-sage",
+        "passed": true,
+        "assertions": 7,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "combo4-preprep-sage",
+        "passed": true,
+        "assertions": 9,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "combo5-lo-skull-blessing",
+        "passed": true,
+        "assertions": 9,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "recovery-ash",
+        "passed": true,
+        "assertions": 8,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "protection-veiler",
+        "passed": true,
+        "assertions": 6,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      },
+      {
+        "name": "recovery-veiler",
+        "passed": true,
+        "assertions": 9,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 3
+      },
+      {
+        "name": "recovery-droll",
+        "passed": true,
+        "assertions": 8,
+        "duelCompleted": true,
+        "forcedCleanup": [],
+        "recoveryTurnLimit": 2
+      }
+    ],
+    "coreSeed": null,
+    "noShuffle": true,
+    "noDeckCheck": true,
+    "note": "Five full engine routes; resolved Ash/Droll recovery; Veiler protection and a distinct next-own-turn recovery after resolved Veiler. These are not strength matches."
+  },
+  "arenaValidation": {
+    "format": "voiceless-arena-final-v2",
+    "createdAt": "2026-11-02T20:14:43.656642+00:00",
+    "scoreUnit": "Best-of-three match (authoritative SRVPro ranking), not individual duel",
+    "comparisonScope": "Executor-only; both versions use the identical updated 40-main/9-extra Voiceless deck. Opponent binaries/decks are the frozen baseline in both challenge runs.",
+    "candidateExecutableSha256": "dd040791c63a3dbb1c6699e7f70809b655f2129a11e1fa6599ac27d599d075d4",
+    "baselineExecutableSha256": "9464cdec74689cb416ccab97f9d9dd5c7f93cdc11a80b1f78d1aeb2919caf073",
+    "sharedVoicelessDeckSha256": "598da712fae9c7ad7c1b62fa38d02dfc99f70124f984f73ab0fa20cd4c3e5463",
+    "databaseSha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+    "completedMatches": 44,
+    "finalPilot": {
+      "wins": 2,
+      "losses": 0,
+      "matches": 2,
+      "separateFromBalancedMirror": true
+    },
+    "balancedMirror": {
+      "wins": 24,
+      "losses": 0,
+      "disconnects": 0,
+      "matches": 24,
+      "runs": [
+        "6c34cf91-b37c-442e-b113-a61875963432",
+        "3229a851-9991-4d74-8cef-4109c6498fab"
+      ]
+    },
+    "opponents": {
+      "TheCrimsonKing": {
+        "candidate": {
+          "wins": 1,
+          "losses": 2,
+          "flees": 0,
+          "matches": 3,
+          "runId": "083a1861-ddc7-4d61-ac59-7c26f5e7da58"
+        },
+        "baseline": {
+          "wins": 0,
+          "losses": 3,
+          "flees": 0,
+          "matches": 3,
+          "runId": "25f39714-5828-4703-baa4-9432cb5b1f7c"
+        }
+      },
+      "Swordsoul": {
+        "candidate": {
+          "wins": 2,
+          "losses": 1,
+          "flees": 0,
+          "matches": 3,
+          "runId": "083a1861-ddc7-4d61-ac59-7c26f5e7da58"
+        },
+        "baseline": {
+          "wins": 0,
+          "losses": 3,
+          "flees": 0,
+          "matches": 3,
+          "runId": "25f39714-5828-4703-baa4-9432cb5b1f7c"
+        }
+      },
+      "OldSchool": {
+        "candidate": {
+          "wins": 3,
+          "losses": 0,
+          "flees": 0,
+          "matches": 3,
+          "runId": "083a1861-ddc7-4d61-ac59-7c26f5e7da58"
+        },
+        "baseline": {
+          "wins": 1,
+          "losses": 2,
+          "flees": 0,
+          "matches": 3,
+          "runId": "25f39714-5828-4703-baa4-9432cb5b1f7c"
+        }
+      }
+    },
+    "completedClientProcesses": 88,
+    "forcedClientCleanup": 0,
+    "nonzeroClientExits": 0,
+    "clientErrorLogs": [],
+    "runErrors": [],
+    "allCompetitorFlees": 0,
+    "runs": [
+      {
+        "runId": "b5236134-5c0f-4031-a543-ac71455214d3",
+        "phase": "final-v2-pilot",
+        "status": "completed",
+        "matches": 2,
+        "plannedMatches": 2,
+        "createdAt": "2026-11-02T20:04:42.610Z",
+        "finishedAt": "2026-11-02T20:05:03.281Z",
+        "error": null,
+        "receipt": "arena-receipts/b5236134-5c0f-4031-a543-ac71455214d3.json",
+        "matchups": [
+          {
+            "label": "Voiceless",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "current",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 2,
+                "losses": 0,
+                "flees": 0,
+                "matches": 2
+              },
+              {
+                "slot": 2,
+                "source": "old",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 2,
+                "flees": 0,
+                "matches": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "runId": "6c34cf91-b37c-442e-b113-a61875963432",
+        "phase": "final-v2-mirror-candidate-slot1",
+        "status": "completed",
+        "matches": 12,
+        "plannedMatches": 12,
+        "createdAt": "2026-11-02T20:05:14.841Z",
+        "finishedAt": "2026-11-02T20:07:16.900Z",
+        "error": null,
+        "receipt": "arena-receipts/6c34cf91-b37c-442e-b113-a61875963432.json",
+        "matchups": [
+          {
+            "label": "Voiceless",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "current",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 12,
+                "losses": 0,
+                "flees": 0,
+                "matches": 12
+              },
+              {
+                "slot": 2,
+                "source": "old",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 12,
+                "flees": 0,
+                "matches": 12
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "runId": "3229a851-9991-4d74-8cef-4109c6498fab",
+        "phase": "final-v2-mirror-candidate-slot2",
+        "status": "completed",
+        "matches": 12,
+        "plannedMatches": 12,
+        "createdAt": "2026-11-02T20:07:40.620Z",
+        "finishedAt": "2026-11-02T20:09:32.489Z",
+        "error": null,
+        "receipt": "arena-receipts/3229a851-9991-4d74-8cef-4109c6498fab.json",
+        "matchups": [
+          {
+            "label": "Voiceless",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "current",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 12,
+                "flees": 0,
+                "matches": 12
+              },
+              {
+                "slot": 2,
+                "source": "old",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 12,
+                "losses": 0,
+                "flees": 0,
+                "matches": 12
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "runId": "083a1861-ddc7-4d61-ac59-7c26f5e7da58",
+        "phase": "final-v2-new-challenge",
+        "status": "completed",
+        "matches": 9,
+        "plannedMatches": 9,
+        "createdAt": "2026-11-02T20:10:02.667Z",
+        "finishedAt": "2026-11-02T20:11:45.388Z",
+        "error": null,
+        "receipt": "arena-receipts/083a1861-ddc7-4d61-ac59-7c26f5e7da58.json",
+        "matchups": [
+          {
+            "label": "TheCrimsonKing",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 1,
+                "losses": 2,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "TheCrimsonKing",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 2,
+                "losses": 1,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          },
+          {
+            "label": "Swordsoul",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 2,
+                "losses": 1,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "Swordsoul",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 1,
+                "losses": 2,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          },
+          {
+            "label": "OldSchool",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 3,
+                "losses": 0,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "OldSchool",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 3,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "runId": "25f39714-5828-4703-baa4-9432cb5b1f7c",
+        "phase": "final-v2-old-challenge",
+        "status": "completed",
+        "matches": 9,
+        "plannedMatches": 9,
+        "createdAt": "2026-11-02T20:12:50.567Z",
+        "finishedAt": "2026-11-02T20:14:32.280Z",
+        "error": null,
+        "receipt": "arena-receipts/25f39714-5828-4703-baa4-9432cb5b1f7c.json",
+        "matchups": [
+          {
+            "label": "TheCrimsonKing",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 3,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "TheCrimsonKing",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 3,
+                "losses": 0,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          },
+          {
+            "label": "Swordsoul",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 3,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "Swordsoul",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 3,
+                "losses": 0,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          },
+          {
+            "label": "OldSchool",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "target",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 1,
+                "losses": 2,
+                "flees": 0,
+                "matches": 3
+              },
+              {
+                "slot": 2,
+                "source": "opponent",
+                "deck": "OldSchool",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 2,
+                "losses": 1,
+                "flees": 0,
+                "matches": 3
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "excludedPrefinalMatches": 14,
+    "excludedPrefinalRuns": [
+      {
+        "runId": "7109802b-400c-4ffe-a951-1bd9f90cd3b9",
+        "phase": "prefinal-pilot",
+        "status": "completed",
+        "matches": 2,
+        "plannedMatches": 2,
+        "createdAt": "2026-11-02T19:56:07.399Z",
+        "finishedAt": "2026-11-02T19:56:29.113Z",
+        "error": null,
+        "receipt": "arena-receipts/7109802b-400c-4ffe-a951-1bd9f90cd3b9.json",
+        "matchups": [
+          {
+            "label": "Voiceless",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "current",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 2,
+                "losses": 0,
+                "flees": 0,
+                "matches": 2
+              },
+              {
+                "slot": 2,
+                "source": "old",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 2,
+                "flees": 0,
+                "matches": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "runId": "b69f9589-80f0-43b9-bbfa-7e613c42b60e",
+        "phase": "prefinal-regression",
+        "status": "completed",
+        "matches": 12,
+        "plannedMatches": 12,
+        "createdAt": "2026-11-02T19:57:55.747Z",
+        "finishedAt": "2026-11-02T19:59:40.557Z",
+        "error": null,
+        "receipt": "arena-receipts/b69f9589-80f0-43b9-bbfa-7e613c42b60e.json",
+        "matchups": [
+          {
+            "label": "Voiceless",
+            "competitors": [
+              {
+                "slot": 1,
+                "source": "current",
+                "deck": "Voiceless",
+                "endpointPort": 12399,
+                "binary": "candidate",
+                "wins": 12,
+                "losses": 0,
+                "flees": 0,
+                "matches": 12
+              },
+              {
+                "slot": 2,
+                "source": "old",
+                "deck": "Voiceless",
+                "endpointPort": 12398,
+                "binary": "baseline",
+                "wins": 0,
+                "losses": 12,
+                "flees": 0,
+                "matches": 12
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "runtimeManifest": "arena-runtime-final-v2.json",
+    "runMapping": "arena-run-inputs.json",
+    "transportCaveat": "Task-owned loopback HTTP-to-CLI adapters; original HttpListener ServerMode requires unconfigured Windows URL ACL. No Windows ACL/settings changes.",
+    "limits": [
+      "Endpoint slots swapped for mirror comparison; first-turn choices were not forced or independently seeded.",
+      "Three matches per opponent/version is a small completion and initial strength sample.",
+      "Task-owned loopback HTTP-to-CLI adapters avoid unavailable Windows wildcard URL ACLs; actual frozen WindBot clients and SRVPro rankings are used.",
+      "Shuffled draws and unknown core RNG seed; no fixed-seed replay claim. No-deck-check enabled for the supplied pool."
+    ],
+    "rawReceiptDirectory": "arena-receipts",
+    "clientLogDirectories": [
+      "arena-candidate-processes",
+      "arena-baseline-processes"
+    ],
+    "serverProvenance": "arena-server/skynet-server.json",
+    "nativeHostReceipt": "../arena-native-loopback-ready/arena-native-receipt.json"
+  },
+  "limits": [
+    "Bounded deck-specific model, not a complete opponent simulator or arbitrary Ritual material solver.",
+    "The supplied combo headings were normalized to minimum starters; required cards must remain available.",
+    "Opponent-turn extensions depend on their actual trigger and successful resolution.",
+    "No claim of exhaustive card, matchup, tag-duel or tournament-format coverage."
+  ]
+}

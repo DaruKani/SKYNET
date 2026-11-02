@@ -6,9 +6,10 @@ WindBot is a C# duel bot for [YGOPro](https://github.com/Fluorohydride/ygopro). 
 
 `WindBot/` is the normal deck-executor repository restored from
 [`ElderLich/windbot-elder`](https://github.com/ElderLich/windbot-elder) at
-`0aa00265d7b378f7e0aee59dedb298d4e356b9b3` (clean source checkout). The C# sources,
-solution/project names, executors, decks, `WindBot.exe`, and `Bot.exe` retain their
-original names and behavior. The separate training AI and Arena are described in
+`0aa00265d7b378f7e0aee59dedb298d4e356b9b3` (clean source checkout). The normal
+architecture, solution/project names, executor/deck names, `WindBot.exe` and
+`Bot.exe` are retained; subsequent executor improvements are documented below.
+The separate training AI and Arena are described in
 the [workspace README](../README.md). This folder has no nested Git repository;
 changes are tracked by the enclosing workspace.
 
@@ -131,6 +132,107 @@ here and installed locally. It replaces the old desktop prompt workflow; unrelat
 skills remain intact. The old guides, card notes, source variants and three RDA
 replays are preserved in a verified archive under `Artifacts/guide-consolidation/`.
 The [inventory](Guides/legacy-guide-inventory.json) records their hashes.
+
+## Voiceless Voice routes and recovery
+
+`Deck=Voiceless` still loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck now
+includes Blessing in place of one Solemn Strike; Linkuriboh and Secure Gardna
+bring the Extra Deck to nine cards. The executor uses the RDA structure of
+observed state, isolated card transitions, bounded search and actual-offer
+execution. It does not run Lua inside its planner or share SKYNET training state.
+
+The five supplied routes are implemented with these minimum starters (assuming
+the required remaining deck/Extra Deck cards and no initial restrictions):
+
+| Starter | Own-turn route | Opponent-turn follow-up |
+| --- | --- | --- |
+| Lo | Barrier, Saffira, Skull Guardian, then Dyna Mondo | Revive Skull, revive Lo and place Radiance. |
+| Diviner | Send Trias, Tribute Diviner, recruit Lo, then the Dyna route | Revive Skull/Lo and place Radiance. |
+| Lo plus an extra Spell | Establish Skull, Link Lo into Linkuriboh, summon Dragon Sage | Respond with Sage to summon Sauravis, revive Lo and place Radiance. |
+| Pre-Preparation plus a suitable Level 7+ LIGHT tribute | Prayers summons Skull; find Lo, Barrier and Dragon Sage | Sage supplies the second Ritual, Lo and Radiance. |
+| Lo plus Skull Guardian | Barrier finds Blessing; Linkuriboh sends Lo to GY; Blessing recovers Lo; Secure Gardna triggers the Ritual Summon | Blessing responds to a non-Ritual summon with Sauravis; Lo returns and places Radiance. |
+
+Blessing does not perform Link Summons itself. Opponent-turn effects are
+conditional opportunities, not disruption already available at the end of our
+turn. The planner compares current protection with those opportunities and
+replans from actual card locations, negation, effect usage and observed search
+locks. It supports alternatives after interruptions instead of advancing an
+unchecked fixed combo counter. Search is synchronous, capped at 100 ms, 2,048
+expanded states, beam width 128 and depth 24, with cancellation and a bounded
+per-duel cache. This is a model of the supported routes, not a complete duel
+simulator or an arbitrary ritual-material solver; the server still owns legality.
+
+Location/effect-specific handlers and script-stage selection callbacks cover Lo,
+Barrier, Saffira, Skull Guardian, Prayers, Diviner/Trias, Blessing, Dragon Sage,
+Sauravis, Radiance and the three Link routes. Single optional triggers with an
+unknown description use observed summon context. Selection and effect-use state
+reset at their actual chain/phase/turn boundaries. Existing names and the explicit
+`NotFinished` registration remain; the measured scenarios do not imply exhaustive
+card, matchup or tag-duel coverage.
+
+Run focused dispatcher/prompt checks from the workspace root:
+
+```powershell
+.\WindBot\Tools\Invoke-VoicelessChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database 'D:/Programs/GitHub/MDPro4_Data/Data/locales/en-US/cards.cdb' `
+  -Deck WindBot/Decks/AI_Voiceless.ydk `
+  -OutputDirectory Artifacts/voiceless-focused-my-change
+```
+
+Run the five real-engine routes, Ash/Droll recovery, Veiler protection and a
+resolved-Veiler recovery on the next own turn (nine scenarios):
+
+```powershell
+python WindBot/Tools/voiceless_native_checks.py `
+  --bot-exe WindBot/bin/Debug/WindBot.exe `
+  --opponent-exe Artifacts/voiceless-20261102/baseline/Debug/WindBot.exe `
+  --data-root D:/Programs/GitHub/MDPro4_Data/Data `
+  --server Artifacts/arena-native-loopback-ready/source/bin/release/x64/ygoserver.dll `
+  --deck WindBot/Decks/AI_Voiceless.ydk `
+  --output-dir Artifacts/voiceless-native-my-change
+```
+
+Both commands require fresh output directories. The native runner takes explicit
+host/opponent inputs, forces the fixture play order through rock-paper-scissors,
+verifies the observed opening hand, and asserts actual moves and board milestones
+through the opponent's next turn. The resolved-Veiler case instead checks the
+next own turn: its opening has no surviving extender, so recovery uses the
+fixture's known Saffira draw rather than inventing a first-turn continuation.
+Interruption assertions require an ordered, incomplete-board-to-recovery sequence
+and check the stopped search/placement; the separate protection case checks
+Skull Guardian answering Veiler. Its no-shuffle/no-deck-check fixtures and
+scripted opponent deck lists are correctness tests, not legal-format strength
+comparisons. Core RNG is not seeded or claimed reproducible. The supplied native
+DLL and frozen baseline are local ignored artifacts; select your own equivalent
+paths on another machine. Use a Debug client for its authoritative result logs.
+
+Exact source/script/deck hashes and separate focused, native and Arena evidence
+are recorded in [voiceless-provenance.json](voiceless-provenance.json).
+
+The 2026-11-02 candidate passed Debug/Release builds, C# 6 compilation of both
+changed executor sources, 27 dispatcher/lifecycle checks, 50 pure-model assertions
+and all nine native scenarios. The final frozen Arena comparison completed 44
+best-of-three **matches**, with zero flees, client errors or forced client cleanup.
+Both versions used the same updated Voiceless deck. The balanced mirror was
+24-0 for the new executor (12 matches in each endpoint slot), plus a separate
+2-0 completion pilot. The other 18 matches compared each version against the
+same frozen opponents:
+
+| Opponent | New Voiceless wins-losses | Old Voiceless wins-losses |
+| --- | --- | --- |
+| OldSchool | 3-0 | 1-2 |
+| Swordsoul | 2-1 | 0-3 |
+| The Crimson King / RDA | 1-2 | 0-3 |
+
+Three matches per opponent/version is an initial sample, not a universal win rate.
+Endpoint swapping did not force equal first-turn choices; shuffled draws were not
+paired or seeded. No-deck-check mode supported the supplied pool. The local
+benchmark used task-owned loopback HTTP-to-CLI launchers because Windows rejected
+the original HTTP server's wildcard URL reservation; frozen duel clients and
+authoritative SRVPro rankings were still used, without changing Windows ACLs.
+Fourteen earlier matches used a prefinal binary and are excluded from these
+results. Detailed local receipts remain under `Artifacts/voiceless-20261102/`.
 
 ## Usage
 

@@ -10,7 +10,7 @@ using YGOSharp.OCGWrapper.Enums;
 namespace WindBot.Game.AI.Decks
 {
     [Deck("Voiceless", "AI_Voiceless", "NotFinished")]
-    public class VoicelessExecutor : DefaultExecutor
+    public partial class VoicelessExecutor : DefaultExecutor
     {
         public class CardId
         {
@@ -22,6 +22,9 @@ namespace WindBot.Game.AI.Decks
             public const int Token = 52340445;
             public const int VVBarrier = 98477480;
             public const int VVRadiance = 86310763;
+            public const int Blessing = 39114494;
+            public const int Linkuriboh = 41999284;
+            public const int SecureGardna = 2220237;
 
             public const int AshBlossom = 14558127;
             public const int GhostMournerMoonlitChill = 52038441;
@@ -61,40 +64,45 @@ namespace WindBot.Game.AI.Decks
             : base(ai, duel)
         {
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
-            AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, DefaultBreakthroughSkill);
-            AddExecutor(ExecutorType.Activate, CardId.InfiniteImperm, DefaultBreakthroughSkill);
+            AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, DefaultEffectVeiler);
+            AddExecutor(ExecutorType.Activate, CardId.InfiniteImperm, DefaultInfiniteImpermanence);
             AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
             AddExecutor(ExecutorType.Activate, CardId.Droll);
-            AddExecutor(ExecutorType.Activate, CardId.CalledBy, CalledByEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Sauravis);
-            AddExecutor(ExecutorType.Activate, CardId.SPLittleKnight, SPLittleKnightActivate); //Borrowed from Louse's Labrynth Executor; hope it's ok
+            AddExecutor(ExecutorType.Activate, CardId.CalledBy, DefaultCalledByTheGrave);
+            AddExecutor(ExecutorType.Activate, CardId.Sauravis, SauravisEffect);
+            AddExecutor(ExecutorType.Activate, CardId.VVSkullGuard, SkullCounter);
+            AddExecutor(ExecutorType.Activate, CardId.VVSauravis, DragonSageEffect);
+            AddExecutor(ExecutorType.Activate, CardId.DynaMondo, DynaEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Linkuriboh, LinkuribohEffect);
+            AddExecutor(ExecutorType.Activate, CardId.SPLittleKnight, SPLittleKnightActivate);
             AddExecutor(ExecutorType.Activate, CardId.ChaosAngel, ChaosAngelActivate);
             AddExecutor(ExecutorType.Activate, CardId.Ntss, NtssActivate);
 
+            // Select Skull Guardian's search before Lo's revival when both are
+            // offered, preserving the intended CL1 search / CL2 revival ordering.
+            AddExecutor(ExecutorType.Activate, CardId.VVSkullGuard, SkullSearch);
+            AddExecutor(ExecutorType.Activate, CardId.Lo, LoEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Diviner, DivinerEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Herald, HeraldSearch);
+            AddExecutor(ExecutorType.Activate, CardId.Blessing, BlessingEffect);
+            AddExecutor(ExecutorType.Activate, CardId.PrePrep, PrePrepSearch);
             AddExecutor(ExecutorType.Activate, CardId.VVBarrier, BarrierFirst);
             AddExecutor(ExecutorType.Activate, CardId.Saffira, SaffEffect);
             AddExecutor(ExecutorType.Activate, CardId.Saffira, SaffiraRitual);
-            AddExecutor(ExecutorType.SpSummon, CardId.VVSauravis);
-            AddExecutor(ExecutorType.Activate, CardId.VVSauravis);
-            AddExecutor(ExecutorType.Summon, CardId.Diviner, DivinerEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Diviner);
-            AddExecutor(ExecutorType.Activate, CardId.VVPrayer);
+            AddExecutor(ExecutorType.Activate, CardId.VVPrayer, PrayerEffect);
             AddExecutor(ExecutorType.Activate, CardId.Trias, TriasEffect);
-
-            AddExecutor(ExecutorType.SpSummon, CardId.Lo, LoPlace);
+            AddExecutor(ExecutorType.Activate, CardId.VVRadiance, RadianceEffect);
+            AddExecutor(ExecutorType.Summon, CardId.Diviner, DivinerSummon);
             AddExecutor(ExecutorType.Summon, CardId.Lo, LoSummon);
-            AddExecutor(ExecutorType.Activate, CardId.Lo, LoEffect);
-            AddExecutor(ExecutorType.Activate, CardId.VVSkullGuard, SkullSearch);
-            AddExecutor(ExecutorType.Activate, CardId.VVSkullGuard, SkullCounter);
-            AddExecutor(ExecutorType.Activate, CardId.PrePrep, PrePrepSearch);
-            AddExecutor(ExecutorType.Activate, CardId.Herald, HeraldSearch);
-            AddExecutor(ExecutorType.Activate, CardId.ChaosAngel, ChaosAngelSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.Linkuriboh, LinkuribohSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.SecureGardna, SecureGardnaSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.VVSauravis, DragonSageSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.DynaMondo, DynaLinkSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.ChaosAngel, ChaosAngelSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.SPLittleKnight, SPLittleKnightSpSummon);
-            AddExecutor(ExecutorType.Activate, CardId.DynaMondo, DynaSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.UnderworldGoddess);
             AddExecutor(ExecutorType.Activate, CardId.UnderworldGoddess);
-            
-            
+            AddExecutor(ExecutorType.SpellSet, VoicelessSpellSet);
+            AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
         }
 
 
@@ -253,7 +261,7 @@ namespace WindBot.Game.AI.Decks
                 if (((int)selfType & (int)CardType.Monster) > 0 && card.IsShouldNotBeMonsterTarget()) return false;
                 if (((int)selfType & (int)CardType.Spell) > 0 && card.IsShouldNotBeSpellTrapTarget()) return false;
                 if (((int)selfType & (int)CardType.Trap) > 0
-                    && (card.IsShouldNotBeSpellTrapTarget() || !card.IsDisabled())) return false;
+                    && card.IsShouldNotBeSpellTrapTarget()) return false;
             }
             return true;
         }
@@ -410,52 +418,6 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        private bool SkullCounter()
-        {
-            return Duel.LastChainPlayer == 1;
-        }
-
-        private bool ChaosAngelSummon()
-        {
-            AI.SelectMaterials(new[]
-            {
-                CardId.Trias,
-                CardId.Lo
-            });
-            return Util.GetProblematicEnemyMonster() != null;
-        }
-        private bool DynaSummon()
-        {
-            AI.SelectMaterials(new[]
-            {
-                CardId.VVSkullGuard,
-                CardId.Lo
-            });
-            return Util.GetProblematicEnemyMonster() != null;
-        }
-        private bool LittleKnightSummon()
-        {
-            return Util.GetProblematicEnemyMonster() != null;
-        }
-
-        private bool HeraldSearch()
-        {
-            if (Bot.HasInHand(CardId.VVPrayer))
-                AI.SelectCard(CardId.VVSkullGuard, CardId.Sauravis);
-            else
-                AI.SelectCard(CardId.VVPrayer);
-            return true;
-        }
-
-        private bool TriasEffect()
-        {
-            if (Bot.HasInHand(CardId.Trias) && Util.ChainContainPlayer(0)) // Might need to change to when diviner is targetted by opponent; but don't know how to do that...
-            {//maybe chaintargets?
-                return false;
-            }
-            AI.SelectCard(CardId.Diviner);
-            return true;
-        }
         public void SelectSTPlace(ClientCard card = null, bool avoid_Impermanence = false, List<int> avoid_list = null)
         {
             List<int> list = new List<int> { 0, 1, 2, 3, 4 };
@@ -581,161 +543,486 @@ namespace WindBot.Game.AI.Decks
             return new List<ClientCard>();
         }
 
+        // Accepted uses are not predictions of successful resolution. Card locations,
+        // resources and prompt candidates always come from the observed duel state.
+        private readonly HashSet<long> _voicelessUsed = new HashSet<long>();
+        private bool _normalSummonUsed;
+        private int _pendingVoicelessSummon;
+        private int _acceptedActivationId;
+        private int _radianceSelectedId;
+        private readonly HashSet<ClientCard> _selectedLinkMaterials = new HashSet<ClientCard>();
+
+        private bool VoicelessNormalUsed { get { return _normalSummonUsed; } }
+
+        private bool VoicelessEffectUsed(int id, int effect)
+        {
+            return _voicelessUsed.Contains(((long)id << 4) | (uint)effect);
+        }
+
+        private bool AcceptVoicelessEffect(int effect)
+        {
+            _voicelessUsed.Add(((long)Card.Id << 4) | (uint)effect);
+            _acceptedActivationId = Card.Id;
+            return true;
+        }
+
+        private int VoicelessPromptSource()
+        {
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null)
+                return solving.ActivatePlayer == 0 ? solving.ActivateId : 0;
+            // Costs may precede MSG_CHAINING. This is a captured accepted action,
+            // retired when the server confirms it, never a rejected candidate.
+            if (_acceptedActivationId != 0) return _acceptedActivationId;
+            ClientCard chain = Duel.GetCurrentChainCard();
+            if (chain != null) return chain.Controller == 0 ? chain.Id : 0;
+            return _pendingVoicelessSummon;
+        }
+
+        private bool HasFaceupLo()
+        {
+            return Bot.MonsterZone.Any(c => c != null && c.IsCode(CardId.Lo) && c.IsFaceup());
+        }
+
+        private bool HasFaceupSkull()
+        {
+            return Bot.MonsterZone.Any(c => c != null && c.IsCode(CardId.VVSkullGuard) && c.IsFaceup());
+        }
+
         public override bool OnSelectHand()
         {
-            //go first
             return true;
-        }
-
-        private bool BarrierFirst()
-        {
-            if (Bot.HasInSpellZone(CardId.VVBarrier))
-                return false;
-            int target = GetCardToSearch();
-            if (GetCardToSearch() > 0)
-                AI.SelectCard(GetCardToSearch());
-            else
-            {
-                AI.SelectCard(CardId.Lo, CardId.VVSkullGuard, CardId.Saffira, CardId.VVRadiance);
-            }
-            return true;
-        }
-
-        private bool DivinerEffect()
-        {
-            if (!Bot.HasInHand(CardId.Trias) && !Bot.HasInGraveyard(CardId.Trias))
-                AI.SelectCard(CardId.Trias);
-            else if (Util.GetProblematicEnemyMonster() != null && !Bot.HasInGraveyard(CardId.Herald))
-                AI.SelectCard(CardId.Herald);
-            else
-                AI.SelectCard(CardId.Ntss);
-            return true;
-        }
-
-        private bool SkullSearch()
-        {
-            if (Duel.CurrentChain.Count > 1) // chain blocking; don't search lo
-            {
-                if (Bot.HasInHand(CardId.Sauravis))
-                    AI.SelectCard(CardId.VVSauravis);
-                else
-                    AI.SelectCard(CardId.Sauravis);
-            } else
-            {
-                AI.SelectCard(CardId.Lo);
-            }
-                return true;
-
-        }
-
-        private bool SaffEffect()
-        {
-            AI.SelectCard(CardId.VVPrayer);
-            if (GetCardToSearch() > 0)
-                AI.SelectCard(GetCardToSearch());
-            else
-                AI.SelectCard(CardId.VVSkullGuard, CardId.Sauravis);
-            return true;
-        }
-
-        private bool SaffiraRitual()
-        {
-            if (ActivateDescription != Util.GetStringId(CardId.Saffira, 1))
-                return false;
-            if (Bot.HasInHand(CardId.VVSkullGuard) && !Bot.HasInMonstersZone(CardId.VVSkullGuard))
-                AI.SelectCard(CardId.VVSkullGuard);
-            else if (Bot.HasInHand(CardId.Sauravis))
-                AI.SelectCard(CardId.Sauravis);
-
-            // select sacrifice
-            if (Bot.HasInHand(CardId.Trias) || Bot.HasInMonstersZone(CardId.Trias))
-                AI.SelectCard(CardId.Trias);
-            else if (Bot.HasInHand(CardId.Lo) || Bot.HasInMonstersZone(CardId.Lo))
-                AI.SelectCard(CardId.Lo);
-            return true;
-        }
-
-
-        public override bool OnSelectYesNo(int desc)
-        {
-            if (desc == Util.GetStringId(CardId.Saffira, 2)) // search ritual monster?
-                return true;
-            if (desc == Util.GetStringId(CardId.VVPrayer, 0)) // reinforce ritual monsters?
-                return true;
-            return base.OnSelectYesNo(desc);
-        }
-
-        private bool NoLo()
-        {
-            return !Bot.HasInMonstersZone(CardId.Lo) && !Bot.HasInGraveyard(CardId.Lo);
         }
 
         private bool LoSummon()
         {
-            if (!Bot.HasInHand(CardId.Diviner) && !Bot.HasInHand(CardId.PrePrep) && Bot.HasInMonstersZone(CardId.Lo))
-                return true;
-            return false;
-        }
-
-        private bool LoPlace()
-        {
-            if (!Bot.HasInSpellZone(CardId.VVBarrier) && !Bot.HasInHand(CardId.VVBarrier))
-                AI.SelectCard(CardId.VVBarrier);
-            else if (!Bot.HasInHand(CardId.VVRadiance))
-                AI.SelectCard(CardId.VVRadiance);
-            return true;
-            // TODO: Add Blessing
-        }
-
-        private bool PrePrepSearch()
-        {
-            if (GetCardToSearch() > 0)
-                AI.SelectCard(GetCardToSearch());
-            else
-                AI.SelectCard(CardId.VVSkullGuard, CardId.Sauravis, CardId.VVPrayer);
+            if (HasFaceupLo() || _normalSummonUsed) return false;
+            _normalSummonUsed = true;
             return true;
         }
 
-        private int GetCardToSearch()
+        private bool DivinerSummon()
         {
-            if (NoLo() && !Bot.HasInHand(CardId.Lo) && !Bot.HasInHand(CardId.Diviner) && Bot.HasInDeck(CardId.Lo))
-            {
-                return CardId.Lo;
-            }
-            else if (!Bot.HasInHand(CardId.Saffira) && Bot.HasInDeck(CardId.Saffira))
-            {
-                return CardId.Saffira;
-            }
-            else if (EmptyMainMonsterZone() && !Bot.HasInHand(CardId.VVSkullGuard) && Bot.HasInDeck(CardId.VVSkullGuard))
-            {
-                return CardId.VVSkullGuard;
-            }
-            else if (Bot.HasInDeck(CardId.VVRadiance))
-            {
-                return CardId.VVRadiance;
-            }
-            else if (Bot.HasInDeck(CardId.VVSauravis)) //if there's >= 2 spells in grave
-            {
-                return CardId.VVSauravis;
-            }
-            // else if (Util.GetProblematicEnemyMonster() != null && Bot.HasInDeck(CardId.WidowAnchor))
-            // {
-            //     return CardId.WidowAnchor;
-            // }
-
-            return 0;
+            if (_normalSummonUsed || HasFaceupLo()) return false;
+            _normalSummonUsed = true;
+            return true;
         }
 
         private bool LoEffect()
         {
-            // todo
-            // if (Bot.HasInSpellZone && Bot.HasInSpellZone())
-            //     return false;
-            if (Bot.HasInSpellZone(CardId.VVBarrier))
-                AI.SelectCard(CardId.VVRadiance);
-            else
-                AI.SelectCard(CardId.VVBarrier);
+            if (Card.Location == CardLocation.Grave) return AcceptVoicelessEffect(1);
+            if (Card.Location != CardLocation.MonsterZone || Card.IsDisabled()) return false;
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool BarrierFirst()
+        {
+            if (Card.Location == CardLocation.Hand || Card.IsFacedown())
+                return !Bot.SpellZone.Any(c => c != null && c != Card && c.IsCode(CardId.VVBarrier) && c.IsFaceup());
+            if (Card.Location != CardLocation.SpellZone || Card.IsDisabled()) return false;
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool SaffEffect()
+        {
+            // The matching Lua identifies the ritual effect by LOCATION_GRAVE;
+            // the helper gives that effect no per-card StringId description.
+            return Card.Location == CardLocation.Hand && AcceptVoicelessEffect(0);
+        }
+
+        private bool SaffiraRitual()
+        {
+            if (Card.Location != CardLocation.Grave) return false;
+            return AcceptVoicelessEffect(1);
+        }
+
+        private bool SkullSearch()
+        {
+            bool summonTrigger = AI.SelectingEffectYn && ActivateDescription == -1
+                && Duel.CurrentChain.Count == 0 && Duel.LastSummonedCards.Contains(Card);
+            if (ActivateDescription != Util.GetStringId(CardId.VVSkullGuard, 0) && !summonTrigger) return false;
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool SkullCounter()
+        {
+            if (ActivateDescription != Util.GetStringId(CardId.VVSkullGuard, 1)
+                || Duel.LastChainPlayer != 1 || !HasFaceupLo() || Card.IsDisabled()) return false;
+            return AcceptVoicelessEffect(1);
+        }
+
+        private bool SauravisEffect()
+        {
+            // The engine offers the hand effect only for an actual targeting chain,
+            // and the field effect only in a summon-negation window.
+            if (Card.Location == CardLocation.Hand) return Duel.LastChainPlayer == 1;
+            return Card.Location == CardLocation.MonsterZone && !Card.IsDisabled();
+        }
+
+        private bool PrePrepSearch()
+        {
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool PrayerEffect()
+        {
+            return AcceptVoicelessEffect(Card.Location == CardLocation.Grave ? 1 : 0);
+        }
+
+        private bool DivinerEffect()
+        {
+            return AcceptVoicelessEffect(ActivateDescription == Util.GetStringId(CardId.Diviner, 1)
+                || Card.Location == CardLocation.Grave || Card.Location == CardLocation.Removed ? 1 : 0);
+        }
+
+        private bool TriasEffect()
+        {
+            ClientCard diviner = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(CardId.Diviner));
+            if (diviner == null || VoicelessEffectUsed(CardId.Diviner, 1)) return false;
+            // Finish the mill first, unless Tributing Diviner dodges an opponent's
+            // targeted negation. Do not Tribute Lo merely because the engine allows it.
+            if (Duel.LastChainPlayer == 0) return false;
+            if (Duel.LastChainPlayer == 1 && !Duel.ChainTargets.Contains(diviner)) return false;
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool HeraldSearch()
+        {
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool BlessingEffect()
+        {
+            if (Card.Location == CardLocation.Hand || Card.IsFacedown())
+                return !Bot.SpellZone.Any(c => c != null && c != Card && c.IsCode(CardId.Blessing) && c.IsFaceup());
+            if (ActivateDescription == Util.GetStringId(CardId.Blessing, 1))
+                return AcceptVoicelessEffect(0);
+            bool summonTrigger = AI.SelectingEffectYn && ActivateDescription == -1
+                && Duel.CurrentChain.Count == 0
+                && Duel.LastSummonedCards.Any(c => c != null && c.IsFaceup() && !c.HasType(CardType.Ritual));
+            if (ActivateDescription == Util.GetStringId(CardId.Blessing, 2) || summonTrigger)
+                return AcceptVoicelessEffect(1);
+            return false;
+        }
+
+        private bool DragonSageSummon()
+        {
+            // Prefer sending Lo to the GY first when the selected route calls for
+            // next-turn revival; otherwise an already-present Sage remains useful.
+            if (HasFaceupLo() && ShouldUseVoicelessLink(CardId.Linkuriboh)) return false;
+            _pendingVoicelessSummon = CardId.VVSauravis;
+            _voicelessUsed.Add(((long)CardId.VVSauravis << 4));
             return true;
+        }
+
+        private bool DragonSageEffect()
+        {
+            if (Card.Location != CardLocation.MonsterZone || Duel.LastChainPlayer != 1 || Card.IsDisabled()) return false;
+            return AcceptVoicelessEffect(1);
+        }
+
+        private bool DynaLinkSummon()
+        {
+            if (!ShouldUseVoicelessLink(CardId.DynaMondo)) return false;
+            _pendingVoicelessSummon = CardId.DynaMondo;
+            _selectedLinkMaterials.Clear();
+            return true;
+        }
+
+        private bool DynaEffect()
+        {
+            if (ActivateDescription == Util.GetStringId(CardId.DynaMondo, 1))
+                return Duel.Player == 1 && AcceptVoicelessEffect(1);
+            bool summonTrigger = AI.SelectingEffectYn && ActivateDescription == -1
+                && Duel.CurrentChain.Count == 0 && Duel.LastSummonedCards.Contains(Card);
+            if (ActivateDescription != Util.GetStringId(CardId.DynaMondo, 0) && !summonTrigger) return false;
+            // The initial shuffle would consume the Ritual intended for next turn.
+            // Use removal only when a real enemy threat makes it worthwhile.
+            if (GetProblematicEnemyCardList(true, selfType: CardType.Monster).Count == 0) return false;
+            return AcceptVoicelessEffect(0);
+        }
+
+        private bool LinkuribohSummon()
+        {
+            if (!ShouldUseVoicelessLink(CardId.Linkuriboh)) return false;
+            _pendingVoicelessSummon = CardId.Linkuriboh;
+            _selectedLinkMaterials.Clear();
+            return true;
+        }
+
+        private bool SecureGardnaSummon()
+        {
+            if (!ShouldUseVoicelessLink(CardId.SecureGardna)) return false;
+            _pendingVoicelessSummon = CardId.SecureGardna;
+            _selectedLinkMaterials.Clear();
+            return true;
+        }
+
+        private bool LinkuribohEffect()
+        {
+            return Card.Location == CardLocation.MonsterZone && Duel.Player == 1;
+        }
+
+        private bool RadianceEffect()
+        {
+            if (Card.IsFacedown()) return true;
+            if (ActivateDescription == Util.GetStringId(CardId.VVRadiance, 1))
+            {
+                if (Duel.CurrentChain.Count > 0 && Duel.LastChainPlayer == 0) return false;
+                if (GetNormalEnemyTargetList(true, false, CardType.Trap).Count == 0) return false;
+                // Preserve removal for an opponent's actual commitment; do not
+                // destroy a lone harmless set card just because a window opened.
+                if (Duel.Player == 1 && Duel.LastChainPlayer == -1
+                    && Enemy.GetMonsterCount() == 0 && GetProblematicEnemyCardList(true).Count == 0) return false;
+                return AcceptVoicelessEffect(0);
+            }
+            if (ActivateDescription == Util.GetStringId(CardId.VVRadiance, 0))
+            {
+                if (Duel.Player == 1 && HasFaceupSkull() && HasFaceupLo()) return false;
+                if (Duel.Player == 0 && HasFaceupSkull() && HasFaceupLo()) return false;
+                return AcceptVoicelessEffect(0);
+            }
+            return false;
+        }
+
+        private bool ChaosAngelSummon()
+        {
+            if (GetProblematicEnemyMonster() == null || HasFaceupSkull()) return false;
+            AI.SelectMaterials(new[] { CardId.Trias, CardId.Lo });
+            return true;
+        }
+
+        private bool VoicelessSpellSet()
+        {
+            return Card.IsTrap() || Card.IsCode(CardId.CalledBy);
+        }
+
+        private IList<ClientCard> SelectVoicelessCards(IList<ClientCard> cards, int min, int max,
+            IEnumerable<ClientCard> preferred, int desired = 1)
+        {
+            List<ClientCard> ranked = preferred.Where(c => c != null && cards.Contains(c)).Distinct().ToList();
+            ranked.AddRange(cards.Where(c => !ranked.Contains(c)));
+            return ranked.Take(Math.Min(max, Math.Max(min, desired))).ToList();
+        }
+
+        private IList<ClientCard> SelectVoicelessIds(IList<ClientCard> cards, int min, int max, params int[] ids)
+        {
+            List<ClientCard> ranked = new List<ClientCard>();
+            foreach (int id in ids)
+                ranked.AddRange(cards.Where(c => c.IsCode(id) && !ranked.Contains(c)));
+            return SelectVoicelessCards(cards, min, max, ranked);
+        }
+
+        private IEnumerable<ClientCard> RitualMaterials(IList<ClientCard> cards)
+        {
+            // Prefer Lo's alternate Ritual level while revival is still available.
+            // Once it is spent, keep a live Lo beside Skull Guardian if another
+            // offered tribute can finish the summon.
+            return cards.OrderBy(c => c.IsCode(CardId.Lo)
+                    ? (c.Location == CardLocation.Hand || !c.IsDisabled()
+                        && (!VoicelessEffectUsed(CardId.Lo, 1) || !HasFaceupSkull()) ? 0 : 5)
+                    : c.IsCode(CardId.Trias) ? 1 : c.IsCode(CardId.Diviner) ? 2
+                    : c.IsCode(CardId.VVSkullGuard) ? 9 : 3)
+                .ThenByDescending(c => c.Level);
+        }
+
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        {
+            int source = VoicelessPromptSource();
+            if (cards.Count == 0) return base.OnSelectCard(cards, min, max, hint, cancelable);
+            if (hint == HintMsg.LinkMaterial && _pendingVoicelessSummon != 0)
+            {
+                if (min == 0 && cancelable) return new List<ClientCard>();
+                int[] ids = _pendingVoicelessSummon == CardId.SecureGardna ? new[] { CardId.Linkuriboh }
+                    : _pendingVoicelessSummon == CardId.Linkuriboh ? new[] { CardId.Lo }
+                    : new[] { CardId.Lo, CardId.VVSkullGuard, CardId.Sauravis };
+                IList<ClientCard> chosen = SelectVoicelessIds(cards, min, max, ids);
+                foreach (ClientCard material in chosen) _selectedLinkMaterials.Add(material);
+                return chosen;
+            }
+            if (source == CardId.VVSauravis && hint == HintMsg.ToDeck)
+            {
+                if (min == 0 && cancelable) return new List<ClientCard>();
+                // Select the Ritual Spell first; subgroup offers then enforce that
+                // exactly two Spells including a Ritual Spell are returned.
+                return SelectVoicelessCards(cards, min, max, cards.OrderBy(c =>
+                    c.IsSpell() && c.HasType(CardType.Ritual) ? 0 : c.Location == CardLocation.Grave ? 1 : 2));
+            }
+            if (source == CardId.Trias && hint == HintMsg.Release)
+            {
+                if (min == 0 && cancelable) return new List<ClientCard>();
+                return SelectVoicelessIds(cards, min, max, CardId.Diviner);
+            }
+            if ((source == CardId.Saffira || source == CardId.VVPrayer || source == CardId.Blessing)
+                && hint == HintMsg.Release)
+            {
+                if (min == 0 && cancelable) return new List<ClientCard>();
+                return SelectVoicelessCards(cards, min, max, RitualMaterials(cards));
+            }
+            if (source == CardId.Lo && hint == HintMsg.ToField)
+                return SelectVoicelessIds(cards, min, max, GetVoicelessSearch(CardId.Lo),
+                    CardId.VVBarrier, CardId.VVRadiance, CardId.Blessing);
+            if (source == CardId.VVBarrier && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max, GetVoicelessSearch(CardId.VVBarrier),
+                    CardId.Saffira, CardId.Lo, CardId.Blessing, CardId.VVRadiance);
+            if (source == CardId.Saffira && hint == HintMsg.ToGrave)
+                return SelectVoicelessIds(cards, min, max, CardId.VVPrayer);
+            if (source == CardId.Saffira && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max, GetVoicelessSearch(CardId.Saffira),
+                    HasFaceupSkull() || Bot.HasInHand(CardId.VVSkullGuard) ? CardId.Sauravis : CardId.VVSkullGuard,
+                    CardId.VVSkullGuard, CardId.Sauravis);
+            if (source == CardId.VVSkullGuard && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max, GetVoicelessSearch(CardId.VVSkullGuard),
+                    HasFaceupLo() || Bot.HasInGraveyard(CardId.Lo) ? CardId.Sauravis : CardId.Lo,
+                    CardId.VVSauravis, CardId.Saffira);
+            if (source == CardId.PrePrep && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max, CardId.VVPrayer,
+                    HasFaceupSkull() || Bot.HasInHand(CardId.VVSkullGuard) ? CardId.Sauravis : CardId.VVSkullGuard,
+                    CardId.VVSkullGuard, CardId.Sauravis);
+            if (source == CardId.Herald && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max, GetVoicelessSearch(CardId.Herald),
+                    !Bot.HasInHand(CardId.VVPrayer) && !Bot.HasInGraveyard(CardId.Saffira) ? CardId.VVPrayer : CardId.VVSkullGuard,
+                    CardId.Sauravis);
+            if (source == CardId.Diviner && hint == HintMsg.ToGrave)
+            {
+                int mill = !HasFaceupLo() && !Bot.HasInGraveyard(CardId.Trias) && !Bot.HasInHand(CardId.Trias)
+                    && Bot.HasInDeck(CardId.Trias) ? CardId.Trias
+                    : GetProblematicEnemyCardList(true).Count > 0 ? CardId.Ntss : CardId.Herald;
+                return SelectVoicelessIds(cards, min, max, mill, CardId.Herald, CardId.Trias);
+            }
+            if (source == CardId.Diviner && hint == HintMsg.SpSummon)
+                return SelectVoicelessIds(cards, min, max, CardId.Lo);
+            if (source == CardId.Blessing && hint == HintMsg.AddToHand)
+                return SelectVoicelessIds(cards, min, max,
+                    !HasFaceupLo() && !Bot.HasInHand(CardId.Lo) ? CardId.Lo : CardId.Saffira,
+                    CardId.Saffira, CardId.VVPrayer, CardId.Lo, CardId.VVRadiance);
+            if ((source == CardId.Saffira || source == CardId.VVPrayer || source == CardId.Blessing
+                || source == CardId.VVSauravis) && hint == HintMsg.SpSummon)
+                return SelectVoicelessIds(cards, min, max, HasFaceupSkull() ? CardId.Sauravis : CardId.VVSkullGuard,
+                    CardId.VVSkullGuard, CardId.Sauravis);
+            if (source == CardId.DynaMondo)
+            {
+                if (cards.Any(c => c.Controller == 1))
+                    return SelectVoicelessCards(cards, min, max, GetNormalEnemyTargetList(true));
+                return SelectVoicelessIds(cards, min, max, HasFaceupSkull() ? CardId.Sauravis : CardId.VVSkullGuard,
+                    CardId.VVSkullGuard, CardId.Sauravis);
+            }
+            if (source == CardId.VVRadiance)
+            {
+                if (hint == HintMsg.Destroy)
+                    return SelectVoicelessCards(cards, min, max, GetNormalEnemyTargetList(true, false, CardType.Trap), max);
+                if (hint == HintMsg.ToDeck)
+                    return SelectVoicelessCards(cards, min, max,
+                        cards.OrderBy(c => c.Location == CardLocation.Grave ? 0 : 1).ThenBy(c => c.IsSpell() ? 0 : 1));
+                if (hint == HintMsg.OperateCard || hint == HintMsg.SpSummon || hint == HintMsg.AddToHand)
+                {
+                    IList<ClientCard> chosen = SelectVoicelessIds(cards, min, max,
+                        !HasFaceupLo() ? CardId.Lo : CardId.VVSauravis, CardId.Saffira, CardId.Lo);
+                    _radianceSelectedId = chosen.Count > 0 ? chosen[0].Id : 0;
+                    return chosen;
+                }
+            }
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
+        }
+
+        public override IList<ClientCard> OnSelectRitualTribute(IList<ClientCard> cards,
+            IList<ClientCard> mandatoryCards, int sum, int min, int max, bool exactEqual)
+        {
+            int source = VoicelessPromptSource();
+            if (source != CardId.Saffira && source != CardId.VVPrayer && source != CardId.Blessing)
+                return base.OnSelectRitualTribute(cards, mandatoryCards, sum, min, max, exactEqual);
+            // GameAI validates the server-supplied alternate ritual levels and
+            // fills a valid sum if this preference alone is not sufficient.
+            return RitualMaterials(cards).Take(Math.Max(1, min)).ToList();
+        }
+
+        public override int OnSelectOption(IList<int> options)
+        {
+            int source = VoicelessPromptSource();
+            if (source == CardId.DynaMondo || source == CardId.VVRadiance)
+            {
+                int wanted = source == CardId.VVRadiance && _radianceSelectedId == CardId.Saffira ? 1190 : 1152;
+                int index = options.IndexOf(wanted);
+                if (index >= 0) return index;
+            }
+            return base.OnSelectOption(options);
+        }
+
+        public override bool OnSelectYesNo(int desc)
+        {
+            if (VoicelessPromptSource() == CardId.Saffira && desc == Util.GetStringId(CardId.Saffira, 1)) return true;
+            return base.OnSelectYesNo(desc);
+        }
+
+        public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
+        {
+            if ((cardId == CardId.Lo || cardId == CardId.Diviner) && positions.Contains(CardPosition.FaceUpDefence))
+                return CardPosition.FaceUpDefence;
+            if (positions.Contains(CardPosition.FaceUpAttack)) return CardPosition.FaceUpAttack;
+            return base.OnSelectPosition(cardId, positions);
+        }
+
+        public override void OnChaining(int player, ClientCard card)
+        {
+            if (player == 0 && card != null && card.Id == _acceptedActivationId) _acceptedActivationId = 0;
+            base.OnChaining(player, card);
+        }
+
+        public override void OnSpSummoning()
+        {
+            _pendingVoicelessSummon = 0;
+            _selectedLinkMaterials.Clear();
+            base.OnSpSummoning();
+        }
+
+        public override void OnChainEnd()
+        {
+            _acceptedActivationId = 0;
+            _radianceSelectedId = 0;
+            currentNegateMonsterList.Clear();
+            currentDestroyCardList.Clear();
+            escapeTargetList.Clear();
+            summonInChainList.Clear();
+            chainSummoningIdList.Clear();
+            OnVoicelessPlannerReset();
+            base.OnChainEnd();
+        }
+
+        public override void OnNewTurn()
+        {
+            _voicelessUsed.Clear();
+            _normalSummonUsed = false;
+            _pendingVoicelessSummon = 0;
+            _acceptedActivationId = 0;
+            _radianceSelectedId = 0;
+            _selectedLinkMaterials.Clear();
+            activatedCardIdList.Clear();
+            currentNegateMonsterList.Clear();
+            currentDestroyCardList.Clear();
+            setTrapThisTurn.Clear();
+            summonThisTurn.Clear();
+            enemySetThisTurn.Clear();
+            escapeTargetList.Clear();
+            summonInChainList.Clear();
+            chainSummoningIdList.Clear();
+            infiniteImpermanenceList.Clear();
+            CrossoutDesignatorTarget = 0;
+            foreach (int id in CalledbytheGraveCount.Keys.ToList())
+            {
+                CalledbytheGraveCount[id]--;
+                if (CalledbytheGraveCount[id] <= 0) CalledbytheGraveCount.Remove(id);
+            }
+            OnVoicelessPlannerReset();
+            base.OnNewTurn();
+        }
+
+        public override void OnNewPhase()
+        {
+            _pendingVoicelessSummon = 0;
+            _acceptedActivationId = 0;
+            _selectedLinkMaterials.Clear();
+            OnVoicelessPlannerReset();
+            base.OnNewPhase();
         }
 
         private bool DefaultNoExecutor()
