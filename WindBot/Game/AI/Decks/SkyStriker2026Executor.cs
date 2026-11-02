@@ -55,6 +55,7 @@ namespace WindBot.Game.AI.Decks
             public const int MysticalSpaceTyphoon = 5318639;
             public const int RadiantTyphoonVision = 20508881;
             public const int TheFallenAndTheVirtuous = 30271097;
+            public const int AlbionTheBrandedDragon = 87746184;
             public const int DragonThatDevoursTheDogma = 76666602;
             public const int EcclesiaAndTheDarkDragon = 78397661;
             public const int SuperStarslayerTyphon = 93039339;
@@ -138,6 +139,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.UpstartGoblin);
             AddExecutor(ExecutorType.Activate, CardId.RadiantTyphoonVision, RadiantTyphoonVisionEffect);
             AddExecutor(ExecutorType.Activate, CardId.TheFallenAndTheVirtuous, FallenAndVirtuousEffect);
+            AddExecutor(ExecutorType.Activate, CardId.AlbionTheBrandedDragon, AlbionTheBrandedDragonEffect);
             AddExecutor(ExecutorType.Activate, CardId.DragonThatDevoursTheDogma, DragonThatDevoursTheDogmaEffect);
             AddExecutor(ExecutorType.Activate, CardId.EcclesiaAndTheDarkDragon, EcclesiaAndTheDarkDragonEffect);
 
@@ -362,6 +364,7 @@ namespace WindBot.Game.AI.Decks
                     if (hint == HintMsg.ToGrave && cards.Any(card => card.Location == CardLocation.Extra))
                         return Util.CheckSelectCount(OrderCardsById(cards, new[]
                         {
+                            CardId.AlbionTheBrandedDragon,
                             CardId.DragonThatDevoursTheDogma,
                             CardId.EcclesiaAndTheDarkDragon
                         }, false), cards, min, max);
@@ -416,6 +419,25 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
                 }
             }
+
+            if (solving != null && solving.ActivatePlayer == 0 &&
+                solving.IsActivateCode(CardId.TheFallenAndTheVirtuous))
+            {
+                if (hint == HintMsg.ToGrave && cards.Any(card => card.Location == CardLocation.Extra))
+                    return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                    {
+                        CardId.AlbionTheBrandedDragon,
+                        CardId.DragonThatDevoursTheDogma,
+                        CardId.EcclesiaAndTheDarkDragon
+                    }, false), cards, min, max);
+                if (hint == HintMsg.Destroy)
+                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+            }
+
+            if (solving != null && solving.ActivatePlayer == 0 &&
+                solving.IsActivateCode(CardId.AlbionTheBrandedDragon))
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.TheFallenAndTheVirtuous }, false), cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Linkage))
             {
@@ -717,6 +739,18 @@ namespace WindBot.Game.AI.Decks
                 return destroyFallen;
             }
 
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null && solving.ActivatePlayer == 0 &&
+                solving.IsActivateCode(CardId.AlbionTheBrandedDragon))
+            {
+                int set = options.IndexOf(1153);
+                if (set >= 0)
+                    return set;
+                int add = options.IndexOf(1190);
+                if (add >= 0)
+                    return add;
+            }
+
             int destroyMonsters = options.IndexOf(Util.GetStringId(CardId.LightningStorm, 0));
             int destroySpells = options.IndexOf(Util.GetStringId(CardId.LightningStorm, 1));
             if (destroyMonsters >= 0 || destroySpells >= 0)
@@ -778,7 +812,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool FallenAndVirtuousEffect()
         {
-            bool canPayDestroyCost = Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
+            bool canPayDestroyCost = Bot.HasInExtra(CardId.AlbionTheBrandedDragon) ||
+                Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
                 Bot.HasInExtra(CardId.EcclesiaAndTheDarkDragon);
             bool canDestroy = canPayDestroyCost && Enemy.GetMonsters().Concat(Enemy.GetSpells())
                 .Any(card => card.IsFaceup());
@@ -787,6 +822,12 @@ namespace WindBot.Game.AI.Decks
             bool canRevive = hasEcclesia && Bot.Graveyard.Concat(Enemy.Graveyard)
                 .Any(card => card.IsMonster() && card.IsCanRevive());
             return canDestroy || canRevive;
+        }
+
+        private bool AlbionTheBrandedDragonEffect()
+        {
+            return Card.Location == CardLocation.Grave && Duel.Phase == DuelPhase.End &&
+                Bot.HasInDeck(CardId.TheFallenAndTheVirtuous);
         }
 
         private bool DragonThatDevoursTheDogmaEffect()
@@ -800,7 +841,8 @@ namespace WindBot.Game.AI.Decks
                 (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2))
                 return false;
             bool hasFusion = Bot.Graveyard.Concat(Bot.Banished)
-                .Any(card => card.IsCode(CardId.DragonThatDevoursTheDogma));
+                .Any(card => card.IsCode(CardId.AlbionTheBrandedDragon,
+                    CardId.DragonThatDevoursTheDogma));
             return hasFusion && Enemy.GetFieldCount() > 0;
         }
 
@@ -863,7 +905,10 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Phase == DuelPhase.Main1)
                 return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
 
-            return Util.IsTurn1OrMain2();
+            if (Duel.Phase == DuelPhase.Main2)
+                return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
+
+            return false;
         }
 
         private bool LemnisgateEffect()

@@ -177,6 +177,12 @@ listed Side Deck board breakers and counter traps have ordinary executor support
 All target, material, recycle and option choices remain restricted to candidates
 offered by the duel server.
 
+The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
+the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
+Virtuous resource line. The first destruction activation sends Albion and sets
+another Fallen & the Virtuous during the End Phase; a later activation falls back
+to Ecclesia and the Dark Dragon. The user-owned MDPro4 deck file is not modified.
+
 After building, start it from the output directory with an explicit database and
 compatible duel host, for example:
 
