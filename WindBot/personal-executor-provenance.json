@@ -101,13 +101,514 @@
     "compatibility": "Imported persona sources and RDA template compile with /langversion:6; isolated syntax check supplied Program.Rand because that field is assembly-internal. Full Debug/Release builds pass against the real Program."
   },
   "limits": [
-    "Other imported persona callbacks retain unreviewed legacy candidate-context assumptions.",
-    "No full card-coverage, combo or competitive-strength conclusion."
+    "This is bounded card/selection/lifecycle coverage, not exhaustive testing of all branches or matchups.",
+    "The follow-up reviews preserve personal deck lists and strategy; remaining tactical weaknesses are not a reason to label every legal action optimal."
   ],
   "adaptations": [
     "Use tracked GetCardCountInDeck API and C#6-compatible declarations/delegates in place of inline out declarations and local functions.",
     "Use current mandatory-material Synchro callback and delegate actual sum selection to GameAI.",
     "Magnamhut: accept offered registration without hidden-deck scans; retain delayed search only after observed resolution, through source movement, until selection or new-turn reset.",
     "Replace two obsolete prerelease IDs with verified released database/script identities in source and deck."
-  ]
+  ],
+  "latestReview": {
+    "date": "2026-11-02",
+    "baselineRevision": "363f7eb0f38cdbbc59d184268fc2f357a8f2f18c",
+    "deckListsUnchanged": true,
+    "builds": {
+      "DebugAnyCPU": "passed",
+      "ReleaseAnyCPU": "passed",
+      "CSharp6ChangedSources": "passed; isolated compile supplies only assembly-internal Program.Rand",
+      "inheritedWarnings": 5
+    },
+    "arenaReceipt": "Artifacts/executor-review-20261102/arena-summary.json",
+    "arenaStatus": "completed",
+    "sourceHashes": {
+      "WindBot/Game/AI/Decks/OdionExecutor.cs": "73f139a0f2fe3d5d04724147aa0dd60277f149a9dd3a81360ef5905e05ce885a",
+      "WindBot/Game/AI/Decks/MetalmorphExecutor.cs": "e11182866fc5cb6a4be24b8311f2c7958a45b9bbb347a39c2ef532951bb6582a",
+      "WindBot/Decks/AI_Odion.ydk": "5fab1411e494567275fc04fc5f3506711ae4c999644b05c4263316852e283112",
+      "WindBot/Decks/AI_Metalmorph.ydk": "5f9e73ce547b2613b23f96b091124c77764398e52f63fbbe9405b8b244f3e09e"
+    },
+    "Metalmorph": {
+      "fixes": [
+        "Metal Illusionist separates summon tutor (including opponent turn/observed unknown description) from race declaration.",
+        "Flame destruction replacement accepts Lua description 96, not selection hint 521.",
+        "Immutable accepted-action/current/resolving chain context replaces callback reliance on the most recently evaluated candidate; ownership resets at observed lifecycle boundaries.",
+        "Fullmetal burn uses highest offered original ATK and does not discount targeting protection or prioritize low-ATK Links.",
+        "Time Engine optional wipe/burn and other resolution benefits no longer rerun activation predicates.",
+        "Fullmetal and Metalzoa hand tutors cannot accept unrelated field effects.",
+        "Max/Flame conversion uses one callback owner for tribute and summon without duplicate selectors.",
+        "Phoenix handles Discard501 and Destroy502; Accesscode separates Target551 ATK material, Remove503 cost, and Destroy502 non-target removal without duplicate selectors.",
+        "Accesscode accepts legal ATK material offers from banishment and selects the highest Link rating.",
+        "Chaining leaves protocol target state intact; successful conversion tracking uses immutable activation identity."
+      ],
+      "scripts": [
+        {
+          "id": 29157292,
+          "name": "Metal Illusionist",
+          "script": "script/c29157292.lua",
+          "scriptSha256": "a73f9314eadaef3bbe93bee602563c1a6f86a7bf786b5592c847c9fc0d0daae6"
+        },
+        {
+          "id": 89812483,
+          "name": "Max Metalmorph",
+          "script": "script/c89812483.lua",
+          "scriptSha256": "85137b2182cdcf7f3e8eca73334bec52fcc71e567614a96466623bfc499ac815"
+        },
+        {
+          "id": 91152455,
+          "name": "Flame Coating Metalmorph",
+          "script": "script/c91152455.lua",
+          "scriptSha256": "3d2b956115e3542df68752a471e9e1bba021f76d3a543eeb2b1d952a5e58664e"
+        },
+        {
+          "id": 80870883,
+          "name": "Red-Eyes Black Fullmetal Dragon",
+          "script": "script/c80870883.lua",
+          "scriptSha256": "ad273362dd66c34974ce01c2ef170a93c66ee5ac89f8739996da3b4618f074f2"
+        },
+        {
+          "id": 15216188,
+          "name": "Time Engine",
+          "script": "script/c15216188.lua",
+          "scriptSha256": "9779e65f1a9e41ee4ed7155e31043bae0cdc1fa61f7b8aa6de351e77f3a20a3c"
+        },
+        {
+          "id": 53753697,
+          "name": "Zoa the Fiendish Beast",
+          "script": "script/c53753697.lua",
+          "scriptSha256": "d34b2ae191495907c840920dc91fe7480bc54497a1a85d46d3dc9b4328ddb1df"
+        },
+        {
+          "id": 27268998,
+          "name": "Metalzoa X",
+          "script": "script/c27268998.lua",
+          "scriptSha256": "41c982a0abee982716129addca7ad6f640118533d020332eb336a939b49075ae"
+        },
+        {
+          "id": 2857636,
+          "name": "Knightmare Phoenix",
+          "script": "script/c2857636.lua",
+          "scriptSha256": "0521eea1cb930ce6268685a39c496072d0fab78b4cf558b09729dfc6e887ecff"
+        },
+        {
+          "id": 86066372,
+          "name": "Accesscode Talker",
+          "script": "script/c86066372.lua",
+          "scriptSha256": "5cef20ac6add2bd2a11aedea434a7f41bf246c664106619b2f288f910c82a03c"
+        }
+      ],
+      "focused": {
+        "candidatePassed": 31,
+        "baselinePassed": 4,
+        "total": 31,
+        "candidateReceipt": "Artifacts/executor-review-20261102/metalmorph-final-v4/report.json",
+        "baselineReceipt": "Artifacts/personal-review-20261102/metalmorph/baseline-final-v3/report.json",
+        "acceptedBuildReceipt": "Artifacts/executor-review-20261102/metalmorph-normal/report.json"
+      },
+      "limits": [
+        "Focused synthetic dispatcher/callback fixtures do not execute Lua or establish competitive strength.",
+        "Source review focuses on concrete core-card prompt bugs, not exhaustive proof for all 5600 lines or all game states.",
+        "Deck contents, registration names and strategic priority order were preserved."
+      ],
+      "nativeTraceReview": {
+        "runId": "ac858f7d-a6bc-4e91-9514-f482b2cf2862",
+        "completedClientProcesses": 12,
+        "individualDuelsLogged": 30,
+        "nonzeroExits": 0,
+        "forcedCleanup": 0,
+        "protocolErrorMarkers": 0,
+        "observed": [
+          "Illusionist summon trigger and snapshot-owned tutors",
+          "Hop Ear target/Synchro conversions",
+          "Max/Flame conversion resolutions",
+          "Fullmetal burn selections"
+        ],
+        "notObservedInSample": [
+          "Phoenix/Accesscode",
+          "Flame replacement",
+          "Time Engine optional wipe/burn"
+        ],
+        "remainingPolicyConcern": "One winning duel tributed a fresh Baronne for Metalflame Swordsman at 4100 opposing LP; resource preservation merits a separate targeted fixture. Not attributed as a regression or loss cause."
+      },
+      "decision": "accepted"
+    },
+    "Odion": {
+      "scripts": [
+        {
+          "id": 97800311,
+          "archiveEntry": "script/c97800311.lua",
+          "sha256": "132dd728e1fefa8587f3f9e947c7669c31c3fe075487984bd22e2a7075ca0fc9"
+        },
+        {
+          "id": 1528054,
+          "archiveEntry": "script/c1528054.lua",
+          "sha256": "9719e918ee14ed0dab75fa373ba6fe6b32d94655ac9f446850762b990d62f4f1"
+        },
+        {
+          "id": 60411677,
+          "archiveEntry": "script/c60411677.lua",
+          "sha256": "ffd2a8d165daa1a574ddcb07b4db09ec7edfdf381e7b552395db73d5504a1cba"
+        },
+        {
+          "id": 34926568,
+          "archiveEntry": "script/c34926568.lua",
+          "sha256": "ef0e67a23cf4273d772bedeaf06eb2e9977647c8905bb07c0df9514bd6906422"
+        },
+        {
+          "id": 27118421,
+          "archiveEntry": "script/c27118421.lua",
+          "sha256": "9f1270425483ede2d9cf812120153745dc858350c174eab21d563da86f7f6683"
+        },
+        {
+          "id": 29301450,
+          "archiveEntry": "script/c29301450.lua",
+          "sha256": "e9458deaa2e8ec9c2a21bd753870a03b0e62af2150f806f6bb86d5d35c59fdf0"
+        }
+      ],
+      "coreCountLimitEvidence": [
+        {
+          "path": "Artifacts/arena-native-loopback-ready/source/ocgcore/effect.cpp",
+          "sha256": "c82b5736d908648d64cbdcd76913c1b1eb68ac6e49c0773586ebf4a3fc82a2bc"
+        },
+        {
+          "path": "Artifacts/arena-native-loopback-ready/source/ocgcore/processor.cpp",
+          "sha256": "fa87eecfd2d527a18b5f649ef94e588ad4f9407433aadbe6f86e4b2659576220"
+        }
+      ],
+      "realDuelPromptFinding": {
+        "trace": "Artifacts/executor-review-20261102/arena-candidate-processes/f4c99e89-5e09-4ce6-88c4-0a91498a88b1.log",
+        "lines": [
+          595,
+          597,
+          598
+        ],
+        "actual": "Intended self plus Qixing Longyuan; actually targets own S:P and own Apophis Serpent.",
+        "lua": "c29301450.lua:78-81 asks two separate one-card REMOVE selections.",
+        "fix": "One selector for self, SelectNextCard for enemy; no callback overlap."
+      },
+      "focused": {
+        "candidatePassed": 16,
+        "baselinePassed": 1,
+        "total": 16,
+        "candidateReceipt": "Artifacts/personal-review-20261102/odion/candidate-v4/report.json",
+        "baselineReceipt": "Artifacts/personal-review-20261102/odion/baseline-v4/report.json"
+      },
+      "limits": [
+        "Synthetic fixtures exercise real dispatcher but do not execute Lua.",
+        "No deck contents or strategic priority rewrite.",
+        "Other extensive Odion card coverage remains outside this bounded audit."
+      ],
+      "pairedOpeningReview": {
+        "receipt": "Artifacts/odion-regression-pairs-20261102/report.json",
+        "pairs": 3,
+        "bothHandsAndPlayOrderVerified": true,
+        "outcomes": [
+          {
+            "baseline": "loss",
+            "candidate": "win"
+          },
+          {
+            "baseline": "win",
+            "candidate": "win"
+          },
+          {
+            "baseline": "loss",
+            "candidate": "loss"
+          }
+        ],
+        "nonzeroExits": 0,
+        "errors": 0,
+        "conclusion": "No candidate-caused regression identified in these pairs; not proof none exists.",
+        "limits": [
+          "Unchanged Swordsoul makes unseeded random Synchro choices; two pairs diverged before any changed Odion decision.",
+          "Core RNG is unknown, so later shuffled draws may differ."
+        ],
+        "existingPolicyLimit": "In one pair both versions summon TY-PHON to answer a large Nibiru token, then preserve material for Zeus instead of bouncing it; the token kills TY-PHON."
+      },
+      "initialArenaTraceReview": {
+        "receipt": "Artifacts/personal-review-20261102/odion/native-arena-trace-review.json",
+        "candidateMatchProcesses": 12,
+        "individualDuelsLogged": 30,
+        "observedCorrectSpTargetSequences": 9,
+        "nonzeroExits": 0,
+        "forcedCleanup": 0,
+        "protocolErrorMarkers": 0,
+        "note": "Initial block only; extended Swordsoul comparison is reported separately."
+      },
+      "decision": "rejected; original source retained byte-for-byte",
+      "testedCandidateFixes": [
+        "Divine rejected predicates leave no pending destroy or spent pop budget",
+        "Divine set/destroy limits are per field instance and used on acceptance, including negated effects",
+        "Divine field departure and facedown reset restore soft once-per-turn use",
+        "Rabbit and Divine targeted callbacks use immutable owned chain snapshots",
+        "Rabbit set and Divine tribute callback paths do not queue duplicate selections",
+        "Anubis optional destruction trigger registered at verified description 1",
+        "Anubis GY recovery strategy flag resets on new turns",
+        "S:P quick banish uses two sequential one-card selections, preserving the intended opponent target"
+      ],
+      "rejectedCandidateEvidence": {
+        "directory": "Artifacts/executor-review-20261102/rejected-odion",
+        "patch": "OdionExecutor.patch",
+        "source": "OdionExecutor.cs",
+        "harness": "OdionChecks.cs",
+        "runner": "Invoke-OdionChecks.ps1",
+        "decisionReceipt": "decision.json",
+        "reason": "Candidate 2-18 versus baseline 9-11 against Swordsoul; no definite causal regression isolated, but result does not justify promotion under no-regression requirement.",
+        "currentSourceSha256": "73f139a0f2fe3d5d04724147aa0dd60277f149a9dd3a81360ef5905e05ce885a"
+      }
+    },
+    "preservedImportRegressions": {
+      "assertionsPassed": 22,
+      "receipt": "Artifacts/executor-review-20261102/persona-legacy-checks/results-normal.txt",
+      "testedDebugSha256": "7516a6abd7452abc7587953a69f0832729fb016767f12575de3ed4c502f5ac58",
+      "note": "Rerun on final Normal-registration build, with original Odion retained."
+    },
+    "testedCandidateRuntimes": {
+      "Debug": "8ff56a0cf9b3b37f1fbe9b1aa0173c804a611a726c61aab3f8f9ed6b39980fc3",
+      "Release": "424a276d45bfebfcf96d07a28821d094ee8b41333ce093496dbc4b73c032f308"
+    },
+    "acceptedRuntimes": {
+      "Debug": "7516a6abd7452abc7587953a69f0832729fb016767f12575de3ed4c502f5ac58",
+      "Release": "e7cf2eb6198f7262f85c4596c08fe8342a05b565847060b01100dfe0a53a0aa7"
+    },
+    "arenaComparison": {
+      "scoreUnit": "authoritative SRVPro best-of-three matches, not individual duels",
+      "comparisons": {
+        "Voiceless vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 12,
+            "losses": 8,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "24de194c-efb9-426d-8288-8e5ed6687322"
+            ],
+            "winRate95WilsonPercent": [
+              38.7,
+              78.1
+            ]
+          },
+          "candidate": {
+            "wins": 15,
+            "losses": 5,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "80257cf1-55dd-4a54-9858-0fbba5e0d356"
+            ],
+            "winRate95WilsonPercent": [
+              53.1,
+              88.8
+            ]
+          }
+        },
+        "Voiceless vs Swordsoul": {
+          "baseline": {
+            "wins": 9,
+            "losses": 11,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "24de194c-efb9-426d-8288-8e5ed6687322"
+            ],
+            "winRate95WilsonPercent": [
+              25.8,
+              65.8
+            ]
+          },
+          "candidate": {
+            "wins": 12,
+            "losses": 8,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "80257cf1-55dd-4a54-9858-0fbba5e0d356"
+            ],
+            "winRate95WilsonPercent": [
+              38.7,
+              78.1
+            ]
+          }
+        },
+        "Metalmorph vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "b45a3518-49cc-48bb-baed-0c75b334ba2f"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 1,
+            "losses": 5,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "ac858f7d-a6bc-4e91-9514-f482b2cf2862"
+            ],
+            "winRate95WilsonPercent": [
+              3.0,
+              56.4
+            ]
+          }
+        },
+        "Metalmorph vs Swordsoul": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "b45a3518-49cc-48bb-baed-0c75b334ba2f"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 4,
+            "losses": 2,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "ac858f7d-a6bc-4e91-9514-f482b2cf2862"
+            ],
+            "winRate95WilsonPercent": [
+              30.0,
+              90.3
+            ]
+          }
+        },
+        "Odion vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "a3ab4e71-f5c3-4dd8-ae22-d8dba3ec8b88"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "20057d2c-8b87-42ac-9a0b-cfe3e48cc2cb"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          }
+        },
+        "Odion vs Swordsoul": {
+          "baseline": {
+            "wins": 9,
+            "losses": 11,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "a3ab4e71-f5c3-4dd8-ae22-d8dba3ec8b88",
+              "fab395fc-b36a-4554-ae4a-1db25b31b9d3"
+            ],
+            "winRate95WilsonPercent": [
+              25.8,
+              65.8
+            ]
+          },
+          "candidate": {
+            "wins": 2,
+            "losses": 18,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "20057d2c-8b87-42ac-9a0b-cfe3e48cc2cb",
+              "4827d6e4-833d-499d-87ea-e6dbbc08951f"
+            ],
+            "winRate95WilsonPercent": [
+              2.8,
+              30.1
+            ]
+          }
+        }
+      },
+      "completedMatches": 156,
+      "completedClientProcesses": 312,
+      "nonzeroExits": 0,
+      "forcedCleanup": 0,
+      "clientErrorLogs": [],
+      "settings": {
+        "shuffled": true,
+        "coreRngSeed": null,
+        "noDeckCheck": true,
+        "rdaMemory": "disabled by .json.off marker",
+        "rooms": 2,
+        "targetPort": "recorded per run",
+        "opponentPort": 12398
+      },
+      "excludedRuns": [
+        {
+          "id": "301299d0-ec74-4e7f-b606-917b1a4ce168",
+          "reason": "excluded-memory-enabled-diagnostic",
+          "observedMatches": 28
+        },
+        {
+          "id": "ea01977d-8783-4e7e-a82c-c0db0b178b07",
+          "reason": "excluded-marker-verification",
+          "observedMatches": 6
+        }
+      ],
+      "limits": [
+        "Different shuffled draws; no paired core seed or enforced first-turn balance.",
+        "Twenty per opponent/version for Voiceless and Odion-Swordsoul, six for other personal matchups; intervals are wide.",
+        "Task-owned loopback HTTP-to-CLI adapters launch frozen real WindBot clients; SRVPro supplies results.",
+        "No exhaustive card, format or competitive-strength guarantee."
+      ],
+      "decisions": {
+        "Voiceless": "accept tested source changes",
+        "Metalmorph": "accept tested source changes",
+        "Odion": "reject broad candidate and retain original 363f7eb source"
+      },
+      "sourceIdentity": {
+        "Voiceless": "only Deck attribute differs from tested candidate-v4",
+        "Metalmorph": "exact source match to tested candidate-v4",
+        "Odion": "exact original source restored"
+      },
+      "acceptedBuildNote": "Arena results retain candidate-v4 identity. Final build restores original Odion and changes only Voiceless registration to Normal; accepted Voiceless/Metalmorph decision code matches tested candidate-v4. Final builds, 70 focused checks, 22 import assertions and 9 native scenarios were rerun.",
+      "opponentAndMemoryFilesUnchanged": true,
+      "registrationPromotion": {
+        "request": "Remove NotFinished from Voiceless registration",
+        "before": "[Deck(\"Voiceless\", \"AI_Voiceless\", \"NotFinished\")]",
+        "after": "[Deck(\"Voiceless\", \"AI_Voiceless\")]",
+        "effectiveLevel": "Normal (DeckAttribute default)",
+        "beforeSourceSha256": "59cd4878038c4948cc94d236daedb7b99791f7fbf2018412892f7d7e8277e02d",
+        "afterSourceSha256": "60d53566762da54dcc82ac90ca6da9185533effab803884a5ec39cfa8214cce2",
+        "onlyRegistrationChanged": true
+      }
+    },
+    "testedCandidateSourceHashes": {
+      "WindBot\\Game\\AI\\Decks\\OdionExecutor.cs": "f6b5886a2acd0364c3c1c35145199b0e0eabd60922eaba5d6f79e5d36305651e",
+      "WindBot\\Game\\AI\\Decks\\MetalmorphExecutor.cs": "e11182866fc5cb6a4be24b8311f2c7958a45b9bbb347a39c2ef532951bb6582a",
+      "WindBot\\Decks\\AI_Odion.ydk": "5fab1411e494567275fc04fc5f3506711ae4c999644b05c4263316852e283112",
+      "WindBot\\Decks\\AI_Metalmorph.ydk": "5f9e73ce547b2613b23f96b091124c77764398e52f63fbbe9405b8b244f3e09e"
+    },
+    "preRegistrationAcceptedRuntimes": {
+      "Debug": "b3d3a98178c4d07bdc43f09b85234d78b2791e5278eed6f0990c4f73f7c55fe3",
+      "Release": "b759044c775d6eeaac2b5d39ddbbf1a3525589ebaf16c08b9583af9ca99f069c"
+    }
+  },
+  "recordScope": "Original import evidence is retained; latestReview separates accepted Metalmorph changes from the rejected Odion candidate. The shipped Odion source is unchanged."
 }

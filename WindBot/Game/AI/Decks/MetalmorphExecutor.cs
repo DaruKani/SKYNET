@@ -111,6 +111,10 @@ namespace WindBot.Game.AI.Decks
         // The registered effect survives its source leaving the field and expires at this turn's end.
         private bool _pendingMagnamhutEndPhaseQueuePrompt = false;
 
+        // Keep accepted action context until authoritative chaining/summon events.
+        // Rejected candidates must not replace pending non-chain material ownership.
+        private ChainInfo _acceptedPromptSource;
+
         // Opponent-turn Metallize budget (Max/Flame activations on opponent turn)
         private int _oppTurnMetallizeResolvedCount = 0;
         private int _pendingOppTurnMetallizeId = 0;
@@ -245,6 +249,7 @@ namespace WindBot.Game.AI.Decks
             // 3) Primary engine starters
             // ============================================================
             AddExecutor(ExecutorType.Summon, CardId.MetalIllusionist, Summon_Illusionist);
+            AddExecutor(ExecutorType.Activate, CardId.MetalIllusionist, Illusionist_SetMetalmorph);
             AddExecutor(ExecutorType.Activate, CardId.MetalIllusionist, Illusionist_DeclareDragon);
             AddExecutor(ExecutorType.Activate, CardId.ZoaTheFiendishBeast, Zoa_SpecialFromHand);
             AddExecutor(ExecutorType.Summon, CardId.ZoaTheFiendishBeast, Summon_Zoa_NoTributeIfOppHasMonster);
@@ -299,6 +304,18 @@ namespace WindBot.Game.AI.Decks
             // 6) Housekeeping
             // ============================================================
             AddExecutor(ExecutorType.SpellSet, SpellSet_Smart);
+
+            for (int i = 0; i < Executors.Count; ++i)
+            {
+                CardExecutor registered = Executors[i];
+                if (registered.Type != ExecutorType.Activate && registered.Type != ExecutorType.SpSummon) continue;
+                Executors[i] = new CardExecutor(registered.Type, registered.CardId, () =>
+                {
+                    bool accepted = registered.Func == null || registered.Func();
+                    if (accepted) _acceptedPromptSource = new ChainInfo(Card, 0, ActivateDescription);
+                    return accepted;
+                });
+            }
         }
 
         // ============================================================
@@ -1309,39 +1326,13 @@ namespace WindBot.Game.AI.Decks
 
         private ClientCard PickFullmetalBurnTarget(IList<ClientCard> cards)
         {
-            var enemyLinkAtk = cards.Where(c => c != null
-                                             && c.Controller == 1
-                                             && c.IsFaceup()
-                                             && c.IsMonster()
-                                             && c.IsAttack()
-                                             && c.HasType(CardType.Link)
-                                             && !c.IsShouldNotBeTarget())
-                                    .OrderByDescending(FullmetalBurnAtk)
-                                    .ThenByDescending(ScoreEnemyCardForRemoval)
-                                    .FirstOrDefault();
-            if (enemyLinkAtk != null) return enemyLinkAtk;
-
-            var enemyAtk = cards.Where(c => c != null
-                                         && c.Controller == 1
-                                         && c.IsFaceup()
-                                         && c.IsMonster()
-                                         && c.IsAttack()
-                                         && !c.IsShouldNotBeTarget())
-                                .OrderByDescending(FullmetalBurnAtk)
-                                .ThenByDescending(ScoreEnemyCardForRemoval)
-                                .FirstOrDefault();
-            if (enemyAtk != null) return enemyAtk;
-
-            var enemyAnyAtk = cards.Where(c => c != null
-                                            && c.Controller == 1
-                                            && c.IsFaceup()
-                                            && c.IsMonster()
-                                            && c.IsAttack())
-                                   .OrderByDescending(FullmetalBurnAtk)
-                                   .FirstOrDefault();
-            if (enemyAnyAtk != null) return enemyAnyAtk;
-
-            return PickBestEnemyTargetOnly(cards) ?? PickBestOpponentFaceup(cards);
+            // c80870883.lua does not target or remove the selected monster. Only its
+            // original ATK determines damage; Link status and targeting protection do not.
+            return cards.Where(c => c != null && c.Controller == 1 && c.IsFaceup()
+                    && c.IsMonster() && c.IsAttack())
+                .OrderByDescending(c => c.BaseAttack)
+                .ThenByDescending(ScoreEnemyCardForRemoval)
+                .FirstOrDefault();
         }
 
         private ClientCard PreferMetalmorphToSet(IList<ClientCard> options)
@@ -1873,6 +1864,8 @@ namespace WindBot.Game.AI.Decks
         {
             base.OnNewTurn();
 
+            _acceptedPromptSource = null;
+
             _pendingMagnamhutEndPhaseQueuePrompt = false;
             _impermDangerColumns.Clear();
             _enemyActivateInfiniteImpermanenceFromHand = false;
@@ -1918,8 +1911,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChaining(int player, ClientCard card)
         {
-            Duel.LastChainTargets.Clear();
-
+            _acceptedPromptSource = null;
             if (player == 1 && card != null && card.Id == CardId.InfiniteImpermanence)
             {
                 _pendingEnemyImpermMirrorColumn = -1;
@@ -1972,7 +1964,7 @@ namespace WindBot.Game.AI.Decks
 
             // Track successful opponent-turn Metallize resolutions (Max/Flame) to enforce a per-turn budget.
             if (solving != null && Duel.Player == 1 && _pendingOppTurnMetallizeId != 0
-                && solving.ActivatePlayer == 0 && solving.IsCode(_pendingOppTurnMetallizeId))
+                && solving.ActivatePlayer == 0 && solving.IsActivateCode(_pendingOppTurnMetallizeId))
             {
                 if (!Duel.IsCurrentSolvingChainNegated())
                 {
@@ -1982,7 +1974,7 @@ namespace WindBot.Game.AI.Decks
                 _pendingOppTurnMetallizeId = 0;
             }
 
-            if (solving != null && solving.ActivatePlayer == 1 && solving.IsCode(CardId.InfiniteImpermanence))
+            if (solving != null && solving.ActivatePlayer == 1 && solving.IsActivateCode(CardId.InfiniteImpermanence))
             {
                 if (!Duel.IsCurrentSolvingChainNegated())
                 {
@@ -2012,6 +2004,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            _acceptedPromptSource = null;
             currentNegateCardList.Clear();
             _pendingEnemyImpermMirrorColumn = -1;
             _pendingEnemyImpermFromHand = false;
@@ -2048,6 +2041,18 @@ namespace WindBot.Game.AI.Decks
             }
             base.OnChainEnd();
             _calledByUsedThisChain = false;
+        }
+
+        public override void OnNewPhase()
+        {
+            _acceptedPromptSource = null;
+            base.OnNewPhase();
+        }
+
+        public override void OnSpSummoned()
+        {
+            _acceptedPromptSource = null;
+            base.OnSpSummoned();
         }
 
         public override void OnMove(ClientCard card, int pc, int pl, int cc, int cl)
@@ -2149,8 +2154,20 @@ namespace WindBot.Game.AI.Decks
             MMLog("[MM.NS.Illusionist]", "normal summon");
             return true;
         }
+        private bool Illusionist_SetMetalmorph()
+        {
+            if (Card == null || Card.Location != CardLocation.MonsterZone) return false;
+            bool summonTrigger = ActivateDescription == Util.GetStringId(CardId.MetalIllusionist, 0)
+                || (AI.SelectingEffectYn && ActivateDescription == -1 && Duel.LastSummonedCards.Contains(Card));
+            if (!summonTrigger || !IHaveRoomST()) return false;
+            MMLog("[MM.Illusionist]", "summon trigger: set Metalmorph");
+            return true;
+        }
+
         private bool Illusionist_DeclareDragon()
         {
+            if (ActivateDescription != Util.GetStringId(CardId.MetalIllusionist, 1)) return false;
+            if (Card == null || Card.Location != CardLocation.MonsterZone || Card.HasRace(CardRace.Dragon)) return false;
             if (!Bot.HasInMonstersZone(CardId.MetalIllusionist, true)) return false;
             if (Duel.Player != 0) return false;
             if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2) return false;
@@ -2221,7 +2238,6 @@ namespace WindBot.Game.AI.Decks
                 : 0;
             if (!HasMaxSummonCandidate(preferId)) return false;
 
-            AI.SelectCard(preferId);
             MarkOppTurnMetallizePending(Card.Id);
             MMLog("[MM.Max.Opp]", "convert via Illusionist/Zoa target=" + preferId);
             return true;
@@ -2247,7 +2263,6 @@ namespace WindBot.Game.AI.Decks
                              Bot.HasInMonstersZone(CardId.BystialDruiswurm, true);
             if (!bystialUp) return false;
 
-            AI.SelectCard(CardId.RedEyesBlackFullmetalDragon);
             MarkOppTurnMetallizePending(Card.Id);
             MMLog("[MM.Max.Opp]", "convert via Bystial");
             return true;
@@ -2284,7 +2299,6 @@ namespace WindBot.Game.AI.Decks
                 : 0;
             if (!HasMaxSummonCandidate(preferId)) return false;
 
-            AI.SelectCard(preferId);
             MarkOppTurnMetallizePending(Card.Id);
             MMLog("[MM.Max.Opp]", "generic convert target=" + preferId);
             return true;
@@ -2333,7 +2347,6 @@ namespace WindBot.Game.AI.Decks
                       : (canMx ? CardId.MetalzoaX : 0)));
             if (targetId == 0) return false;
 
-            AI.SelectCard(targetId);
             MarkOppTurnMetallizePending(Card.Id);
             MMLog("[MM.Flame.Opp]", "convert target=" + targetId);
             return true;
@@ -2395,14 +2408,15 @@ namespace WindBot.Game.AI.Decks
                     targetId = (targetId == CardId.MetalzoaX ? CardId.RedEyesBlackFullmetalDragon : CardId.MetalzoaX);
             }
 
-            AI.SelectCard(targetId);
             MMLog("[MM.Flame.My]", "convert target=" + targetId);
             return true;
         }
 
         private bool Flame_DestroyReplace()
         {
-            bool replace = ActivateDescription == (int)HintMsg.DestroyReplace;
+            // c91152455.lua uses SelectEffectYesNo(tp, c, 96), not HINTMSG_DESTROY_REPLACE.
+            bool replace = Card != null && Card.Location == CardLocation.SpellZone
+                && Card.IsFaceup() && ActivateDescription == 96;
             if (replace) MMLog("[MM.Flame.Replace]", "destroy replacement");
             return replace;
         }
@@ -2435,6 +2449,7 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Player != 0) return false;
             if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2) return false;
             if (Card == null || Card.Id != CardId.RedEyesBlackFullmetalDragon) return false;
+            if (Card.Location != CardLocation.Hand) return false;
             if (!IHaveRoomST()) return false;
 
             bool canSetAny = CheckRemainInDeck(CardId.MaxMetalmorph, CardId.FlameCoatingMetalmorph, CardId.TimeEngine) > 0;
@@ -2444,18 +2459,6 @@ namespace WindBot.Game.AI.Decks
             {
                 if (!WantsMetalmorphTrapSetupNow()) return false;
                 MMLog("[MM.Fullmetal.Reveal]", "reveal/set Metalmorph from hand");
-                return true;
-            }
-
-            if (Card.Location == CardLocation.MonsterZone)
-            {
-                if (!Bot.HasInMonstersZone(CardId.RedEyesBlackFullmetalDragon, true)) return false;
-                bool allCovered = HasMetalmorphTrapBoardCoverage(CardId.MaxMetalmorph)
-                               && HasMetalmorphTrapBoardCoverage(CardId.FlameCoatingMetalmorph)
-                               && HasMetalmorphTrapBoardCoverage(CardId.TimeEngine);
-                if (allCovered && !WantsMetalmorphTrapSetupNow()) return false;
-
-                MMLog("[MM.Fullmetal.Set]", "set Metalmorph trap");
                 return true;
             }
 
@@ -2923,8 +2926,6 @@ namespace WindBot.Game.AI.Decks
 
             if (discard == null) return false;
 
-            AI.SelectCard(discard);
-            AI.SelectNextCard(target);
             MMLog("[MM.Phoenix]", "discard + pop");
             return true;
         }
@@ -2974,22 +2975,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card == null || Card.Id != CardId.AccesscodeTalker) return false;
             if (ActivateDescription == Util.GetStringId(CardId.AccesscodeTalker, 1)) return false;
-
-            var picks = new List<ClientCard>();
-            int[] prefer = { CardId.DharcTheDarkCharmerGloomy, CardId.KnightmarePhoenix, CardId.HieraticSealOfTheHeavenlySpheres, CardId.SPLittleKnight, CardId.StrikerDragon };
-            foreach (int id in prefer)
-            {
-                var hit = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsCode(id) && c.HasType(CardType.Link));
-                if (hit != null) picks.Add(hit);
-            }
-            if (picks.Count == 0)
-            {
-                picks.AddRange(Bot.Graveyard.Where(c => c != null && c.HasType(CardType.Link)).OrderByDescending(c => c.LinkCount));
-            }
-            if (picks.Count == 0) return false;
-
-            AI.SelectCard(picks);
-            MMLog("[MM.Accesscode]", "gain atk from link in GY");
+            // The engine offers this trigger only when a legal Link material exists;
+            // c86066372.lua also permits face-up banished materials (e.g. under Shifter).
+            MMLog("[MM.Accesscode]", "gain atk from offered Link material");
             return true;
         }
 
@@ -3004,21 +2992,7 @@ namespace WindBot.Game.AI.Decks
                             .ToList();
             if (costPool.Count == 0) return false;
 
-            int[] prefer = { CardId.HieraticSealOfTheHeavenlySpheres, CardId.KnightmarePhoenix, CardId.DharcTheDarkCharmerGloomy, CardId.SPLittleKnight, CardId.StrikerDragon };
-            var costList = costPool.OrderBy(c =>
-            {
-                int idx = Array.IndexOf(prefer, c.Id);
-                return idx < 0 ? 99 : idx;
-            }).ThenBy(c => c.Location != CardLocation.Grave).ThenBy(c => c.LinkCount).ToList();
-
-            var targets = new List<ClientCard>();
-            targets.AddRange(Enemy.GetSpells().Where(s => s != null && s.IsFacedown() && !s.IsShouldNotBeTarget()));
-            targets.AddRange(Enemy.GetSpells().Where(s => s != null && !s.IsFacedown() && !s.IsShouldNotBeTarget()));
-            targets.AddRange(Enemy.GetMonsters().Where(m => m != null && !m.IsShouldNotBeTarget()).OrderByDescending(ScoreEnemyCardForRemoval));
-            if (targets.Count == 0) return false;
-
-            AI.SelectCard(costList);
-            AI.SelectNextCard(targets);
+            // The callback owns both the banish cost and non-targeting destruction.
             MMLog("[MM.Accesscode]", "banish link + destroy");
             return true;
         }
@@ -3807,7 +3781,6 @@ namespace WindBot.Game.AI.Decks
             if (!Bot.HasInMonstersZone(CardId.RedEyesMetalClawsDragon, true)) return false;
             if (!HasMaxSummonCandidate(CardId.RedEyesBlackFullmetalDragon)) return false;
 
-            AI.SelectCard(CardId.RedEyesBlackFullmetalDragon);
             MMLog("[MM.Max.My]", "convert Claws -> Fullmetal");
             return true;
         }
@@ -3848,7 +3821,6 @@ namespace WindBot.Game.AI.Decks
                             : (((!haveBoss || EnemyHighPressure()) && canSwordsman) ? CardId.MetalflameSwordsman : 0)));
 
             if (targetId == 0) return false;
-            AI.SelectCard(targetId);
             MMLog("[MM.Max.My]", "generic convert target=" + targetId);
             return true;
         }
@@ -4196,6 +4168,7 @@ namespace WindBot.Game.AI.Decks
         // Metalzoa X
         private bool MetalzoaX_HandRevealSet()
         {
+            if (Card == null || Card.Location != CardLocation.Hand) return false;
             if (Duel.Player != 0) return false;
             if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2) return false;
             bool wantTimeProtect = ShouldPrioritizeTimeEngineNow();
@@ -4268,55 +4241,21 @@ namespace WindBot.Game.AI.Decks
         // ============================================================
         public override bool OnSelectYesNo(int desc)
         {
-            if (desc == (int)HintMsg.DestroyReplace) return true;
-
-            // Fullmetal burn yes/no (aux.Stringid(Fullmetal,2)) happens during negate resolution.
-            // Card context can be null; route using solving/last chain context and the desc value.
-            int fullmetalBurnDesc = Util.GetStringId(CardId.RedEyesBlackFullmetalDragon, 2);
-            if (desc == fullmetalBurnDesc)
+            // Resolution choices must not rerun activation predicates (which may queue costs
+            // or reject a now-spent revival). These are the optional benefits in the loaded Lua.
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null && solving.ActivatePlayer == 0)
             {
-                var solving = Duel.GetCurrentSolvingChainCard();
-                var last = Util.GetLastChainCard();
-                bool fullmetalContext =
-                    (Card != null && Card.IsCode(CardId.RedEyesBlackFullmetalDragon))
-                    || (solving != null && solving.Controller == 0 && solving.IsCode(CardId.RedEyesBlackFullmetalDragon))
-                    || (last != null && last.Controller == 0 && last.IsCode(CardId.RedEyesBlackFullmetalDragon));
-
-                if (fullmetalContext)
-                {
-                    bool haveBurnTarget = Enemy.GetMonsters().Any(m => m != null && m.IsFaceup() && m.IsAttack() && m.BaseAttack > 0);
-                    MMLog("[MM.Fullmetal.BurnYesNo]", (haveBurnTarget ? "yes" : "no") + " desc=" + desc);
-                    return haveBurnTarget;
-                }
-            }
-
-            if (Card != null)
-            {
-                if (Card.IsCode(CardId.MaxMetalmorph)) return true;
-                if (Card.IsCode(CardId.FlameCoatingMetalmorph)) return true;
-                if (Card.IsCode(CardId.RedEyesBlackFullmetalDragon)) return Fullmetal_Negate() || Fullmetal_SetMetalmorph();
-                if (Card.IsCode(CardId.MetalzoaX)) return MetalzoaX_QuickPop() || MetalzoaX_HandRevealSet();
-                if (Card.IsCode(CardId.MetalflameSwordsman)) return Swordsman_RevealAdd();
-                if (Card.IsCode(CardId.TimeEngine)) return TimeEngine_Activate();
-                if (Card.IsCode(CardId.BystialDruiswurm)) return BystialDruiswurm_Activate();
-                if (Card.IsCode(CardId.TheBystialLubellion)) return TheBystialLubellion_Activate() || TheBystialLubellion_GraveSummon();
-                if (Card.IsCode(CardId.BrandedRegained)) return BrandedRegained_Activate();
-                if (Card.IsCode(CardId.FidraulisHarmonia)) return FidraulisHarmonia_Activate();
-                if (Card.IsCode(CardId.HopEarSquadron)) return HopEarSquadron_Activate();
-                if (Card.IsCode(CardId.AccelSynchroStardustDragon)) return AccelSynchroStardustDragon_Activate();
-                if (Card.IsCode(CardId.StardustDragon)) return StardustDragon_Activate();
-                if (Card.IsCode(CardId.StardustWarrior)) return StardustWarrior_Activate();
-                if (Card.IsCode(CardId.SatelliteWarrior)) return SatelliteWarrior_Activate();
-                if (Card.IsCode(CardId.BaronneDeFleur)) return BaronneDeFleur_Activate();
-                if (Card.IsCode(CardId.StardustDragonVictimSanctuary)) return VictimSanctuary_Activate();
-                if (Card.IsCode(CardId.DracoBerserkerOfTheTenyi)) return DracoBerserkerOfTheTenyi_Activate();
-                if (Card.IsCode(CardId.JunkWarriorExtreme)) return JunkWarriorExtreme_Activate();
-                if (Card.IsCode(CardId.SPLittleKnight)) return SPLittleKnight_BanishOnSummon() || SPLittleKnight_QuickBanish();
-                if (Card.IsCode(CardId.KnightmarePhoenix)) return KnightmarePhoenix_Pop();
-                if (Card.IsCode(CardId.AccesscodeTalker)) return Accesscode_AtkUp() || Accesscode_Destroy();
-                if (Card.IsCode(CardId.RedEyesMetalClawsDragon)) return (Duel.Player == 0) && Bot.SpellZone.Any(s => s != null && s.IsFacedown());
-                if (Card.IsCode(CardId.HeavyMetalRaiders) && Card.Location == CardLocation.SpellZone && Card.IsFaceup())
-                    return (Bot.GetMonsterCount() < 5) && Bot.Hand.Any(IsDarkMachine);
+                if (solving.IsActivateCode(CardId.RedEyesBlackFullmetalDragon)
+                    && desc == Util.GetStringId(CardId.RedEyesBlackFullmetalDragon, 2))
+                    return Enemy.GetMonsters().Any(m => m != null && m.IsFaceup() && m.IsAttack() && m.BaseAttack > 0);
+                if ((solving.IsActivateCode(CardId.MaxMetalmorph) && desc == Util.GetStringId(CardId.MaxMetalmorph, 2))
+                    || (solving.IsActivateCode(CardId.FlameCoatingMetalmorph) && desc == Util.GetStringId(CardId.FlameCoatingMetalmorph, 1))
+                    || (solving.IsActivateCode(CardId.MetalIllusionist) && desc == Util.GetStringId(CardId.MetalIllusionist, 2))
+                    || (solving.IsActivateCode(CardId.KnightmarePhoenix) && desc == Util.GetStringId(CardId.KnightmarePhoenix, 1))
+                    || (solving.IsActivateCode(CardId.TimeEngine)
+                        && (desc == Util.GetStringId(CardId.TimeEngine, 2) || desc == Util.GetStringId(CardId.TimeEngine, 3))))
+                    return true;
             }
             return base.OnSelectYesNo(desc);
         }
@@ -4324,6 +4263,15 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
         {
             if (cards == null || cards.Count == 0) return base.OnSelectCard(cards, min, max, hint, cancelable);
+
+            ChainInfo resolving = Duel.GetCurrentSolvingChainInfo();
+            ChainInfo source = resolving ?? _acceptedPromptSource ?? Duel.CurrentChainInfo.LastOrDefault();
+            ClientCard sourceCard = source != null ? source.RelatedCard : null;
+            bool hasSource = source != null && source.ActivatePlayer == 0;
+            int sourceId = source != null ? source.ActivateId : 0;
+            CardLocation sourceLocation = source != null ? source.ActivateLocation : (CardLocation)0;
+            Func<int, bool> isSource = id => hasSource && source.IsActivateCode(id);
+
 
             // Flame’s destroy-replacement — pick Flame
             if (hint == HintMsg.DestroyReplace)
@@ -4340,32 +4288,18 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(new List<ClientCard> { magPick }, cards, min, max);
             }
 
-            bool selectingTimeEngine = Card != null && Card.IsCode(CardId.TimeEngine);
-            if (!selectingTimeEngine)
-            {
-                var last = Util.GetLastChainCard();
-                selectingTimeEngine = last != null && last.IsCode(CardId.TimeEngine);
-            }
+            bool selectingTimeEngine = isSource(CardId.TimeEngine);
             if (selectingTimeEngine)
             {
                 return SelectTimeEngineTarget(cards, min, max);
             }
 
 
-            // Fullmetal burn target selection (HINTMSG_FACEUP) during negate resolution.
-            // Card context may be null; route using solving/last chain context.
-            var solvingFullmetal = Duel.GetCurrentSolvingChainCard();
-            if (solvingFullmetal == null || !solvingFullmetal.IsCode(CardId.RedEyesBlackFullmetalDragon))
-            {
-                var last = Util.GetLastChainCard();
-                if (last != null && last.Controller == 0 && last.IsCode(CardId.RedEyesBlackFullmetalDragon))
-                    solvingFullmetal = last;
-            }
-
-            if (solvingFullmetal != null && solvingFullmetal.Controller == 0 && solvingFullmetal.IsCode(CardId.RedEyesBlackFullmetalDragon))
+            // Fullmetal chooses damage from an offered original-ATK monster during resolution.
+            if (resolving != null && isSource(CardId.RedEyesBlackFullmetalDragon))
             {
                 bool looksLikeBurnTargetPrompt =
-                    min == 1 && max == 1
+                    min == 1 && max == 1 && hint == HintMsg.Faceup
                     && cards.Any(c => c != null && c.Controller == 1 && c.Location == CardLocation.MonsterZone && c.IsMonster());
 
                 if (looksLikeBurnTargetPrompt)
@@ -4380,10 +4314,9 @@ namespace WindBot.Game.AI.Decks
                 }
             }
 
-            var solvingFidraulis = Duel.GetCurrentSolvingChainCard();
-            bool solvingOwnFidraulis = solvingFidraulis != null && solvingFidraulis.Controller == 0 && solvingFidraulis.IsCode(CardId.FidraulisHarmonia);
+            bool solvingOwnFidraulis = resolving != null && isSource(CardId.FidraulisHarmonia);
 
-            if ((_pendingFidraulisRevealPrompt || solvingOwnFidraulis) && LooksLikeFidraulisRevealPrompt(cards, max, hint))
+            if (((resolving == null && _pendingFidraulisRevealPrompt) || solvingOwnFidraulis) && LooksLikeFidraulisRevealPrompt(cards, max, hint))
             {
                 if (_pendingFidraulisRevealDesiredCount > 1 && max <= 1)
                 {
@@ -4408,7 +4341,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             // Fidraulis send routing can occasionally lose Card context; keep priority deterministic.
-            if (_pendingFidraulisSendPrompt && LooksLikeFidraulisSendPrompt(cards, hint))
+            if (_pendingFidraulisSendPrompt && (resolving == null || solvingOwnFidraulis) && LooksLikeFidraulisSendPrompt(cards, hint))
             {
                 var send = PickFidraulisSendToGrave(cards) ?? cards[0];
                 _pendingFidraulisSendPrompt = false;
@@ -4416,7 +4349,7 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(new List<ClientCard> { send }, cards, min, max);
             }
 
-            if (_pendingFidraulisDestroyPrompt && LooksLikeFidraulisDestroyPrompt(cards, hint))
+            if (_pendingFidraulisDestroyPrompt && (resolving == null || solvingOwnFidraulis) && LooksLikeFidraulisDestroyPrompt(cards, hint))
             {
                 var destroy = PickBestEnemyTargetOnly(cards) ?? cards[0];
                 _pendingFidraulisDestroyPrompt = false;
@@ -4424,8 +4357,7 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(new List<ClientCard> { destroy }, cards, min, max);
             }
 
-            var solvingAccel = Duel.GetCurrentSolvingChainCard();
-            bool solvingOwnAccel = solvingAccel != null && solvingAccel.Controller == 0 && solvingAccel.IsCode(CardId.AccelSynchroStardustDragon);
+            bool solvingOwnAccel = resolving != null && isSource(CardId.AccelSynchroStardustDragon);
             if (solvingOwnAccel)
             {
                 var accelPick = SelectAccelSynchroPrompt(cards, min, max, hint);
@@ -4433,7 +4365,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             // Keep the final Accel branch deterministic even if Card context is stale or missing.
-            if (LooksLikeAccelFinalSynchroPrompt(cards, hint))
+            if (solvingOwnAccel && LooksLikeAccelFinalSynchroPrompt(cards, hint))
             {
                 bool preferSatellite = _preferSatelliteFromAccel || ShouldPreferSatelliteOverBaronne(cards);
                 var satellite = cards.FirstOrDefault(c => c != null && c.IsCode(CardId.SatelliteWarrior));
@@ -4450,7 +4382,7 @@ namespace WindBot.Game.AI.Decks
                 }
             }
 
-            if (Card == null && LooksLikeVictimSanctuarySummonPrompt(cards, hint, min, max))
+            if (isSource(CardId.StardustDragonVictimSanctuary) && LooksLikeVictimSanctuarySummonPrompt(cards, hint, min, max))
             {
                 var stardust = PickVictimSanctuarySummon(cards) ?? cards[0];
                 _pendingVictimSanctuarySummonPrompt = false;
@@ -4458,45 +4390,25 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(new List<ClientCard> { stardust }, cards, min, max);
             }
 
-            // Fullmetal reveal prompts can also arrive without Card; force trap pick policy in that case.
-            if (Card == null && LooksLikeMetalmorphTrapTutorPrompt(cards, hint))
-            {
-                var solving = Duel.GetCurrentSolvingChainCard();
-                var last = Util.GetLastChainCard();
-                bool fullmetalContext =
-                    (solving != null && solving.Controller == 0 && solving.IsCode(CardId.RedEyesBlackFullmetalDragon))
-                    || (last != null && last.Controller == 0 && last.IsCode(CardId.RedEyesBlackFullmetalDragon));
-
-                if (fullmetalContext)
-                {
-                    var trapOptions = cards.Where(c => c != null && IsMetalmorphTrapId(c.Id)).ToList();
-                    var pick = PreferFullmetalTrapToSet(trapOptions)
-                            ?? trapOptions.FirstOrDefault()
-                            ?? cards[0];
-                    MMLog("[MM.Fullmetal.SetFallback]", "pick=" + pick.Id);
-                    return Util.CheckSelectCount(new List<ClientCard> { pick }, cards, min, max);
-                }
-            }
-
-            if (Card != null)
+            if (hasSource)
             {
                 // Illusionist / Zoa: which Metalmorph to set
-                if (Card.IsCode(CardId.MetalIllusionist) || Card.IsCode(CardId.ZoaTheFiendishBeast))
+                if (isSource(CardId.MetalIllusionist) || isSource(CardId.ZoaTheFiendishBeast))
                 {
                     var pick0 = PickMetalmorphTutorCard(cards);
-                    if (pick0 != null) MMLog("[MM.Meta.SetPick]", "source=" + Card.Id + " pick=" + pick0.Id);
+                    if (pick0 != null) MMLog("[MM.Meta.SetPick]", "source=" + sourceId + " pick=" + pick0.Id);
                     return Util.CheckSelectCount(new List<ClientCard> { pick0 }, cards, min, max);
                 }
 
                 // Swordsman — choose a card that "mentions Max"
-                if (Card.IsCode(CardId.MetalflameSwordsman))
+                if (isSource(CardId.MetalflameSwordsman))
                 {
                     var pick1 = PickMetalmorphTutorCard(cards) ?? cards[0];
                     return Util.CheckSelectCount(new List<ClientCard> { pick1 }, cards, min, max);
                 }
 
                 // Heavy Metal Raiders: pick DARK Machine from hand for trigger summon.
-                if (Card.IsCode(CardId.HeavyMetalRaiders) &&
+                if (isSource(CardId.HeavyMetalRaiders) &&
                     (hint == HintMsg.SpSummon || hint == HintMsg.OperateCard || hint == 505))
                 {
                     var pool = cards.Where(c => c != null
@@ -4514,7 +4426,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // --- Max Metalmorph — release then SS (tribute-aware) ---
-                if (Card.IsCode(CardId.MaxMetalmorph))
+                if (isSource(CardId.MaxMetalmorph))
                 {
                     if (hint == HintMsg.Equip)
                     {
@@ -4634,7 +4546,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Flame Coating — cost + SS
-                if (Card.IsCode(CardId.FlameCoatingMetalmorph))
+                if (isSource(CardId.FlameCoatingMetalmorph))
                 {
                     if (hint == HintMsg.Equip)
                     {
@@ -4728,23 +4640,23 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Metalzoa X — hand (reveal): pick which Metalmorph to take
-                if (Card.IsCode(CardId.MetalzoaX) && Card.Location != CardLocation.MonsterZone)
+                if (isSource(CardId.MetalzoaX) && sourceLocation != CardLocation.MonsterZone)
                 {
                     var pick3 = PickMetalmorphTutorCard(cards);
                     return Util.CheckSelectCount(new List<ClientCard> { pick3 }, cards, min, max);
                 }
 
                 // Metalzoa X — on field: pick best enemy face-up to pop
-                if (Card.IsCode(CardId.MetalzoaX) && Card.Location == CardLocation.MonsterZone)
+                if (isSource(CardId.MetalzoaX) && sourceLocation == CardLocation.MonsterZone)
                 {
                     var target = PickBestOpponentFaceup(cards);
                     return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
                 }
 
                 // Fullmetal: burn target = highest original ATK attack-position enemy monster.
-                if (Card.IsCode(CardId.RedEyesBlackFullmetalDragon))
+                if (isSource(CardId.RedEyesBlackFullmetalDragon))
                 {
-                    bool canBurn = Card.Location == CardLocation.MonsterZone;
+                    bool canBurn = sourceLocation == CardLocation.MonsterZone;
                     bool hasBurnCandidates = cards.Any(c => c != null && c.Controller == 1 && c.IsMonster() && c.IsAttack());
                     if (canBurn && hasBurnCandidates && (hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                     {
@@ -4768,9 +4680,9 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Black Metal Dragon (GY trigger): REDMD -> Fullmetal -> Claws (missing-piece aware).
-                if (Card.IsCode(CardId.BlackMetalDragon))
+                if (isSource(CardId.BlackMetalDragon))
                 {
-                    if (Card.Location == CardLocation.Grave &&
+                    if (sourceLocation == CardLocation.Grave &&
                         (hint == HintMsg.AddToHand || hint == HintMsg.OperateCard || hint == 505))
                     {
                         bool forceRedmd = ShouldForceRedmdFromBmdSearch(cards);
@@ -4779,7 +4691,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { pick5 }, cards, min, max);
                     }
 
-                    if (Card.Location != CardLocation.Grave &&
+                    if (sourceLocation != CardLocation.Grave &&
                         (hint == HintMsg.Target || hint == HintMsg.Equip || hint == HintMsg.OperateCard || hint == 505))
                     {
                         bool canEquipToRedmd = HasSecondBmdBodyForRedmdEquip()
@@ -4795,9 +4707,9 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Bystials (hand summon target + Magnamhut end-phase search + Druiswurm GY send)
-                if (Card.IsCode(CardId.BystialMagnamhut) || Card.IsCode(CardId.BystialDruiswurm))
+                if (isSource(CardId.BystialMagnamhut) || isSource(CardId.BystialDruiswurm))
                 {
-                    if (Card.Location == CardLocation.Hand &&
+                    if (sourceLocation == CardLocation.Hand &&
                         (hint == HintMsg.Remove || hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var pickBanish =
@@ -4809,8 +4721,8 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { pickBanish }, cards, min, max);
                     }
 
-                    if (Card.IsCode(CardId.BystialDruiswurm) &&
-                        Card.Location == CardLocation.Grave &&
+                    if (isSource(CardId.BystialDruiswurm) &&
+                        sourceLocation == CardLocation.Grave &&
                         (hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var pickSend =
@@ -4821,9 +4733,9 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.TheBystialLubellion))
+                if (isSource(CardId.TheBystialLubellion))
                 {
-                    if (Card.Location == CardLocation.Hand &&
+                    if (sourceLocation == CardLocation.Hand &&
                         (hint == HintMsg.ToGrave || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var pickDump =
@@ -4835,7 +4747,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { pickDump }, cards, min, max);
                     }
 
-                    if (Card.Location == CardLocation.Grave &&
+                    if (sourceLocation == CardLocation.Grave &&
                         (hint == HintMsg.Release || hint == HintMsg.ToGrave || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var darkDragon6 =
@@ -4851,7 +4763,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { pickTrib }, cards, min, max);
                     }
 
-                    if (Card.Location == CardLocation.MonsterZone &&
+                    if (sourceLocation == CardLocation.MonsterZone &&
                         (hint == HintMsg.OperateCard || hint == HintMsg.AddToHand || hint == 505))
                     {
                         var pickBranded =
@@ -4861,7 +4773,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.BrandedRegained) &&
+                if (isSource(CardId.BrandedRegained) &&
                     (hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                 {
                     var pickRegained =
@@ -4878,7 +4790,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // REDMD revive priority
-                if (Card.IsCode(CardId.RedEyesDarknessMetalDragon))
+                if (isSource(CardId.RedEyesDarknessMetalDragon))
                 {
                     var bmd = cards.FirstOrDefault(c => c != null && c.IsCode(CardId.BlackMetalDragon));
                     if (bmd != null) return Util.CheckSelectCount(new List<ClientCard> { bmd }, cards, min, max);
@@ -4896,14 +4808,14 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Striker Dragon — ensure BMD is used as material
-                if (Card.IsCode(CardId.StrikerDragon) && hint == HintMsg.LinkMaterial)
+                if (isSource(CardId.StrikerDragon) && hint == HintMsg.LinkMaterial)
                 {
                     var bmd2 = cards.FirstOrDefault(c => c != null && c.IsCode(CardId.BlackMetalDragon));
                     if (bmd2 != null) return Util.CheckSelectCount(new List<ClientCard> { bmd2 }, cards, min, max);
                 }
 
                 // Incoming Machine! — choose what to add (Deck/GY)
-                if (Card.IsCode(CardId.IncomingMachine))
+                if (isSource(CardId.IncomingMachine))
                 {
                     // Priorities:
                     // A) If we don't have a Max facedown and any copy exists → pick Max Metalmorph first.
@@ -4924,7 +4836,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Claws — cost & add
-                if (Card.IsCode(CardId.RedEyesMetalClawsDragon))
+                if (isSource(CardId.RedEyesMetalClawsDragon))
                 {
                     if (hint == HintMsg.ToGrave)
                     {
@@ -4971,7 +4883,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Called by / Crossout / Imperm targets
-                if (Card.IsCode(CardId.CalledByTheGrave))
+                if (isSource(CardId.CalledByTheGrave))
                 {
                     // First choice: the exact name matching the last chain card from the OPPONENT’s GY
                     var last = Util.GetLastChainCard();
@@ -4999,7 +4911,7 @@ namespace WindBot.Game.AI.Decks
                     return base.OnSelectCard(cards, min, max, hint, cancelable);
                 }
 
-                if (Card.IsCode(CardId.InfiniteImpermanence))
+                if (isSource(CardId.InfiniteImpermanence))
                 {
                     var negateTargets = GetMonsterListForTargetNegate(true, CardType.Trap);
                     foreach (var pick in negateTargets)
@@ -5031,7 +4943,7 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
                 }
 
-                if (Card.IsCode(CardId.FidraulisHarmonia))
+                if (isSource(CardId.FidraulisHarmonia))
                 {
                     if (hint == HintMsg.Target || hint == HintMsg.Destroy)
                     {
@@ -5074,7 +4986,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.HopEarSquadron))
+                if (isSource(CardId.HopEarSquadron))
                 {
                     if (hint == HintMsg.Faceup || hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505)
                     {
@@ -5114,13 +5026,13 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.AccelSynchroStardustDragon))
+                if (isSource(CardId.AccelSynchroStardustDragon))
                 {
                     var accelPick = SelectAccelSynchroPrompt(cards, min, max, hint);
                     if (accelPick != null) return accelPick;
                 }
 
-                if (Card.IsCode(CardId.StardustDragonVictimSanctuary) &&
+                if (isSource(CardId.StardustDragonVictimSanctuary) &&
                     LooksLikeVictimSanctuarySummonPrompt(cards, hint, min, max))
                 {
                     var stardust = PickVictimSanctuarySummon(cards) ?? cards[0];
@@ -5129,9 +5041,9 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(new List<ClientCard> { stardust }, cards, min, max);
                 }
 
-                if (Card.IsCode(CardId.SatelliteWarrior))
+                if (isSource(CardId.SatelliteWarrior))
                 {
-                    if (Card.Location == CardLocation.MonsterZone &&
+                    if (sourceLocation == CardLocation.MonsterZone &&
                         (hint == HintMsg.Destroy || hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var pool = cards.Where(c => c != null && c.Controller == 1 && !c.IsShouldNotBeTarget())
@@ -5143,7 +5055,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(picked, cards, min, max);
                     }
 
-                    if (Card.Location == CardLocation.Grave &&
+                    if (sourceLocation == CardLocation.Grave &&
                         (hint == HintMsg.SpSummon || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var revivePool = GetSatelliteRevivePool(cards);
@@ -5155,7 +5067,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.BaronneDeFleur) &&
+                if (isSource(CardId.BaronneDeFleur) &&
                     ((hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505)
                      || (max == 1 && cards.Any(c => c != null && (c.Location == CardLocation.MonsterZone || c.Location == CardLocation.SpellZone)))))
                 {
@@ -5170,8 +5082,8 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(new List<ClientCard> { baronneTarget }, cards, min, max);
                 }
 
-                if (Card.IsCode(CardId.StardustWarrior) &&
-                    Card.Location == CardLocation.Grave &&
+                if (isSource(CardId.StardustWarrior) &&
+                    sourceLocation == CardLocation.Grave &&
                     (hint == HintMsg.SpSummon || hint == HintMsg.OperateCard || hint == 505))
                 {
                     var pickWarrior =
@@ -5182,8 +5094,8 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(new List<ClientCard> { pickWarrior }, cards, min, max);
                 }
 
-                if (Card.IsCode(CardId.JunkWarriorExtreme) &&
-                    Card.Location == CardLocation.MonsterZone &&
+                if (isSource(CardId.JunkWarriorExtreme) &&
+                    sourceLocation == CardLocation.MonsterZone &&
                     (hint == HintMsg.SpSummon || hint == HintMsg.OperateCard || hint == 505))
                 {
                     var revivePool = GetJunkWarriorExtremeRevivePool(cards);
@@ -5196,10 +5108,10 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.SPLittleKnight) &&
+                if (isSource(CardId.SPLittleKnight) &&
                     (hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                 {
-                    var self = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsCode(CardId.SPLittleKnight)) ?? Card;
+                    var self = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsCode(CardId.SPLittleKnight)) ?? sourceCard;
                     var enemy =
                           cards.FirstOrDefault(c => c != null && c.Controller == 1 && c.IsFaceup() && c.IsMonster() && !c.IsShouldNotBeTarget())
                        ?? cards.FirstOrDefault(c => c != null && c.Controller == 1 && c.IsFaceup() && !c.IsShouldNotBeTarget())
@@ -5211,7 +5123,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // REDMD hand-SS cost: banish Striker first, else lowest-value Dragon
-                if (Card.IsCode(CardId.RedEyesDarknessMetalDragon) && (hint == HintMsg.Remove || hint == HintMsg.Release))
+                if (isSource(CardId.RedEyesDarknessMetalDragon) && (hint == HintMsg.Remove || hint == HintMsg.Release))
                 {
                     var choices = cards.Where(c => c != null && c.IsFaceup() && c.HasRace(CardRace.Dragon)).ToList();
                     var striker = choices.FirstOrDefault(c => c.IsCode(CardId.StrikerDragon));
@@ -5224,7 +5136,7 @@ namespace WindBot.Game.AI.Decks
                 // =========================
                 //  HIERATIC SEAL SELECTORS
                 // =========================
-                if (Card.IsCode(CardId.HieraticSealOfTheHeavenlySpheres) && hint == HintMsg.Release)
+                if (isSource(CardId.HieraticSealOfTheHeavenlySpheres) && hint == HintMsg.Release)
                 {
                     var self = cards.FirstOrDefault(c => c != null && c.IsCode(CardId.HieraticSealOfTheHeavenlySpheres));
                     if (self != null)
@@ -5273,7 +5185,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Seal float target — prefer Bystials for the Lubellion/Regained route
-                if (Card.IsCode(CardId.HieraticSealOfTheHeavenlySpheres) &&
+                if (isSource(CardId.HieraticSealOfTheHeavenlySpheres) &&
                    (hint == HintMsg.SpSummon || ((hint == HintMsg.OperateCard || hint == 505) && LooksLikeSealFloatPrompt(cards))))
                 {
                     // 0) Magnamhut > Druiswurm
@@ -5298,16 +5210,16 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // Seal bounce target
-                if (Card.IsCode(CardId.HieraticSealOfTheHeavenlySpheres) &&
+                if (isSource(CardId.HieraticSealOfTheHeavenlySpheres) &&
                     (hint == HintMsg.OperateCard || hint == 505 || hint == HintMsg.Target))
                 {
                     var target = PickSealBounceTarget(cards);
                     return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
                 }
 
-                if (Card.IsCode(CardId.DharcTheDarkCharmerGloomy))
+                if (isSource(CardId.DharcTheDarkCharmerGloomy))
                 {
-                    if (Card.Location == CardLocation.MonsterZone &&
+                    if (sourceLocation == CardLocation.MonsterZone &&
                         (hint == HintMsg.SpSummon || hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var steal = PickDharcStealTarget(cards) ?? cards[0];
@@ -5315,7 +5227,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { steal }, cards, min, max);
                     }
 
-                    if (Card.Location == CardLocation.Grave &&
+                    if (sourceLocation == CardLocation.Grave &&
                         (hint == HintMsg.AddToHand || hint == HintMsg.OperateCard || hint == 505))
                     {
                         var add =
@@ -5328,9 +5240,9 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.KnightmarePhoenix))
+                if (isSource(CardId.KnightmarePhoenix))
                 {
-                    if (hint == HintMsg.ToGrave || hint == HintMsg.Release)
+                    if (hint == HintMsg.Discard || hint == HintMsg.ToGrave || hint == HintMsg.Release)
                     {
                         var discard =
                               cards.FirstOrDefault(c => c != null && !c.IsCode(CardId.MaxMetalmorph) && !c.IsCode(CardId.FlameCoatingMetalmorph) &&
@@ -5340,7 +5252,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(new List<ClientCard> { discard }, cards, min, max);
                     }
 
-                    if (hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505)
+                    if (hint == HintMsg.Destroy || hint == HintMsg.Target || hint == HintMsg.OperateCard || hint == 505)
                     {
                         var spellRanked = GetNormalEnemySpellTargetList(true, true, CardType.Monster);
                         var pop = spellRanked.FirstOrDefault(c => c != null && cards.Contains(c) && IsEnemyFieldCard(c))
@@ -5351,43 +5263,54 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if (Card.IsCode(CardId.AccesscodeTalker))
+                if (isSource(CardId.AccesscodeTalker))
                 {
+                    if (hint == HintMsg.Target)
+                    {
+                        // Only the ATK-gain effect targets. Its offered list is the actual
+                        // material group, including face-up banished Link monsters.
+                        var material = cards.Where(c => c != null && c.HasType(CardType.Link))
+                            .OrderByDescending(c => c.LinkCount > 0 ? c.LinkCount : (c.Data != null ? c.Data.Level : 0))
+                            .FirstOrDefault();
+                        if (material != null)
+                            return Util.CheckSelectCount(new List<ClientCard> { material }, cards, min, max);
+                    }
+
                     if (hint == HintMsg.Remove || hint == HintMsg.ToGrave || hint == HintMsg.Release)
                     {
-                        var cost =
-                              cards.FirstOrDefault(c => c != null && c.IsCode(CardId.HieraticSealOfTheHeavenlySpheres))
-                           ?? cards.FirstOrDefault(c => c != null && c.IsCode(CardId.KnightmarePhoenix))
-                           ?? cards.FirstOrDefault(c => c != null && c.IsCode(CardId.DharcTheDarkCharmerGloomy))
-                           ?? cards.FirstOrDefault(c => c != null && c.IsCode(CardId.SPLittleKnight))
-                           ?? cards.FirstOrDefault(c => c != null && c.IsCode(CardId.StrikerDragon))
-                           ?? cards.FirstOrDefault(c => c != null && c.HasType(CardType.Link))
-                           ?? cards[0];
+                        int[] prefer = { CardId.HieraticSealOfTheHeavenlySpheres, CardId.KnightmarePhoenix,
+                            CardId.DharcTheDarkCharmerGloomy, CardId.SPLittleKnight, CardId.StrikerDragon };
+                        var cost = cards.Where(c => c != null && c.HasType(CardType.Link)).OrderBy(c =>
+                        {
+                            int rank = Array.IndexOf(prefer, c.Id);
+                            return rank < 0 ? 99 : rank;
+                        }).ThenBy(c => c.Location != CardLocation.Grave).ThenBy(c => c.LinkCount).FirstOrDefault()
+                            ?? cards[0];
                         return Util.CheckSelectCount(new List<ClientCard> { cost }, cards, min, max);
                     }
 
-                    if (hint == HintMsg.Target)
+                    if (hint == HintMsg.Destroy)
                     {
-                        var spellRanked = GetNormalEnemySpellTargetList(true, true, CardType.Monster);
-                        var allRanked = GetNormalEnemyTargetList(true, true, CardType.Monster);
+                        var spellRanked = GetNormalEnemySpellTargetList(false, true, CardType.Monster);
+                        var allRanked = GetNormalEnemyTargetList(false, true, CardType.Monster);
                         var pop = spellRanked.FirstOrDefault(c => c != null && cards.Contains(c) && IsEnemyFieldCard(c))
                            ?? allRanked.FirstOrDefault(c => c != null && cards.Contains(c) && IsEnemyFieldCard(c))
-                           ?? cards.FirstOrDefault(c => c != null && c.Controller == 1 && c.Location == CardLocation.SpellZone && c.IsFacedown() && !c.IsShouldNotBeTarget())
-                           ?? cards.FirstOrDefault(c => c != null && c.Controller == 1 && !c.IsShouldNotBeTarget())
+                           ?? cards.FirstOrDefault(c => c != null && c.Controller == 1 && c.Location == CardLocation.SpellZone && c.IsFacedown())
+                           ?? cards.FirstOrDefault(c => c != null && c.Controller == 1)
                            ?? cards[0];
                         return Util.CheckSelectCount(new List<ClientCard> { pop }, cards, min, max);
                     }
                 }
 
-                if ((Card.IsCode(CardId.AccelSynchroStardustDragon) || Card.IsCode(CardId.SatelliteWarrior)
-                    || Card.IsCode(CardId.BaronneDeFleur) || Card.IsCode(CardId.StardustWarrior)
-                    || Card.IsCode(CardId.DracoBerserkerOfTheTenyi))
+                if ((isSource(CardId.AccelSynchroStardustDragon) || isSource(CardId.SatelliteWarrior)
+                    || isSource(CardId.BaronneDeFleur) || isSource(CardId.StardustWarrior)
+                    || isSource(CardId.DracoBerserkerOfTheTenyi))
                     && hint == HintMsg.SynchroMaterial)
                 {
                     var own = cards.Where(c => c != null && c.Controller == 0 && c.IsFaceup()).ToList();
                     if (own.Count >= 2)
                     {
-                        if (Card.IsCode(CardId.AccelSynchroStardustDragon))
+                        if (isSource(CardId.AccelSynchroStardustDragon))
                         {
                             var tuner = own.FirstOrDefault(c => c.IsCode(CardId.HopEarSquadron) && c.HasType(CardType.Tuner))
                                      ?? own.FirstOrDefault(c => c.HasType(CardType.Tuner));
@@ -5400,7 +5323,7 @@ namespace WindBot.Game.AI.Decks
                                 return Util.CheckSelectCount(new List<ClientCard> { tuner, non }, cards, min, max);
                         }
 
-                        if (Card.IsCode(CardId.SatelliteWarrior) || Card.IsCode(CardId.BaronneDeFleur) || Card.IsCode(CardId.StardustWarrior))
+                        if (isSource(CardId.SatelliteWarrior) || isSource(CardId.BaronneDeFleur) || isSource(CardId.StardustWarrior))
                         {
                             var tuner = own.FirstOrDefault(c => c.IsCode(CardId.HopEarSquadron) && c.HasType(CardType.Tuner))
                                      ?? own.FirstOrDefault(c => c.HasType(CardType.Tuner));
@@ -5413,7 +5336,7 @@ namespace WindBot.Game.AI.Decks
                                 return Util.CheckSelectCount(new List<ClientCard> { tuner, non }, cards, min, max);
                         }
 
-                        if (Card.IsCode(CardId.DracoBerserkerOfTheTenyi))
+                        if (isSource(CardId.DracoBerserkerOfTheTenyi))
                         {
                             var dracoMats = PickDracoBerserkerMaterials(own, 8);
                             if (dracoMats != null && dracoMats.Count >= 2)
@@ -5422,11 +5345,11 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
 
-                if ((Card.IsCode(CardId.HieraticSealOfTheHeavenlySpheres) || Card.IsCode(CardId.SPLittleKnight) || Card.IsCode(CardId.DharcTheDarkCharmerGloomy) ||
-                     Card.IsCode(CardId.KnightmarePhoenix) || Card.IsCode(CardId.AccesscodeTalker)) &&
+                if ((isSource(CardId.HieraticSealOfTheHeavenlySpheres) || isSource(CardId.SPLittleKnight) || isSource(CardId.DharcTheDarkCharmerGloomy) ||
+                     isSource(CardId.KnightmarePhoenix) || isSource(CardId.AccesscodeTalker)) &&
                     hint == HintMsg.LinkMaterial)
                 {
-                    if (Card.IsCode(CardId.HieraticSealOfTheHeavenlySpheres))
+                    if (isSource(CardId.HieraticSealOfTheHeavenlySpheres))
                     {
                         var redmd = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsFaceup() && c.IsCode(CardId.RedEyesDarknessMetalDragon));
                         var bmd = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsFaceup() && c.IsCode(CardId.BlackMetalDragon));
@@ -5439,7 +5362,7 @@ namespace WindBot.Game.AI.Decks
                             return Util.CheckSelectCount(new List<ClientCard> { drags[0], drags[1] }, cards, min, max);
                     }
 
-                    if (Card.IsCode(CardId.DharcTheDarkCharmerGloomy))
+                    if (isSource(CardId.DharcTheDarkCharmerGloomy))
                     {
                         var pool = cards.Where(c => c != null
                                                  && c.Controller == 0
@@ -5464,7 +5387,7 @@ namespace WindBot.Game.AI.Decks
                         if (dark != null && other != null) return Util.CheckSelectCount(new List<ClientCard> { dark, other }, cards, min, max);
                     }
 
-                    if (Card.IsCode(CardId.SPLittleKnight))
+                    if (isSource(CardId.SPLittleKnight))
                     {
                         var lub = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsFaceup() && c.IsCode(CardId.TheBystialLubellion) && !IsProtectedForLinkMat(c));
                         var low = cards.Where(c => c != null && c.Controller == 0 && c.IsFaceup() && c != lub
@@ -5485,7 +5408,7 @@ namespace WindBot.Game.AI.Decks
                         if (mats.Count >= 2) return Util.CheckSelectCount(mats, cards, min, max);
                     }
 
-                    if (Card.IsCode(CardId.KnightmarePhoenix))
+                    if (isSource(CardId.KnightmarePhoenix))
                     {
                         bool keepDharc = Bot.HasInMonstersZone(CardId.DharcTheDarkCharmerGloomy, true)
                                       && Bot.HasInExtra(CardId.AccesscodeTalker)
@@ -5502,7 +5425,7 @@ namespace WindBot.Game.AI.Decks
                         if (first != null && second != null) return Util.CheckSelectCount(new List<ClientCard> { first, second }, cards, min, max);
                     }
 
-                    if (Card.IsCode(CardId.AccesscodeTalker))
+                    if (isSource(CardId.AccesscodeTalker))
                     {
                         var phoenix = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsFaceup() && c.IsCode(CardId.KnightmarePhoenix));
                         var dharc = cards.FirstOrDefault(c => c != null && c.Controller == 0 && c.IsFaceup() && c.IsCode(CardId.DharcTheDarkCharmerGloomy));

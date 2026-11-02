@@ -4,14 +4,11 @@ WindBot is a C# duel bot for [YGOPro](https://github.com/Fluorohydride/ygopro). 
 
 ## This workspace
 
-`WindBot/` is the normal deck-executor repository restored from
-[`ElderLich/windbot-elder`](https://github.com/ElderLich/windbot-elder) at
-`0aa00265d7b378f7e0aee59dedb298d4e356b9b3` (clean source checkout). The normal
-architecture, solution/project names, executor/deck names, `WindBot.exe` and
-`Bot.exe` are retained; subsequent executor improvements are documented below.
-The separate training AI and Arena are described in
-the [workspace README](../README.md). This folder has no nested Git repository;
-changes are tracked by the enclosing workspace.
+`WindBot/` contains the normal deck-executor bot, including `WindBot.sln`,
+`WindBot.exe`, the `BotWrapper` launcher and the existing deck registrations.
+The separate training AI and comparison console are described in the
+[workspace README](../README.md). All three projects share the enclosing Git
+repository. Source origins are retained in the provenance receipts below.
 
 From the workspace root, build with Visual Studio/MSBuild for .NET Framework 4.8:
 
@@ -45,8 +42,7 @@ additional byte-identical copy of `Universal.EN.json` because the original
 WindBot default expects that filename. `BotWrapper/bot.conf` comes from
 `D:\Programs\GitHub\MDPro4_Data\Data\locales\en-US\bot.conf`. Exact SHA-256 hashes
 and source provenance are in [resource-provenance.json](resource-provenance.json).
-The supplied English roster's 76 explicit bot commands resolve to existing
-executor and dialog names. Both projects copy their runtime resources when built.
+The English roster commands resolve to the included executor and dialog names. Both projects copy their runtime resources when built.
 These snapshots do not automatically follow later changes in MDPro4_Data.
 
 `BotWrapper` is a game integration launcher: its working directory must contain
@@ -56,9 +52,9 @@ copy them into that game layout when deploying. Running `WindBot.exe` directly
 does not read `bot.conf`; it uses `Deck=`, `Dialog=`, and the other options below.
 No external game files are changed by this workspace setup.
 
-## Executor imports and RDA-first authoring
+## Executors and RDA-first authoring
 
-The normal bot now includes these explicitly selected imports. All four are
+These additional executors are included in the normal bot. All four are
 listed in `BotWrapper/bot.conf` with `Dialog=Universal.EN`; their original executor
 registrations are preserved. Difficulty flags are left unassigned until measured.
 
@@ -66,10 +62,10 @@ registrations are preserved. Difficulty flags are left unassigned until measured
 | --- | --- | --- |
 | Sirokami Dark Magician | `SirokamiDarkMagician` | [PR #296](https://github.com/IceYGO/windbot/pull/296), pinned `12d5270` |
 | Raise Moon | `RaiseMoon` | [PR #297](https://github.com/IceYGO/windbot/pull/297), pinned `12a1d1b` |
-| Metalmorph | `Metalmorph` | User's desktop `metalmorph` source and deck |
-| Odion | `Odion` | User's desktop `metalmorph` source and deck |
+| Metalmorph | `Metalmorph` | Supplied personal source and deck |
+| Odion | `Odion` | Supplied personal source and deck |
 
-The upstream PRs were open and had no submitted reviews at import. The
+The pinned upstream revisions were unreviewed at import. The
 [upstream receipt](executor-provenance.json) records exact revisions, script
 evidence, local compatibility changes and focused checks. The
 [personal-executor receipt](personal-executor-provenance.json) records the supplied
@@ -77,9 +73,8 @@ files and fixes. Metalmorph's obsolete `100256007` and Odion's `100257013` were
 mapped to released cards `76636978` and `27118421`, respectively, using the selected
 database and matching Lua scripts. Both `.ydk` files and their handlers use those IDs.
 
-These are bounded integration reviews. Other branches of the large imported
-executors remain unreviewed; the personal sources still contain legacy callback
-assumptions. Sirokami's upstream combo gate is disabled in its submitted code.
+The personal executors have a follow-up script and callback audit described below.
+Coverage is bounded; large untested branches remain. Sirokami's upstream combo gate is disabled in its submitted code.
 RaiseMoon's optional lexical script helper accepts `SHENGYUE_SCRIPT_DIR` or a
 runtime-local `script/` directory, with bounded reads; it does not inspect an
 engine's private state or extract `script.zip`. Its guesses are not rule simulation.
@@ -87,8 +82,7 @@ engine's private state or extract `script.zip`. Its guesses are not rule simulat
 For **new executor development**, use the
 [RDA-based template](Templates/RdaPlannerExecutor.cs.template), the newer live
 [Crimson King executor](Game/AI/Decks/TheCrimsonKingExecutor.cs), and the concise
-[authoring guide](Guides/ExecutorAuthoring.md). The desktop RDA source is older
-than this repository's implementation and was not copied over it. The template
+[authoring guide](Guides/ExecutorAuthoring.md). The template
 separates observed state, deck-specific model transitions, bounded search and
 committing actual offered actions. It is deliberately unregistered and requires
 the new deck's effects and prompt handling before it can play.
@@ -100,12 +94,10 @@ hands (Soul, Bone, and Power Vice + Darkness) retain the baseline's exact final
 boards, scores and step counts. This establishes those model regressions, not
 full rules correctness or a higher win rate.
 
-This update passed Debug and Release builds, 25 upstream-import assertions,
-22 personal-executor assertions, and 14 RDA scheduling/model checks. Each of the
-four imports and the final RDA Debug build completed a native pilot against
-OldSchool with owned processes retiring normally. The catalog constructs all
-79 explicitly selected Arena matchups (default bulk selection excludes LV1).
-These pilots use no-shuffle/no-deck-check fixtures and do not establish strength.
+The import receipts retain their original compatibility checks and native pilots.
+Those pilots establish completion for the recorded binaries, not current
+competitive strength. Run the checks and compare frozen builds after each
+behavior change.
 
 Run the maintained checks from the workspace root with explicit inputs:
 
@@ -122,16 +114,51 @@ hands, expected actions, interruptions and resets. Native fixtures then verify
 actual script prompts. [Arena](../Arena/README.md) compares preserved baseline and
 candidate binaries across opponents; its current UI does not inject hands or
 assert combo milestones. Keep match results separate from fixed-hand model tests.
+RDA has its own local opponent memory. For a fixed-opponent benchmark, create an
+empty `WindBot_knowledge/TheCrimsonKing_knowledge.json.off` file beside **each
+participating executable** before launching any clients. This existing marker
+disables both collection and memory-based decisions. Verify the trace reports
+`memory: disabled, deciding without it`; a frozen executable alone does not freeze
+RDA's policy when its memory file keeps changing. Keep normal play's memory
+settings separate from these isolated benchmark runtimes.
+
 Use a **Debug** normal WindBot build with the existing `native_smoke.py` verifier:
 the original client's start/result markers are compiled out in Release, so a
 Release duel cannot satisfy that tool's completion assertions. Arena uses the
 server's ranking API and can compare Release binaries.
 
-The updated [executor skill](Skills/windbot-executor-builder/SKILL.md) is maintained
-here and installed locally. It replaces the old desktop prompt workflow; unrelated
-skills remain intact. The old guides, card notes, source variants and three RDA
-replays are preserved in a verified archive under `Artifacts/guide-consolidation/`.
-The [inventory](Guides/legacy-guide-inventory.json) records their hashes.
+The [executor skill](Skills/windbot-executor-builder/SKILL.md) and
+[authoring guide](Guides/ExecutorAuthoring.md) contain the maintained workflow.
+Use these with the current card scripts and observed duel traces.
+
+## Personal executor checks
+
+Metalmorph retains its supplied deck list, registration and strategic priorities.
+Its maintained checks exercise real WindBot dispatch and selection callbacks
+against the selected card database. **Odion retains its original executor.** Its
+attempted callback/effect fixes passed 16 focused checks but scored worse in Arena,
+so the broad candidate was rejected. Its source, patch, harness and receipts remain
+in local `Artifacts/executor-review-20261102/rejected-odion/` for investigation.
+
+Metal Illusionist distinguishes its summon tutor from its race
+change, Flame uses the actual replacement prompt, and Time Engine answers its
+resolution benefits without re-running activation logic. Fullmetal chooses burn
+damage using original ATK. Max/Flame, Phoenix and Accesscode selections follow
+the scripts' actual cost/target/resolution prompts without duplicate queues.
+Callback identity comes from accepted actions or immutable chain snapshots.
+
+```powershell
+.\WindBot\Tools\Invoke-MetalmorphChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database 'D:/Programs/GitHub/MDPro4_Data/Data/locales/en-US/cards.cdb' `
+  -Deck WindBot/Decks/AI_Metalmorph.ydk `
+  -OutputDirectory Artifacts/metalmorph-checks-my-change
+```
+
+Use fresh output directories. These synthetic checks establish dispatch, prompts
+and state behavior; real Lua-backed duels and Arena results are separate evidence.
+The [personal-executor receipt](personal-executor-provenance.json) retains source
+origins, exact script hashes and before/after validation.
 
 ## Sky Striker 2026 executor
 
@@ -171,9 +198,8 @@ separate evidence before treating the executor as competitively tuned.
 
 ## Voiceless Voice routes and recovery
 
-`Deck=Voiceless` still loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck now
-includes Blessing in place of one Solemn Strike; Linkuriboh and Secure Gardna
-bring the Extra Deck to nine cards. The executor uses the RDA structure of
+`Deck=Voiceless` loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck includes
+Blessing; the nine-card Extra Deck includes Linkuriboh and Secure Gardna. The executor uses the RDA structure of
 observed state, isolated card transitions, bounded search and actual-offer
 execution. It does not run Lua inside its planner or share SKYNET training state.
 
@@ -202,9 +228,9 @@ Location/effect-specific handlers and script-stage selection callbacks cover Lo,
 Barrier, Saffira, Skull Guardian, Prayers, Diviner/Trias, Blessing, Dragon Sage,
 Sauravis, Radiance and the three Link routes. Single optional triggers with an
 unknown description use observed summon context. Selection and effect-use state
-reset at their actual chain/phase/turn boundaries. Existing names and the explicit
-`NotFinished` registration remain; the measured scenarios do not imply exhaustive
-card, matchup or tag-duel coverage.
+reset at their actual chain/phase/turn boundaries. Existing names remain. Voiceless now uses the default `Normal` registration and
+can enter the normal random-deck pool. The measured scenarios do not imply
+exhaustive card, matchup or tag-duel coverage.
 
 Run focused dispatcher/prompt checks from the workspace root:
 
@@ -246,29 +272,64 @@ paths on another machine. Use a Debug client for its authoritative result logs.
 Exact source/script/deck hashes and separate focused, native and Arena evidence
 are recorded in [voiceless-provenance.json](voiceless-provenance.json).
 
-The 2026-11-02 candidate passed Debug/Release builds, C# 6 compilation of both
-changed executor sources, 27 dispatcher/lifecycle checks, 50 pure-model assertions
-and all nine native scenarios. The final frozen Arena comparison completed 44
-best-of-three **matches**, with zero flees, client errors or forced client cleanup.
-Both versions used the same updated Voiceless deck. The balanced mirror was
-24-0 for the new executor (12 matches in each endpoint slot), plus a separate
-2-0 completion pilot. The other 18 matches compared each version against the
-same frozen opponents:
+## Current validation and Arena results
 
-| Opponent | New Voiceless wins-losses | Old Voiceless wins-losses |
-| --- | --- | --- |
-| OldSchool | 3-0 | 1-2 |
-| Swordsoul | 2-1 | 0-3 |
-| The Crimson King / RDA | 1-2 | 0-3 |
+The loss-analysis update preserves all three deck lists. Voiceless now targets
+live effects beneath graveyard chain links, coordinates Ash with an available
+Droll against opening Gaia, and preserves the Skull/Lo core and direct attacks
+when considering S:P. The previous three-match RDA/Swordsoul results lacked
+usable decision traces; new diagnostic duels supplied the concrete findings.
 
-Three matches per opponent/version is an initial sample, not a universal win rate.
-Endpoint swapping did not force equal first-turn choices; shuffled draws were not
-paired or seeded. No-deck-check mode supported the supplied pool. The local
-benchmark used task-owned loopback HTTP-to-CLI launchers because Windows rejected
-the original HTTP server's wildcard URL reservation; frozen duel clients and
-authoritative SRVPro rankings were still used, without changing Windows ACLs.
-Fourteen earlier matches used a prefinal binary and are excluded from these
-results. Detailed local receipts remain under `Artifacts/voiceless-20261102/`.
+The accepted combined build passes Debug/Release and C# 6 compilation, **70 focused
+checks** (39 Voiceless, 31 Metalmorph), the 22 preserved import checks,
+and all **nine native Voiceless combo/recovery scenarios**. Two paired interaction
+fixtures also demonstrated the new Chixiao and Gaia responses; the RDA fixture
+still lost after the corrected response. These establish behavior, not guaranteed
+wins through every interruption.
+
+The Arena comparison uses preserved revision `363f7eb` against candidate Debug
+`8ff56a0c`, identical deck lists, the same database/scripts and frozen opponents.
+The accepted build `7516a6ab` restores original Odion and promotes Voiceless to
+`Normal`. Voiceless decision code differs from the measured candidate only in its
+registration attribute; Metalmorph source is identical. Builds and all checks above
+were rerun. The Arena runs retain their original binary identity.
+RDA memory collection and decisions are disabled and verified in the traces.
+Scores below are authoritative server **best-of-three match** wins-losses, not
+individual duel counts.
+
+| Executor | Opponent | Original W-L | Candidate W-L | Decision |
+| --- | --- | --- | --- | --- |
+| Voiceless | RDA | 12-8 | 15-5 | Accept fixes |
+| Voiceless | Swordsoul | 9-11 | 12-8 | Accept fixes |
+| Metalmorph | RDA | 0-6 | 1-5 | Accept fixes |
+| Metalmorph | Swordsoul | 0-6 | 4-2 | Accept fixes |
+| Odion | RDA | 0-6 | 0-6 | Retain original |
+| Odion | Swordsoul | 9-11 | 2-18 | Retain original |
+
+All **156 scored matches / 312 clients** completed with zero recorded flees, client
+errors or forced client cleanup. Thirty-four diagnostic matches with evolving RDA
+memory or a misnamed memory marker are excluded from this comparison.
+
+Voiceless and Metalmorph improved in these samples. Odion's candidate fell from
+9-11 to 2-18 against Swordsoul despite passing its prompt checks. Three controlled
+opening pairs did not isolate a causal regression, and two pairs diverged in
+unseeded Swordsoul choices before changed Odion actions. That uncertainty does not
+justify promotion: the accepted source retains original Odion. Its existing
+TY-PHON material-reservation policy and Metalmorph's willingness to tribute a
+fresh Synchro interaction remain known tactical limits for separate testing.
+
+Shuffled draws were not paired, the core RNG seed is unknown, and first-turn
+choices were not forced. This no-deck-check pool and the sample sizes do not
+establish a universal or legal-format win rate. RDA's broad removal boards and
+repeated interruptions still beat supported Voiceless routes. The local comparison
+uses task-owned loopback HTTP-to-CLI adapters because Windows rejected the normal
+server's wildcard URL reservation; real frozen clients and SRVPro rankings are
+used without changing Windows ACLs.
+
+Exact inputs, per-run results, confidence intervals, trace findings and separate
+validation receipts are retained in [Voiceless provenance](voiceless-provenance.json),
+[personal-executor provenance](personal-executor-provenance.json) and local
+`Artifacts/executor-review-20261102/`.
 
 ## Usage
 
