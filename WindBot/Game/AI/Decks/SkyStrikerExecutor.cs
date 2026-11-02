@@ -14,20 +14,12 @@ namespace WindBot.Game.AI.Decks
         public class CardId
         {
             public const int Raye = 26077387;
-            public const int Roze = 37351133;
             public const int Kagari = 63288573;
             public const int Shizuku = 90673288;
             public const int Hayate = 8491308;
-            public const int Zero = 76072561;
-            public const int Camellia = 63013339;
-            public const int Amatsu = 25072579;
-            public const int Azalea = 98462037;
-            public const int Zeke = 75147529;
             public const int Token = 52340445;
 
             public const int Engage = 63166095;
-            public const int Linkage = 9726840;
-            public const int Lemnisgate = 34433770;
             public const int HornetDrones = 52340444;
             public const int WidowAnchor = 98338152;
             public const int SharkCannon = 51227866;
@@ -38,35 +30,17 @@ namespace WindBot.Game.AI.Decks
             public const int AreaZero = 50005218;
 
             public const int AshBlossom = 14558127;
-            public const int DrollLockBird = 94145021;
-            public const int GhostBelle = 73642296;
-            public const int MulcharmyFuwalos = 42141493;
             public const int GhostOgre = 59438930;
             public const int MaxxC = 23434538;
             public const int GlowUpBulb = 67441435;
             public const int EffectVeiler = 97268402;
 
             public const int ReinforcementOfTheArmy = 32807846;
-            public const int PotOfDesires = 35261759;
             public const int FoolishBurialGoods = 35726888;
             public const int UpstartGoblin = 70368879;
             public const int MetalfoesFusion = 73594093;
             public const int TwinTwisters = 43898403;
-            public const int MysticalSpaceTyphoon = 5318639;
-            public const int RadiantTyphoonVision = 20508881;
-            public const int TheFallenAndTheVirtuous = 30271097;
-            public const int DragonThatDevoursTheDogma = 76666602;
-            public const int EcclesiaAndTheDarkDragon = 78397661;
-            public const int SuperStarslayerTyphon = 93039339;
-            public const int ForbiddenDroplet = 24299458;
-            public const int ForbiddenCrown = 98829635;
-            public const int Raigeki = 12580477;
-            public const int LightningStorm = 14532163;
-            public const int HarpiesFeatherDuster = 18144506;
-            public const int EvenlyMatched = 15693423;
-            public const int SphereMode = 10000080;
             public const int SolemnJudgment = 41420027;
-            public const int SolemnStrike = 40605147;
             public const int SolemnWarning = 84749824;
 
             public const int BorrelswordDragon = 85289965;
@@ -81,11 +55,6 @@ namespace WindBot.Game.AI.Decks
         private bool KagariSummoned;
         private bool ShizukuSummoned;
         private bool HayateSummoned;
-        private bool ZeroSummoned;
-        private bool CamelliaSummoned;
-        private bool AmatsuSummoned;
-        private bool AzaleaSummoned;
-        private bool ZekeSummoned;
         private bool BorrelswordAttackEffectUsed;
         private bool BorrelswordPositionEffectUsed;
         private bool GlowUpBulbEffectUsed; // Do not reset it
@@ -96,8 +65,6 @@ namespace WindBot.Game.AI.Decks
         private bool AreaZeroSetForJamming;
         private bool WidowAnchorTakeControl;
         private bool SharkCannonBanishOnly;
-        private bool AmatsuRedirectPending;
-        private bool SphereModeTributesPending;
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
@@ -107,39 +74,19 @@ namespace WindBot.Game.AI.Decks
         public SkyStrikerExecutor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
-            AddExecutor(ExecutorType.GoToBattlePhase, EvenlyMatchedToBattle);
-
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
-            AddExecutor(ExecutorType.Activate, CardId.GhostBelle, DefaultGhostBelleAndHauntedMansion);
-            AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollLockBirdEffect);
-            AddExecutor(ExecutorType.Activate, CardId.MulcharmyFuwalos, DefaultMaxxC);
             AddExecutor(ExecutorType.Activate, CardId.GhostOgre, DefaultGhostOgreAndSnowRabbit);
             AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, DefaultEffectVeiler);
             AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
-            AddExecutor(ExecutorType.Activate, CardId.Amatsu, AmatsuEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Zero, ZeroEffect);
             AddExecutor(ExecutorType.Activate, CardId.SolemnWarning, DefaultSolemnWarning);
-            AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
             AddExecutor(ExecutorType.Activate, CardId.SolemnJudgment, DefaultSolemnJudgment);
 
             AddExecutor(ExecutorType.Activate, CardId.Raye, RayeEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Roze, RozeEffect);
             AddExecutor(ExecutorType.Activate, CardId.TwinTwisters, TwinTwistersEffect);
-            AddExecutor(ExecutorType.Activate, CardId.MysticalSpaceTyphoon, DefaultMysticalSpaceTyphoon);
-            AddExecutor(ExecutorType.Activate, CardId.HarpiesFeatherDuster, DefaultHarpiesFeatherDusterFirst);
-            AddExecutor(ExecutorType.Activate, CardId.Raigeki, DefaultRaigeki);
-            AddExecutor(ExecutorType.Activate, CardId.LightningStorm, LightningStormEffect);
-            AddExecutor(ExecutorType.Activate, CardId.ForbiddenDroplet, ForbiddenDropletEffect);
-            AddExecutor(ExecutorType.Activate, CardId.ForbiddenCrown, ForbiddenCrownEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.ReinforcementOfTheArmy, ReinforcementOfTheArmyEffect);
             AddExecutor(ExecutorType.Activate, CardId.FoolishBurialGoods, FoolishBurialGoodsEffect);
-            AddExecutor(ExecutorType.Activate, CardId.PotOfDesires, DefaultPotOfDesires);
             AddExecutor(ExecutorType.Activate, CardId.UpstartGoblin);
-            AddExecutor(ExecutorType.Activate, CardId.RadiantTyphoonVision, RadiantTyphoonVisionEffect);
-            AddExecutor(ExecutorType.Activate, CardId.TheFallenAndTheVirtuous, FallenAndVirtuousEffect);
-            AddExecutor(ExecutorType.Activate, CardId.DragonThatDevoursTheDogma, DragonThatDevoursTheDogmaEffect);
-            AddExecutor(ExecutorType.Activate, CardId.EcclesiaAndTheDarkDragon, EcclesiaAndTheDarkDragonEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.Multirole, MultiroleActivation);
             AddExecutor(ExecutorType.Activate, CardId.WidowAnchor, WidowAnchorEffectFirst);
@@ -152,25 +99,13 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Multirole, MultiroleIgnitionEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.Engage, EngageEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Linkage, LinkageEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Lemnisgate, LemnisgateEffect);
             AddExecutor(ExecutorType.Activate, CardId.HornetDrones, HornetDronesEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.MetalfoesFusion, MetalfoesFusionEffect);
 
             AddExecutor(ExecutorType.SpSummon, CardId.Linkuriboh, LinkuribohSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.Zero, ZeroSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.Zeke, ZekeSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.Azalea, AzaleaSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.Camellia, CamelliaSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.Kagari, KagariSummon);
             AddExecutor(ExecutorType.Activate, CardId.Kagari, KagariEffect);
-            AddExecutor(ExecutorType.SpSummon, CardId.Amatsu, AmatsuSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.SuperStarslayerTyphon, SuperStarslayerTyphonSummon);
-            AddExecutor(ExecutorType.Activate, CardId.SuperStarslayerTyphon, SuperStarslayerTyphonEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Camellia, CamelliaEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Zeke, ZekeEffect);
-            AddExecutor(ExecutorType.Activate, CardId.Azalea, AzaleaEffect);
 
             AddExecutor(ExecutorType.Summon, CardId.GlowUpBulb, TunerSummon);
             AddExecutor(ExecutorType.Summon, CardId.EffectVeiler, TunerSummon);
@@ -197,9 +132,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Hayate, HayateEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.Shizuku, ShizukuSummon);
             AddExecutor(ExecutorType.Activate, CardId.AreaZero, AreaZeroEffect);
-            AddExecutor(ExecutorType.Summon, CardId.SphereMode, SphereModeSummon);
             AddExecutor(ExecutorType.Summon, CardId.Raye, RayeSummon);
-            AddExecutor(ExecutorType.Summon, CardId.Roze, RozeSummon);
 
             AddExecutor(ExecutorType.Activate, CardId.HerculesBase, HerculesBaseEffect);
 
@@ -215,14 +148,9 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpellSet, CardId.SolemnJudgment, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.WidowAnchor, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.SharkCannon, Util.IsTurn1OrMain2);
-            AddExecutor(ExecutorType.SpellSet, CardId.Linkage, SetLinkage);
-            AddExecutor(ExecutorType.SpellSet, CardId.ForbiddenDroplet, Util.IsTurn1OrMain2);
-            AddExecutor(ExecutorType.SpellSet, CardId.ForbiddenCrown, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.TwinTwisters, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.MetalfoesFusion, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.HerculesBase, SetWhenHandIsFull);
-
-            AddExecutor(ExecutorType.Activate, CardId.EvenlyMatched, EvenlyMatchedEffect);
 
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
         }
@@ -237,11 +165,6 @@ namespace WindBot.Game.AI.Decks
             KagariSummoned = false;
             ShizukuSummoned = false;
             HayateSummoned = false;
-            ZeroSummoned = false;
-            CamelliaSummoned = false;
-            AmatsuSummoned = false;
-            AzaleaSummoned = false;
-            ZekeSummoned = false;
             BorrelswordAttackEffectUsed = false;
             BorrelswordPositionEffectUsed = false;
             BorrelswordComboStarted = false;
@@ -251,8 +174,6 @@ namespace WindBot.Game.AI.Decks
             AreaZeroSetForJamming = false;
             WidowAnchorTakeControl = false;
             SharkCannonBanishOnly = false;
-            AmatsuRedirectPending = false;
-            SphereModeTributesPending = false;
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
@@ -270,7 +191,6 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
-            AmatsuRedirectPending = false;
             CurrentChainHandledCards.Clear();
             base.OnChainEnd();
         }
@@ -317,16 +237,6 @@ namespace WindBot.Game.AI.Decks
                     ShizukuSummoned = true;
                 else if (card.IsCode(CardId.Hayate))
                     HayateSummoned = true;
-                else if (card.IsCode(CardId.Zero))
-                    ZeroSummoned = true;
-                else if (card.IsCode(CardId.Camellia))
-                    CamelliaSummoned = true;
-                else if (card.IsCode(CardId.Amatsu))
-                    AmatsuSummoned = true;
-                else if (card.IsCode(CardId.Azalea))
-                    AzaleaSummoned = true;
-                else if (card.IsCode(CardId.Zeke))
-                    ZekeSummoned = true;
             }
             base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
@@ -334,178 +244,7 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max,
             int hint, bool cancelable)
         {
-            if (SphereModeTributesPending && (hint == HintMsg.Release || (min == 3 && max == 3)))
-            {
-                SphereModeTributesPending = false;
-                List<ClientCard> tributes = cards.Where(card => card.Controller == 1 && card.IsMonster())
-                    .OrderByDescending(GetCardUtility).Take(3).ToList();
-                if (tributes.Count >= min)
-                    return Util.CheckSelectCount(tributes, cards, min, max);
-                if (cancelable)
-                    return new List<ClientCard>();
-            }
-
-            if (AmatsuRedirectPending && hint == HintMsg.Destroy &&
-                cards.All(card => card.Controller == 0 && IsSkyStrikerAceLink(card)))
-            {
-                AmatsuRedirectPending = false;
-                return Util.CheckSelectCount(cards.OrderBy(GetFieldResourceValue).ToList(),
-                    cards, min, max);
-            }
-
             ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
-            ClientCard activating = Duel.GetCurrentChainCard();
-            if (activating != null && activating.Controller == 0)
-            {
-                if (activating.IsCode(CardId.TheFallenAndTheVirtuous))
-                {
-                    if (hint == HintMsg.ToGrave && cards.Any(card => card.Location == CardLocation.Extra))
-                        return Util.CheckSelectCount(OrderCardsById(cards, new[]
-                        {
-                            CardId.DragonThatDevoursTheDogma,
-                            CardId.EcclesiaAndTheDarkDragon
-                        }, false), cards, min, max);
-                    if (hint == HintMsg.Destroy)
-                        return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-                    if (hint == HintMsg.SpSummon)
-                        return Util.CheckSelectCount(cards.OrderByDescending(GetCardUtility).ToList(), cards, min, max);
-                }
-
-                if (activating.IsCode(CardId.ForbiddenDroplet) && hint == HintMsg.ToGrave)
-                {
-                    List<ClientCard> costs = cards.OrderBy(GetDropletCostValue).ToList();
-                    return Util.CheckSelectCount(costs, cards, min, Math.Min(max, Enemy.GetMonsters().Count));
-                }
-
-                if (activating.IsCode(CardId.Camellia) && hint == HintMsg.ToGrave &&
-                    cards.Any(card => card.Controller == 1))
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-                if (activating.IsCode(CardId.Azalea) && hint == HintMsg.Destroy)
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-                if (activating.IsCode(CardId.Azalea) && hint == HintMsg.Remove)
-                    return Util.CheckSelectCount(cards.OrderBy(GetGraveResourceValue).ToList(),
-                        cards, min, max);
-
-                if (activating.IsCode(CardId.Zeke))
-                {
-                    if (hint == HintMsg.Remove)
-                        return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-                    if (hint == HintMsg.ToGrave)
-                        return Util.CheckSelectCount(cards.OrderBy(GetFieldResourceValue).ToList(), cards, min, max);
-                }
-
-                if (activating.IsCode(CardId.Amatsu) && hint == HintMsg.Destroy)
-                {
-                    List<ClientCard> ordered = cards.Any(card => card.Controller == 1)
-                        ? OrderEnemyTargets(cards)
-                        : cards.OrderBy(GetFieldResourceValue).ToList();
-                    return Util.CheckSelectCount(ordered, cards, min, max);
-                }
-
-                if (activating.IsCode(CardId.Lemnisgate) && hint == HintMsg.ToDeck)
-                    return SelectLemnisgateRecycleCards(cards, min, max);
-
-                if (activating.IsCode(CardId.EcclesiaAndTheDarkDragon) && hint == HintMsg.ToDeck)
-                {
-                    List<ClientCard> fusion = cards.Where(card =>
-                        card.IsCode(CardId.DragonThatDevoursTheDogma)).ToList();
-                    if (fusion.Count > 0)
-                        return Util.CheckSelectCount(fusion, cards, min, max);
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-                }
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Linkage))
-            {
-                if (hint == HintMsg.ToGrave)
-                {
-                    List<ClientCard> ordered = cards
-                        .OrderBy(card => IsSkyStrikerAce(card) && card.Attacked ? 0 :
-                            ControlledEnemyCards.Contains(card) ? 1 : 2)
-                        .ThenBy(GetFieldResourceValue)
-                        .ToList();
-                    return Util.CheckSelectCount(ordered, cards, min, max);
-                }
-                if (hint == HintMsg.SpSummon)
-                    return Util.CheckSelectCount(OrderCardsById(cards, GetLinkageExtraDeckPriority(), false),
-                        cards, min, max);
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Zero))
-            {
-                if (hint == HintMsg.AddToHand)
-                    return Util.CheckSelectCount(OrderCardsById(cards, GetSkyStrikerSearchPriority(true), false),
-                        cards, min, max);
-                if (hint == HintMsg.SpSummon)
-                    return Util.CheckSelectCount(OrderCardsById(cards, new[] { CardId.Raye, CardId.Roze }, false),
-                        cards, min, max);
-                if (hint == HintMsg.Destroy)
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Roze) &&
-                hint == HintMsg.Disable)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Camellia) &&
-                hint == HintMsg.ToGrave)
-            {
-                List<ClientCard> ordered = OrderCardsById(cards, new[]
-                {
-                    CardId.Linkage,
-                    CardId.Engage,
-                    CardId.Lemnisgate,
-                    CardId.WidowAnchor,
-                    CardId.Raye,
-                    CardId.Roze
-                }, false);
-                return Util.CheckSelectCount(ordered, cards, min, max);
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.RadiantTyphoonVision))
-            {
-                if (hint == HintMsg.AddToHand)
-                    return Util.CheckSelectCount(OrderCardsById(cards,
-                        new[] { CardId.MysticalSpaceTyphoon }, false), cards, min, max);
-                if (hint == HintMsg.Discard || hint == HintMsg.ToGrave)
-                    return Util.CheckSelectCount(cards.OrderBy(GetHandResourceValue).ToList(), cards, min, max);
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.DragonThatDevoursTheDogma))
-            {
-                if (hint == HintMsg.ToDeck)
-                    return Util.CheckSelectCount(cards.OrderByDescending(GetEnemyGraveResourceValue).ToList(),
-                        cards, min, max);
-                if (hint == HintMsg.AddToHand)
-                    return Util.CheckSelectCount(OrderCardsById(cards,
-                        new[] { CardId.TheFallenAndTheVirtuous }, false), cards, min, max);
-            }
-
-            if (solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.ForbiddenDroplet) && hint == HintMsg.OperateCard)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-            if (solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.ForbiddenCrown) && hint == HintMsg.Faceup)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
-                hint == HintMsg.ReturnToHand)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
-            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
-                hint == HintMsg.SpSummon)
-                return Util.CheckSelectCount(OrderCardsById(cards, GetLinkageExtraDeckPriority(), false),
-                    cards, min, max);
-
-            if (solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.SuperStarslayerTyphon) && hint == HintMsg.ReturnToHand)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
-
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Multirole))
             {
                 List<ClientCard> ordered = OrderCardsById(cards, new[]
@@ -642,12 +381,6 @@ namespace WindBot.Game.AI.Decks
 
         public override bool OnSelectYesNo(int desc)
         {
-            if (desc == Util.GetStringId(CardId.Zero, 2))
-                return Enemy.GetFieldCount() > 0;
-            if (desc == Util.GetStringId(CardId.Roze, 2))
-                return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
-            if (desc == Util.GetStringId(CardId.Lemnisgate, 1))
-                return Enemy.GetFieldCount() > 0;
             if (desc == Util.GetStringId(CardId.Engage, 0))
                 return true;
             if (desc == Util.GetStringId(CardId.AreaZero, 2))
@@ -689,350 +422,10 @@ namespace WindBot.Game.AI.Decks
             return base.OnSelectYesNo(desc);
         }
 
-        public override int OnSelectOption(IList<int> options)
-        {
-            int drawVision = options.IndexOf(Util.GetStringId(CardId.RadiantTyphoonVision, 2));
-            int searchMst = options.IndexOf(Util.GetStringId(CardId.RadiantTyphoonVision, 3));
-            if (drawVision >= 0 || searchMst >= 0)
-            {
-                bool canDiscard = Bot.Hand.Any(card =>
-                    (card.HasType(CardType.QuickPlay) || card.IsCode(CardId.RadiantTyphoonVision)));
-                if (drawVision >= 0 && (canDiscard || Bot.Hand.Count >= 3))
-                    return drawVision;
-                if (searchMst >= 0)
-                    return searchMst;
-                return drawVision;
-            }
-
-            int destroyFallen = options.IndexOf(Util.GetStringId(CardId.TheFallenAndTheVirtuous, 1));
-            int reviveFallen = options.IndexOf(Util.GetStringId(CardId.TheFallenAndTheVirtuous, 2));
-            if (destroyFallen >= 0 || reviveFallen >= 0)
-            {
-                bool hasFaceupEnemy = Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                    .Any(card => card.IsFaceup());
-                if (destroyFallen >= 0 && hasFaceupEnemy)
-                    return destroyFallen;
-                if (reviveFallen >= 0)
-                    return reviveFallen;
-                return destroyFallen;
-            }
-
-            int destroyMonsters = options.IndexOf(Util.GetStringId(CardId.LightningStorm, 0));
-            int destroySpells = options.IndexOf(Util.GetStringId(CardId.LightningStorm, 1));
-            if (destroyMonsters >= 0 || destroySpells >= 0)
-            {
-                int attackMonsters = Enemy.GetMonsters().Count(card => card.IsAttack());
-                if (destroyMonsters >= 0 && destroySpells >= 0)
-                    return Enemy.GetSpellCount() > attackMonsters ? destroySpells : destroyMonsters;
-                return destroyMonsters >= 0 ? destroyMonsters : destroySpells;
-            }
-
-            return base.OnSelectOption(options);
-        }
-
         private bool ReinforcementOfTheArmyEffect()
         {
-            AI.SelectCard(Bot.HasInHandOrHasInMonstersZone(CardId.Raye)
-                ? new[] { CardId.Roze, CardId.Raye }
-                : new[] { CardId.Raye, CardId.Roze });
+            AI.SelectCard(CardId.Raye);
             return true;
-        }
-
-        private bool DrollLockBirdEffect()
-        {
-            return Duel.Player == 1 && Duel.LastChainPlayer == 1;
-        }
-
-        private bool LightningStormEffect()
-        {
-            return Enemy.GetMonsters().Any(card => card.IsAttack()) || Enemy.GetSpellCount() > 0;
-        }
-
-        private bool ForbiddenDropletEffect()
-        {
-            List<ClientCard> targets = Enemy.GetMonsters()
-                .Where(card => card.IsFaceup() && card.HasType(CardType.Effect) && !card.IsDisabled())
-                .ToList();
-            if (targets.Count == 0)
-                return false;
-            return Duel.Player == 1 || Duel.CurrentChain.Count > 0 ||
-                targets.Any(card => card.IsFloodgate() || card == Util.GetProblematicEnemyMonster()) ||
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints;
-        }
-
-        private bool ForbiddenCrownEffect()
-        {
-            ClientCard target = GetEnemyMonsterTarget(false);
-            if (target == null)
-                return false;
-            return Duel.Player == 1 || Duel.CurrentChain.Count > 0 ||
-                target.IsFloodgate() || target == Util.GetProblematicEnemyMonster();
-        }
-
-        private bool RadiantTyphoonVisionEffect()
-        {
-            if (Card.Location == CardLocation.Grave)
-                return true;
-            return Duel.Player == 0 || Duel.Phase == DuelPhase.End || Bot.Hand.Count <= 3;
-        }
-
-        private bool FallenAndVirtuousEffect()
-        {
-            bool canPayDestroyCost = Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
-                Bot.HasInExtra(CardId.EcclesiaAndTheDarkDragon);
-            bool canDestroy = canPayDestroyCost && Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                .Any(card => card.IsFaceup());
-            bool hasEcclesia = Bot.GetMonsters().Concat(Bot.Graveyard)
-                .Any(card => card.IsCode(CardId.EcclesiaAndTheDarkDragon));
-            bool canRevive = hasEcclesia && Bot.Graveyard.Concat(Enemy.Graveyard)
-                .Any(card => card.IsMonster() && card.IsCanRevive());
-            return canDestroy || canRevive;
-        }
-
-        private bool DragonThatDevoursTheDogmaEffect()
-        {
-            return true;
-        }
-
-        private bool EcclesiaAndTheDarkDragonEffect()
-        {
-            if (Card.Location != CardLocation.Grave ||
-                (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2))
-                return false;
-            bool hasFusion = Bot.Graveyard.Concat(Bot.Banished)
-                .Any(card => card.IsCode(CardId.DragonThatDevoursTheDogma));
-            return hasFusion && Enemy.GetFieldCount() > 0;
-        }
-
-        private bool RozeEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (Card.Location == CardLocation.Hand)
-                return Bot.MonsterZone.Any(card => card != null && IsSkyStrikerAce(card));
-            return Card.Location == CardLocation.Grave;
-        }
-
-        private bool AmatsuEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Amatsu, 0))
-            {
-                ClientCard last = Util.GetLastChainCard();
-                bool shouldRedirect = Duel.LastChainPlayer == 1 && last != null && last.IsMonster() &&
-                    Bot.GetMonsters().Any(card => IsSkyStrikerAceLink(card)) &&
-                    (Bot.HasInGraveyard(CardId.Raye) || last == Util.GetProblematicEnemyMonster() ||
-                    last.IsFloodgate());
-                if (shouldRedirect)
-                    AmatsuRedirectPending = true;
-                return shouldRedirect;
-            }
-            return ActivateDescription == Util.GetStringId(CardId.Amatsu, 1);
-        }
-
-        private bool ZeroEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Zero, 0))
-                return true;
-            if (ActivateDescription != Util.GetStringId(CardId.Zero, 1))
-                return false;
-            if (Duel.Player == 0 && Duel.Phase > DuelPhase.Main1 &&
-                Duel.Phase < DuelPhase.Main2 && Card.Attacked)
-                return true;
-            return Duel.Player == 1 && (Enemy.GetFieldCount() > 0 || DefaultOnBecomeTarget() ||
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints);
-        }
-
-        private bool LinkageEffect()
-        {
-            if (!EmptyMainMonsterZone() ||
-                !Bot.GetMonsters().Concat(Bot.GetSpells()).Any(card => card != Card) ||
-                !Bot.ExtraDeck.Any(IsSkyStrikerAceLink))
-                return false;
-
-            if (Duel.Player == 1)
-                return DefaultOnBecomeTarget() || Duel.CurrentChain.Count > 0;
-
-            if (Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2)
-                return Bot.GetMonsters().Any(card => IsSkyStrikerAceLink(card) && card.Attacked) ||
-                    Bot.GetMonsterCount() == 0;
-
-            if (Duel.Phase == DuelPhase.Main1)
-                return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
-
-            return Util.IsTurn1OrMain2();
-        }
-
-        private bool LemnisgateEffect()
-        {
-            if (Card.Location == CardLocation.Grave)
-                return Bot.HasInExtra(new[]
-                {
-                    CardId.Zero,
-                    CardId.Amatsu,
-                    CardId.Shizuku,
-                    CardId.Kagari,
-                    CardId.Hayate
-                });
-
-            int spells = Bot.Graveyard.Count(card => card.IsSpell() && IsSkyStrikerCard(card));
-            int monsters = Bot.Graveyard.Count(card => card.IsMonster() && IsSkyStrikerAce(card));
-            if (spells >= 2 && monsters >= 2 && Enemy.GetFieldCount() > 0)
-                return true;
-            return Duel.Phase == DuelPhase.End && spells > 0 && monsters > 0;
-        }
-
-        private bool ZeroSummon()
-        {
-            if (ZeroSummoned)
-                return false;
-            List<ClientCard> materials = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Zero))
-                .OrderBy(GetLinkMaterialValue)
-                .Take(2)
-                .ToList();
-            if (materials.Count != 2 || Util.GetBotAvailZonesFromExtraDeck(materials) == 0)
-                return false;
-            AI.SelectMaterials(materials);
-            return true;
-        }
-
-        private bool ZekeSummon()
-        {
-            if (ZekeSummoned || !Enemy.GetMonsters().Any(card => card.IsFaceup()))
-                return false;
-            List<ClientCard> materials = GetModernLinkTwoMaterials(card => true, true);
-            if (materials == null || !materials.Any(IsSkyStrikerAceLink))
-                return false;
-            AI.SelectMaterials(materials);
-            return true;
-        }
-
-        private bool AzaleaSummon()
-        {
-            if (AzaleaSummoned || Enemy.GetFieldCount() == 0)
-                return false;
-            List<ClientCard> materials = GetModernLinkTwoMaterials(card =>
-                card.HasAttribute(CardAttribute.Light | CardAttribute.Dark), false);
-            if (materials == null)
-                return false;
-            AI.SelectMaterials(materials);
-            return true;
-        }
-
-        private bool CamelliaSummon()
-        {
-            if (CamelliaSummoned || GetSpellCountInGrave() > 3)
-                return false;
-            List<ClientCard> materials = GetModernLinkTwoMaterials(card => card.HasType(CardType.Effect), false);
-            if (materials == null)
-                return false;
-            AI.SelectMaterials(materials);
-            return true;
-        }
-
-        private bool AmatsuSummon()
-        {
-            if (AmatsuSummoned)
-                return false;
-            ClientCard material = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Amatsu))
-                .OrderBy(GetLinkMaterialValue)
-                .FirstOrDefault();
-            if (material == null || Util.GetBotAvailZonesFromExtraDeck(new[] { material }) == 0)
-                return false;
-            bool usefulInterruption = Enemy.GetMonsters().Any(card => card.IsFaceup() && card.Attack >= 2000);
-            if (!Util.IsTurn1OrMain2() && !usefulInterruption)
-                return false;
-            AI.SelectMaterials(new[] { material });
-            return true;
-        }
-
-        private bool SuperStarslayerTyphonSummon()
-        {
-            if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2)
-                return false;
-            ClientCard threat = Util.GetProblematicEnemyMonster(0, false) ??
-                Enemy.GetMonsters().Where(card => card.IsFaceup())
-                    .OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (threat == null || (!threat.IsFloodgate() && threat.Attack < 3000))
-                return false;
-            return Duel.Phase == DuelPhase.Main2 || Bot.GetMonsterCount() == 0;
-        }
-
-        private bool SuperStarslayerTyphonEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card) || Card.Overlays.Count == 0 ||
-                !Enemy.GetMonsters().Any())
-                return false;
-            AI.SelectCard(Card.Overlays);
-            return true;
-        }
-
-        private bool CamelliaEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Camellia, 0))
-                return GetSpellCountInGrave() <= 3;
-            return ActivateDescription == Util.GetStringId(CardId.Camellia, 1) &&
-                Enemy.GetMonsters().Any();
-        }
-
-        private bool ZekeEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Zeke, 0))
-                return Enemy.GetMonsters().Any(card => card.IsFaceup());
-            return ActivateDescription == Util.GetStringId(CardId.Zeke, 1) &&
-                Bot.GetMonsters().Concat(Bot.GetSpells())
-                    .Any(card => card != Card && GetFieldResourceValue(card) < 1000) &&
-                (Enemy.LifePoints <= Card.GetAttackPower() + 1000 || Duel.Phase == DuelPhase.Main2);
-        }
-
-        private bool AzaleaEffect()
-        {
-            if (DefaultCheckWhetherCardIsNegated(Card))
-                return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Azalea, 0))
-                return Enemy.GetFieldCount() > 0;
-            return ActivateDescription == Util.GetStringId(CardId.Azalea, 1);
-        }
-
-        private bool RozeSummon()
-        {
-            if (NormalSummoned || Bot.HasInHand(CardId.Raye))
-                return false;
-            return true;
-        }
-
-        private bool SphereModeSummon()
-        {
-            if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1 || NormalSummoned ||
-                Enemy.GetMonsterCount() < 3 || ShouldUseEvenlyMatched())
-                return false;
-            SphereModeTributesPending = true;
-            return true;
-        }
-
-        private bool ShouldUseEvenlyMatched()
-        {
-            return Bot.HasInHand(CardId.EvenlyMatched) && Duel.Turn >= 2 &&
-                Bot.GetFieldCount() == 0 && Enemy.GetFieldCount() >= 2;
-        }
-
-        private bool EvenlyMatchedToBattle()
-        {
-            return ShouldUseEvenlyMatched();
-        }
-
-        private bool EvenlyMatchedEffect()
-        {
-            return Enemy.GetFieldCount() - Bot.GetFieldCount() > 1;
         }
 
         private bool FoolishBurialGoodsEffect()
@@ -1551,9 +944,7 @@ namespace WindBot.Game.AI.Decks
         {
             return (!KagariSummoned && Bot.HasInExtra(CardId.Kagari)) ||
                 (!ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku)) ||
-                (!HayateSummoned && Bot.HasInExtra(CardId.Hayate)) ||
-                (!AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu)) ||
-                (!ZeroSummoned && Bot.HasInExtra(CardId.Zero));
+                (!HayateSummoned && Bot.HasInExtra(CardId.Hayate));
         }
 
         private bool RayeEffect()
@@ -1588,12 +979,6 @@ namespace WindBot.Game.AI.Decks
 
         private void RayeSelectTarget()
         {
-            if (Duel.Player == 1 && !AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu))
-            {
-                AI.SelectCard(CardId.Amatsu, CardId.Shizuku, CardId.Kagari, CardId.Hayate);
-                return;
-            }
-
             if (Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2 &&
                 Bot.HasInMonstersZone(CardId.BorrelswordDragon, true) && !ShizukuSummoned)
             {
@@ -1609,9 +994,9 @@ namespace WindBot.Game.AI.Decks
                 CardId.Afterburners,
                 CardId.JammingWaves
             }))
-                AI.SelectCard(CardId.Kagari, CardId.Zero, CardId.Amatsu, CardId.Shizuku, CardId.Hayate);
+                AI.SelectCard(CardId.Kagari, CardId.Shizuku, CardId.Hayate);
             else
-                AI.SelectCard(CardId.Shizuku, CardId.Amatsu, CardId.Kagari, CardId.Hayate);
+                AI.SelectCard(CardId.Shizuku, CardId.Kagari, CardId.Hayate);
         }
 
         private bool KagariSummon()
@@ -2240,17 +1625,8 @@ namespace WindBot.Game.AI.Decks
         private int[] GetSkyStrikerSearchPriority(bool includeEngage)
         {
             List<int> result = new List<int>();
-            bool haveAceAccess = Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.Raye) ||
-                Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.Roze);
-            if (!haveAceAccess)
-            {
-                result.Add(CardId.Raye);
-                result.Add(CardId.Roze);
-            }
             if (includeEngage)
                 result.Add(CardId.Engage);
-            if (!Bot.HasInHandOrInSpellZone(CardId.Linkage))
-                result.Add(CardId.Linkage);
             if (!Bot.HasInHandOrInSpellZone(CardId.HornetDrones))
                 result.Add(CardId.HornetDrones);
             if (Util.GetProblematicEnemyMonster() != null)
@@ -2267,24 +1643,18 @@ namespace WindBot.Game.AI.Decks
                 result.Add(CardId.Multirole);
             if (!Bot.HasInHandOrInSpellZone(CardId.WidowAnchor))
                 result.Add(CardId.WidowAnchor);
-            if (!Bot.HasInHandOrInSpellZone(CardId.Lemnisgate) &&
-                Bot.Graveyard.Any(card => IsSkyStrikerAce(card)))
-                result.Add(CardId.Lemnisgate);
             result.AddRange(new[]
             {
-                CardId.Linkage,
                 CardId.HornetDrones,
                 CardId.WidowAnchor,
                 CardId.SharkCannon,
-                CardId.Lemnisgate,
                 CardId.Afterburners,
                 CardId.JammingWaves,
                 CardId.AreaZero,
                 CardId.Multirole,
-                CardId.Raye,
-                CardId.Roze
+                CardId.Raye
             });
-            return result.Distinct().ToArray();
+            return result.Distinct().Where(Bot.HasInDeck).ToArray();
         }
 
         private ClientCard GetEnemyMonsterTarget(bool problematicOnly)
@@ -2346,8 +1716,7 @@ namespace WindBot.Game.AI.Decks
                 card.IsCode(CardId.Token, CardId.GlowUpBulb, CardId.Linkuriboh, CardId.AshBlossom,
                     CardId.GhostOgre, CardId.EffectVeiler, CardId.MaxxC))
                 return true;
-            return !card.IsCode(CardId.Raye, CardId.Roze, CardId.Kagari, CardId.Hayate, CardId.Shizuku,
-                CardId.Zero, CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke,
+            return !card.IsCode(CardId.Raye, CardId.Kagari, CardId.Hayate, CardId.Shizuku,
                 CardId.CrystronHalqifibrax, CardId.BorrelswordDragon,
                 CardId.TopologicBomberDragon, CardId.KnightmareUnicorn);
         }
@@ -2415,182 +1784,6 @@ namespace WindBot.Game.AI.Decks
             return result;
         }
 
-        private List<ClientCard> OrderEnemyTargets(IList<ClientCard> cards)
-        {
-            ClientCard problematic = Util.GetProblematicEnemyMonster();
-            ClientCard bestSpell = Util.GetBestEnemySpell();
-            return cards
-                .OrderByDescending(card => card.Controller == 1 ? 1 : 0)
-                .ThenByDescending(card => card == problematic || card == bestSpell || card.IsFloodgate() ? 1 : 0)
-                .ThenByDescending(card => card.IsFaceup() ? 1 : 0)
-                .ThenByDescending(GetCardUtility)
-                .ToList();
-        }
-
-        private IList<ClientCard> SelectLemnisgateRecycleCards(IList<ClientCard> cards, int min, int max)
-        {
-            List<ClientCard> spells = cards.Where(card => card.IsSpell())
-                .OrderBy(GetGraveResourceValue).ToList();
-            List<ClientCard> monsters = cards.Where(card => card.IsMonster())
-                .OrderBy(GetGraveResourceValue).ToList();
-            int pairCount = Math.Min(Math.Min(spells.Count, monsters.Count), max / 2);
-            List<ClientCard> selected = new List<ClientCard>();
-            for (int i = 0; i < pairCount; ++i)
-            {
-                selected.Add(spells[i]);
-                selected.Add(monsters[i]);
-            }
-            return Util.CheckSelectCount(selected, cards, min, max);
-        }
-
-        private int[] GetLinkageExtraDeckPriority()
-        {
-            List<int> result = new List<int>();
-            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
-            if (battle && !KagariSummoned && Bot.HasInGraveyard(new[]
-            {
-                CardId.Linkage,
-                CardId.Engage,
-                CardId.WidowAnchor
-            }))
-                result.Add(CardId.Kagari);
-            if (!ZeroSummoned)
-                result.Add(CardId.Zero);
-            if (battle && !HayateSummoned)
-                result.Add(CardId.Hayate);
-            if (!AmatsuSummoned)
-                result.Add(CardId.Amatsu);
-            if (!KagariSummoned)
-                result.Add(CardId.Kagari);
-            if (!ShizukuSummoned)
-                result.Add(CardId.Shizuku);
-            result.AddRange(new[]
-            {
-                CardId.Azalea,
-                CardId.Zeke,
-                CardId.Camellia,
-                CardId.Hayate
-            });
-            return result.Distinct().Where(Bot.HasInExtra).ToArray();
-        }
-
-        private List<ClientCard> GetModernLinkTwoMaterials(Func<ClientCard, bool> filter, bool requireAceLink)
-        {
-            List<ClientCard> candidates = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && !card.IsCode(CardId.Zero) && filter(card))
-                .OrderBy(card => ControlledEnemyCards.Contains(card) || card.Controller == 1 ? 0 : 1)
-                .ThenBy(GetLinkMaterialValue)
-                .ToList();
-            for (int i = 0; i < candidates.Count; ++i)
-            {
-                for (int j = i + 1; j < candidates.Count; ++j)
-                {
-                    List<ClientCard> materials = new List<ClientCard> { candidates[i], candidates[j] };
-                    if (requireAceLink && !materials.Any(IsSkyStrikerAceLink))
-                        continue;
-                    if (Util.GetBotAvailZonesFromExtraDeck(materials) != 0)
-                        return materials;
-                }
-            }
-            return null;
-        }
-
-        private bool IsSkyStrikerCard(ClientCard card)
-        {
-            return card != null && (card.HasSetcode(0x115) || card.HasSetcode(0x1115) ||
-                card.IsCode(CardId.Raye, CardId.Roze, CardId.Kagari, CardId.Shizuku,
-                    CardId.Hayate, CardId.Zero, CardId.Camellia, CardId.Amatsu,
-                    CardId.Azalea, CardId.Zeke, CardId.Engage, CardId.Linkage,
-                    CardId.Lemnisgate, CardId.HornetDrones, CardId.WidowAnchor,
-                    CardId.SharkCannon));
-        }
-
-        private bool IsSkyStrikerAce(ClientCard card)
-        {
-            return card != null && card.IsMonster() && (card.HasSetcode(0x1115) ||
-                card.IsCode(CardId.Raye, CardId.Roze, CardId.Token, CardId.Kagari,
-                    CardId.Shizuku, CardId.Hayate, CardId.Zero, CardId.Camellia,
-                    CardId.Amatsu, CardId.Azalea, CardId.Zeke));
-        }
-
-        private bool IsSkyStrikerAceLink(ClientCard card)
-        {
-            return IsSkyStrikerAce(card) && card.HasType(CardType.Link);
-        }
-
-        private int GetCardUtility(ClientCard card)
-        {
-            if (card == null)
-                return 0;
-            int result = Math.Max(0, card.GetAttackPower());
-            if (card.IsFloodgate())
-                result += 5000;
-            if (card.HasType(CardType.Link))
-                result += card.LinkCount * 500;
-            if (card.IsFacedown())
-                result = Math.Max(result, 500);
-            return result;
-        }
-
-        private int GetFieldResourceValue(ClientCard card)
-        {
-            if (card == null)
-                return int.MaxValue;
-            if (ControlledEnemyCards.Contains(card) || card.Controller == 1)
-                return 0;
-            if (card.IsCode(CardId.Token))
-                return 10;
-            if (card.IsCode(CardId.RadiantTyphoonVision, CardId.UpstartGoblin,
-                CardId.PotOfDesires, CardId.ReinforcementOfTheArmy))
-                return 50;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.Zero))
-                return 5000;
-            return 500 + GetCardUtility(card);
-        }
-
-        private int GetGraveResourceValue(ClientCard card)
-        {
-            if (card == null)
-                return int.MaxValue;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.Lemnisgate))
-                return 5000;
-            return GetCardUtility(card);
-        }
-
-        private int GetHandResourceValue(ClientCard card)
-        {
-            if (card == null)
-                return int.MaxValue;
-            int copies = Bot.Hand.Count(candidate => candidate.IsCode(card.Id));
-            if (copies > 1)
-                return 0;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.ForbiddenDroplet))
-                return 5000;
-            return card.IsMonster() ? Math.Max(100, card.Attack) : 500;
-        }
-
-        private int GetDropletCostValue(ClientCard card)
-        {
-            if (card == null)
-                return int.MaxValue;
-            if (ControlledEnemyCards.Contains(card))
-                return 0;
-            if (card.Location == CardLocation.SpellZone && card.IsFaceup() && card != Card)
-                return 25;
-            return card.Location == CardLocation.Hand
-                ? GetHandResourceValue(card) : GetFieldResourceValue(card);
-        }
-
-        private int GetEnemyGraveResourceValue(ClientCard card)
-        {
-            if (card == null)
-                return 0;
-            return card.Controller == 1 ? 5000 + GetCardUtility(card) : -GetGraveResourceValue(card);
-        }
-
         private List<ClientCard> GetLinkMaterials(int linkRating, int minCount, int maxCount,
             bool effectOnly, bool uniqueNames, ClientCard preservedCard = null)
         {
@@ -2638,8 +1831,7 @@ namespace WindBot.Game.AI.Decks
                 return 100;
             if (card.IsCode(CardId.AshBlossom, CardId.GhostOgre, CardId.EffectVeiler))
                 return 200;
-            if (card.IsCode(CardId.Kagari, CardId.Hayate, CardId.Shizuku,
-                CardId.Zero, CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke))
+            if (card.IsCode(CardId.Kagari, CardId.Hayate, CardId.Shizuku))
                 return 1500 + card.LinkCount * 100;
             return Math.Max(300, card.Attack) + card.LinkCount * 100;
         }
@@ -2647,12 +1839,6 @@ namespace WindBot.Game.AI.Decks
         private bool SetHornetDrones()
         {
             return Util.IsTurn1OrMain2() && (SetWhenHandIsFull() || Bot.HasInMonstersZone(CardId.TopologicBomberDragon, true));
-        }
-
-        private bool SetLinkage()
-        {
-            return Util.IsTurn1OrMain2() && Bot.GetSpellCountWithoutField() < 4 &&
-                (Bot.Hand.Count(card => card.IsCode(CardId.Linkage)) >= 2 || SetWhenHandIsFull());
         }
 
         private bool SetWhenHandIsFull()

@@ -133,11 +133,12 @@ skills remain intact. The old guides, card notes, source variants and three RDA
 replays are preserved in a verified archive under `Artifacts/guide-consolidation/`.
 The [inventory](Guides/legacy-guide-inventory.json) records their hashes.
 
-## Sky Striker executor
+## Sky Striker 2026 executor
 
-`Deck=SkyStriker` loads the ordinary WindBot executor and
-`Decks/AI_SkyStriker.ydk`. The versioned 40-card Main Deck, 15-card Extra Deck and
-15-card Side Deck were imported from the user-supplied
+The original `Deck=SkyStriker` executor and `Decks/AI_SkyStriker.ydk` remain
+unchanged. The separate `Deck=SkyStriker2026` entry loads the new ordinary WindBot
+executor and `Decks/AI_SkyStriker2026.ydk`. Its 40-card Main Deck, 15-card Extra
+Deck and 15-card Side Deck were imported from the user-supplied
 `D:\Games\MDPro4\Deck\Sky striker.ydk` on 2026-11-03; MDPro4 appearance and
 accessory metadata are intentionally not part of the runtime deck resource.
 
@@ -155,7 +156,7 @@ compatible duel host, for example:
 ```powershell
 Push-Location .\WindBot\bin\Debug
 try {
-    .\WindBot.exe Name=SkyStriker Deck=SkyStriker Dialog=Universal_3.EN `
+    .\WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN `
         "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
         Host=127.0.0.1 Port=7911
 }
