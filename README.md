@@ -14,7 +14,16 @@ revision `0aa00265d7b378f7e0aee59dedb298d4e356b9b3`. Its original project, names
 deck names and executable names are retained. The existing SKYNET work was moved
 intact; this split does not change its duel policy or train a new model. All three
 folders remain part of this Git repository, so changes can be reviewed and committed
-together. The external `windbot-elder` checkout is unchanged.
+together. The former `windbot-elder` checkout was retired after verifying all
+292 retained source/runtime files against its latest `Rush_Support` commit.
+A complete local archive, including Git history and ignored files, remains in
+`Artifacts/retired-windbot-elder-20261102/`. The verification and restore location
+are recorded in [the migration receipt](WindBot/repository-migration.json).
+
+New normal executors now use the [RDA-based template](WindBot/Templates/RdaPlannerExecutor.cs.template)
+and [current authoring guide](WindBot/Guides/ExecutorAuthoring.md). The four newly
+imported bots, their provenance and validation limits are described in
+[WindBot's README](WindBot/README.md#executor-imports-and-rda-first-authoring).
 
 ## Build the bots
 
@@ -57,7 +66,7 @@ Both bot projects include the dialog JSON files supplied from
 folder has no default file and both original clients use that name by default.
 The normal launcher uses the supplied English bot roster from
 `D:\Programs\GitHub\MDPro4_Data\Data\locales\en-US\bot.conf`, stored here as
-`WindBot/BotWrapper/bot.conf`. These are versioned copies, so a fresh checkout does
+`WindBot/BotWrapper/bot.conf`, extended with the new executor entries. These are versioned copies, so a fresh checkout does
 not need those external paths. They are not live links to the data repository.
 Source paths and hashes are recorded in
 [`WindBot/resource-provenance.json`](WindBot/resource-provenance.json).

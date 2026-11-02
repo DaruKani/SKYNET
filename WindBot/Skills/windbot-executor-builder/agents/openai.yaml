@@ -1,0 +1,4 @@
+interface:
+  display_name: "WindBot Executors"
+  short_description: "Implement and review bounded deck AI behavior"
+  default_prompt: "Use $windbot-executor-builder for the requested task with a focused scope and verified results."

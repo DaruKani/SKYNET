@@ -1,0 +1,27 @@
+{
+  "source": "D:\\Programs\\GitHub\\windbot-elder",
+  "branch": "Rush_Support",
+  "head": "0aa00265d7b378f7e0aee59dedb298d4e356b9b3",
+  "restored_commit": "e8f1121d0ab35682778d700ac5c1fe6887cf4f5d",
+  "comparison": {
+    "retained_source_runtime_files": 292,
+    "content_differences": 0,
+    "line_ending_only_differences": 114,
+    "intentional_replacements": [
+      "README.md",
+      "AGENTS.md",
+      ".github/workflows/test-build.yml",
+      "Dialogs/*",
+      "BotWrapper/bot.conf"
+    ]
+  },
+  "archive": {
+    "workspace_path": "Artifacts/retired-windbot-elder-20261102/windbot-elder-full.zip",
+    "sha256": "f91e6bea80425725253438d289ea926e32d5b8ad250e8dfb5fdfa95eae66c7d1",
+    "files": 1157,
+    "scope": "Complete checkout, including .git history, all refs, ignored and configuration files.",
+    "tracked": false
+  },
+  "retired_local_directory": true,
+  "remote_repository_deleted": false
+}

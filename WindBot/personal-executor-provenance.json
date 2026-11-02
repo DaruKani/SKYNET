@@ -1,0 +1,113 @@
+{
+  "source": "C:\\Users\\Shanalotte\\Desktop\\metalmorph",
+  "revision": "Unknown; user-supplied loose files",
+  "imports": [
+    {
+      "deck": "Metalmorph",
+      "dialog": "Universal.EN",
+      "files": [
+        {
+          "path": "Game/AI/Decks/MetalmorphExecutor.cs",
+          "source_sha256": "0591b55ccb7ce659d841949a1571b187f3c2ee10479e2d944419ea7cea370ded",
+          "imported_sha256": "5666a5a5bb1ea922b06d1f78fbbf0665bddd44bea45b84a8ed81013fabec7a5d"
+        },
+        {
+          "path": "Decks/AI_Metalmorph.ydk",
+          "source_sha256": "14e80a9b5321bac21d95dc1c3e674425e6b25db4750b416bb4c801b71eceab39",
+          "imported_sha256": "5f9e73ce547b2613b23f96b091124c77764398e52f63fbbe9405b8b244f3e09e"
+        }
+      ],
+      "released_id_mapping": {
+        "old": 100256007,
+        "new": 76636978,
+        "script_sha256": "8f5ee67842061c2363dea31e4f84584fc7ac3686fc07d738a607240ccb7f8b8a"
+      },
+      "native_pilot": {
+        "receipt": "Artifacts/import-native-metalmorph-20261102/result.json",
+        "executable_sha256": "7fbe949ab74b662e65d5f9df3e211d3a0534847818ff3b9ae38e797c79dd9f2d",
+        "duels": 1,
+        "status": "passed",
+        "mode": "No-shuffle, no-deck-check completion pilot against OldSchool; not a strength benchmark."
+      }
+    },
+    {
+      "deck": "Odion",
+      "dialog": "Universal.EN",
+      "files": [
+        {
+          "path": "Game/AI/Decks/OdionExecutor.cs",
+          "source_sha256": "fcfe320d5646699c2444cc07ceafc28512edc35b2799584f6d8931ea1c2aa941",
+          "imported_sha256": "73f139a0f2fe3d5d04724147aa0dd60277f149a9dd3a81360ef5905e05ce885a"
+        },
+        {
+          "path": "Decks/AI_Odion.ydk",
+          "source_sha256": "e731baa2fd8caf2bd5c6e1d7ee72d916acb29d4d330f54907bf07d4690523f16",
+          "imported_sha256": "5fab1411e494567275fc04fc5f3506711ae4c999644b05c4263316852e283112"
+        }
+      ],
+      "released_id_mapping": {
+        "old": 100257013,
+        "new": 27118421,
+        "script_sha256": "9f1270425483ede2d9cf812120153745dc858350c174eab21d563da86f7f6683"
+      },
+      "native_pilot": {
+        "receipt": "Artifacts/import-native-odion-20261102/result.json",
+        "executable_sha256": "7fbe949ab74b662e65d5f9df3e211d3a0534847818ff3b9ae38e797c79dd9f2d",
+        "duels": 1,
+        "status": "passed",
+        "mode": "No-shuffle, no-deck-check completion pilot against OldSchool; not a strength benchmark."
+      }
+    }
+  ],
+  "validation": {
+    "status": "passed",
+    "assertions": 22,
+    "evidence_kind": "synthetic C# dispatcher/callback fixtures; no native duel or strength claim",
+    "executable": {
+      "path": "WindBot/bin/Debug/WindBot.exe",
+      "sha256": "423c5dcd0e99e56d1de352edf31706b5e53311f5e9c6bd1932c6895f2f6d1635"
+    },
+    "harness": {
+      "path": "Artifacts/persona-import-checks-final/PersonaChecks.cs",
+      "sha256": "0f31b79584a5c27d7d95aaf19ab635c917c7ae6bbe276016e92111e441afc977"
+    },
+    "database": {
+      "path": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\locales\\en-US\\cards.cdb",
+      "sha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8"
+    },
+    "script": {
+      "path": "script/c33854624.lua",
+      "archive": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\script.zip",
+      "sha256": "5340530b83aeeb5ca459144b9f674a1f646b9f9a36ec1e681a04e85ee3e7272e"
+    },
+    "source_hashes": {
+      "WindBot/Game/AI/Decks/MetalmorphExecutor.cs": "5666a5a5bb1ea922b06d1f78fbbf0665bddd44bea45b84a8ed81013fabec7a5d",
+      "WindBot/Game/AI/Decks/OdionExecutor.cs": "73f139a0f2fe3d5d04724147aa0dd60277f149a9dd3a81360ef5905e05ce885a"
+    },
+    "coverage": [
+      "Metalmorph and Odion registration/deck mapping",
+      "released card IDs 76636978 and 27118421",
+      "Synchro mandatory/optional material counts and encoded alternative contributions",
+      "Magnamhut legal summon trigger with hidden own deck",
+      "negated versus observed resolved search registration",
+      "delayed search survives source leaving field",
+      "End Phase offered search with stale candidate and unqueried dynamic race",
+      "consumption, new-turn reset and duel-instance isolation"
+    ],
+    "limits": [
+      "Other imported persona callbacks retain unreviewed legacy candidate-context assumptions.",
+      "No full card-coverage, combo or competitive-strength conclusion."
+    ],
+    "compatibility": "Imported persona sources and RDA template compile with /langversion:6; isolated syntax check supplied Program.Rand because that field is assembly-internal. Full Debug/Release builds pass against the real Program."
+  },
+  "limits": [
+    "Other imported persona callbacks retain unreviewed legacy candidate-context assumptions.",
+    "No full card-coverage, combo or competitive-strength conclusion."
+  ],
+  "adaptations": [
+    "Use tracked GetCardCountInDeck API and C#6-compatible declarations/delegates in place of inline out declarations and local functions.",
+    "Use current mandatory-material Synchro callback and delegate actual sum selection to GameAI.",
+    "Magnamhut: accept offered registration without hidden-deck scans; retain delayed search only after observed resolution, through source movement, until selection or new-turn reset.",
+    "Replace two obsolete prerelease IDs with verified released database/script identities in source and deck."
+  ]
+}

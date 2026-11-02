@@ -9,6 +9,11 @@ namespace WindBot.Game
     public class GameAI
     {
         public GameClient Game { get; private set; }
+
+        /// <summary>
+        /// True only while evaluating a server-offered optional effect confirmation.
+        /// </summary>
+        public bool SelectingEffectYn { get; private set; }
         public Duel Duel { get; private set; }
         public Executor Executor { get; set; }
 
@@ -570,12 +575,20 @@ namespace WindBot.Game
         /// <returns>True for yes, false for no.</returns>
         public bool OnSelectEffectYn(ClientCard card, int desc)
         {
-            foreach (CardExecutor exec in Executor.Executors)
+            SelectingEffectYn = true;
+            try
             {
-                if (ShouldExecute(exec, card, ExecutorType.Activate, desc))
-                    return true;
+                foreach (CardExecutor exec in Executor.Executors)
+                {
+                    if (ShouldExecute(exec, card, ExecutorType.Activate, desc))
+                        return true;
+                }
+                return false;
             }
-            return false;
+            finally
+            {
+                SelectingEffectYn = false;
+            }
         }
 
         /// <summary>

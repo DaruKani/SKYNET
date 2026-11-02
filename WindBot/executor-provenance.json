@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "imports": [
+    {
+      "pull_request": "https://github.com/IceYGO/windbot/pull/296",
+      "head_revision": "12d5270835803b820cae49a68c8fdfe7e52d68b4",
+      "author": "aqing62",
+      "state_at_import": "open",
+      "merged_at_import": false,
+      "submitted_reviews_at_import": 0,
+      "deck_registration": "SirokamiDarkMagician",
+      "dialog": "Universal.EN",
+      "deck_counts": {
+        "main": 40,
+        "extra": 11,
+        "side": 0
+      },
+      "files": [
+        {
+          "path": "Game/AI/Decks/SirokamiDarkMagicianExecutor.cs",
+          "upstream_sha256": "9024e12437a081261f1e243682675cfdeb86b792b45ea3ac59691a266b28653b",
+          "imported_sha256": "b6f94d9079d6e0219e6c639dc43eae62aef0ad5a49364491dd12d04a8f896185"
+        },
+        {
+          "path": "Decks/AI_SirokamiDarkMagician.ydk",
+          "upstream_sha256": "d2c9fcf02a7d7f53127e7242294d20a3070db08bbc0b160306fb7d4b1222ef60",
+          "imported_sha256": "d2c9fcf02a7d7f53127e7242294d20a3070db08bbc0b160306fb7d4b1222ef60"
+        }
+      ]
+    },
+    {
+      "pull_request": "https://github.com/IceYGO/windbot/pull/297",
+      "head_revision": "12a1d1b0afbe0f335eb0aea62e57f1eb6d2443b2",
+      "author": "xiaowenmao-bit",
+      "state_at_import": "open",
+      "merged_at_import": false,
+      "submitted_reviews_at_import": 0,
+      "deck_registration": "RaiseMoon",
+      "dialog": "Universal.EN",
+      "deck_counts": {
+        "main": 41,
+        "extra": 15,
+        "side": 0
+      },
+      "files": [
+        {
+          "path": "Game/AI/Decks/RaiseMoonExecutor.cs",
+          "upstream_sha256": "0abd91e150b41d3d362680e451a7c1da0ecdfb19cb4f8d3c5797ec0a9b555034",
+          "imported_sha256": "9c6284bb2a999230f9802887c672c10ff3549aba58c85c027d5e31853319a826"
+        },
+        {
+          "path": "Game/AI/Decks/RaiseMoonScriptWipe.cs",
+          "upstream_sha256": "64ad427d909dbb3ab61017a58179f5501195600b4b1174d32e1b830dc347d020",
+          "imported_sha256": "b30f3f89f44117ecfb7633bae0f335be9d3cc06b58a938cae0857bbde4a10b8e"
+        },
+        {
+          "path": "Decks/AI_RaiseMoon.ydk",
+          "upstream_sha256": "99352e329fffb5fae7e87416eb14fbd34479e81900244d87611298052d8cf551",
+          "imported_sha256": "99352e329fffb5fae7e87416eb14fbd34479e81900244d87611298052d8cf551"
+        }
+      ]
+    }
+  ],
+  "local_adaptations": [
+    "C# imports use four-space indentation and CRLF; original executor ordering, state and selection callbacks retained.",
+    "GameAI.SelectingEffectYn is true only inside OnSelectEffectYn; try/finally clears it even when a handler throws.",
+    "Both imports use existing per-client Debug=True console diagnostics; unbounded shared trace files removed.",
+    "RaiseMoon hardcoded character-chat calls are suppressed; the configured Dialogs pipeline owns chat.",
+    "RaiseMoon script heuristics read SHENGYUE_SCRIPT_DIR or the executable-local script folder only, with a 1 MiB file limit, 100 ms regex timeout and thread-safe definition caches. No parent discovery.",
+    "Sirokami CardId explicitly marks intentional inherited member hiding; stale header updated because supplied deck does not require optional custom IDs."
+  ],
+  "limits": [
+    "These open PRs had no submitted upstream reviews when imported. Local review covers integration boundaries, not every inherited card decision.",
+    "RaiseMoon Lua/text classifiers are lexical heuristics, not proof of effect semantics; they cannot reliably distinguish all conditions, effects or localization. script.zip is not automatically unpacked or read by that optional helper.",
+    "Both supplied decks have all card IDs in the selected English CDB. Sirokami code retains optional custom-card handlers whose custom IDs are absent from the supplied deck and database.",
+    "No competitive-strength claim follows from compilation or the focused harness."
+  ],
+  "validation": {
+    "status": "integration-checks-passed",
+    "database": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\locales\\en-US\\cards.cdb",
+    "database_sha256": "1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8",
+    "scripts_archive": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\script.zip",
+    "scripts_sha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+    "effect_prompt_script_checks": [
+      {
+        "id": 47828069,
+        "sha256": "0fc37641b86c75b70144959e3ffd9f35cca0f2a78797eac6823203cb415e3285"
+      },
+      {
+        "id": 11333460,
+        "sha256": "22e6a0503dda3c39f68541a3b3a3722f24ab376f5c1036d689aa948cb8502152"
+      },
+      {
+        "id": 28331069,
+        "sha256": "08f52ba11920b19f27ae049522e8d19add06b432052a5b0f067e87316aa914f1"
+      }
+    ],
+    "real_duels": 2,
+    "full_CSharp6_build": "Pre-existing C#7 syntax in AIUtil, Albaz, ThunderDragon and Ryzeal prevents enforcing /langversion:6 across the entire restored normal project. New PR imports pass isolated C#6 compilation.",
+    "focused_harness": "Artifacts/upstream-pr-import/UpstreamImportQA.cs",
+    "focused_harness_sha256": "1d9d8e752c49d67ea2793e796568c0657d0e2ac0c156f3957acde85ef264e6b7",
+    "focused_result": "25 assertions passed: per-client flag, accept/reject/exception cleanup, dispatch priority, chain isolation, bounded/concurrent script classification, registrations/constructors, Photon Howling and Rapi prompt distinction.",
+    "compiled_imports_CSharp6": "Passed against built WindBot Debug assembly; expected duplicate-type warnings arise from compiling imported types against the containing reference assembly.",
+    "built_assembly_sha256": "6ce197627433f468aa1ddd2ad48979a263cb5f568ebc18f1a3a13dd0163ceba6",
+    "cdb_deck_validation": {
+      "SirokamiDarkMagician": {
+        "all_32_unique_ids_present": true,
+        "effect_scripts_resolve_via_aliases": {
+          "41350418": 41350417,
+          "86066373": 86066372,
+          "88570004": 88570003
+        },
+        "normal_monster_without_effect_script": 46986414
+      },
+      "RaiseMoon": {
+        "all_29_unique_ids_present": true,
+        "all_deck_card_effect_scripts_present": true
+      }
+    },
+    "native_pilots": [
+      {
+        "receipt": "Artifacts/import-native-sirokami-20261102/result.json",
+        "executable_sha256": "6ce197627433f468aa1ddd2ad48979a263cb5f568ebc18f1a3a13dd0163ceba6",
+        "status": "passed",
+        "mode": "No-shuffle, no-deck-check completion against OldSchool; not strength evidence."
+      },
+      {
+        "receipt": "Artifacts/import-native-raisemoon-20261102/result.json",
+        "executable_sha256": "6ce197627433f468aa1ddd2ad48979a263cb5f568ebc18f1a3a13dd0163ceba6",
+        "status": "passed",
+        "mode": "No-shuffle, no-deck-check completion against OldSchool; not strength evidence."
+      }
+    ]
+  }
+}

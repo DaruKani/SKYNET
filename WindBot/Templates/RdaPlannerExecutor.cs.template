@@ -1,0 +1,202 @@
+// RDA-first starting point, distilled from the supplied Malckyor RDA template.
+// Reference implementation: Game/AI/Decks/TheCrimsonKingExecutor.cs.
+// This .template file is NOT compiled or registered as a bot.
+// Copy it into your new executor's source only after implementing its card model.
+// Deck executors under Game/AI/Decks already use a project wildcard in this workspace.
+// Build with Visual Studio MSBuild for .NET Framework 4.8 and C# 6.
+//
+// Keep the three RDA responsibilities separate:
+// 1. Validate the explicit .ydk and card/script identities used by the model.
+// 2. Capture observed state, match the plan against actual offers, own all prompts.
+// 3. Generate immutable model transitions, search and evaluate resulting boards.
+//
+// This scaffold intentionally provides no card effects, printed-text interpreter,
+// opponent hidden-card inference, universal deck policy, or learned strength claim.
+// Do not copy mutable AddExecutor predicates into Expand or Evaluate.
+// Mandatory prompts still need the normal executor's legal fallback.
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+
+namespace WindBot.Game.AI.Decks
+{
+    // Your concrete [Deck] executor implements these seams with deck-specific types.
+    // Start synchronously; background planning is an optimization to add only after
+    // correctness tests, state-retirement tests and measured scheduling evidence.
+    public abstract class RdaPlannerExecutorTemplate<TState, TAction> : DefaultExecutor
+        where TState : class
+        where TAction : class
+    {
+        // Infrastructure shared across requests, never duel/card state.
+        private static readonly SemaphoreSlim SearchSlots = new SemaphoreSlim(2, 2);
+        private CancellationTokenSource _request;
+        private Plan _plan;
+        private int _nextStep;
+
+        protected RdaPlannerExecutorTemplate(GameAI ai, Duel duel) : base(ai, duel)
+        {
+            if (AI.Game != null && AI.Game.Connection != null)
+                AI.Game.Connection.Disconnected += OnDisconnected;
+        }
+
+        protected sealed class Transition
+        {
+            public readonly TAction Action;
+            public readonly TState After;
+            public Transition(TAction action, TState after) { Action = action; After = after; }
+        }
+
+        protected sealed class Plan
+        {
+            public readonly TState Root;
+            public readonly IReadOnlyList<Transition> Steps;
+            public Plan(TState root, IList<Transition> steps)
+            {
+                Root = root;
+                Steps = new List<Transition>(steps).AsReadOnly();
+            }
+        }
+
+        private sealed class Node
+        {
+            public TState State;
+            public List<Transition> Steps;
+            public double Score;
+        }
+
+        // PART 1: validate the real loaded deck before first planning. Query own-deck
+        // counts through HasInDeck/GetCardCountInDeck, never hidden placeholder IDs.
+        protected abstract bool ValidateDeckAndModel();
+
+        // PART 2: snapshots must be immutable. Include all properties affecting the
+        // model (current levels/types/negation/locks), plus pending trigger stage.
+        // Read only observations provided to this client. Unknown Id=0 is valid.
+        protected abstract TState CaptureObservedState();
+        protected abstract bool SameObservedState(TState predicted, TState observed);
+
+        // These two methods run only while processing an actual offered candidate.
+        // IsCurrentOffer must compare action/effect identity and all prerequisites;
+        // a card ID alone does not identify multi-effect cards or prompt stages.
+        protected abstract bool IsCurrentOffer(TAction action);
+        protected abstract void CommitAcceptedAction(TAction action);
+
+        // PART 3: pure model operations. Every transition owns fresh immutable state;
+        // no queues, flags, random shared state or persistence may change here.
+        // Expand must be lazy/bounded and honor cancellation while enumerating.
+        // Verify card transitions against matching Lua scripts and native fixtures.
+        protected abstract IEnumerable<Transition> Expand(TState state, CancellationToken cancellation);
+        protected abstract double Evaluate(TState state);
+        protected abstract bool IsCompleteBoard(TState state);
+
+        // Invoke from your registered activation/summon handlers after mandatory
+        // handling. Keep target/material/option callbacks in that same executor.
+        protected bool TryAcceptPlannedOffer()
+        {
+            TState observed = CaptureObservedState();
+            TState expected = _plan == null ? null : (_nextStep == 0 ? _plan.Root : _plan.Steps[_nextStep - 1].After);
+            if (_plan == null || !SameObservedState(expected, observed))
+            {
+                RetirePlan();
+                if (!ValidateDeckAndModel()) return false;
+                _request = new CancellationTokenSource();
+                _plan = Search(observed, _request.Token);
+                _nextStep = 0;
+            }
+            if (_plan == null || _nextStep >= _plan.Steps.Count) return false;
+            TAction action = _plan.Steps[_nextStep].Action;
+            if (!IsCurrentOffer(action)) return false;
+            // Only acceptance may queue selections or mark activation usage.
+            // Record successful resolution separately in your chain callbacks.
+            CommitAcceptedAction(action);
+            _nextStep++;
+            return true;
+        }
+
+        private Plan Search(TState root, CancellationToken retirement)
+        {
+            const int totalMilliseconds = 1500;
+            const int maxDepth = 40;
+            const int beamWidth = 256;
+            const int maxExpanded = 10000;
+            const int maxCandidatesPerDepth = 4096;
+            // The clock and cancellation deadline start BEFORE waiting for capacity.
+            var watch = Stopwatch.StartNew();
+            using (var budget = CancellationTokenSource.CreateLinkedTokenSource(retirement))
+            {
+                budget.CancelAfter(totalMilliseconds);
+                bool entered = false;
+                try
+                {
+                    entered = SearchSlots.Wait(totalMilliseconds, budget.Token);
+                    if (!entered) return null;
+                    var rootNode = new Node { State = root, Steps = new List<Transition>(), Score = Evaluate(root) };
+                    Node best = IsCompleteBoard(root) ? rootNode : null;
+                    var frontier = new List<Node> { rootNode };
+                    int expanded = 0;
+                    for (int depth = 0; depth < maxDepth && frontier.Count > 0; depth++)
+                    {
+                        var candidates = new List<Node>();
+                        foreach (Node node in frontier)
+                        {
+                            if (budget.IsCancellationRequested || watch.ElapsedMilliseconds >= totalMilliseconds
+                                || expanded++ >= maxExpanded || candidates.Count >= maxCandidatesPerDepth) break;
+                            foreach (Transition move in Expand(node.State, budget.Token))
+                            {
+                                if (budget.IsCancellationRequested || watch.ElapsedMilliseconds >= totalMilliseconds
+                                    || candidates.Count >= maxCandidatesPerDepth) break;
+                                double score = Evaluate(move.After);
+                                if (double.IsNaN(score) || double.IsInfinity(score))
+                                    throw new InvalidOperationException("Model evaluation must be finite.");
+                                var steps = new List<Transition>(node.Steps) { move };
+                                var candidate = new Node { State = move.After, Steps = steps, Score = score };
+                                candidates.Add(candidate);
+                                if (IsCompleteBoard(move.After) && (best == null || score > best.Score)) best = candidate;
+                            }
+                        }
+                        if (budget.IsCancellationRequested || expanded >= maxExpanded) break;
+                        frontier = candidates.OrderByDescending(node => node.Score).Take(beamWidth).ToList();
+                    }
+                    // A time cutoff may retain a valid observed-root partial plan;
+                    // a retired duel/state must never reuse it.
+                    return retirement.IsCancellationRequested || best == null ? null : new Plan(root, best.Steps);
+                }
+                catch (OperationCanceledException)
+                {
+                    return null;
+                }
+                finally
+                {
+                    if (entered) SearchSlots.Release();
+                }
+            }
+        }
+
+        // Also call RetirePlan from any callback that invalidates your model state.
+        // Do not promote predictions into authoritative state when an effect negates.
+        protected void RetirePlan()
+        {
+            if (_request != null)
+            {
+                _request.Cancel();
+                _request.Dispose();
+                _request = null;
+            }
+            _plan = null;
+            _nextStep = 0;
+        }
+
+        public override void OnNewTurn()
+        {
+            RetirePlan();
+            base.OnNewTurn();
+        }
+
+        private void OnDisconnected(Exception error)
+        {
+            RetirePlan();
+        }
+    }
+}

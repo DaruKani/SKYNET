@@ -1,0 +1,149 @@
+{
+  "source_directory": "C:\\Users\\Shanalotte\\Desktop\\GPT Guide",
+  "source_role": "Historical guidance, card dumps, personal executor variants and replay evidence; not current runtime input.",
+  "replacement_guide": "ExecutorAuthoring.md",
+  "archive": {
+    "workspace_path": "Artifacts/guide-consolidation/GPT-Guide.zip",
+    "tracked": false,
+    "sha256": "42fd3a7e7bcec2ec3f403dfcae5b596b10a05c8d3b2eb13cb856ff645c8d42d1",
+    "verification": "Every archive entry was read back and matched against its source SHA-256."
+  },
+  "disposition": "Source was preserved during audit. Verify archive availability before retiring the desktop directory.",
+  "files": [
+    {
+      "path": "Combo.txt",
+      "bytes": 10550,
+      "sha256": "fc1c534bdfdc0a1c2ffe21c203a89aa0b547672308527345ec1710ab892e53c6"
+    },
+    {
+      "path": "compiled_deck_cards.txt",
+      "bytes": 152561,
+      "sha256": "0f17bc8d58c4a1e64f96618255d1ee775dbe98e454f5c412641fb590801a2d38"
+    },
+    {
+      "path": "ExecutorHandbook.md",
+      "bytes": 30480,
+      "sha256": "65e0a893b561d7a4a94af9152e3b8b8062b20d93982003c399477699dcb4a797"
+    },
+    {
+      "path": "MetalMorph/Combo_Metal.txt",
+      "bytes": 6190,
+      "sha256": "668eef01e0f633bb7027f0075a937060a2e5f1967e5c983c790a39792347b53d"
+    },
+    {
+      "path": "MetalMorph/compiled_deck_cards.txt",
+      "bytes": 135942,
+      "sha256": "c3f9275bc209082e67370e3c509ce9f4fb3f33ae15c2342dcd4b4462ca39877f"
+    },
+    {
+      "path": "Odion/Combo.txt",
+      "bytes": 10915,
+      "sha256": "454ed6fa922364b8ef198e3ededa581fea3b484f333a88578ca67068781539b2"
+    },
+    {
+      "path": "Odion/compiled_deck_cardsxx.txt",
+      "bytes": 136360,
+      "sha256": "c18f9546a0babed8e7593987c9f40b27c4e29338f288de8b695753619bf717cb"
+    },
+    {
+      "path": "Prompt Audit.txt",
+      "bytes": 7707,
+      "sha256": "b60bd730d81d7ebf402f1f5e6221de4e681b3161fe710c73681a88a23f7027bc"
+    },
+    {
+      "path": "RDA/RDA Bone Combo 01-20「17：10：19」.yrp3d",
+      "bytes": 58427,
+      "sha256": "98f9ae26d6c26e3d2d9eca52bf620e8be2816ea260620e3612f65399c35c8fd8"
+    },
+    {
+      "path": "RDA/RDA Power Vice Dragon Combo 01-20「17：26：34」.yrp3d",
+      "bytes": 62128,
+      "sha256": "8013c46df7687d832b20c92f00f69beb3c2d1f9d8d5567160880aa856fb83880"
+    },
+    {
+      "path": "RDA/RDA Soul Resonator Combo 01-18「02：40：04」.yrp3d",
+      "bytes": 70891,
+      "sha256": "fc153ccd632264739e26ef459a496bc800d57b23621bd97f1a1b0e13c4023b66"
+    },
+    {
+      "path": "RDA/rda_bot.txt",
+      "bytes": 37601,
+      "sha256": "244a8eab0408d71b02a7f964f920f2b74e28931cff285ecf1b117ed93e8f62ec"
+    },
+    {
+      "path": "RDA/RDABlazingDominionExecutor.cs",
+      "bytes": 174386,
+      "sha256": "1e9f21ea14ccb70a7a4120c882bfe57cd14aa6b0830995a834cec83568b91ab8"
+    },
+    {
+      "path": "Template/OdioneExecutor.cs",
+      "bytes": 3282,
+      "sha256": "a1929b49d4085af6571d92e73fdf6da7bbac71fc530468426a936d6c6005e689"
+    },
+    {
+      "path": "Winbot Prompt.txt",
+      "bytes": 8257,
+      "sha256": "94234c22d67f66b66ce094aad24b40318e0c4db5aa9bff42f797cee91de7e973"
+    }
+  ],
+  "related_skill_backup": {
+    "source_directory": "C:\\Users\\Shanalotte\\.codex\\skills\\windbot-executor-builder",
+    "workspace_path": "Artifacts/guide-consolidation/windbot-executor-builder-before.zip",
+    "tracked": false,
+    "sha256": "fa9e58272a4da77c9865608077ad9be4faafc7875552a7b3190d7fca7777f47c",
+    "files": [
+      {
+        "path": "agents/openai.yaml",
+        "bytes": 232,
+        "sha256": "7fe0b06eb7c6ff16036be300270d875133913d860b573a25a03ec08ae2c63b99"
+      },
+      {
+        "path": "references/core-api-map.md",
+        "bytes": 3056,
+        "sha256": "c6c7bc700a510a1678cd8ac5a566737393ba31b20eac7dcd2097ab308c354302"
+      },
+      {
+        "path": "references/executor-workflow.md",
+        "bytes": 1858,
+        "sha256": "3aa9709bcedfcf3d6c150515289937e4fe7a803fc67237dcbb1600626b27320a"
+      },
+      {
+        "path": "references/helper-catalog.md",
+        "bytes": 3405,
+        "sha256": "ebaf3491559271625e240df6c015fad60ffecdf59ea6046478ae789d7b707ff8"
+      },
+      {
+        "path": "scripts/find_reusable_helpers.py",
+        "bytes": 3510,
+        "sha256": "58df74aa2e30fb756692d8da46b3f40742c60e19b35b40bc9d8f607e22987998"
+      },
+      {
+        "path": "SKILL.md",
+        "bytes": 2182,
+        "sha256": "6f0a714c276eb8c8e795c011f0d32763c090c37a398e1e5406967da8ba8781b0"
+      }
+    ]
+  },
+  "replaced_guidance": [
+    {
+      "source": "ExecutorHandbook.md",
+      "issue": "The Bot.Deck identity scan is invalid for hidden placeholder slots; current GetCardCountInDeck/HasInDeck maintain own-deck counts."
+    },
+    {
+      "source": "ExecutorHandbook.md",
+      "issue": "GetLastChainCard then candidate Card is not a safe callback owner; activation and resolution require their distinct current APIs."
+    },
+    {
+      "source": "ExecutorHandbook.md",
+      "issue": "Deck hooks should not universally clear protocol-owned LastChainTargets or duplicate DefaultExecutor hint/column tracking."
+    },
+    {
+      "source": "Prompt Audit.txt",
+      "issue": "A fixed 13-executor ranking and compulsory full audits obscure bounded current source/script evidence."
+    },
+    {
+      "source": "Winbot Prompt.txt",
+      "issue": "Fixed report phases, comment headers and always-on helper scaffolds are not prerequisites for a focused correct fix."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "origin": "User-supplied RDA Bot template, attributed to Malckyor by its deck header",
+  "sourcePath": "C:\\Users\\Shanalotte\\Desktop\\RDA Bot",
+  "sourceHashes": {
+    "TemplateExecutor.en.cs": "1cf7bd2af5b5da18073db7ae4cfb0b8aa2fc95840354e035305ce2eda623b216",
+    "README.en.md": "7e115c4ce1b199e99ff3e695f6f69f6a145b1f3ba9040dc717861548c629d50e",
+    "TheCrimsonKingExecutor.cs": "6fdf553a57a5c02c308bcb31f1ecc8d50f5ef4ffa3209ea812423e139dd99c3c",
+    "AI_TheCrimsonKing.ydk": "4c30891c58abab2ffa227f86cf6700718b64b0dc03e182f8d2c5e6c80a851d5a"
+  },
+  "liveReference": "../Game/AI/Decks/TheCrimsonKingExecutor.cs",
+  "liveReferenceBaseRevision": "0aa00265d7b378f7e0aee59dedb298d4e356b9b3 (windbot-elder)",
+  "template": "RdaPlannerExecutor.cs.template",
+  "status": "Derived development scaffold, not a registered executor or generic card simulator",
+  "review": "Preserves the supplied three-part architecture; replaces stale build assumptions and unbounded scheduling patterns with explicit deck-specific seams and bounded synchronous planning.",
+  "validation": [
+    "Scaffold compiles as a separate .NET Framework library against WindBot.",
+    "Live RDA: 14 scheduling/model checks passed; exact Soul, Bone and Power Vice with Darkness model boards and scores preserved against the pre-change binary."
+  ],
+  "limits": [
+    "No claim of competitive strength from simulated scores.",
+    "Card effects, offered-action identities and prompt callbacks must be implemented and checked for every new deck.",
+    "Arena win/loss measurements and authoritative native combo checks are separate validation."
+  ],
+  "native_validation": {
+    "receipt": "Artifacts/import-native-rda-final-debug-20261102/result.json",
+    "executable_sha256": "6d6d15553e25a56050680d255d5962f2ea53fc6da0515143310d1daf760a6b61",
+    "mode": "Debug no-shuffle/no-deck-check completion pilot against OldSchool; not a strength benchmark.",
+    "status": "passed",
+    "forcedCleanup": [],
+    "release_attempt": {
+      "receipt": "Artifacts/import-native-rda-final-20261102/result.json",
+      "status": "Completion unverified: original WindBot start/result log markers are compiled out in Release. Both clients and host exited 0; result was not inferred from HP or exit status."
+    }
+  }
+}

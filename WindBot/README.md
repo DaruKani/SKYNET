@@ -55,6 +55,83 @@ copy them into that game layout when deploying. Running `WindBot.exe` directly
 does not read `bot.conf`; it uses `Deck=`, `Dialog=`, and the other options below.
 No external game files are changed by this workspace setup.
 
+## Executor imports and RDA-first authoring
+
+The normal bot now includes these explicitly selected imports. All four are
+listed in `BotWrapper/bot.conf` with `Dialog=Universal.EN`; their original executor
+registrations are preserved. Difficulty flags are left unassigned until measured.
+
+| Roster name | `Deck=` | Source |
+| --- | --- | --- |
+| Sirokami Dark Magician | `SirokamiDarkMagician` | [PR #296](https://github.com/IceYGO/windbot/pull/296), pinned `12d5270` |
+| Raise Moon | `RaiseMoon` | [PR #297](https://github.com/IceYGO/windbot/pull/297), pinned `12a1d1b` |
+| Metalmorph | `Metalmorph` | User's desktop `metalmorph` source and deck |
+| Odion | `Odion` | User's desktop `metalmorph` source and deck |
+
+The upstream PRs were open and had no submitted reviews at import. The
+[upstream receipt](executor-provenance.json) records exact revisions, script
+evidence, local compatibility changes and focused checks. The
+[personal-executor receipt](personal-executor-provenance.json) records the supplied
+files and fixes. Metalmorph's obsolete `100256007` and Odion's `100257013` were
+mapped to released cards `76636978` and `27118421`, respectively, using the selected
+database and matching Lua scripts. Both `.ydk` files and their handlers use those IDs.
+
+These are bounded integration reviews. Other branches of the large imported
+executors remain unreviewed; the personal sources still contain legacy callback
+assumptions. Sirokami's upstream combo gate is disabled in its submitted code.
+RaiseMoon's optional lexical script helper accepts `SHENGYUE_SCRIPT_DIR` or a
+runtime-local `script/` directory, with bounded reads; it does not inspect an
+engine's private state or extract `script.zip`. Its guesses are not rule simulation.
+
+For **new executor development**, use the
+[RDA-based template](Templates/RdaPlannerExecutor.cs.template), the newer live
+[Crimson King executor](Game/AI/Decks/TheCrimsonKingExecutor.cs), and the concise
+[authoring guide](Guides/ExecutorAuthoring.md). The desktop RDA source is older
+than this repository's implementation and was not copied over it. The template
+separates observed state, deck-specific model transitions, bounded search and
+committing actual offered actions. It is deliberately unregistered and requires
+the new deck's effects and prompt handling before it can play.
+
+The live RDA planner now shares one monotonic deadline across background queueing,
+search-slot wait, route search and post-processing. Cancellation retires waiting
+work, and concurrency/node/candidate caps bound resource use. Three fixed model
+hands (Soul, Bone, and Power Vice + Darkness) retain the baseline's exact final
+boards, scores and step counts. This establishes those model regressions, not
+full rules correctness or a higher win rate.
+
+This update passed Debug and Release builds, 25 upstream-import assertions,
+22 personal-executor assertions, and 14 RDA scheduling/model checks. Each of the
+four imports and the final RDA Debug build completed a native pilot against
+OldSchool with owned processes retiring normally. The catalog constructs all
+79 explicitly selected Arena matchups (default bulk selection excludes LV1).
+These pilots use no-shuffle/no-deck-check fixtures and do not establish strength.
+
+Run the maintained checks from the workspace root with explicit inputs:
+
+```powershell
+.\WindBot\Tools\Invoke-RdaPlannerChecks.ps1 `
+  -BotExecutable WindBot/bin/Release/WindBot.exe `
+  -Database 'D:/Programs/GitHub/MDPro4_Data/Data/locales/en-US/cards.cdb' `
+  -Deck WindBot/Decks/AI_TheCrimsonKing.ydk `
+  -OutputDirectory Artifacts/rda-checks-my-change
+```
+
+Use a new output directory for each receipt. Combo fixtures exercise specific
+hands, expected actions, interruptions and resets. Native fixtures then verify
+actual script prompts. [Arena](../Arena/README.md) compares preserved baseline and
+candidate binaries across opponents; its current UI does not inject hands or
+assert combo milestones. Keep match results separate from fixed-hand model tests.
+Use a **Debug** normal WindBot build with the existing `native_smoke.py` verifier:
+the original client's start/result markers are compiled out in Release, so a
+Release duel cannot satisfy that tool's completion assertions. Arena uses the
+server's ranking API and can compare Release binaries.
+
+The updated [executor skill](Skills/windbot-executor-builder/SKILL.md) is maintained
+here and installed locally. It replaces the old desktop prompt workflow; unrelated
+skills remain intact. The old guides, card notes, source variants and three RDA
+replays are preserved in a verified archive under `Artifacts/guide-consolidation/`.
+The [inventory](Guides/legacy-guide-inventory.json) records their hashes.
+
 ## Usage
 
 1. Build `WindBot.sln` with Visual Studio/MSBuild or Mono.

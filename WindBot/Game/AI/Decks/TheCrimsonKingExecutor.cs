@@ -1279,6 +1279,7 @@ namespace WindBot.Game.AI.Decks
         // -----------------------------------------------------------------------------------------------------
         private System.Threading.Tasks.Task<RdaPlan> _backgroundPlan;
         private RdaState _backgroundRoot;
+        private PlanningBudget _backgroundBudget;
         private System.Diagnostics.Stopwatch _backgroundWatch;
         private bool _backgroundStartedThisTurn;
         // Cancelamento da busca em segundo plano (P4): o token só é observado pelos Plan da tarefa; quando a busca
@@ -1304,10 +1305,12 @@ namespace WindBot.Game.AI.Decks
             _backgroundRoot = root;
             _backgroundWatch = System.Diagnostics.Stopwatch.StartNew();
             _backgroundCts = new CancellationTokenSource();
-            CancellationToken token = _backgroundCts.Token;
+            // Start the absolute monotonic deadline before queueing the worker.
+            var budget = new PlanningBudget(_backgroundCts.Token, RdaPlanner.PortfolioBudgetMs);
+            _backgroundBudget = budget;
             // A carteira roda com as opções clonadas carregando o token desta execução; as SearchOptions estáticas e
             // compartilhadas ficam intactas (ver SearchOptions.Token / WithToken).
-            List<SearchOptions> searches = PortfolioSearches.Take(PortfolioCount).Select(o => o.WithToken(token)).ToList();
+            List<SearchOptions> searches = PortfolioSearches.Take(PortfolioCount).Select(o => o.WithBudget(budget)).ToList();
             _backgroundPlan = System.Threading.Tasks.Task.Run(() => RdaPlanner.PlanPortfolio(root, searches, null));
             Report("plan", "first plan of the turn started calculating in the background (" + reason + ")");
         }
@@ -1318,6 +1321,7 @@ namespace WindBot.Game.AI.Decks
         {
             CancellationTokenSource source = _backgroundCts;
             _backgroundCts = null;
+            _backgroundBudget = null;
             if (source != null)
                 source.Cancel();
         }
@@ -1360,9 +1364,11 @@ namespace WindBot.Game.AI.Decks
         {
             System.Threading.Tasks.Task<RdaPlan> task = _backgroundPlan;
             RdaState root = _backgroundRoot;
+            PlanningBudget budget = _backgroundBudget;
             _backgroundPlan = null;
             _backgroundRoot = null;
-            if (task == null || root == null)
+            _backgroundBudget = null;
+            if (task == null || root == null || budget == null)
                 return null;
             if ((blocked != null && blocked.Count > 0) || !SameRoot(root, real))
             {
@@ -1373,7 +1379,13 @@ namespace WindBot.Game.AI.Decks
             long elapsedAtMenu = _backgroundWatch.ElapsedMilliseconds;
             try
             {
-                task.Wait();
+                int remaining = budget.RemainingMilliseconds;
+                if (!task.Wait(remaining))
+                {
+                    CancelBackgroundPlan();
+                    Report("plan", "background plan reached its total deadline; retaining the observed board");
+                    return RdaPlanner.Plan(real, new SearchOptions { Name = "background deadline", Width = 1, TimeLimitMs = 0 }, blocked);
+                }
             }
             catch (Exception error)
             {
@@ -8927,6 +8939,36 @@ namespace WindBot.Game.AI.Decks
             public int Depth;
         }
 
+        // One immutable deadline follows the whole request, including background queueing.
+        // Stopwatch timestamps avoid relying on thread-pool timer callbacks under CPU contention.
+        private sealed class PlanningBudget
+        {
+            public readonly CancellationToken Token;
+            private readonly long _deadline;
+
+            public PlanningBudget(CancellationToken token, int milliseconds)
+            {
+                Token = token;
+                _deadline = Stopwatch.GetTimestamp() + (long)Math.Max(0, milliseconds) * Stopwatch.Frequency / 1000;
+            }
+
+            public bool Expired
+            {
+                get { return Token.IsCancellationRequested || Stopwatch.GetTimestamp() >= _deadline; }
+            }
+
+            public int RemainingMilliseconds
+            {
+                get
+                {
+                    if (Token.IsCancellationRequested)
+                        return 0;
+                    long remaining = Math.Max(0, _deadline - Stopwatch.GetTimestamp());
+                    return (int)Math.Min(int.MaxValue, remaining * 1000 / Stopwatch.Frequency);
+                }
+            }
+        }
+
         /// <summary>Configuração de uma busca em feixe (validada nas baterias de handbook/planner/experiments).</summary>
         private sealed class SearchOptions
         {
@@ -8952,6 +8994,8 @@ namespace WindBot.Game.AI.Decks
             public bool ForbidUnprotectedNova;
             public bool ForbidNibiruExposed = false;  // descarta caminhos que invocam do 5º monstro em diante sem resposta ao Nibiru
             public int MaxDepth = 90;
+            public int MaxExpandedNodes = 100000;
+            public int MaxCandidates = 50000;
             // Limite de segurança: medido fora do jogo, a carteira leva 10-15 s em paralelo; cortar antes piora a mesa.
             public int TimeLimitMs = 25000;
             // Token de cancelamento do chamador (P4): a busca em segundo plano do turno clona as opções com um token próprio;
@@ -8960,6 +9004,14 @@ namespace WindBot.Game.AI.Decks
             // são estáticas e compartilhadas entre busca de fundo e replanejamento, então o Token nunca é gravado nelas:
             // quem precisa dele clona com WithToken. Não usar Token como identidade da busca.
             public CancellationToken Token;
+            public PlanningBudget Budget;
+
+            public SearchOptions WithBudget(PlanningBudget budget)
+            {
+                SearchOptions copy = WithToken(budget == null ? CancellationToken.None : budget.Token);
+                copy.Budget = budget;
+                return copy;
+            }
 
             // Cópia rasa com token de cancelamento desta chamada, sem tocar nos SearchOptions estáticos compartilhados.
             // Ao adicionar um campo novo em SearchOptions, atualizar este clone.
@@ -8971,7 +9023,7 @@ namespace WindBot.Game.AI.Decks
                     DiversityShare = DiversityShare, CollectSeeds = CollectSeeds, BookWeight = BookWeight,
                     Noise = Noise, Seed = Seed, ForbidUnprotectedNova = ForbidUnprotectedNova,
                     ForbidNibiruExposed = ForbidNibiruExposed, MaxDepth = MaxDepth, TimeLimitMs = TimeLimitMs,
-                    Token = value
+                    Token = value, Budget = Budget, MaxExpandedNodes = MaxExpandedNodes, MaxCandidates = MaxCandidates
                 };
                 return copy;
             }
@@ -9129,30 +9181,42 @@ namespace WindBot.Game.AI.Decks
             // Mede quanto um cache compartilhado de jogadas economizaria. Nulo no jogo.
             public static System.Collections.Concurrent.ConcurrentDictionary<RdaState, int> ExpansionCounter = null; // teste offline (reflexão)
 
-            // Teto global de buscas Plan concorrentes (P4). Antes, um replanejamento síncrono durante a primeira busca do
-            // turno em segundo plano podia deixar a carteira (3 buscas) + rotas + iscas + resistência rodando ao mesmo tempo:
-            // até 10+ Plans competindo por CPU, cada um gastando o orçamento inteiro. O gate limita quantos Plans rodam de
-            // verdade; quem chega depois espera no Monitor e leave faz PulseAll. Não há deadlock por reentrada porque Plan
-            // é folha (não chama outro Plan dentro dele); os helpers paralelos chamam Plan e cada chamada entra/sai do
-            // gate por conta própria. Uma busca já cancelada que espera na fila é inofensiva: ao entrar, o primeiro ponto
-            // de checagem aborta em seguida e devolve a vaga.
+            // Search permits bound concurrent beam searches. Queue wait belongs to the same
+            // request budget, and a cancelled waiter must never consume a permit.
             private static readonly object SearchGateLock = new object();
-            private static int SearchGatePermits = System.Environment.ProcessorCount; // teste offline: reduz por reflexão
+            private static int SearchGatePermits = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
             private static int SearchGateActive;
+            internal static int PortfolioBudgetMs = 6000;
+            private static readonly ParallelOptions PhaseParallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(1, Math.Min(4, Environment.ProcessorCount))
+            };
             public static int SearchGateInUse
             {
                 get { lock (SearchGateLock) { return SearchGateActive; } }
             }
 
-            // Espera por uma vaga (quem cancelou a busca só sai esperando: ao entrar, o primeiro ponto de checagem do Plan
-            // vê o Token cancelado e devolve o melhor-so-far em seguida). Espera em blocos de 50 ms; leave faz PulseAll.
-            private static void SearchGateEnter()
+            private static bool SearchExpired(SearchOptions options, Stopwatch watch)
+            {
+                return options.Token.IsCancellationRequested || (options.Budget != null && options.Budget.Expired)
+                    || watch.ElapsedMilliseconds >= options.TimeLimitMs;
+            }
+
+            private static bool SearchGateEnter(SearchOptions options, Stopwatch watch)
             {
                 lock (SearchGateLock)
                 {
                     while (SearchGateActive >= SearchGatePermits)
-                        Monitor.Wait(SearchGateLock, 50);
+                    {
+                        if (SearchExpired(options, watch))
+                            return false;
+                        int remaining = Math.Max(1, options.TimeLimitMs - (int)Math.Min(int.MaxValue, watch.ElapsedMilliseconds));
+                        Monitor.Wait(SearchGateLock, Math.Min(25, remaining));
+                    }
+                    if (SearchExpired(options, watch))
+                        return false;
                     SearchGateActive++;
+                    return true;
                 }
             }
 
@@ -9272,10 +9336,16 @@ namespace WindBot.Game.AI.Decks
             };
 
             // Replaneja proibindo a abertura do melhor plano (a jogada que leva ao starter), para achar uma rota com outro starter.
-            // Obs. (P4): esta fase não é cancelável — a assinatura é chamada por testes offline via reflexão com 3 argumentos,
-            // então não pode ganhar um parâmetro de token; a busca interna fica limitada ao próprio TimeLimitMs (2,5 s).
+            // Preserve the original reflection entry point; live portfolios use the bounded overload below.
             private static RdaPlan ForcedAlternative(RdaState root, RdaPlan best, ICollection<string> blocked)
             {
+                return ForcedAlternativeBounded(root, best, blocked, null);
+            }
+
+            private static RdaPlan ForcedAlternativeBounded(RdaState root, RdaPlan best, ICollection<string> blocked, PlanningBudget budget)
+            {
+                if ((budget != null && budget.Expired))
+                    return null;
                 if (root.Pending.Length != 0 || best.Steps.Count == 0 || ResilienceWeight <= 0
                     || root.HasFlag(RdaState.FlagMaxxC) || root.HasFlag(RdaState.FlagFuwalos))
                     return null;
@@ -9295,7 +9365,7 @@ namespace WindBot.Game.AI.Decks
                 if (start.Pending.Length != 0)
                     return null;
                 var blockedMore = new HashSet<string>(blocked ?? new string[0]) { opening.Action.Text };
-                RdaPlan alternative = Plan(start, StarterAlternativeSearch, blockedMore);
+                RdaPlan alternative = Plan(start, StarterAlternativeSearch.WithBudget(budget), blockedMore);
                 if (alternative.Steps.Count == 0)
                     return null;
                 if (openingIndex == 0)
@@ -9309,7 +9379,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             private static RdaPlan ChooseResilient(RdaState root, IList<RdaPlan> plans, RdaPlan best,
-                CancellationToken token = default(CancellationToken))
+                PlanningBudget budget = null)
             {
                 if (root.Pending.Length != 0 || root.HasFlag(RdaState.FlagMaxxC) || root.HasFlag(RdaState.FlagFuwalos) || ResilienceWeight <= 0)
                     return best;
@@ -9347,7 +9417,7 @@ namespace WindBot.Game.AI.Decks
                 double chance = StarterNegationChance * Math.Pow(0.5, Math.Max(0, root.UnansweredCriticals));
                 var fallbackTier = new int[contenders.Count];
                 var fallbackScore = new double[contenders.Count];
-                Parallel.For(0, contenders.Count, i =>
+                Parallel.For(0, contenders.Count, PhaseParallelOptions, i =>
                 {
                     RdaPlan plan = contenders[i];
                     int index = plan.Steps.FindIndex(step => IsCriticalAction(step.Action));
@@ -9357,11 +9427,13 @@ namespace WindBot.Game.AI.Decks
                         fallbackScore[i] = plan.Score;
                         return;
                     }
-                    RdaPlan fallback = Plan(NegateBait(plan.Steps[index].After, plan.Steps[index].Action), BaitFallbackSearch.WithToken(token), null);
+                    RdaPlan fallback = Plan(NegateBait(plan.Steps[index].After, plan.Steps[index].Action), BaitFallbackSearch.WithBudget(budget), null);
                     fallbackTier[i] = fallback.Tier;
                     fallbackScore[i] = fallback.Score;
                 });
 
+                if ((budget != null && budget.Expired))
+                    return best;
                 int chosen = 0;
                 double bestValue = double.MinValue;
                 for (int i = 0; i < contenders.Count; ++i)
@@ -9390,8 +9462,10 @@ namespace WindBot.Game.AI.Decks
                 public double FallbackScore = double.MinValue;
             }
 
-            private static void BaitFirst(RdaPlan plan, CancellationToken token = default(CancellationToken))
+            private static void BaitFirst(RdaPlan plan, PlanningBudget budget = null)
             {
+                if (budget != null && budget.Expired)
+                    return;
                 if (plan == null || plan.Root == null || plan.Root.Pending.Length != 0 || plan.Steps.Count == 0
                     || plan.Root.HasFlag(RdaState.FlagBaitDone))
                     return;
@@ -9401,17 +9475,19 @@ namespace WindBot.Game.AI.Decks
 
                 var options = new List<BaitOption>();
                 // 1) Iscas que o plano já usa: mover a escolhida para o primeiro passo (mesma mesa final).
-                for (int i = 0; i < actions.Count; ++i)
+                for (int i = 0; i < actions.Count && !(budget != null && budget.Expired); ++i)
                 {
                     if (!IsBaitAction(actions[i]))
                         continue;
                     var order = new List<PlanAction> { actions[i] };
                     order.AddRange(actions.Where((action, index) => index != i));
-                    List<PlanStep> simulated = SimulateActions(plan.Root, order);
+                    List<PlanStep> simulated = SimulateActionsBounded(plan.Root, order, budget);
                     if (simulated != null && simulated[simulated.Count - 1].After.Equals(plan.Final))
                         options.Add(new BaitOption { Steps = simulated, Final = simulated[simulated.Count - 1].After });
                 }
                 // 2) Plano sem isca: ativar uma da mão antes de tudo, sem mudar o campo final.
+                if (budget != null && budget.Expired)
+                    return;
                 if (options.Count == 0)
                 {
                     foreach (RdaMove move in RdaRules.Successors(plan.Root))
@@ -9420,7 +9496,7 @@ namespace WindBot.Game.AI.Decks
                             continue;
                         var order = new List<PlanAction> { move.Action };
                         order.AddRange(actions);
-                        List<PlanStep> simulated = SimulateActions(plan.Root, order);
+                        List<PlanStep> simulated = SimulateActionsBounded(plan.Root, order, budget);
                         if (simulated != null && RdaArray.Same(simulated[simulated.Count - 1].After.Field, plan.Final.Field))
                             options.Add(new BaitOption { Steps = simulated, Final = simulated[simulated.Count - 1].After });
                     }
@@ -9431,12 +9507,14 @@ namespace WindBot.Game.AI.Decks
                 // Qual isca dói menos se for negada: replanejamento rápido, em paralelo, a partir da negação.
                 foreach (BaitOption option in options)
                     option.Negated = NegateBait(option.Steps[0].After, option.Steps[0].Action);
-                Parallel.For(0, options.Count, i =>
+                Parallel.For(0, options.Count, PhaseParallelOptions, i =>
                 {
-                    RdaPlan fallback = Plan(options[i].Negated, BaitFallbackSearch.WithToken(token), null);
+                    RdaPlan fallback = Plan(options[i].Negated, BaitFallbackSearch.WithBudget(budget), null);
                     options[i].FallbackTier = fallback.Tier;
                     options[i].FallbackScore = fallback.Score;
                 });
+                if ((budget != null && budget.Expired))
+                    return;
                 BaitOption best = options.OrderBy(option => option.FallbackTier).ThenByDescending(option => option.FallbackScore).First();
 
                 if (ReferenceEquals(best.Steps[0].Action, plan.Steps[0].Action) || best.Steps[0].Action.Text == plan.Steps[0].Action.Text)
@@ -9545,17 +9623,22 @@ namespace WindBot.Game.AI.Decks
 
             private static void DelaySummons(RdaPlan plan)
             {
+                DelaySummonsBounded(plan, null);
+            }
+
+            private static void DelaySummonsBounded(RdaPlan plan, PlanningBudget budget)
+            {
                 if (plan == null || plan.Root == null || plan.Steps.Count < 3)
                     return;
                 int replays = 0;
                 bool moved = true;
-                while (moved && replays < DelaySummonsMaxReplays)
+                while (!(budget != null && budget.Expired) && moved && replays < DelaySummonsMaxReplays)
                 {
                     moved = false;
                     List<List<PlanStep>> blocks = SplitBlocks(plan.Steps);
                     int fixedBlocks = blocks.FindIndex(block => block.Any(step => IsCriticalAction(step.Action))) + 1;
                     RdaState before = plan.Root;
-                    for (int b = 0; b < blocks.Count && !moved && replays < DelaySummonsMaxReplays; ++b)
+                    for (int b = 0; b < blocks.Count && !(budget != null && budget.Expired) && !moved && replays < DelaySummonsMaxReplays; ++b)
                     {
                         RdaState after = blocks[b][blocks[b].Count - 1].After;
                         List<PlanStep> block = blocks[b];
@@ -9578,14 +9661,14 @@ namespace WindBot.Game.AI.Decks
                         if (consumer < 0)
                             consumer = blocks.Count; // fica no campo até o fim: vai para o final
                         // Tenta o mais tarde possível: logo antes do consumidor, depois uma posição antes, até b + 2.
-                        for (int target = consumer; target >= b + 2 && !moved && replays < DelaySummonsMaxReplays; --target)
+                        for (int target = consumer; target >= b + 2 && !(budget != null && budget.Expired) && !moved && replays < DelaySummonsMaxReplays; --target)
                         {
                             var order = new List<List<PlanStep>>(blocks);
                             order.RemoveAt(b);
                             order.Insert(target - 1, block);
                             List<PlanAction> actions = order.SelectMany(item => item.Select(step => step.Action)).ToList();
                             replays++;
-                            List<PlanStep> simulated = SimulateActions(plan.Root, actions);
+                            List<PlanStep> simulated = SimulateActionsBounded(plan.Root, actions, budget);
                             if (simulated == null || !simulated[simulated.Count - 1].After.Equals(plan.Final))
                                 continue;
                             plan.Steps.Clear();
@@ -9604,10 +9687,17 @@ namespace WindBot.Game.AI.Decks
             // Refaz uma sequência de ações pelas regras (casando pelo texto). null se algum passo não for possível.
             private static List<PlanStep> SimulateActions(RdaState root, List<PlanAction> actions)
             {
+                return SimulateActionsBounded(root, actions, null);
+            }
+
+            private static List<PlanStep> SimulateActionsBounded(RdaState root, List<PlanAction> actions, PlanningBudget budget)
+            {
                 var result = new List<PlanStep>();
                 RdaState state = root;
                 foreach (PlanAction action in actions)
                 {
+                    if ((budget != null && budget.Expired))
+                        return null;
                     RdaMove match = default(RdaMove);
                     bool found = false;
                     foreach (RdaMove move in RdaRules.Successors(state))
@@ -9745,9 +9835,16 @@ namespace WindBot.Game.AI.Decks
             /// <summary>Carteira: roda as buscas em paralelo e fica com a melhor mesa (camada primeiro, nota de seleção depois).</summary>
             public static RdaPlan PlanPortfolio(RdaState root, IList<SearchOptions> searches, ICollection<string> blockedRootActions)
             {
-                // Token de cancelamento desta execução da carteira: a busca de fundo do turno passa as opções já clonadas
-                // com o token (ver StartBackgroundPlan); o replanejamento síncrono usa as opções estáticas sem token (None).
-                CancellationToken token = searches.Count > 0 ? searches[0].Token : default(CancellationToken);
+                if (searches == null || searches.Count == 0)
+                    throw new ArgumentException("At least one portfolio search is required.", "searches");
+                PlanningBudget budget = searches[0].Budget ?? new PlanningBudget(searches[0].Token, PortfolioBudgetMs);
+                return PlanPortfolioBounded(root, searches, blockedRootActions, budget);
+            }
+
+            private static RdaPlan PlanPortfolioBounded(RdaState root, IList<SearchOptions> searches,
+                ICollection<string> blockedRootActions, PlanningBudget budget)
+            {
+                // Every route, beam search and post-processing phase shares this request's deadline.
                 var watch = Stopwatch.StartNew();
                 // Rotas de referência (combos do jogador) só no primeiro plano do turno: encaixadas na mão pelas regras e
                 // completadas por uma busca curta. Se alguma chega à mesa ideal com o nova protegido, a carteira pesada é trocada
@@ -9761,7 +9858,7 @@ namespace WindBot.Game.AI.Decks
                 // rotas normais. Antes as rotas eram simplesmente desligadas sob Maxx "C".
                 var phase = Stopwatch.StartNew();
                 List<RdaPlan> guided = (blockedRootActions == null || blockedRootActions.Count == 0) && root.Pending.Length == 0
-                    ? GuidedPlans(root, firstPlan, maxx, token) : new List<RdaPlan>();
+                    ? GuidedPlans(root, firstPlan, maxx, budget) : new List<RdaPlan>();
                 long msGuided = phase.ElapsedMilliseconds;
                 long msSearch = 0, msForced = 0, msResilient = 0, msShortcut = 0, msSeeds = 0;
                 RdaPlan bestGuided = guided.OrderBy(item => item.Tier).ThenByDescending(item => item.Score).FirstOrDefault();
@@ -9774,12 +9871,12 @@ namespace WindBot.Game.AI.Decks
                 // Camada 1 também conta quando a rota foi seguida inteira: é a mesa de Supernova que o jogador montou (Bone, Foolish).
                 phase.Restart();
                 List<RdaPlan> idealRoutes = guided.Where(plan => (plan.Tier == 0 || (plan.Tier == 1 && plan.RouteComplete)) && !plan.NovaUnprotected).ToList();
-                if (firstPlan && idealRoutes.Count > 0)
+                if (!(budget != null && budget.Expired) && firstPlan && idealRoutes.Count > 0)
                 {
                     var safe = new bool[idealRoutes.Count];
-                    Parallel.For(0, idealRoutes.Count, i =>
+                    Parallel.For(0, idealRoutes.Count, PhaseParallelOptions, i =>
                     {
-                        RdaPlan starterNegated = StarterFallback(idealRoutes[i], token);
+                        RdaPlan starterNegated = StarterFallback(idealRoutes[i], budget);
                         safe[i] = starterNegated == null || starterNegated.Tier <= 2 || starterNegated.Score >= RouteSafeFallbackScore;
                     });
                     shortcut = safe.Any(value => value);
@@ -9809,7 +9906,7 @@ namespace WindBot.Game.AI.Decks
                 IList<SearchOptions> effective = shortcut ? (IList<SearchOptions>)new[] { RouteVerifySearch, RouteVerifySearchProtected } : searches;
                 var plans = new RdaPlan[effective.Count];
                 phase.Restart();
-                Parallel.For(0, effective.Count, i => plans[i] = Plan(root, effective[i].WithToken(token), blockedRootActions));
+                Parallel.For(0, effective.Count, PhaseParallelOptions, i => plans[i] = Plan(root, effective[i].WithBudget(budget), blockedRootActions));
                 msSearch = phase.ElapsedMilliseconds;
                 var pool = new List<RdaPlan>(plans);
                 pool.AddRange(guided);
@@ -9818,10 +9915,10 @@ namespace WindBot.Game.AI.Decks
                 // passam por uma fase de mesa fraca e saem do feixe (teste contra o Albaz, 23:19: caiu na profundidade 13; buscando
                 // a partir do passo 11 a mesma busca achava a camada 0 em 6 s). A busca continua a partir delas e o resultado
                 // entra na disputa junto com a carteira.
-                if (firstPlan && plans.Any(plan => plan.Seeds.Count > 0))
+                if (!(budget != null && budget.Expired) && firstPlan && plans.Any(plan => plan.Seeds.Count > 0))
                 {
                     phase.Restart();
-                    List<RdaPlan> seeded = SeededPlans(root, plans, best, token);
+                    List<RdaPlan> seeded = SeededPlans(root, plans, best, budget);
                     msSeeds = phase.ElapsedMilliseconds;
                     pool.AddRange(seeded);
                     best = pool.OrderBy(item => item.Tier).ThenByDescending(item => item.Score).First();
@@ -9832,16 +9929,17 @@ namespace WindBot.Game.AI.Decks
                 // iniciantes da mão (StartersCovered), então a abertura forçada é redundante. Medido em 2026-09-16 com
                 // handbook\tests\teste_forced_redundante.ps1: nas 21 mãos com atalho ela nunca mudou a escolha do
                 // ChooseResilient, e custava de 0,8 a 2,7 s no caminho crítico.
-                if (searches.Count >= 3 && !shortcut)
+                if (!(budget != null && budget.Expired) && searches.Count >= 3 && !shortcut)
                 {
                     phase.Restart();
-                    RdaPlan forced = ForcedAlternative(root, best, blockedRootActions);
+                    RdaPlan forced = ForcedAlternativeBounded(root, best, blockedRootActions, budget);
                     msForced = phase.ElapsedMilliseconds;
                     if (forced != null)
                         pool.Add(forced);
                 }
                 phase.Restart();
-                best = ChooseResilient(root, pool, best, token);
+                if (!(budget != null && budget.Expired))
+                    best = ChooseResilient(root, pool, best, budget);
                 msResilient = phase.ElapsedMilliseconds;
                 // Droll & Lock Bird resolvido (jogador, 2026-09-16): a rota de referência tem preferência. Sob Droll sobram poucas
                 // cartas jogáveis, as mesas empatam em negações e a alternativa da busca só aguentava melhor a negação porque
@@ -9860,9 +9958,9 @@ namespace WindBot.Game.AI.Decks
                 }
                 // Isca só no primeiro plano do turno (jogador): é para puxar a negação enquanto a mesa está sendo montada.
                 // Nos recálculos do meio do combo a isca é dispensada; no turno seguinte o primeiro plano volta a considerar.
-                if (searches.Count >= 3)
-                    BaitFirst(best, token);
-                DelaySummons(best);
+                if (!(budget != null && budget.Expired) && searches.Count >= 3)
+                    BaitFirst(best, budget);
+                DelaySummonsBounded(best, budget);
                 best.ElapsedMs = watch.ElapsedMilliseconds;
                 // Perfil somado de todas as buscas que rodaram nesta carteira (inclui as rotas encaixadas). Serve para
                 // saber, numa partida de verdade, em que etapa o tempo foi gasto — e não só quanto tempo foi.
@@ -10488,6 +10586,7 @@ namespace WindBot.Game.AI.Decks
                 SeedSearch.TimeLimitMs = timeLimitMs;
                 StarterAlternativeSearch.Width = Math.Min(StarterAlternativeSearch.Width, width);
                 StarterAlternativeSearch.TimeLimitMs = Math.Min(StarterAlternativeSearch.TimeLimitMs, timeLimitMs);
+                PortfolioBudgetMs = Math.Max(1, Math.Min(16000, timeLimitMs * 4));
                 RouteVerifySearch.Width = width;
                 RouteVerifySearch.TimeLimitMs = timeLimitMs;
                 RouteVerifySearchProtected.Width = width;
@@ -10500,6 +10599,7 @@ namespace WindBot.Game.AI.Decks
             private sealed class RouteFollower
             {
                 public RouteGuide Route;
+                public PlanningBudget Request;
                 public int Budget = RouteBudget;
                 public int BestIndex = -1;
                 public int BestMatched;
@@ -10511,6 +10611,8 @@ namespace WindBot.Game.AI.Decks
 
                 public void Follow(RdaState state, int index, int skips)
                 {
+                    if (Request != null && Request.Expired)
+                        return;
                     bool end = index >= Route.Steps.Length;
                     if ((end && !BestEnd) || (end == BestEnd && (_matched > BestMatched || (_matched == BestMatched && index > BestIndex))))
                     {
@@ -10617,12 +10719,12 @@ namespace WindBot.Game.AI.Decks
             }
 
             private static RdaPlan RoutePlan(RdaState root, RouteGuide route, bool fromStart,
-                CancellationToken token = default(CancellationToken))
+                PlanningBudget budget = null)
             {
-                var follower = new RouteFollower { Route = route };
+                var follower = new RouteFollower { Route = route, Request = budget };
                 // Primeiro plano: a rota começa do primeiro passo. Replanejamento: o combo já andou, então tenta começar de cada passo.
                 int starts = fromStart ? 1 : route.Steps.Length;
-                for (int start = 0; start < starts && !follower.Perfect && follower.Budget > 0; ++start)
+                for (int start = 0; start < starts && !(budget != null && budget.Expired) && !follower.Perfect && follower.Budget > 0; ++start)
                     follower.Follow(root, start, 0);
                 if (follower.BestPath.Count == 0 || follower.BestMatched < (fromStart ? RouteMinStepsMatched : RouteMinStepsReplan))
                     return null;
@@ -10644,9 +10746,9 @@ namespace WindBot.Game.AI.Decks
                 string name = string.Format("route {0} ({1} of {2} steps)", route.Name, follower.BestMatched, route.Steps.Length);
                 RdaPlan onlyRoute = StitchPlan(root, name, prefix, exposure, unprotected, null);
                 onlyRoute.RouteComplete = follower.BestMatched == route.Steps.Length;
-                if (!fromStart)
+                if (!fromStart || (budget != null && budget.Expired))
                     return onlyRoute;
-                RdaPlan suffix = Plan(before, RouteFinishSearch.WithToken(token), null);
+                RdaPlan suffix = Plan(before, RouteFinishSearch.WithBudget(budget), null);
                 RdaPlan finished = StitchPlan(root, name + " + search", prefix, exposure, unprotected, suffix);
                 finished.RouteComplete = onlyRoute.RouteComplete;
                 return finished.Tier < onlyRoute.Tier || (finished.Tier == onlyRoute.Tier && finished.Score > onlyRoute.Score) ? finished : onlyRoute;
@@ -10703,20 +10805,20 @@ namespace WindBot.Game.AI.Decks
             }
 
             // Mesa que sobra se o starter (1º efeito crítico) do plano for negado.
-            private static RdaPlan StarterFallback(RdaPlan plan, CancellationToken token = default(CancellationToken))
+            private static RdaPlan StarterFallback(RdaPlan plan, PlanningBudget budget = null)
             {
                 int index = plan.Steps.FindIndex(step => IsCriticalAction(step.Action));
                 if (index < 0)
                     return null;
-                return Plan(NegateBait(plan.Steps[index].After, plan.Steps[index].Action), BaitFallbackSearch.WithToken(token), null);
+                return Plan(NegateBait(plan.Steps[index].After, plan.Steps[index].Action), BaitFallbackSearch.WithBudget(budget), null);
             }
 
             private static List<RdaPlan> GuidedPlans(RdaState root, bool fromStart, bool maxx = false,
-                CancellationToken token = default(CancellationToken))
+                PlanningBudget budget = null)
             {
                 RouteGuide[] routes = RouteGuides.Where(route => route.ForMaxx == maxx).ToArray();
                 var results = new RdaPlan[routes.Length];
-                Parallel.For(0, routes.Length, i => results[i] = RoutePlan(root, routes[i], fromStart, token));
+                Parallel.For(0, routes.Length, PhaseParallelOptions, i => results[i] = RoutePlan(root, routes[i], fromStart, budget));
                 return results.Where(plan => plan != null && plan.Steps.Count > 0).ToList();
             }
 
@@ -10746,7 +10848,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             private static List<RdaPlan> SeededPlans(RdaState root, IList<RdaPlan> plans, RdaPlan best,
-                CancellationToken token = default(CancellationToken))
+                PlanningBudget budget = null)
             {
                 // Uma semente por starter + rota do livro; fora as que já estão no caminho do melhor plano. Rotas do livro (combos do
                 // jogador) primeiro, depois a prioridade.
@@ -10760,10 +10862,10 @@ namespace WindBot.Game.AI.Decks
                     .Take(SeedCount)
                     .ToList();
                 var results = new RdaPlan[prefixes.Count];
-                Parallel.For(0, prefixes.Count, i =>
+                Parallel.For(0, prefixes.Count, PhaseParallelOptions, i =>
                 {
                     RdaPlan prefix = prefixes[i];
-                    RdaPlan suffix = Plan(prefix.Final, SeedSearch.WithToken(token), null);
+                    RdaPlan suffix = Plan(prefix.Final, SeedSearch.WithBudget(budget), null);
                     if (suffix.Steps.Count == 0)
                         return;
                     var stitched = new RdaPlan
@@ -10789,20 +10891,22 @@ namespace WindBot.Game.AI.Decks
             // Só valem para o primeiro passo; depois dele o estado já é outro.
             public static RdaPlan Plan(RdaState root, SearchOptions options, ICollection<string> blockedRootActions)
             {
-                SearchGateEnter();
+                var watch = Stopwatch.StartNew();
+                bool entered = SearchGateEnter(options, watch);
                 try
                 {
-                    return PlanGated(root, options, blockedRootActions);
+                    // An expired waiter returns the observed root, never another request's plan.
+                    return PlanGated(root, options, blockedRootActions, watch);
                 }
                 finally
                 {
-                    SearchGateLeave();
+                    if (entered)
+                        SearchGateLeave();
                 }
             }
 
-            private static RdaPlan PlanGated(RdaState root, SearchOptions options, ICollection<string> blockedRootActions)
+            private static RdaPlan PlanGated(RdaState root, SearchOptions options, ICollection<string> blockedRootActions, Stopwatch watch)
             {
-                var watch = Stopwatch.StartNew();
                 var random = new Random(options.Seed);
                 var rootNode = new Node { State = root, RouteMask = AllRoutes, Summoned = root.SummonedThisTurn };
                 var seeds = options.CollectSeeds ? new Dictionary<int, KeyValuePair<double, Node>>() : null;
@@ -10828,9 +10932,7 @@ namespace WindBot.Game.AI.Decks
 
                 var frontier = new List<Node> { rootNode };
                 int depth = 0;
-                // Contador para a checagem de tempo/cancelamento a cada bloco de avaliações (P4): o limite antigo só era
-                // conferido no fim da camada, então uma profundidade com feixe grande estourava o orçamento em segundos.
-                int timeCheckCount = 0;
+                // Check the same request budget while expanding and evaluating, not only between depths.
                 for (; depth < options.MaxDepth; ++depth)
                 {
                     var candidates = new Dictionary<RdaState, Node>();
@@ -10838,7 +10940,8 @@ namespace WindBot.Game.AI.Decks
                     {
                         // Granularidade por nó na geração de jogadas: sair aqui para o mais cedo possível quando a busca
                         // foi cancelada ou o limite estourou (a avaliação dos candidatos já colhidos ainda roda abaixo).
-                        if (options.Token.IsCancellationRequested || watch.ElapsedMilliseconds > options.TimeLimitMs)
+                        if (SearchExpired(options, watch) || expanded >= options.MaxExpandedNodes
+                            || candidates.Count >= options.MaxCandidates)
                             break;
                         phase.Restart();
                         List<RdaMove> successors = RdaRules.Successors(node.State);
@@ -10850,6 +10953,8 @@ namespace WindBot.Game.AI.Decks
                         phase.Restart();
                         foreach (RdaMove move in successors)
                         {
+                            if (candidates.Count >= options.MaxCandidates || SearchExpired(options, watch))
+                                break;
                             if (node == rootNode && blockedRootActions != null
                                 && (blockedRootActions.Contains(move.Action.Text) || blockedRootActions.Contains(EffectBlockKey(move.Action))))
                                 continue;
@@ -10919,10 +11024,8 @@ namespace WindBot.Game.AI.Decks
                     var scored = new List<KeyValuePair<double, Node>>(candidates.Count);
                     foreach (Node node in candidates.Values)
                     {
-                        // Granularidade na avaliação: a cada 256 nós confere cancelamento/limite. Um feixe de 3000 estados
-                        // leva ~meio segundo para avaliar; dividir por blocos impede que isso vire segundos de estouro.
-                        if ((++timeCheckCount & 255) == 0
-                            && (options.Token.IsCancellationRequested || watch.ElapsedMilliseconds > options.TimeLimitMs))
+                        // Do not spend another evaluation batch after the request has expired.
+                        if (SearchExpired(options, watch))
                             break;
                         double evaluation = RdaEvaluator.Evaluate(node.State);
                         if (node.State.Pending.Length == 0)
@@ -11032,7 +11135,7 @@ namespace WindBot.Game.AI.Decks
                         }
                     }
                     ticksSort += phase.ElapsedTicks;
-                    if (options.Token.IsCancellationRequested || watch.ElapsedMilliseconds > options.TimeLimitMs)
+                    if (SearchExpired(options, watch) || expanded >= options.MaxExpandedNodes)
                         break;
                 }
 
