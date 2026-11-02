@@ -133,6 +133,41 @@ skills remain intact. The old guides, card notes, source variants and three RDA
 replays are preserved in a verified archive under `Artifacts/guide-consolidation/`.
 The [inventory](Guides/legacy-guide-inventory.json) records their hashes.
 
+## Sky Striker executor
+
+`Deck=SkyStriker` loads the ordinary WindBot executor and
+`Decks/AI_SkyStriker.ydk`. The versioned 40-card Main Deck, 15-card Extra Deck and
+15-card Side Deck were imported from the user-supplied
+`D:\Games\MDPro4\Deck\Sky striker.ydk` on 2026-11-03; MDPro4 appearance and
+accessory metadata are intentionally not part of the runtime deck resource.
+
+The executor prioritizes an OTK when going second and a Zero-centered setup when
+going first. It covers Raye/Roze access, Engage/Kagari recovery, Linkage battle
+extension, Lemnisgate recycling, Zero/Amatsu/Widow Anchor interaction, the modern
+Camellia/Azalea/Zeke links, the Fallen/Dogma/Ecclesia package and TY-PHON. The
+listed Side Deck board breakers and counter traps have ordinary executor support.
+All target, material, recycle and option choices remain restricted to candidates
+offered by the duel server.
+
+After building, start it from the output directory with an explicit database and
+compatible duel host, for example:
+
+```powershell
+Push-Location .\WindBot\bin\Debug
+try {
+    .\WindBot.exe Name=SkyStriker Deck=SkyStriker Dialog=Universal_3.EN `
+        "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
+        Host=127.0.0.1 Port=7911
+}
+finally { Pop-Location }
+```
+
+This is a heuristic executor, not an exhaustive combo search or proof of lethal.
+It does not predict unknown opposing cards, and its Linkage/resource ordering can
+miss a stronger line in unusual boards. Debug/Release compilation and deck-list
+checks do not substitute for a script-backed duel; record real duel outcomes as
+separate evidence before treating the executor as competitively tuned.
+
 ## Voiceless Voice routes and recovery
 
 `Deck=Voiceless` still loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck now
