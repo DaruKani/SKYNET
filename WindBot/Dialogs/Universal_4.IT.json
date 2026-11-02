@@ -1,0 +1,74 @@
+{
+"welcome": [
+"Ciao, sono un robot.",
+"La funzione IA è in fase di test. Segnala eventuali problemi in tempo."
+],
+"deckerror": [
+"Spiacente, sembra ci sia un problema con il numero di {0} nel mio mazzo."
+],
+"duelstart": [
+"Questo mazzo è così antiquato...",
+"Che fine ha fatto il bambino che usava questo mazzo..."
+],
+"newturn": [
+"È il mio turno, pesco una carta!",
+"Il mio turno, pesco una carta!",
+"Ho pescato una carta."
+],
+"endturn": [
+"Fine del turno.",
+"Il mio turno è finito.",
+"Tocca a te."
+],
+"directattack": [
+"{0}, attacco diretto!",
+"{0}, attacco diretto all’avversario!",
+"{0}, nessuna difesa: attacca!",
+"{0}, colpisci i Life Point dell’avversario!",
+"{0}, sconfiggi l’avversario con un attacco diretto!",
+"{0}, sconfiggi l’avversario con un attacco diretto!",
+"{0}, scatena il tuo potere con un attacco diretto!",
+"Il mio {0} frantumerà i tuoi Life Point!",
+"Mostra la tua forza all’avversario, {0}!",
+"Non puoi più fermarmi. {0}, all’attacco!"
+],
+"attack": [
+"{0}, attacca questo {1}!",
+"{0}, distruggi questo {1}!",
+"{0}, sconfiggi {1}!",
+"{0}, carica quel {1}!",
+"{0}, scatena il tuo potere su {1}!"
+],
+"ondirectattack": [
+"Maledizione...",
+"È solo {0}!",
+"Ehm..."
+],
+"facedownmonstername": "Mostro",
+"activate": [
+"Attivo {0}.",
+"Utilizzo l’effetto di {0}.",
+"Uso il potere di {0}."
+],
+"summon": [
+"Evoco {0}.",
+"Vieni fuori, {0}!",
+"Fatti avanti, {0}!",
+"Ho evocato il potente {0}!",
+"Ho chiamato {0} in battaglia!",
+"Ho chiamato {0}.",
+"Lascia che evochi {0}."
+],
+"setmonster": [
+"Metto un mostro.",
+"Metto un mostro coperto."
+],
+"chaining": [
+"Guarda qui! Attivo {0}!",
+"Uso il potere di {0}.",
+"Pronto! Uso {0}!",
+"Non sono d’accordo. {0}, attivati!",
+"Sembra che tu abbia dimenticato il mio {0}!",
+"Hai considerato che possiedo {0}?"
+]
+}

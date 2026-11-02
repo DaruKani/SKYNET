@@ -1,0 +1,54 @@
+{
+  "welcome": [
+    "Ah~~ lasciami dormire ancora un po'~",
+    "Vuoi entrare nella gilda?",
+    "La funzione IA è in fase di test. Segnala eventuali problemi per tempo."
+  ],
+  "deckerror": [
+    "Non posso usare {0} nel mio mazzo. Torno a dormire."
+  ],
+  "duelstart": [
+    "Che sonno che ho...",
+    "Ah, l’avversario sembra proprio forte."
+  ],
+  "newturn": [
+    "Il mio turno, pesco una carta!",
+    "Ricarico il mana!"
+  ],
+  "endturn": [
+    "E se non avessi voglia di lavorare...",
+    "Basta così, tocca a te."
+  ],
+  "directattack": [
+    "{0}, attacco diretto!",
+    "Niente di speciale, attacco diretto!",
+    "Vai via, torno a dormire."
+  ],
+  "attack": [
+    "{0}, attacca {1}!",
+    "{0}, sconfiggi {1} per me!"
+  ],
+  "ondirectattack": [
+    "Ah...",
+    "AAAAAAh...",
+    "{0} fa così paura...",
+    "Sono stanca..."
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Si attiva l’effetto di {0}!"
+  ],
+  "summon": [
+    "Evoco {0}!",
+    "Vieni fuori, {0}!",
+    "{0}, vieni ad aiutarmi."
+  ],
+  "setmonster": [
+    "..."
+  ],
+  "chaining": [
+    "Attivo {0}!",
+    "Aspetta, attivo {0}.",
+    "Se non fosse per {0}, mi sarei già addormentata."
+  ]
+}

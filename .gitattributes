@@ -1,0 +1,4 @@
+# Preserve the supplied resource snapshots and their recorded SHA-256 hashes.
+/WindBot/Dialogs/*.json -text
+/SKYNET/Dialogs/*.json -text
+/WindBot/BotWrapper/bot.conf -text

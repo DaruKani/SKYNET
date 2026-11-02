@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "È questo il Sacro Picco Swordsoul?",
+    "La Nazione Dogmatika?",
+    "O il Grande Mare di Sabbia - Gold Golgonda?"
+  ],
+  "deckerror": [
+    "{0} sigillato dalla Maledizione Icejade!"
+  ],
+  "duelstart": [
+    "Cammino da tanto, ho fame...",
+    "Che compagni incontrerò più avanti?",
+    "Se solo Albaz fosse con me..."
+  ],
+  "newturn": [
+    "Il mio turno!"
+  ],
+  "endturn": [
+    "Dov'è mia sorella...",
+    "Le razioni di Albaz sono finite.",
+    "Quando si cena?"
+  ],
+  "directattack": [
+    "{0}, attacco diretto!",
+    "È ora di cena!"
+  ],
+  "attack": [
+    "{0} attacca {1}!"
+  ],
+  "ondirectattack": [
+    "Ho tanta fame...",
+    "Uwaa uwaa...",
+    "Mia sorella..."
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Attivo l'effetto di {0}!"
+  ],
+  "summon": [
+    "Evoco {0}!",
+    "Vieni fuori, {0}!"
+  ],
+  "setmonster": [
+    "……"
+  ],
+  "chaining": [
+    "Attivo l'effetto di {0}!",
+    "{0}!"
+  ]
+}

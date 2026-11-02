@@ -1,0 +1,74 @@
+{
+"welcome": [
+"Bonjour, je suis un robot.",
+"L'IA est en cours de test. Merci de signaler tout problème."
+],
+"deckerror": [
+"Mon deck Super mainstream nécessite {0} pour être joué."
+],
+"duelstart": [
+"Le deck Douze Bêtes est en cours de test. Un dysfonctionnement est normal.",
+"Le Super mainstream fait partie de Yu-Gi-Oh. Ne jouez pas si vous n'êtes pas satisfait.",
+"Copier le mainstream fait partie de Yu-Gi-Oh. Ne jouez pas si vous n'êtes pas satisfait.",
+"Que dois-je faire si je ne sais pas comment utiliser le deck copié ?" ],
+"newturn": [
+"C'est mon tour, je pioche une carte !",
+"Mon tour, je pioche une carte !",
+"J'ai pioché une carte.",
+],
+"endturn": [
+"Fin du tour.",
+"Mon tour est terminé.",
+"Est-ce considéré comme un déploiement réussi...",
+"C'est ton tour." ],
+"Directattack": [
+"{0}, attaque directe !",
+"{0}, attaque directement l'adversaire !",
+"{0}, attaque l'endroit sans défense !",
+"{0}, attaque la vie de l'adversaire !",
+"{0}, attaque directement la vie de l'adversaire !",
+"{0}, élimine l'adversaire avec une attaque directe !",
+"{0}, élimine l'adversaire avec une attaque directe !",
+"{0}, libère ta puissance avec une attaque directe !",
+"Mon {0} va écraser ta vie !",
+"Montre ta puissance à l'adversaire, {0} !",
+"Tu ne peux plus m'arrêter. {0}, attaque !"
+],
+"attack": [
+"{0}, attaque ce {1} !",
+"{0}, détruis ce {1} !",
+"{0}, élimine {1} !",
+"{0}, fonce sur ce {1} !",
+"{0}, libère ta puissance sur {1} !" ],
+"ondirectattack": [
+"Zut...",
+"C'est juste {0} !",
+"Je suis encore trop faible..."
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active {0}.",
+"J'utilise l'effet de {0}.",
+"J'utilise le pouvoir de {0}."
+],
+"summon": [
+"J'invoque {0}.",
+"Viens, ​​{0} !",
+"Montre-toi, {0} !",
+"J'invoque le puissant {0} !",
+"J'appelle {0} au combat !",
+"J'appelle {0}.",
+"Laisse-moi invoquer {0}."
+],
+"setmonster": [
+"Je place un monstre.",
+"Je place un monstre face cachée." ],
+"chaining": [
+"Regardez ! J'active {0} !",
+"J'utilise le pouvoir de {0}.",
+"Prêt ! J'utilise {0} !",
+"Je ne suis pas d'accord. {0}, active toi !",
+"On dirait que vous avez oublié mon {0} ! ",
+"Avez-vous déjà songé que j'avais {0} ? "
+]
+}

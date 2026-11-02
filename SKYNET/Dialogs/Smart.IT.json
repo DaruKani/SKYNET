@@ -1,0 +1,43 @@
+{
+  "welcome": [
+    "Ciao, sono così affascinante."
+  ],
+  "deckerror": [
+    "Spiacente, sembra che ci sia un problema con il numero di {0} nel mio mazzo."
+  ],
+  "duelstart": [
+    "Facciamo un duello leale (Drago Nascosto nell'Inguine)"
+  ],
+  "newturn": [
+    "Ora il palcoscenico è mio"
+  ],
+  "endturn": [
+    "Ognuno ha obiettivi diversi. Io punto alla forza: voglio solo vincere."
+  ],
+  "directattack": [
+    "Sono qui per eliminarti"
+  ],
+  "attack": [
+    "Sparisci, spazzatura"
+  ],
+  "ondirectattack": [
+    "Papà, risparmiami!",
+    "Che paura"
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Attivo l'effetto di questa carta. Anche se non è scritto, si può usare così."
+  ],
+  "summon": [
+    "Potente, invincibile",
+    "Evoco {0}, che fortuna",
+    "{0} è una carta fasulla",
+    "Mi è sempre piaciuto {0}"
+  ],
+  "setmonster": [
+    "Di nuovo incartato"
+  ],
+  "chaining": [
+    "Sciocco, guarda come ti contrasto"
+  ]
+}

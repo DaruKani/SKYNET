@@ -1,0 +1,64 @@
+{
+  "welcome": [
+    "Ich bin die Stärkste!",
+    "Die KI-Funktion wird gerade getestet, bitte meldet Probleme umgehend.",
+    "Was ist Pfannkuchen-Frosch, schmeckt das?"
+  ],
+  "deckerror": [
+    "Warum kann ich mein {0} nicht benutzen?"
+  ],
+  "duelstart": [
+    "Ich werde dich einfrieren!",
+    "Um Menschen zu besiegen, reicht meine Wenigkeit!"
+  ],
+  "newturn": [
+    "Vielleicht etwas plötzlich, aber ich besiege dich!",
+    "Mein Zug, ich ziehe eine Karte!"
+  ],
+  "endturn": [
+    "Ich verschone dein Leben!",
+    "Erfriere unter meinem Ernst!"
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "Nicht einmal einen Schlag hältst du aus!",
+    "Die Schwachen werden verprügelt!",
+    "Zu faul zum Zählen, reden wir nach dem Kampf!",
+    "Super-⑨-Kampfgott-Tyrannenschlag!",
+    "Schneetalisman 『Diamanten-Blizzard』"
+  ],
+  "attack": [
+    "{0}, greif diesen {1} an!",
+    "{0}, zerstöre diesen {1}!",
+    "{0}, besiege {1}!",
+    "Eistalisman 『Eiszapfenregen』"
+  ],
+  "ondirectattack": [
+    "Red keinen Unsinn~. Dich friere ich zusammen mit englischem Roastbeef ein!!",
+    "Was soll an so einem winzigen {0} schon furchteinflößend sein!",
+    "Dumme Leute erkälten sich nicht!"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere {0}.",
+    "Ich nutze den Effekt von {0}.",
+    "Mein {0} ist der Stärkste!"
+  ],
+  "summon": [
+    "Ich beschwöre {0}.",
+    "Komm heraus, {0}!",
+    "Erscheine, {0}!",
+    "Ich habe den mächtigen {0} beschworen!",
+    "Ich habe {0} gerufen."
+  ],
+  "setmonster": [
+    "Ich habe ein Monster gesetzt.",
+    "Wenn du keine Angst vor dem Tod hast, greif mich an!"
+  ],
+  "chaining": [
+    "Sieh her! Ich aktiviere {0}!",
+    "Ich nutze die Kraft von {0}.",
+    "Fürchte meinen {0}!",
+    "Gefriertalisman 『Perfektes Einfrieren』"
+  ]
+}

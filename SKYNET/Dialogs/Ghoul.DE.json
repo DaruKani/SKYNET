@@ -1,0 +1,64 @@
+{
+  "welcome": [
+    "Hallo zusammen, ich bin neu hier",
+    "Wie spielt man eigentlich Yu-Gi-Oh?",
+    "Zum Glück spiele ich kein Yu-Gi-Oh"
+  ],
+  "deckerror": [
+    "{0} im Deck ist schon hinüber"
+  ],
+  "duelstart": [
+    "Was, wenn ich keine Lust zu arbeiten habe?",
+    "Was, wenn ich nicht arbeiten will, weil mein IQ zu niedrig ist?"
+  ],
+  "newturn": [
+    "So viele schreckliche neue Karten",
+    "Dieses Spiel ist echt schwer",
+    "Zu faul, um mich zu bewegen"
+  ],
+  "endturn": [
+    "Mir bleibt nur noch zu sterben",
+    "Nicht jetzt – wer weiß wann",
+    "Zu heiß, ich brauche ein Eis"
+  ],
+  "directattack": [
+    "Klingt nach einem Faulpelz",
+    "Alter Faulpelz, ganz entspannt"
+  ],
+  "attack": [
+    "Klingt nicht nach Faulpelz",
+    "Gruselig"
+  ],
+  "ondirectattack": [
+    "Wow!",
+    "Ist das wirklich so schlimm?",
+    "Klingt nach Faulpelz",
+    "Ich halt das nicht aus"
+  ],
+  "facedownmonstername": "Taube",
+  "activate": [
+    "Keine Ahnung, warum ich das aktiviere",
+    "Aktiviert – fühlt sich gut an"
+  ],
+  "summon": [
+    "Fürchterlich",
+    "Geht mich nichts an",
+    "Eigentlich geht’s mich immer noch nichts an",
+    "Aktiviert – fühlt sich gut an"
+  ],
+  "setmonster": [
+    "Ich trödle rum, kein Update",
+    "Dann passe ich eben"
+  ],
+  "chaining": [
+    "Was ist das denn?",
+    "Aber ich passe",
+    "Nicht gut",
+    "Fürchterlich"
+  ],
+  "surrender": [
+    "Schrecklich (flieh!)",
+    "Das Spiel ist schwer (flieh!)",
+    "Zum Glück spiele ich kein Yu-Gi-Oh (flieh!)"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Dinocarriage Dynarmix esta pronto. A pressao de Dinossauros comeca agora.",
+    "Primeiro trocas limpas, depois os melhores seguimentos."
+  ],
+  "deckerror": [
+    "Algo esta errado com a quantidade de {0} no meu Deck."
+  ],
+  "duelstart": [
+    "Vamos ver como voce lida com a pressao de Dinossauros.",
+    "Eu so preciso de uma abertura limpa."
+  ],
+  "newturn": [
+    "Meu turno. Compro.",
+    "Hora de pressionar o Campo de novo."
+  ],
+  "endturn": [
+    "Seu turno.",
+    "Mostre a resposta."
+  ],
+  "directattack": [
+    "{0}, ataque diretamente.",
+    "{0}, caminho livre. Ataque direto."
+  ],
+  "attack": [
+    "{0}, derrote {1}.",
+    "{0}, atravesse {1}."
+  ],
+  "ondirectattack": [
+    "Esse golpe passou.",
+    "Voce encontrou a abertura."
+  ],
+  "facedownmonstername": "Monstro",
+  "activate": [
+    "Eu ativo {0}.",
+    "{0} mantem minha linha em movimento."
+  ],
+  "summon": [
+    "Eu Invoco {0}.",
+    "{0}, entre no Campo."
+  ],
+  "setmonster": [
+    "Vou Baixar um monstro.",
+    "Virado para baixo por enquanto."
+  ],
+  "chaining": [
+    "Eu Faço Corrente com {0}.",
+    "Nao tao rapido. {0}."
+  ]
+}

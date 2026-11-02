@@ -1,0 +1,71 @@
+{
+"welcome": [
+"Bonjour, je suis un robot.",
+"L'IA est en cours de test. Merci de signaler tout problème."
+],
+"deckerror": [
+"Désolé, il semble y avoir un problème avec le nombre de {0} dans mon deck."
+],
+"duelstart": [
+"Ce deck est tellement vieux...",
+"Qu'est-il arrivé à l'enfant qui a utilisé ce deck..."
+],
+"newturn": [
+"C'est mon tour, je pioche une carte !",
+"Mon tour, je pioche une carte !",
+"J'ai pioché une carte."
+],
+"endturn": [
+"Fin du tour.",
+"Mon tour est terminé.",
+"C'est ton tour." ],
+"directattack": [
+"{0}, attaque directe !",
+"{0}, attaque directe sur l'adversaire !",
+"{0}, pas de défense, attaque !",
+"{0}, attaque les points de vie de l'adversaire !",
+"{0}, élimine l'adversaire avec une attaque directe !",
+"{0}, élimine l'adversaire avec une attaque directe !",
+"{0}, libère ta puissance avec une attaque directe !",
+"Mon {0} va écraser ta vie !",
+"Montre ta puissance à l'adversaire, {0} !",
+"Tu ne peux plus m'arrêter. {0}, attaque !"
+],
+"attack": [
+"{0}, attaque ce {1} !",
+"{0}, détruis ce {1} !",
+"{0}, élimine {1} !",
+"{0}, charge ce {1} !",
+"{0}, libère ta puissance sur {1} !" ],
+"ondirectattack": [
+"Zut...",
+"C'est juste {0} !",
+"Hum..."
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active {0}.",
+"J'utilise l'effet de {0}.",
+"J'utilise le pouvoir de {0}."
+],
+"summon": [
+"J'invoque {0}.",
+"Sors, ​​{0} !",
+"Montre-moi, {0} !",
+"J'ai invoqué le puissant {0} !",
+"J'ai appelé {0} au combat !",
+"J'ai appelé {0}.",
+"Laisse-moi invoquer {0}."
+],
+"setmonster": [
+"J'ai placé un monstre.",
+"J'ai placé un monstre face cachée." ],
+"chaining": [
+"Regardez ! J'active {0} !",
+"J'utilise le pouvoir de {0}.",
+"Prêt ! J'utilise {0} !",
+"Je ne suis pas d'accord. {0}, active !",
+"On dirait que vous avez oublié mon {0} !",
+"Avez-vous pensé que j'ai {0} ?"
+]
+}

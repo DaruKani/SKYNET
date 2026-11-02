@@ -1,0 +1,53 @@
+{
+"welcome": [
+"Ah~~ Laissez-moi dormir un peu plus longtemps~",
+"Voulez-vous rejoindre la guilde ?",
+"L'IA est en cours de test. Merci de signaler tout problème."
+],
+"deckerror": [
+"Je ne peux pas utiliser {0} dans mon deck. Je vais me rendormir."
+],
+"duelstart": [
+"J'ai tellement sommeil...",
+"Ah, l'adversaire a l'air tellement puissant."
+],
+"newturn": [
+"À mon tour, je pioche une carte !",
+"Recharge de mana !"
+],
+"endturn": [
+"Et si je ne veux pas travailler...",
+"Ça y est, c'est ton tour."
+],
+"directattack": [
+"{0}, attaque directe !",
+"Rien de spécial, attaque directe !",
+"Va-t'en, je vais me rendormir." ],
+"attack": [
+"{0}, attaque {1} !",
+"{0}, bats {1} pour moi !"
+],
+"ondirectattack": [
+"Ah...",
+"AAAAAAh...",
+"{0} est tellement effrayant...",
+"Je suis fatigué..."
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"L'effet de {0} est activé !"
+],
+"summon": [
+"Invoque {0} !",
+"Sors, ​​{0} !",
+"{0}, viens m'aider."
+],
+"setmonster": [
+"..."
+],
+"chaining": [
+"Active {0} !",
+"Attends, j'active {0}.",
+"Sans {0}, je me serais presque endormi."
+]
+}

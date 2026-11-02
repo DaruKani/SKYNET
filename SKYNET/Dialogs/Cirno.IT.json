@@ -1,0 +1,64 @@
+{
+  "welcome": [
+    "Sono la più forte!",
+    "La funzione IA è in fase di test, segnalate subito eventuali problemi.",
+    "Che cos'è Pancake Frog, è buono?"
+  ],
+  "deckerror": [
+    "Perché non posso usare il mio {0}?"
+  ],
+  "duelstart": [
+    "Lascia che ti congeli!",
+    "Per battere un umano basto io!"
+  ],
+  "newturn": [
+    "Sì, è un po' improvviso, ma ti sconfiggerò!",
+    "Il mio turno, pesco una carta!"
+  ],
+  "endturn": [
+    "Ti risparmierò la vita!",
+    "Congela a morte sotto la mia serietà!"
+  ],
+  "directattack": [
+    "{0}, attacco diretto!",
+    "Non reggerai nemmeno un colpo!",
+    "I deboli verranno travolti!",
+    "Che noia contare, ne riparliamo a fine duello!",
+    "Super ⑨ Spaccata del Dio Marziale Tirannico!",
+    "Talismano di Neve 『Bufere di Diamante』"
+  ],
+  "attack": [
+    "{0}, attacca questo {1}!",
+    "{0}, distruggi questo {1}!",
+    "{0}, sconfiggi {1}!",
+    "Talismano di Ghiaccio 『Caduta di Stalattiti』"
+  ],
+  "ondirectattack": [
+    "Non dire sciocchezze~. Uno come te lo congelo insieme al roast-beef inglese!!",
+    "Che cosa c'è di spaventoso in un piccolo {0}!",
+    "Gli sciocchi non prendono il raffreddore!"
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Attivo {0}.",
+    "Utilizzo l'effetto di {0}.",
+    "Il mio {0} è il più forte!"
+  ],
+  "summon": [
+    "Evoco {0}.",
+    "Vieni fuori, {0}!",
+    "Appari, {0}!",
+    "Ho evocato il potente {0}!",
+    "Ho chiamato {0}."
+  ],
+  "setmonster": [
+    "Ho messo un mostro in Posizione di Difesa.",
+    "Se non temi la morte, vieni ad attaccarmi!"
+  ],
+  "chaining": [
+    "Guarda qui! Attivo {0}!",
+    "Uso il potere di {0}.",
+    "Tema il mio {0}!",
+    "Talismano Gelido 『Congelamento Perfetto』"
+  ]
+}

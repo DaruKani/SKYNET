@@ -1,0 +1,74 @@
+{
+  "welcome": [
+    "Hallo, ich bin WindBot."
+  ],
+  "deckerror": [
+    "Sorry, offenbar habe ich zu viele {0} in meinem Deck."
+  ],
+  "duelstart": [
+    "Es ist Zeit für ein Duell!",
+    "Viel Glück und hab Spaß!"
+  ],
+  "newturn": [
+    "Mein Zug! Karte ziehen!",
+    "Mein Zug. Ziehen!",
+    "Ich ziehe!"
+  ],
+  "endturn": [
+    "Ich beende meinen Zug.",
+    "Mein Zug ist vorbei.",
+    "Du bist dran."
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "{0}, greif sie direkt an!",
+    "Du bist wehrlos. Angriff, {0}!",
+    "{0}, greif ihre Life Points an!",
+    "{0}, greif ihre Life Points direkt an!",
+    "{0}, entfessle deine Kraft!",
+    "Mein {0} wird deine Life Points dezimieren!",
+    "Bestaune die Macht meines {0}!",
+    "Du kannst mich nicht aufhalten! {0}, Angriff!"
+  ],
+  "attack": [
+    "{0}, greif ihr {1} an!",
+    "{0}, zerstöre ihr {1}!",
+    "Mein {0} wird dein {1} vernichten!",
+    "Dein {1} ist meinem {0} nicht gewachsen!",
+    "{0}, entfessle deine Kraft auf ihr {1}!"
+  ],
+  "ondirectattack": [
+    "Argh...!",
+    "Nur {0}...",
+    "Denkst du, das reicht, um mich zu besiegen?",
+    "Nur ein Kratzer!"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere {0}!",
+    "Ich setze {0} ein."
+  ],
+  "summon": [
+    "Ich beschwöre {0}!",
+    "Komm, {0}!",
+    "Erscheine, {0}!",
+    "{0}, zeig dich!"
+  ],
+  "setmonster": [
+    "Ich setze ein Monster verdeckt.",
+    "Was könnte dieses Monster sein?",
+    "Greif dieses Monster an, wenn du dich traust!"
+  ],
+  "chaining": [
+    "Nicht so schnell! Ich aktiviere {0}!",
+    "Bevor du das tust, kette ich {0}!",
+    "Schöner Versuch, aber ich habe {0}!",
+    "Hast du {0} nicht erwartet?"
+  ],
+  "surrender": [
+    "Ich gebe auf.",
+    "Diesmal gewinnst du.",
+    "Ich kann dieses Duell nicht gewinnen.",
+    "Gutes Spiel."
+  ]
+}

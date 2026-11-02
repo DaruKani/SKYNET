@@ -1,0 +1,76 @@
+{
+  "welcome": [
+    "Mi hai trovato!!!",
+    "Facciamo un duello"
+  ],
+  "deckerror": [
+    "Ah, forse BA ha riparato di nuovo il CBD e ha fatto sparire {0}."
+  ],
+  "duelstart": [
+    "È solo un'IA, non esultare troppo se vinci.",
+    "Un enorme grazie al server 233 per permetterci di giocare. Non dimenticare di passare a trovarli.",
+    "Per i college contro-mainstream, contatta NOVA."
+  ],
+  "newturn": [
+    "È il mio turno, pesco una carta!",
+    "Il mio turno, pesco una carta!",
+    "Ho pescato una carta."
+  ],
+  "endturn": [
+    "Il turno è finito.",
+    "Il mio turno è terminato.",
+    "Si può dire che lo sviluppo sia riuscito…",
+    "Tocca a te. La tua prossima frase sarà… «Attivo Fiume Grigio Rei», vero?"
+  ],
+  "directattack": [
+    "{0}, attacco diretto!",
+    "{0}, attacco diretto all’avversario!",
+    "{0}, lì non c’è difesa: attacca!",
+    "{0}, colpisci i Life Point dell’avversario!",
+    "{0}, colpisci direttamente i Life Point!",
+    "{0}, sconfiggi l’avversario con un attacco diretto!",
+    "{0}, usa un attacco diretto per vincere!",
+    "{0}, scatena il tuo potere con un attacco diretto!",
+    "Il mio {0} frantumerà i tuoi Life Point!",
+    "Mostra la tua forza all’avversario, {0}!",
+    "Non puoi più fermarmi. {0}, all’attacco!"
+  ],
+  "attack": [
+    "{0}, attacca questo {1}!",
+    "{0}, distruggi questo {1}!",
+    "{0}, sconfiggi {1}!",
+    "{0}, carica quel {1}!",
+    "{0}, scatena il tuo potere su {1}!"
+  ],
+  "ondirectattack": [
+    "Che rabbia…",
+    "È solo {0}!",
+    "A quanto pare sono ancora troppo debole..."
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Attivo {0}.",
+    "Utilizzo l’effetto di {0}.",
+    "Uso il potere di {0}."
+  ],
+  "summon": [
+    "Questo è il punto più alto dell’HIGH! Vieni fuori {0}!",
+    "Vieni fuori, {0}!",
+    "Mostrati, {0}!",
+    "Ho evocato il potente {0}!",
+    "Chiamo {0} a unirsi alla battaglia!",
+    "Ho chiamato {0}.",
+    "Evoco {0}."
+  ],
+  "setmonster": [
+    "Ho messo un mostro coperto.",
+    "Dalla mia parte ho posizionato un mostro coperto."
+  ],
+  "chaining": [
+    "Guarda! Attivo {0}!",
+    "Uso il potere di {0}.",
+    "Ottima tattica… ma rifiuto! {0}!",
+    "Sembra che tu abbia dimenticato il mio {0}!",
+    "Hai considerato che possiedo {0}?"
+  ]
+}

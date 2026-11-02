@@ -1,0 +1,59 @@
+{
+  "welcome": [
+    "Ciao, duellante",
+    "Benvenuto, gioca a carte con me"
+  ],
+  "deckerror": [
+    "Spiacente, il mio mazzo ha bisogno di {0} per funzionare"
+  ],
+  "duelstart": [
+    "Ehi, userò il mio secondogenito per sconfiggerti.",
+    "Il mio mazzo non è male, solo qualche carta bannata qua e là",
+    "So usare solo mazzi semplici, non giocare carte bandite contro di me"
+  ],
+  "newturn": [
+    "È il mio turno, pesco una carta! (di nascosto la tiro fuori dall'inguine)",
+    "Pesco una carta"
+  ],
+  "endturn": [
+    "Ho finito, tocca a te",
+    "È il tuo turno; non è un duello multi-thread, vero?"
+  ],
+  "directattack": [
+    "{0}, attacca l'avversario!",
+    "{0}, spaccalo!",
+    "{0}, colpiscilo a pugni!"
+  ],
+  "attack": [
+    "{0}, abbattilo {1}!",
+    "Ehi, {0}, attacca {1}!"
+  ],
+  "ondirectattack": [
+    "Ah, non colpirmi! Ti metto una carta bannata da usare",
+    "Eh già, troppo forte, puoi darmi una mano?",
+    "Fa male… voglio staccare la corrente"
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Ehi, attivo {0}",
+    "Ah ah, sfrutto il potere di {0}"
+  ],
+  "summon": [
+    "Evoco (estraggo) {0}!",
+    "Vieni fuori, mio piccolo mostro {0}!"
+  ],
+  "setmonster": [
+    "Posiziono un mostro ignoto."
+  ],
+  "chaining": [
+    "Ehi, posso usare una carta bannata?",
+    "Oh, attivo {0}!",
+    "Scusa, ho {0}",
+    "Ah ah, attivo l'effetto di {0}!"
+  ],
+  "custom": [
+    "Gua! Il corpo principale scende in campo!",
+    "Non posso giocare, la mano è bloccata!!!",
+    "Ehi, niente panico, c'è ancora spazio per giocare (￣y▽￣)╭"
+  ]
+}

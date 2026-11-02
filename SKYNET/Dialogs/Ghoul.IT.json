@@ -1,0 +1,64 @@
+{
+  "welcome": [
+    "Ciao a tutti, sono un nuovo giocatore",
+    "Come si gioca a Yu-Gi-Oh?",
+    "Per fortuna non gioco a Yu-Gi-Oh"
+  ],
+  "deckerror": [
+    "{0} nel mazzo è già spacciato"
+  ],
+  "duelstart": [
+    "E se non avessi voglia di lavorare?",
+    "E se non avessi voglia perché ho il QI troppo basso?"
+  ],
+  "newturn": [
+    "Ci sono così tante carte nuove e terribili",
+    "Questo gioco è proprio tosto",
+    "Sono così pigro che non riesco a muovermi"
+  ],
+  "endturn": [
+    "Non mi resta che morire",
+    "Non adesso… chissà quando",
+    "Fa troppo caldo, serve un gelato"
+  ],
+  "directattack": [
+    "Sembra proprio un nullafacente",
+    "Vecchio scansafatiche, tranquillo"
+  ],
+  "attack": [
+    "Non sembra un nullafacente",
+    "Che paura"
+  ],
+  "ondirectattack": [
+    "Wow!",
+    "È così terribile?",
+    "Sembra un nullafacente",
+    "Non lo sopporto"
+  ],
+  "facedownmonstername": "Piccione",
+  "activate": [
+    "Non so perché attivo questa carta",
+    "L’ho attivata, che bello"
+  ],
+  "summon": [
+    "Terrificante",
+    "Non è affar mio",
+    "Anzi, non è affar mio lo stesso",
+    "L’ho attivata, che bello"
+  ],
+  "setmonster": [
+    "Sto bighellonando, niente update",
+    "Passo il turno allora"
+  ],
+  "chaining": [
+    "Che cos’è quello?",
+    "Però passo lo stesso",
+    "Non va bene",
+    "Terrificante"
+  ],
+  "surrender": [
+    "È terribile (fuggo)",
+    "Questo gioco è duro (fuggo)",
+    "Per fortuna non gioco a Yu-Gi-Oh (fuggo)"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "welcome": [
+    "Hallo, ich bin ein Roboter.",
+    "Die KI-Funktion wird gerade getestet. Bitte meldet Probleme rechtzeitig.",
+    "Man nennt mich immer Sandsack..."
+  ],
+  "deckerror": [
+    "Entschuldigung, scheinbar stimmt die Anzahl von {0} in meinem Deck nicht."
+  ],
+  "duelstart": [
+    "Tu mir nicht weh!"
+  ],
+  "newturn": [
+    ""
+  ],
+  "endturn": [
+    ""
+  ],
+  "directattack": [
+    ""
+  ],
+  "attack": [
+    ""
+  ],
+  "ondirectattack": [
+    "Ich bin wütend!"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich mag {0}."
+  ],
+  "summon": [
+    ""
+  ],
+  "setmonster": [
+    ""
+  ],
+  "chaining": [
+    ""
+  ]
+}

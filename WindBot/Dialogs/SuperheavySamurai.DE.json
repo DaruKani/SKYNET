@@ -1,0 +1,45 @@
+{
+  "welcome": [
+    "Es ist Mitternachtssnack!",
+    "Ich kann jedes Pendel-Deck spielen!",
+    "Was? Du sagst, Superheavy Samurai ist kein Pendel-Deck?"
+  ],
+  "deckerror": [
+    "Die Anzahl von {0} ist falsch! Wechsel in den Unlimited-Modus!"
+  ],
+  "duelstart": [
+    "Ich zeige dir den Charme der Superheavy Samurai!"
+  ],
+  "newturn": [
+    "Ziehe eine Karte! Benkei, komm mich nicht retten!",
+    "Ziehe eine Karte! P-Body, komm mich nicht retten!"
+  ],
+  "endturn": [
+    "Hehe, jetzt bist du dran!",
+    "Gefällt dir mein Board?"
+  ],
+  "directattack": [
+    "Ich greife direkt mit {0} an!",
+  ],
+  "attack": [
+    "Ich greife {1} mit {0} an!"
+  ],
+  "ondirectattack": [
+    "Nicht kämpfen! Nicht kämpfen!",
+    "Uwaa! Ich werde gleich besiegt~"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Fufufu, der Effekt von {0} ist zu stark!",
+    "Fufufu, ich nutze den Effekt von {0}."
+  ],
+  "summon": [
+    "Fufufu, ich beschwöre {0}!"
+  ],
+  "setmonster": [
+    "Fufufu, ich setze ein Monster."
+  ],
+  "chaining": [
+    "In diesem Moment! Der Effekt von {0} wird aktiviert!"
+  ]
+}

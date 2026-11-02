@@ -8,6 +8,28 @@ const test = require('node:test');
 const { ArenaDatabase } = require('../server/database');
 const { normalizeRank } = require('../server/stats');
 
+test('new workspace defaults are persisted without replacing saved agent paths', (context) => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'windbot-arena-workspace-'));
+    const databasePath = path.join(tempDir, 'arena.sqlite');
+    let database = new ArenaDatabase(databasePath);
+    context.after(() => {
+        if (database.db.open) database.close();
+        fs.rmSync(tempDir, { force: true, recursive: true });
+    });
+    const settings = database.getArenaSettings().settings;
+    const windbotRoot = path.resolve(__dirname, '..', '..', 'WindBot');
+    assert.equal(settings.windbots.current.runtimeDir, path.join(windbotRoot, 'bin', 'Release'));
+    assert.equal(settings.windbots.current.botConfPath, path.join(windbotRoot, 'BotWrapper', 'bot.conf'));
+    assert.equal(settings.windbots.current.port, 2399);
+    assert.equal(settings.windbots.old.port, 2398);
+    settings.windbots.current.runtimeDir = path.join(tempDir, 'custom-runtime');
+    settings.windbots.current.botConfPath = path.join(tempDir, 'custom.conf');
+    database.saveArenaSettings(settings);
+    database.close();
+    database = new ArenaDatabase(databasePath);
+    assert.deepEqual(database.getArenaSettings().settings, settings);
+});
+
 test('scheduled stop persists in run configuration without changing other fields', (context) => {
     const database = new ArenaDatabase(':memory:');
     context.after(() => database.close());

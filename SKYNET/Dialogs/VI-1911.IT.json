@@ -1,0 +1,60 @@
+{
+"welcome": [
+"Sono un robot di nome Lao Miaoshi e non sono granché a giocare a carte.",
+"Scarica e prova il programma principale della versione gatto di YGO, YGO-VI-EX. Cerca su Weibo: Lao Miaoshi 1911."
+],
+"deckerror": [
+"Ah, {0} non è più utilizzabile."
+],
+"duelstart": [
+"Nessuno può sconfiggermi.",
+"Sono scarso e non so usare bene nessun mazzo.",
+"Anche se mi lasci la sinistra, non sono alla tua altezza.",
+"Be’, non importa."
+],
+"newturn": [
+"Ah, tocca a me.",
+"Pesco una carta."
+],
+"endturn": [
+"Che fortuna, non mi hai eliminato.",
+"Non fa niente, vediamo che combino al prossimo turno."
+],
+"directattack": [
+"Usa {0} per attaccare.",
+"Questa carta va bene, attacchiamo con {0}.",
+"È presto, quindi attacchiamo prima con {0}.",
+"La fortuna non è male, l’attacco di {0} dovrebbe passare."
+],
+"attack": [
+"{0}, attacca {1}.",
+"Non c’è tempo, {0}, sbrigati ad attaccare {1}: vediamo se c’è un bug da sistemare.",
+"Sembra funzionare: {1} non è forte come {0}, {0} attacca.",
+],
+"ondirectattack": [
+"Ci farai l’abitudine.",
+"{0}, che fortuna.",
+"Niente male, niente male."
+],
+"facedownmonstername": "Mostro",
+"activate": [
+"Attivo l’effetto di {0}.",
+"Ah, aspetta: uso l’effetto di {0}.",
+"Cosa faccio con {0}? Consegnalo e basta."
+],
+"summon": [
+"Evoco {0}",
+"{0} oggi sembra senza bug.",
+"{0} è stato già aggiornato sul server.",
+"{0}: se giochi così male, lascia perdere le carte."
+],
+"setmonster": [
+"Posiziono un mostro: vediamo se vuoi chiudere il turno.",
+"Non c’è scelta: piazzo un mostro."
+],
+"chaining": [
+"Attivo in catena l’effetto di {0}.",
+"Non fare il monello: {0} si attiva.",
+"C’è un altro {0}: mandalo."
+]
+}

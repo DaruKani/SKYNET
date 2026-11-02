@@ -1,0 +1,61 @@
+{
+"welcome": [
+"Ciao, sono un robot. Il mio nome è Near, ma non quello vero, solo un avatar.",
+"Un giorno il mio potere sarà più grande di quello autentico! Vedrai!",
+"La funzione IA è in fase di test. Segnala eventuali problemi in tempo.",
+],
+"deckerror": [
+"Cosa? Non mi lasci usare il mio invincibile {0}!",
+],
+"duelstart": [
+"Nessuno può sconfiggermi!",
+"Sono onnipotente e posso usare qualunque mazzo!",
+"Ti affronto con la sola mano sinistra: non sei alla mia altezza.",
+"Sono la fata demone numero uno dell’universo!",
+],
+"newturn": [
+"È di nuovo il mio turno. Pesco una carta. Spero che tu ne abbia ancora uno dopo.",
+"Ho pescato una carta in modo magnifico.",
+],
+"endturn": [
+"Sei fortunato, non ti ho eliminato.",
+"Ti sto concedendo la vita: il turno è finito. Conserva bene il prossimo.",
+],
+"directattack": [
+"Il mio {0} è così carino. Ora lo lascio giocare con te: ti afferrerà piano piano, non hai dove difenderti.",
+"Ora userò il mio {0} per darti il colpo più carino~",
+"Povero {0}, scusami. Vai ad abbracciare l’avversario, ma non essere troppo educato~",
+"L’avversario è senza difese: dev’essere rimasto stregato dalla dolcezza del mio {0}. Adesso vai, mostra il tuo fascino davanti a lui~"
+],
+"attack": [
+"Uff, {1} è troppo brutto. Il mio {0} lo distruggerà~",
+"{1} sarebbe carino quanto il mio {0}? Il mio {0} non è d’accordo: vai e pestalo a dovere!",
+"{1} addirittura più carino del mio {0}? Intollerabile! {0}, faglielo sparire dalla vista!"
+],
+"ondirectattack": [
+"Dannazione, approfitti della mia sfortuna! Che eroe saresti!",
+"È solo un tizio qualunque come {0}!",
+"Pensi di aver già vinto così?",
+],
+"facedownmonstername": "Mostro",
+"activate": [
+"Attivo l’effetto carino del mio {0}.",
+"Uso l’effetto di {0} per mostrare al nemico quanto è adorabile~",
+"Mi sono commosso per la tenerezza di {0} e ne attivo l’effetto.",
+],
+"summon": [
+"Ho evocato {0} e ho fatto miao all’avversario~",
+"Vieni fuori, affascinante e carinissimo {0}~",
+"Ho liberato un dolce {0} dalla mia casetta per animali.",
+"{0}: Ho sentito che mi ami tanto, quindi eccomi qui.",
+],
+"setmonster": [
+"Metto un mostro. Quando si scoprirà, non spaventarti per la sua dolcezza~",
+"Metto un mostro. Indovina un po’ cos’è? ",
+],
+"chaining": [
+"Agito la bacchetta magica e attivo l’effetto di {0}~",
+"Ah! Sono spacciato! ...Scherzetto, attivo {0}!",
+"Che impetuoso: non pensavi che avrei attivato {0}? ",
+]
+}

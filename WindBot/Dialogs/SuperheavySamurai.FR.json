@@ -1,0 +1,44 @@
+{
+"welcome": [
+"C'est le goûter de minuit !",
+"Je peux jouer n'importe quel deck Pendule !",
+"Quoi ? Tu as dit que Samourai Supralourd n'était pas un deck Pendule ?"
+],
+"deckerror": [
+"Le nombre de {0} est incorrect ! Passe en mode illimité !"
+],
+"duelstart": [
+"Je vais te montrer le charme de Samourai Supralourd !"
+],
+"newturn": [
+"Je pioche une carte ! Benkei, ne viens pas me sauver !",
+"Je pioche une carte ! P body, ne viens pas me sauver !"
+],
+"endturn": [
+"Héhé, c'est ton tour !",
+"Tu aimes mon terrain ?"
+],
+"directattack": [
+"J'utilise {0} pour attaquer directement !",
+],
+"attack": [
+"J'utilise {0} pour attaquer {1} !" ],
+"ondirectattack": [
+"Ne vous battez pas ! Ne vous battez pas !",
+"Ouah ! Je vais être vaincu~"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"Fufufu, l'effet de {0} est trop puissant !",
+"Fufufu, j'utilise l'effet de {0}."
+],
+"summon": [
+"Fufufu, j'invoque {0} !"
+],
+"setmonster": [
+"Fufufu, j'ai placé un monstre."
+],
+"chaining": [
+"À cet instant ! L'effet de {0} est activé !"
+]
+}

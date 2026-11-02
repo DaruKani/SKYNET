@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Buster Blader e pronto. Inizia la pressione lama e Drago.",
+    "Prima scambi puliti, poi seguiti piu forti."
+  ],
+  "deckerror": [
+    "C'e qualcosa che non va con il numero di {0} nel mio Deck."
+  ],
+  "duelstart": [
+    "Vediamo come gestisci la pressione lama e Drago.",
+    "Mi basta una sola apertura pulita."
+  ],
+  "newturn": [
+    "Tocca a me. Pesco.",
+    "E ora di spingere di nuovo il Terreno."
+  ],
+  "endturn": [
+    "Tocca a te.",
+    "Fammi vedere la tua risposta."
+  ],
+  "directattack": [
+    "{0}, attacco diretto.",
+    "{0}, corsia libera. Attacco diretto."
+  ],
+  "attack": [
+    "{0}, sconfiggi {1}.",
+    "{0}, sfonda {1}."
+  ],
+  "ondirectattack": [
+    "Questo colpo e passato.",
+    "Hai trovato l'apertura."
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Attivo {0}.",
+    "{0} tiene in moto la mia linea."
+  ],
+  "summon": [
+    "Evoco {0}.",
+    "{0}, vai sul Terreno."
+  ],
+  "setmonster": [
+    "Posizionero un mostro.",
+    "Coperto per ora."
+  ],
+  "chaining": [
+    "Metto in Catena {0}.",
+    "Non cosi in fretta. {0}."
+  ]
+}

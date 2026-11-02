@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Ist dies der Swordsoul-Heilige Gipfel?",
+    "Die Dogmatika-Nation?",
+    "Oder das Große Sandmeer – Gold Golgonda?"
+  ],
+  "deckerror": [
+    "{0}, versiegelt vom Icejade-Fluch!"
+  ],
+  "duelstart": [
+    "Ich laufe schon so lange, ich habe Hunger...",
+    "Welche Gefährten werde ich noch treffen?",
+    "Wenn Albaz bei mir wäre..."
+  ],
+  "newturn": [
+    "Mein Zug!"
+  ],
+  "endturn": [
+    "Wo ist meine Schwester...",
+    "Albaz hat kein Trockenfutter mehr.",
+    "Wann gibt es Abendessen?"
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "Essenzeit!"
+  ],
+  "attack": [
+    "{0} greift {1} an!"
+  ],
+  "ondirectattack": [
+    "Ich bin so hungrig...",
+    "Uwaah uwaah...",
+    "Meine Schwester..."
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Aktiviere den Effekt von {0}!"
+  ],
+  "summon": [
+    "Beschwöre {0}!",
+    "Komm heraus, {0}!"
+  ],
+  "setmonster": [
+    "……"
+  ],
+  "chaining": [
+    "Aktiviere den Effekt von {0}!",
+    "{0}!"
+  ]
+}

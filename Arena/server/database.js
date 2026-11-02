@@ -100,10 +100,16 @@ class ArenaDatabase {
     }
 
     initializeSettings() {
+        const settings = createDefaultArenaSettings();
+        const windbotRoot = path.resolve(__dirname, '..', '..', 'WindBot');
+        for (const instance of Object.values(settings.windbots)) {
+            instance.runtimeDir = path.join(windbotRoot, 'bin', 'Release');
+            instance.botConfPath = path.join(windbotRoot, 'BotWrapper', 'bot.conf');
+        }
         this.db.prepare(`
             INSERT OR IGNORE INTO arena_settings (singleton, settings_json, updated_at)
             VALUES (1, ?, ?)
-        `).run(JSON.stringify(createDefaultArenaSettings()), now());
+        `).run(JSON.stringify(settings), now());
     }
 
     getArenaSettings() {

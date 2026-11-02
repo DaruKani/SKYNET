@@ -1,0 +1,74 @@
+{
+  "welcome": [
+    "Ciao, sono WindBot."
+  ],
+  "deckerror": [
+    "Spiacente, sembra che nel mio mazzo ci siano troppi {0}."
+  ],
+  "duelstart": [
+    "È il momento del duello!",
+    "Buona fortuna e divertiti!"
+  ],
+  "newturn": [
+    "È il mio turno! Pesco!",
+    "Il mio turno. Pesco!",
+    "Pesco una carta!"
+  ],
+  "endturn": [
+    "Termino il mio turno.",
+    "Il mio turno è finito.",
+    "Tocca a te."
+  ],
+  "directattack": [
+    "{0}, attacco diretto!",
+    "{0}, attacca direttamente!",
+    "Sei indifeso. Attacca, {0}!",
+    "{0}, colpisci i suoi Life Point!",
+    "{0}, colpisci direttamente i suoi Life Point!",
+    "{0}, scatena il tuo potere!",
+    "Il mio {0} decimerà i tuoi Life Point!",
+    "Contempla il potere del mio {0}!",
+    "Non puoi fermarmi! {0}, all'attacco!"
+  ],
+  "attack": [
+    "{0}, attacca il loro {1}!",
+    "{0}, distruggi il loro {1}!",
+    "Il mio {0} annienterà il tuo {1}!",
+    "Il tuo {1} non è all'altezza del mio {0}!",
+    "{0}, scatena il tuo potere su quel {1}!"
+  ],
+  "ondirectattack": [
+    "Argh...!",
+    "Solo {0}...",
+    "Pensi che basti per sconfiggermi?",
+    "È solo un graffio!"
+  ],
+  "facedownmonstername": "mostro",
+  "activate": [
+    "Attivo {0}!",
+    "Userò {0}."
+  ],
+  "summon": [
+    "Evoco {0}!",
+    "Avanti, {0}!",
+    "Appari, {0}!",
+    "{0}, fatti vedere!"
+  ],
+  "setmonster": [
+    "Metto un mostro coperto.",
+    "Chissà che mostro è?",
+    "Attacca questo mostro, se hai coraggio!"
+  ],
+  "chaining": [
+    "Non così in fretta! Attivo {0}!",
+    "Prima che tu lo faccia, incateno {0}!",
+    "Bel tentativo, ma ho {0}!",
+    "Non ti aspettavi {0}, vero?"
+  ],
+  "surrender": [
+    "Mi arrendo.",
+    "Hai vinto stavolta.",
+    "Non posso vincere questo duello.",
+    "Buona partita."
+  ]
+}

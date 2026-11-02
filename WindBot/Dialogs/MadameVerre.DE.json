@@ -1,0 +1,54 @@
+{
+  "welcome": [
+    "Ah~~ lass mich noch ein bisschen schlafen~",
+    "Willst du der Gilde beitreten?",
+    "Die KI-Funktion wird gerade getestet. Bitte melde Probleme rechtzeitig."
+  ],
+  "deckerror": [
+    "Ich kann {0} nicht in meinem Deck verwenden. Ich geh wieder schlafen."
+  ],
+  "duelstart": [
+    "Ich bin so müde...",
+    "Ah, der Gegner sieht richtig stark aus."
+  ],
+  "newturn": [
+    "Mein Zug, ich ziehe eine Karte!",
+    "Mana auffüllen!"
+  ],
+  "endturn": [
+    "Was, wenn ich gar nicht arbeiten will...",
+    "Das war’s, du bist dran."
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "Nichts Besonderes, Direktangriff!",
+    "Geh weg, ich schlafe weiter."
+  ],
+  "attack": [
+    "{0}, greif {1} an!",
+    "{0}, besiege {1} für mich!"
+  ],
+  "ondirectattack": [
+    "Ah...",
+    "AAAAAAh...",
+    "{0} ist so furchteinflößend...",
+    "Ich bin müde..."
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "{0}-Effekt wird aktiviert!"
+  ],
+  "summon": [
+    "Beschwöre {0}!",
+    "Komm heraus, {0}!",
+    "{0}, hilf mir bitte."
+  ],
+  "setmonster": [
+    "..."
+  ],
+  "chaining": [
+    "Aktiviere {0}!",
+    "Warte, ich aktiviere {0}.",
+    "Ohne {0} wäre ich fast eingeschlafen."
+  ]
+}

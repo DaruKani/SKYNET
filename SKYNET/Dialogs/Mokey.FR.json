@@ -1,0 +1,41 @@
+{
+"welcome": [
+"Bonjour, je suis un robot.",
+"L'IA est en cours de test. Merci de signaler tout problème.",
+"On me traite toujours de punching-ball…"
+],
+"deckerror": [
+"Désolé, il semble y avoir un problème avec le nombre de {0} dans mon deck."
+],
+"duelstart": [
+"Ne me frappe pas !"
+],
+"newturn": [
+""
+],
+"endturn": [
+""
+],
+"directattack": [
+""
+],
+"attack": [
+""
+],
+"ondirectattack": [
+"Je suis en colère!"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'aime {0}."
+],
+"summon": [
+""
+],
+"setmonster": [
+""
+],
+"chaining": [
+""
+]
+}

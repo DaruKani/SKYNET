@@ -95,9 +95,10 @@ ORDER BY matchups.ai_level IS NULL, matchups.ai_level DESC, matchups.label;
 
 Use explicitly selected source locations; do not search parent or sibling directories automatically at runtime.
 
-- The SKYNET repository root is `..` relative to `Arena/`. `Program.cs` defines the native client CLI used by each match participant. `Game/AI/AgentFactory.cs` selects the general or explicit expert lifecycle.
+- The SKYNET project root is `../SKYNET` relative to `Arena/`. Its `Program.cs` defines the native client CLI used by each match participant. `Game/AI/AgentFactory.cs` selects the general or explicit expert lifecycle.
 - The upstream development layout places `arena-srvpro` beside the Arena checkout (`../arena-srvpro`). If that checkout is present at an explicitly configured location, inspect its `index.js` for room and ranking API behavior. Room counts and match rankings are queried through `/api/getroomscount` and `/api/getscores` respectively. This repository does not assume that upstream layout or provide the server automatically.
-- The upstream layout similarly uses `../windbot` for a separate WindBot source checkout. When a compatible checkout has been explicitly supplied, its `Program.cs` defines the ServerMode HTTP protocol and its own implementation defines deck/runtime resource behavior. The ignored `LegacyWindBot` archive in SKYNET is reference material, not an automatically enabled runtime collection.
+- The restored normal WindBot project lives at `../WindBot`. Its `Program.cs` defines the ServerMode HTTP protocol and its own implementation defines deck/runtime resource behavior. New Arena databases point at its Release runtime and English `BotWrapper/bot.conf`; existing saved configurations are never overwritten. The ignored workspace-root `LegacyWindBot` archive remains reference material.
+- `Tools/` owns the dedicated native host, isolated native build, pinned SRVPro bootstrap and owned-process regression. Bootstrap outputs stay under ignored workspace `Artifacts/` or `Arena/Artifacts/`; existing staged runtimes remain valid.
 
 ## Validation priorities
 

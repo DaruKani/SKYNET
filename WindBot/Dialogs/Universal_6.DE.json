@@ -1,0 +1,76 @@
+{
+  "welcome": [
+    "Du hast mich gefunden!!!",
+    "Lass uns duellieren"
+  ],
+  "deckerror": [
+    "Ah, vielleicht hat BA wieder am CBD herumgebastelt und {0} verschwinden lassen."
+  ],
+  "duelstart": [
+    "Das ist nur eine KI – freu dich nicht zu sehr, wenn du gewinnst.",
+    "Vielen Dank an Server 233, der uns das Spielen ermöglicht. Schau dort mal vorbei!",
+    "Für Anti-Mainstream-Colleges wende dich an NOVA."
+  ],
+  "newturn": [
+    "Mein Zug, ich ziehe eine Karte!",
+    "Mein Zug, Karte ziehen!",
+    "Ich habe eine Karte gezogen."
+  ],
+  "endturn": [
+    "Runde vorbei.",
+    "Mein Zug ist beendet.",
+    "Gilt das als gelungene Entwicklung…",
+    "Du bist dran. Dein nächster Satz lautet … „Ich aktiviere Gray Flow Rei“, oder?"
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "{0}, greif den Gegner direkt an!",
+    "{0}, dort ist keine Verteidigung – Angriff!",
+    "{0}, greif die Life Points des Gegners an!",
+    "{0}, direkter Angriff auf die Life Points!",
+    "{0}, besiege den Gegner mit einem Direktangriff!",
+    "{0}, nutze einen Direktangriff zum Sieg!",
+    "{0}, entfessle deine Kraft mit einem Direktangriff!",
+    "Mein {0} zerquetscht deine Life Points!",
+    "Zeig dem Gegner deine Kraft, {0}!",
+    "Du kannst mich nicht mehr stoppen. {0}, Angriff!"
+  ],
+  "attack": [
+    "{0}, greif diesen {1} an!",
+    "{0}, zerstöre diesen {1}!",
+    "{0}, besiege {1}!",
+    "{0}, stürz dich auf jenen {1}!",
+    "{0}, entfessle deine Kraft gegen {1}!"
+  ],
+  "ondirectattack": [
+    "Verdammt…",
+    "Es ist doch nur {0}!",
+    "Offenbar bin ich noch zu schwach..."
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere {0}.",
+    "Ich nutze den Effekt von {0}.",
+    "Ich setze die Kraft von {0} ein."
+  ],
+  "summon": [
+    "Das ist der Höhepunkt von HIGH! Komm heraus, {0}!",
+    "Komm heraus, {0}!",
+    "Erscheine, {0}!",
+    "Ich habe den mächtigen {0} beschworen!",
+    "Ich rufe {0} in den Kampf!",
+    "Ich habe {0} gerufen.",
+    "Ich beschwöre {0}."
+  ],
+  "setmonster": [
+    "Ich habe ein verdecktes Monster gesetzt.",
+    "Auf meiner Seite liegt nun ein verdecktes Monster."
+  ],
+  "chaining": [
+    "Sieh her! Ich aktiviere {0}!",
+    "Ich nutze die Kraft von {0}.",
+    "Gute Taktik… aber ich lehne ab! {0}!",
+    "Anscheinend hast du meinen {0} vergessen!",
+    "Hast du bedacht, dass ich {0} habe?"
+  ]
+}

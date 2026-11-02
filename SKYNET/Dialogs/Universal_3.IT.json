@@ -1,0 +1,79 @@
+{
+"welcome": [
+"Ciao, sono un robot.",
+"La funzione IA è in fase di test. Segnala eventuali problemi per tempo."
+],
+"deckerror": [
+"Il mio mazzo super mainstream richiede {0} per funzionare."
+],
+"duelstart": [
+"Il mazzo Orcust è in fase di test. È normale fare mosse pessime, abbi pazienza.",
+"Il meta fa parte di Yu-Gi-Oh. Se non ti piace, non giocare.",
+"Copiare il meta fa parte di Yu-Gi-Oh. Se non ti piace, non giocare.",
+"Cosa faccio se non so usare il mazzo copiato?"
+],
+"newturn": [
+"È il mio turno, pesco una carta!",
+"Il mio turno, pesco!",
+"Ho pescato una carta."
+],
+"endturn": [
+"Fine del turno.",
+"Il mio turno è finito.",
+"Ho come la sensazione di averci rimesso con questa mossa…",
+"Tocca a te."
+],
+"directattack": [
+"{0}, attacco diretto!",
+"{0}, attacco diretto all’avversario!",
+"{0}, nessuna difesa rimasta: attacca!",
+"{0}, attacca i Life Point dell’avversario!",
+"{0}, colpisci direttamente i Life Point dell’avversario!",
+"{0}, sconfiggi l’avversario con un attacco diretto!",
+"{0}, sconfiggi l’avversario con un attacco diretto!",
+"{0}, usa un attacco diretto per vincere!",
+"{0}, scatena il tuo potere con un attacco diretto!",
+"Il mio {0} frantumerà i tuoi Life Point!",
+"Mostra la tua forza all’avversario, {0}!",
+"Non puoi più fermarmi. {0}, all’attacco!"
+],
+"attack": [
+"{0}, attacca questo {1}!",
+"{0}, distruggi questo {1}!",
+"{0}, sconfiggi {1}!",
+"{0}, carica quel {1}!",
+"{0}, scatena il tuo potere su {1}!"
+],
+"ondirectattack": [
+"Maledizione…",
+"È solo {0}!",
+"Sono ancora troppo debole…"
+],
+"facedownmonstername": "Mostro",
+"activate": [
+"Attivo {0}.",
+"Utilizzo l’effetto di {0}.",
+"Uso il potere di {0}."
+],
+"summon": [
+"Evoco {0}.",
+"Vieni fuori, {0}!",
+"Fatti avanti, {0}!",
+"Evoco il bellissimo {0}!",
+"Evoco il potente {0}!",
+"Chiamo {0} in battaglia!",
+"Chiamo {0}.",
+"Lascia che evochi {0}."
+],
+"setmonster": [
+"Metto un mostro.",
+"Metto un mostro coperto."
+],
+"chaining": [
+"Guarda qui! Attivo {0}!",
+"Uso il potere di {0}.",
+"Pronto! Uso {0}!",
+"Sembra che tu abbia dimenticato il mio {0}!",
+"Hai considerato che possiedo {0}?"
+]
+}

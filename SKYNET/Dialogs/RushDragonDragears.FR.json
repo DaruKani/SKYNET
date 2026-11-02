@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Rush Dragon Dragears est pret. La pression Dragon commence maintenant.",
+    "D'abord des echanges propres, puis de meilleurs suivis."
+  ],
+  "deckerror": [
+    "Il y a un probleme avec le nombre de {0} dans mon Deck."
+  ],
+  "duelstart": [
+    "Voyons comment tu geres la pression Dragon.",
+    "Une seule ouverture propre me suffit."
+  ],
+  "newturn": [
+    "Mon tour. Je pioche.",
+    "Il est temps de remettre la pression sur le Terrain."
+  ],
+  "endturn": [
+    "A toi.",
+    "Montre-moi ta reponse."
+  ],
+  "directattack": [
+    "{0}, attaque directe.",
+    "{0}, la voie est libre. Attaque directe."
+  ],
+  "attack": [
+    "{0}, bats {1}.",
+    "{0}, perce a travers {1}."
+  ],
+  "ondirectattack": [
+    "Cette attaque est passee.",
+    "Tu as trouve l'ouverture."
+  ],
+  "facedownmonstername": "Monstre",
+  "activate": [
+    "J'active {0}.",
+    "{0} maintient ma ligne en mouvement."
+  ],
+  "summon": [
+    "J'invoque {0}.",
+    "{0}, prends le Terrain."
+  ],
+  "setmonster": [
+    "Je pose un monstre.",
+    "Face cachee pour l'instant."
+  ],
+  "chaining": [
+    "J'enchaine avec {0}.",
+    "Pas si vite. {0}."
+  ]
+}

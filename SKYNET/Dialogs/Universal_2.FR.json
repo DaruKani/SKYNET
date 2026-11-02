@@ -1,0 +1,60 @@
+{
+"welcome": [
+"Bonjour, je suis un robot. Je m'appelle Near, mais je ne suis pas le vrai, juste un avatar.",
+"Un jour, mon pouvoir sera plus puissant que le vrai ! Attendez de voir !",
+"L'IA est en cours de test. Merci de signaler tout problème.",
+],
+"deckerror": [
+"Quoi ? Tu ne me laisses pas utiliser mon invincible {0} !",
+],
+"duelstart": [
+"Personne ne peut me vaincre !",
+"Je suis omnipotent et je peux utiliser n'importe quel deck !",
+"Je te donne ma main gauche, et tu ne fais pas le poids.",
+"Je suis la fée démoniaque numéro un de l'univers !",
+],
+"newturn": [
+"C'est à nouveau mon tour. Je pioche une carte. J'espère que tu auras un autre tour.",
+"J'ai pioché une carte magnifique.",
+],
+"endturn": [
+"Tu as de la chance. Je ne t'ai pas tué.",
+"Je te laisse faire. Le tour est terminé. Profite bien de ton prochain tour."
+],
+"directattack": [
+"Mon {0} est trop mignon. Maintenant, je vais le laisser jouer avec toi. Attrape doucement l'adversaire. Il n'a aucun endroit où se défendre.",
+"Ensuite, je vais utiliser mon {0} pour lui donner le coup le plus mignon~",
+"Le mignon {0} t'a fait du tort. Va lui faire un câlin. Ne sois pas trop poli~",
+"L'adversaire n'a aucune défense. On dirait qu'il est touché par la gentillesse de mon {0}. Maintenant, va lui montrer ta jolie silhouette~"
+],
+"attack": [
+"Hum, {1} est trop moche. Mon {0} va le détruire~",
+"Est-ce que {1} est aussi mignon que mon {0} ? Mon {0} n'est pas d'accord. Va le tabasser à mort !",
+"{1} est vraiment plus mignon que mon {0} ? Ce n'est pas acceptable. Je ne peux pas le supporter. {0}, faisons-le disparaître de ma vue !"
+],
+"ondirectattack": [
+"Zut, tu as vraiment profité du malheur de quelqu'un ! Quel genre de héros es-tu !",
+"Ce n'est qu'un petit personnage comme {0} !",
+"Tu crois que tu as gagné comme ça ?"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'ai activé l'effet mignon de mon {0}.",
+"J'ai utilisé l'effet de {0} pour montrer un regard mignon à mon adversaire~",
+"J'ai été tellement ému par la gentillesse de {0} que j'ai utilisé son effet."
+],
+"summon": [
+"J'ai invoqué {0} et j'ai miaulé sur mon adversaire~",
+"Sors de là, mignon et charmant {0}~",
+"J'ai libéré un adorable {0} de ma niche.",
+"{0} : J'ai entendu dire que tu m'aimais beaucoup, alors je suis venu." ],
+"setmonster": [
+"J'ai placé un monstre. Quand il se retournera, ne soyez pas effrayé par son apparence mignonne~",
+"J'ai placé un monstre. Devinez ce que c'est ? "
+],
+"chaining": [
+"J'ai agité la baguette magique et activé l'effet de {0}~",
+"Ah ! Cette fois, je suis mort ! ... Hé, tu t'es fait avoir, j'active {0} !",
+"Tu es trop téméraire, tu ne t'attendais pas à ce que j'active {0} ? "
+]
+}

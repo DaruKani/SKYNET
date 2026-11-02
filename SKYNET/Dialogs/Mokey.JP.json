@@ -1,0 +1,41 @@
+{
+  "welcome": [
+    "こんにちは、私はロボットです。",
+    "AI機能はテスト中です。問題があったら報告してください。",
+    "みんな私のことをサンドバッグと呼ぶ..."
+  ],
+  "deckerror": [
+    "すみません、デッキの{0}の枚数に問題があるようです。"
+  ],
+  "duelstart": [
+    "殴らないで！"
+  ],
+  "newturn": [
+    ""
+  ],
+  "endturn": [
+    ""
+  ],
+  "directattack": [
+    ""
+  ],
+  "attack": [
+    ""
+  ],
+  "ondirectattack": [
+    "怒ったぞ！"
+  ],
+  "facedownmonstername": "モンスター",
+  "activate": [
+    "{0}が好きだ。"
+  ],
+  "summon": [
+    ""
+  ],
+  "setmonster": [
+    ""
+  ],
+  "chaining": [
+    ""
+  ]
+}

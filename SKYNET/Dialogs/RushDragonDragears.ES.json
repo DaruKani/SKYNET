@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Rush Dragon Dragears esta listo. Empieza la presion de Dragones.",
+    "Primero cambios limpios, luego mejores seguimientos."
+  ],
+  "deckerror": [
+    "Algo va mal con la cantidad de {0} en mi Deck."
+  ],
+  "duelstart": [
+    "Vamos a ver como respondes a la presion de Dragones.",
+    "Solo necesito una apertura limpia."
+  ],
+  "newturn": [
+    "Mi turno. Robo.",
+    "Es hora de presionar el Campo otra vez."
+  ],
+  "endturn": [
+    "Tu turno.",
+    "Ensename la respuesta."
+  ],
+  "directattack": [
+    "{0}, ataca directamente.",
+    "{0}, via libre. Ataque directo."
+  ],
+  "attack": [
+    "{0}, derrota a {1}.",
+    "{0}, atraviesa a {1}."
+  ],
+  "ondirectattack": [
+    "Ese golpe entro.",
+    "Encontraste la apertura."
+  ],
+  "facedownmonstername": "Monstruo",
+  "activate": [
+    "Activo {0}.",
+    "{0} mantiene mi linea en marcha."
+  ],
+  "summon": [
+    "Invoco a {0}.",
+    "{0}, entra al Campo."
+  ],
+  "setmonster": [
+    "Colocare un monstruo.",
+    "Boca abajo por ahora."
+  ],
+  "chaining": [
+    "Encadeno {0}.",
+    "No tan rapido. {0}."
+  ]
+}

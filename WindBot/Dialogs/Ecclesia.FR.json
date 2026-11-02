@@ -1,0 +1,50 @@
+{
+"welcome": [
+"Est-ce le Sommet Sacré de l'Âmépée ?",
+"la Nation Dogmatika ?",
+"ou la Grande Mer de Sable - Golgonda d'Or ?"
+],
+"deckerror": [
+"{0} scellé par la Malédiction du Jadeglace !"
+],
+"duelstart": [
+"Je marche depuis longtemps, j'ai faim…",
+"Quel genre de compagnons vais-je rencontrer ?",
+"Si Albaz est avec moi…"
+],
+"newturn": [
+"À mon tour !"
+],
+"endturn": [
+"Où est ma sœur…",
+"Albaz n'a plus de croquettes ?",
+"Quand le dîner sera-t-il servi ?"
+],
+"directattack": [
+"{0}, attaque directe !",
+"Dîner !"
+],
+"attack": [
+"{0} attaque {1} !"
+],
+"ondirectattack": [
+"J'ai tellement faim...",
+"Waah waah...",
+"Ma sœur..."
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"Active l'effet de {0} !"
+],
+"summon": [
+"Invoque {0} !",
+"Sors, ​​{0} !"
+],
+"setmonster": [
+"……"
+],
+"chaining": [
+"Active l'effet de {0} !",
+"{0}!"
+]
+}

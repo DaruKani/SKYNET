@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Excutie is ready. Level 6 tempo starts now.",
+    "Clean trades first. Strong follow-ups second."
+  ],
+  "deckerror": [
+    "Something is off with the number of {0} in my deck."
+  ],
+  "duelstart": [
+    "Let's see how you handle Level 6 tempo.",
+    "One clean opening is all I need."
+  ],
+  "newturn": [
+    "My turn. Draw.",
+    "Time to push the field again."
+  ],
+  "endturn": [
+    "Your turn.",
+    "Show me the answer."
+  ],
+  "directattack": [
+    "{0}, attack directly.",
+    "{0}, clear lane. Direct attack."
+  ],
+  "attack": [
+    "{0}, defeat {1}.",
+    "{0}, break through {1}."
+  ],
+  "ondirectattack": [
+    "That got through.",
+    "You found the opening."
+  ],
+  "facedownmonstername": "monster",
+  "activate": [
+    "I activate {0}.",
+    "{0} keeps my line moving."
+  ],
+  "summon": [
+    "I summon {0}.",
+    "{0}, take the field."
+  ],
+  "setmonster": [
+    "I'll set a monster.",
+    "Face-down for now."
+  ],
+  "chaining": [
+    "I chain {0}.",
+    "Not so fast. {0}."
+  ]
+}

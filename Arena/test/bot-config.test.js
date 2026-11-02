@@ -56,6 +56,23 @@ test('parseBotConfig parses supported entries and filters manual bots', () => {
     assert.equal(bots.get('Unleveled').aiLevel, null);
 });
 
+test('parseBotConfig accepts MDPro4 quoted names and English dialogs', () => {
+    const bots = parseBotConfig(`
+!Mokey Mokey King
+Name='Mokey Mokey King' Deck='MokeyMokeyKing' Dialog=Mokey.EN
+AI_LV1 SUPPORT_MASTER_RULE_2020
+!LV8
+Name='Level VIII' Deck='Level VIII' Dialog=Swordsman.EN
+AI_LV2 SUPPORT_MASTER_RULE_2020
+!Select a deck
+Name='Selected deck' Deck=SELECT_DECKFILE Dialog=Universal_4.EN
+SELECT_DECKFILE
+`);
+    assert.deepEqual([...bots.keys()], ['MokeyMokeyKing', 'Level VIII']);
+    assert.equal(bots.get('MokeyMokeyKing').dialog, 'Mokey.EN');
+    assert.equal(bots.get('Level VIII').aiLevel, 2);
+});
+
 test('buildRegressionMatchups creates generalized competitors', (context) => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'windbot-arena-bots-'));
     context.after(() => fs.rmSync(tempDir, { force: true, recursive: true }));
@@ -215,14 +232,45 @@ AI_LV4
     assert.equal(albazMatchup.competitors[0].deck, 'Albaz');
     assert.equal(albazMatchup.competitors[0].rankName, 'Albaz');
 
-    assert.throws(
-        () => buildChallengeMatchups(
-            settings,
-            'ManualExecutorWithAnExtremelyLongName',
-            ['Dragon'],
-        ),
-        /ranking names exceeding 20 characters: “ManualExecutorWithAnExtremelyLongName”/,
+    const [longNameMatchup] = buildChallengeMatchups(
+        settings, 'ManualExecutorWithAnExtremelyLongName', ['Dragon'],
     );
+    assert.equal(longNameMatchup.competitors[0].deck, 'ManualExecutorWithAnExtremelyLongName');
+    assert.match(longNameMatchup.competitors[0].rankName, /^ManualExec-[0-9a-f]{8}$/);
+});
+
+test('long MDPro4 labels retain their decks and display text with stable bounded participant names', () => {
+    const labels = [
+        'Ritual of Light and Darkness',
+        'Rush Dragon Dragears',
+        'Dinocarriage Dynarmix',
+        'Ritual of Light and Dragons',
+        '😀😀😀😀😀😀😀😀😀😀',
+    ];
+    const settings = createDefaultArenaSettings();
+    for (const source of ['current', 'old']) {
+        Object.assign(settings.windbots[source], {
+            mode: 'remote', host: `${source}.example`,
+            botConfText: labels.map((label, index) => (
+                `!${label}\nName='${label}' Deck=Deck${index} Dialog=Universal.EN\nAI_LV2`
+            )).join('\n'),
+        });
+    }
+    const matchups = buildRegressionMatchups(settings);
+    const names = matchups.flatMap((matchup) => matchup.competitors.map((bot) => bot.rankName));
+    assert.equal(new Set(names).size, labels.length * 2);
+    assert.ok(names.every((name) => name.length <= 19 && name.isWellFormed()));
+    for (const matchup of matchups) {
+        const index = Number(matchup.label.slice(4));
+        assert.ok(matchup.competitors.every((bot) => bot.botLabel === labels[index]));
+        assert.ok(matchup.competitors.every((bot) => bot.deck === `Deck${index}`));
+    }
+    assert.deepEqual(buildRegressionMatchups(settings), matchups);
+    const challenge = buildChallengeMatchups(settings, 'Deck1', ['Deck0', 'Deck3']);
+    assert.equal(challenge[0].competitors[0].rankName, 'Deck1');
+    assert.equal(challenge[0].competitors[1].botLabel, labels[0]);
+    assert.notEqual(challenge[0].competitors[1].rankName, challenge[1].competitors[1].rankName);
+    assert.ok(challenge.every((matchup) => matchup.competitors[1].rankName.length <= 19));
 });
 
 test('ranking creates one current WindBot entry per selected deck', () => {

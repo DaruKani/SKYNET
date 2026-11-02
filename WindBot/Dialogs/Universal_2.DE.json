@@ -1,0 +1,61 @@
+{
+"welcome": [
+"Hallo, ich bin ein Roboter. Mein Name ist Near – aber nur ein Avatar, nicht das Original.",
+"Eines Tages werde ich stärker sein als das Original! Wart’s nur ab!",
+"Die KI-Funktion wird getestet. Bitte meldet Probleme rechtzeitig.",
+],
+"deckerror": [
+"Was? Du lässt mich mein unbesiegbares {0} nicht benutzen!",
+],
+"duelstart": [
+"Niemand kann mich besiegen!",
+"Ich bin allmächtig und kann jedes Deck spielen!",
+"Ich kämpfe nur mit der linken Hand – und du hast keine Chance.",
+"Ich bin die Nummer-eins-Dämonenfee im Universum!",
+],
+"newturn": [
+"Schon wieder mein Zug. Karte ziehen. Hoffentlich bekommst du noch einen.",
+"Ich habe ganz großartig eine Karte gezogen.",
+],
+"endturn": [
+"Glück gehabt – ich habe dich nicht ausgelöscht.",
+"Ich verschone dich: Zug beendet. Genieße deinen nächsten Zug.",
+],
+"directattack": [
+"Mein {0} ist so süß. Jetzt darf er mit dir spielen: packt dich sanft, du kannst dich nicht wehren.",
+"Jetzt werde ich mit meinem {0} dem Gegner den süßesten Schlag verpassen~",
+"Armer {0}, entschuldige die Mühe. Geh den Gegner knuddeln – aber nicht zu höflich~",
+"Der Gegner hat keine Verteidigung. Offenbar war er vom Charme meines {0} überwältigt. Zeig ihm jetzt deine süße Gestalt~"
+],
+"attack": [
+"Pah, {1} ist hässlich. Mein {0} macht ihn platt~",
+"{1} so süß wie mein {0}? Mein {0} sieht das anders. Los, verprügle ihn!",
+"{1} süßer als mein {0}? Unmöglich! {0}, lass ihn verschwinden!",
+],
+"ondirectattack": [
+"Verdammt, du nutzt mein Pech aus! Was bist du denn für ein Held!",
+"Ist doch nur so’n kleiner Wicht wie {0}!",
+"Meinst du, du hast schon gewonnen?",
+],
+"facedownmonstername": "Monster",
+"activate": [
+"Ich aktiviere den niedlichen Effekt von {0}.",
+"Ich nutze den Effekt von {0}, um dem Gegner meine Süße zu zeigen~",
+"Von {0}s Niedlichkeit gerührt, aktiviere ich seinen Effekt.",
+],
+"summon": [
+"Ich habe {0} beschworen und den Gegner ange-miau-t~",
+"Komm heraus, du süßer, bezaubernder {0}~",
+"Ich habe einen niedlichen {0} aus meinem Haustierhaus entlassen.",
+"{0}: Ich hörte, du magst mich, also bin ich da.",
+],
+"setmonster": [
+"Ich setze ein Monster. Wenn es sich aufdeckt, erschrick nicht vor seiner Niedlichkeit~",
+"Ich setze ein Monster. Rate mal, was es ist? ",
+],
+"chaining": [
+"Ich schwinge den Zauberstab und aktiviere {0}~",
+"Ah! Jetzt bin ich geliefert! …Haha, reingelegt – ich aktiviere {0}!",
+"Zu übermütig! Hast du nicht erwartet, dass ich {0} aktiviere? ",
+]
+}

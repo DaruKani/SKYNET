@@ -1,0 +1,78 @@
+{
+"welcome": [
+"Hallo, ich bin ein Roboter.",
+"Die KI-Funktion wird getestet. Bitte meldet Probleme rechtzeitig."
+],
+"deckerror": [
+"Mein Super-Meta-Deck braucht {0}, um zu funktionieren."
+],
+"duelstart": [
+"Das Zoodiak-Deck wird getestet. Schlechte Züge sind normal.",
+"Meta gehört zu Yu-Gi-Oh. Wenn’s dir nicht passt, spiel nicht.",
+"Das Kopieren von Meta gehört zu Yu-Gi-Oh. Wenn’s dir nicht passt, spiel nicht.",
+"Was mache ich, wenn ich das kopierte Deck nicht bedienen kann?"
+],
+"newturn": [
+"Mein Zug, ich ziehe eine Karte!",
+"Mein Zug, Karte ziehen!",
+"Ich habe eine Karte gezogen.",
+],
+"endturn": [
+"Zug beendet.",
+"Mein Zug ist vorbei.",
+"Gilt das als gelungener Aufbau...",
+"Du bist dran."
+ ],
+"Directattack": [
+"{0}, Direktangriff!",
+"{0}, greif den Gegner direkt an!",
+"{0}, attackiere die schutzlose Stelle!",
+"{0}, greif die Lebenspunkte des Gegners an!",
+"{0}, direkter Angriff auf die LP!",
+"{0}, besiege den Gegner mit einem Direktangriff!",
+"{0}, nutze einen Direktangriff zum Sieg!",
+"{0}, entfessle deine Macht mit einem Direktangriff!",
+"Mein {0} zerquetscht deine LP!",
+"Zeig dem Gegner deine Kraft, {0}!",
+"Du kannst mich nicht mehr stoppen. {0}, Angriff!"
+],
+"attack": [
+"{0}, greif diesen {1} an!",
+"{0}, zerstöre diesen {1}!",
+"{0}, besiege {1}!",
+"{0}, stürz dich auf jenen {1}!",
+"{0}, entfessle deine Kraft gegen {1}!"
+],
+"ondirectattack": [
+"Verdammt...",
+"Es ist doch nur {0}!",
+"Ich bin noch zu schwach..."
+],
+"facedownmonstername": "Monster",
+"activate": [
+"Ich aktiviere {0}.",
+"Ich nutze den Effekt von {0}.",
+"Ich nutze die Kraft von {0}."
+],
+"summon": [
+"Ich beschwöre {0}.",
+"Komm heraus, {0}!",
+"Erscheine, {0}!",
+"Ich beschwöre den mächtigen {0}!",
+"Ich rufe {0} in den Kampf!",
+"Ich rufe {0}.",
+"Lass mich {0} beschwören."
+],
+"setmonster": [
+"Ich setze ein Monster.",
+"Ich setze ein Monster verdeckt."
+],
+"chaining": [
+"Sieh her! Ich aktiviere {0}!",
+"Ich nutze die Kraft von {0}.",
+"Bereit! Ich setze {0} ein!",
+"Ich widerspreche. {0}, aktivier dich!",
+"Anscheinend hast du meinen {0} vergessen!",
+"Hast du bedacht, dass ich {0} habe?"
+]
+}

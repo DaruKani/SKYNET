@@ -1,8 +1,9 @@
 # Skynet Arena
 
-An English experiment dashboard for **MDPro4 AI Systems**. Compare SKYNET policies
-and expert executors, watch experiment progress, inspect process output, and
-export results. Configuration and history persist in SQLite.
+An English experiment dashboard for **MDPro4 AI Systems**. Compare normal WindBot
+executors and SKYNET policies, watch experiment progress, inspect process output,
+and export results. Configuration and history persist in SQLite. This folder is
+independent of the sibling `WindBot/` and `SKYNET/` source projects.
 
 Derived from [WindBot Arena](https://github.com/mercury233/windbot-arena), pinned
 at `371e62de0b0b29a8f097f84293e9f8f0f15a7509`. Original file hashes and provenance
@@ -29,18 +30,53 @@ Use `-Build` after frontend changes, or `-Port 3137` for another port.
 .\Start-SkynetArena.ps1 -Build -Port 3137
 ```
 
-You can also run `npm run build` and `npm start` directly. No private runtime
-paths, model files, card databases or server credentials are shipped.
+You can also run `npm run build` and `npm start` directly. Model files, card
+databases and server credentials are not shipped.
 
-## Configure a comparison
+## Normal WindBot setup
 
-1. Build `../Skynet.sln` in Release with Visual Studio MSBuild.
+Build the restored normal project from the workspace root:
+
+```powershell
+msbuild WindBot/WindBot.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+Copy-Item -LiteralPath 'D:/Programs/GitHub/MDPro4_Data/Data/locales/en-US/cards.cdb' `
+  -Destination WindBot/bin/Release/cards.cdb
+```
+
+The database copy is an ignored local runtime input; use the database matching
+that server's scripts. The normal build includes decks, SQLite dependencies and
+dialogs. `WindBot/Dialogs/` is the snapshot from
+`D:/Programs/GitHub/MDPro4_Data/Data/Windbot/Dialogs`, with `default.json` as a
+copy of `Universal.EN.json`. `WindBot/BotWrapper/bot.conf` is the English catalog
+from `D:/Programs/GitHub/MDPro4_Data/Data/locales/en-US/bot.conf`.
+
+A new Arena database starts with **Local WindBot** for both participants, the
+absolute sibling `WindBot/bin/Release` runtime, the English
+`WindBot/BotWrapper/bot.conf` catalog, and distinct HTTP ports 2399 and 2398.
+Both initially run the same binary. For a useful version comparison, build and
+preserve a separate baseline runtime, then set its directory in **Settings →
+Agents → Baseline agent**. Existing saved settings are preserved; update any old
+executable or deck paths manually after moving a checkout. Dialogs are resolved
+inside each selected runtime's `Dialogs/` directory.
+
+Configure the dedicated SRVPro under **Settings → SRVPro** before starting a
+small regression. Arena starts and retires its own WindBot HTTP servers; a
+manually started server belongs in **Remote WindBot** mode. Remote catalogs
+accept the same English `bot.conf` as pasted content or a configured URL. Catalog
+entries with quoted names and deck names are supported; the manual deck-picker
+entry is excluded. Full display labels and deck registrations are retained;
+overlong participant names use a stable hash suffix to fit WindBot's 19 UTF-16
+unit wire limit without splitting surrogate pairs.
+
+## Configure a SKYNET comparison
+
+1. Build `../SKYNET/Skynet.sln` in Release with Visual Studio MSBuild.
 2. In **Settings → Agents**, select **SKYNET** for the candidate.
 3. Enter the absolute `SKYNET.exe` path and a compatible `cards.cdb`.
 4. Add a profile: a unique matchup ID, a display name (up to 17 characters),
    an absolute `.ydk` path, a decision policy, and optional frozen model weights.
 5. Configure the baseline with the same matchup ID. For a first integration
-   comparison, use `Decks/AI_ExpertOldSchool.ydk` for both participants,
+   comparison, use `../SKYNET/Decks/AI_ExpertOldSchool.ydk` for both participants,
    `skynet` for the candidate and `expert-oldschool` for the baseline.
 6. In **Settings → SRVPro**, configure an already running, dedicated
    [arena-srvpro](https://github.com/mercury233/arena-srvpro) instance.
@@ -59,14 +95,14 @@ a bounded recent buffer from the current Arena session: restarting Arena clears
 it, and choosing an old experiment does not reload its earlier output. Existing
 settings and result history are upgraded automatically; previously saved
 explanation choices are preserved.
-`Decks/AI_SkynetSwordsoul.ydk` supplies a compact modern research route; compare
-it with the same deck and an explicitly preserved previous binary before drawing
+`../SKYNET/Decks/AI_SkynetSwordsoul.ydk` supplies a compact modern research route;
+compare it with the same deck and an explicitly preserved previous binary before drawing
 strength conclusions. It is not a full Swordsoul/Tenyi executor.
 
 The included OldSchool executor is a simple historical baseline. For a stronger
 comparison, choose **Expert · Swordsoul baseline** in the baseline profile and
-provide the absolute path to `Decks/AI_ExpertSwordsoul.ydk`. This compatibility mode runs the
-executor's complete decision and selection lifecycle; it cannot load a learned
+provide the absolute path to `../SKYNET/Decks/AI_ExpertSwordsoul.ydk`. This
+compatibility mode runs the executor's complete decision and selection lifecycle; it cannot load a learned
 model. Match candidate and baseline profile IDs to compare them, and record both
 deck lists when they differ. Expert decisions still require review before use
 as training demonstrations.
@@ -76,7 +112,7 @@ effects, combo routes or strategy goals. Those remain separate SKYNET work.
 
 ## Dedicated local server (Windows)
 
-The parent project's explicit bootstrap uses pinned
+Arena's explicit bootstrap uses pinned
 [arena-srvpro](https://github.com/mercury233/arena-srvpro) commit
 `af87d3a8c4269c105144a67221728aa25a747910` and its single locked `deepmerge`
 dependency. The official source archive SHA256 is
@@ -85,7 +121,7 @@ Upstream is AGPL-3.0; its source and license remain in the staged runtime.
 The bootstrap verifies the complete allowlisted runtime file set before patching
 only listener addresses, the native host name and its parent-process guard.
 
-Run the following from the SKYNET repository root, using Python 3.12 or newer,
+Run the following from the `Arena/` directory, using Python 3.12 or newer,
 Node.js 24 and the reviewed Visual Studio 2022 C++ toolchain. These examples
 require explicitly supplied local inputs; they do not download dependencies or
 search neighboring directories.
@@ -97,7 +133,7 @@ search neighboring directories.
    `INADDR_LOOPBACK`, builds it and writes an input/build receipt.
 
    ```powershell
-   python Tools/Skynet/build_arena_native.py `
+   python Tools/build_arena_native.py `
      --server-repository D:/YourSources/mdpro4-ygopro `
      --server-commit 9b65c3fc90a782742a92c3e9afa685aa0eb3feca `
      --core-repository D:/YourSources/mdpro4-ygopro-core `
@@ -113,7 +149,7 @@ search neighboring directories.
    remains alive until that native room retires.
 
    ```powershell
-   ./Tools/Skynet/Build-DuelHost.ps1 `
+   ./Tools/Build-DuelHost.ps1 `
      -Destination Artifacts/arena-host `
      -ServerLibrary Artifacts/arena-native/source/bin/release/x64/ygoserver.dll `
      -Database D:/YourGame/Data/locales/en-US/cards.cdb `
@@ -124,7 +160,7 @@ search neighboring directories.
    runtime. Existing directories are never overwritten.
 
    ```powershell
-   python Tools/Skynet/arena_server.py prepare `
+   python Tools/arena_server.py prepare `
      --source-root Artifacts/arena-srvpro-source --runtime-dir Artifacts/arena-server `
      --native-host Artifacts/arena-host/SKYNET_DUEL_HOST.exe `
      --native-library Artifacts/arena-native/source/bin/release/x64/ygoserver.dll `
@@ -132,7 +168,7 @@ search neighboring directories.
      --database D:/YourGame/Data/locales/en-US/cards.cdb `
      --scripts D:/YourGame/Data/script.zip
    npm --prefix Artifacts/arena-server ci --ignore-scripts --no-audit --no-fund
-   python Tools/Skynet/arena_server.py serve `
+   python Tools/arena_server.py serve `
      --runtime-dir Artifacts/arena-server --node D:/YourNode/node.exe --minutes 60
    ```
 
@@ -141,6 +177,11 @@ search neighboring directories.
    from that runtime's `config/admin_user.json`. Set at most two concurrent rooms
    for the default four-bot process limit. Keep credentials and runtime files
    outside commits. The dashboard and duel supervisor are separate processes.
+
+New examples use `Arena/Artifacts/`. Previously staged workspace-root
+`Artifacts/` runtimes remain valid; pass their explicit paths when resuming them.
+The bootstrap's output boundary allows both ignored locations within this
+workspace. It never relocates or overwrites an existing staged runtime.
 
 The supervisor accepts authenticated Arena reboots, bounds its duration/restarts
 and log size, and uses a private Windows job to retire its process tree on exit
@@ -187,8 +228,9 @@ are never killed. Output buffers are bounded.
 
 Arena requires the dedicated SRVPro management and cumulative-score APIs.
 The local bootstrap above provides those APIs around a separately built MDPro4
-native room host. Running the standalone `native_smoke.py` fixture alone does
-not provide these management APIs.
+native room host. Running the standalone
+`../SKYNET/Tools/Skynet/native_smoke.py` fixture alone does not provide these
+management APIs.
 
 Wins come from SRVPro scores. A successful process exit is not a win. Regression
 win rate is candidate wins divided by candidate plus baseline wins; disconnects
@@ -205,7 +247,7 @@ matches: general SKYNET won 2 and the explicit OldSchool expert won 18, with no
 recorded disconnects. All clients/native rooms retired. The separately recorded
 four-match integration pilot finished 2–2. These unrestricted, unseeded runs
 establish a baseline, not model improvement; see the parent
-[evaluation receipt](../Catalog/expert-baselines.json) for exact inputs and
+[evaluation receipt](../SKYNET/Catalog/expert-baselines.json) for exact inputs and
 the initial card-coverage gaps.
 
 After the four shared card behaviors were added, two fresh 20-match runs used
@@ -246,6 +288,7 @@ The included PM2 example also binds to localhost.
 npm run dev
 npm test
 npm run build
+python Tools/test_arena_process_owner.py
 ```
 
 Tests use owned process fixtures and mocked SRVPro responses. They do not restart

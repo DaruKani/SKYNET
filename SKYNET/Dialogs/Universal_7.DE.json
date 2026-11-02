@@ -1,0 +1,59 @@
+{
+  "welcome": [
+    "Hallo, Kartenspieler",
+    "Willkommen, spiel mit mir Karten"
+  ],
+  "deckerror": [
+    "Sorry, mein Deck braucht {0}, um zu laufen"
+  ],
+  "duelstart": [
+    "Hey, ich werde meinen kleinen Bruder Nummer zwei schicken, um dich zu besiegen.",
+    "Mein Deck ist gar nicht schlecht, nur ein paar verbotene Karten",
+    "Ich kann nur einfache Decks spielen, also benutze keine verbotenen Karten gegen mich"
+  ],
+  "newturn": [
+    "Mein Zug, ich ziehe eine Karte! (heimlich aus dem Schritt gezogen)",
+    "Ich ziehe eine Karte"
+  ],
+  "endturn": [
+    "Ich bin fertig, du bist dran",
+    "Dein Zug – ist das hier kein Multithread-Duell?"
+  ],
+  "directattack": [
+    "{0}, greif den Gegner an!",
+    "{0}, zerschmettere es!",
+    "{0}, verpass ihm einen Punch!"
+  ],
+  "attack": [
+    "{0}, räum {1} aus dem Weg!",
+    "Hey, {0}, greif {1} an!"
+  ],
+  "ondirectattack": [
+    "Ah, hau mich nicht! Ich leg dir eine verbotene Karte hin",
+    "Uff, zu stark – kannst du mir helfen?",
+    "Es tut weh… ich will den Stecker ziehen"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Hey, ich aktiviere {0}",
+    "Haha, ich nutze die Kraft von {0}"
+  ],
+  "summon": [
+    "Ich beschwöre (ziehe hervor) {0}!",
+    "Komm heraus, mein kleines Monster {0}!"
+  ],
+  "setmonster": [
+    "Ich setze ein unbekanntes Monster."
+  ],
+  "chaining": [
+    "Hey, darf ich eine verbotene Karte benutzen?",
+    "Ha! Ich aktiviere {0}!",
+    "Sorry, ich habe {0}",
+    "Haha, aktiviere den Effekt von {0}!"
+  ],
+  "custom": [
+    "Gua! Der Hauptkörper will kämpfen!",
+    "Ich kann nicht spielen, meine Hand ist brick!!!",
+    "Hey, keine Panik, es gibt noch Spielraum (￣y▽￣)╭"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+"welcome": [
+"Ich bin ein Roboter namens Lao Miaoshi und nicht besonders gut im Kartenspiel.",
+"Lade das Katzen-YGO-Hauptprogramm YGO-VI-EX herunter – such einfach auf Weibo nach: Lao Miaoshi 1911."
+],
+"deckerror": [
+"Ah, {0} kann nicht mehr benutzt werden."
+],
+"duelstart": [
+"Niemand kann mich besiegen.",
+"Ich bin unfähig und kann kein Deck richtig spielen.",
+"Sogar wenn du mir die linke Hand schenkst, habe ich keine Chance.",
+"Na gut, ist auch egal."
+],
+"newturn": [
+"Ah, ich bin dran.",
+"Karte ziehen."
+],
+"endturn": [
+"Glück gehabt – du hast mich nicht erledigt.",
+"Egal, mal sehen, was ich nächste Runde mache."
+],
+"directattack": [
+"Greife mit {0} an.",
+"Diese Karte passt – {0} greift an.",
+"Es ist noch früh, also erst mal {0} nach vorn.",
+"Nicht übel, {0}s Angriff sollte durchgehen."
+],
+"attack": [
+"{0}, greif {1} an.",
+"Keine Zeit, {0}! Schnell {1} angreifen – vielleicht steckt da ein Bug.",
+"Scheint zu klappen, {1} ist schwächer als {0}; {0}, Angriff.",
+],
+"ondirectattack": [
+"Daran gewöhnst du dich.",
+"{0}, das ist Glück.",
+"Nicht schlecht, nicht schlecht."
+],
+"facedownmonstername": "Monster",
+"activate": [
+"Aktiviere den Effekt von {0}.",
+"Warte – nutze den Effekt von {0}.",
+"Was mache ich mit {0}? Einfach abgeben."
+],
+"summon": [
+"{0} beschwören",
+"{0} scheint heute bugfrei zu sein.",
+"{0} wurde schon auf dem Server geupdated.",
+"{0}: Wenn du so schlecht bist, lass das Kartenspiel lieber."
+],
+"setmonster": [
+"Ich setze ein Monster und schaue, ob du den Zug beendest.",
+"Keine Wahl – setze ein Monster."
+],
+"chaining": [
+"Aktiviere im Chain den Effekt von {0}.",
+"Sei nicht frech – {0} wird aktiviert.",
+"Da ist noch ein {0}; schick ihn raus."
+]
+}

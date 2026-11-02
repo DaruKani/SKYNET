@@ -1,0 +1,42 @@
+{
+"welcome": [
+"Salut, je suis vraiment beau."
+],
+"deckerror": [
+"Désolé, il semble y avoir un problème avec le nombre de {0} dans mon deck."
+],
+"duelstart": [
+"Faisons un duel équitable (Dragon caché entre les jambes)"
+],
+"newturn": [
+"C'est mon tour"
+],
+"endturn": [
+"Chacun a des objectifs différents. Je me concentre davantage sur la force. Je veux juste gagner." ],
+"directattack": [
+"Je suis là pour te tuer"
+],
+"attack": [
+"Disparais, déchet"
+],
+"ondirectattack": [
+"Papa, épargne-moi",
+"Trop effrayant"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active l'effet de cette carte. Bien que ce ne soit pas écrit dessus, elle peut être utilisée comme ceci."
+],
+"summon": [
+"Fort, invincible",
+"Invoque {0}, fais fortune",
+"{0} est une fausse carte",
+"J'aime toujours {0}"
+],
+"setmonster": [
+"Elle est encore bloquée"
+],
+"chaining": [
+"Stupide, regarde-moi la contrer"
+]
+}

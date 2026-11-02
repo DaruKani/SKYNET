@@ -1,0 +1,50 @@
+{
+  "welcome": [
+    "Dinocarriage Dynarmix ist bereit. Dino-Druck beginnt jetzt.",
+    "Erst saubere Tausche, dann starke Folgezuge."
+  ],
+  "deckerror": [
+    "Mit der Anzahl von {0} in meinem Deck stimmt etwas nicht."
+  ],
+  "duelstart": [
+    "Mal sehen, wie du mit Dino-Druck umgehst.",
+    "Ich brauche nur eine saubere Eroffnung."
+  ],
+  "newturn": [
+    "Mein Zug. Ich ziehe.",
+    "Zeit, das Feld wieder unter Druck zu setzen."
+  ],
+  "endturn": [
+    "Du bist dran.",
+    "Zeig mir deine Antwort."
+  ],
+  "directattack": [
+    "{0}, greif direkt an.",
+    "{0}, freie Bahn. Direkter Angriff."
+  ],
+  "attack": [
+    "{0}, besiege {1}.",
+    "{0}, durchbrich {1}."
+  ],
+  "ondirectattack": [
+    "Der Treffer kam durch.",
+    "Du hast die Offnung gefunden."
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere {0}.",
+    "{0} halt meinen Zug am Laufen."
+  ],
+  "summon": [
+    "Ich beschwore {0}.",
+    "{0}, aufs Feld."
+  ],
+  "setmonster": [
+    "Ich setze ein Monster.",
+    "Vorerst verdeckt."
+  ],
+  "chaining": [
+    "Ich kette {0}.",
+    "Nicht so schnell. {0}."
+  ]
+}

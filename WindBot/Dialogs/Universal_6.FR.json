@@ -1,0 +1,73 @@
+{
+"welcome": [
+"Vous m'avez trouvé !!!",
+"Faisons un duel"
+],
+"deckerror": [
+"Ah, peut-être que BA a encore réparé le CDB et a fait disparaître {0}."
+],
+"duelstart": [
+"Ce n'est que l'IA, ne soyez pas trop content si vous gagnez.",
+"Un grand merci au serveur 233 de nous permettre d'organiser des parties. N'oubliez pas de leur rendre visite.",
+"Pour ceux à contre-courant, veuillez contacter NOVA."
+],
+"newturn": [
+"C'est mon tour, je pioche une carte !",
+"Mon tour, je pioche une carte !",
+"J'ai pioché une carte."
+],
+"endturn": [
+"Le round est terminé.",
+"Mon tour est terminé.",
+"Est-ce considéré comme un développement réussi...",
+"C'est votre tour. Votre prochaine phrase est... Je vais activer Rei Flux Gris, n'est-ce pas ?" ],
+"directattack": [
+"{0}, attaque directe !",
+"{0}, attaque directement l'adversaire !",
+"{0}, là où il n'y a pas de défense, attaque !",
+"{0}, attaque la vie de l'adversaire !",
+"{0}, attaque directement la vie de l'adversaire !",
+"{0}, bats l'adversaire avec une attaque directe !",
+"{0}, utilise une attaque directe pour vaincre l'adversaire !",
+"{0}, attaque directement pour libérer ta puissance !",
+"Mon {0} va écraser ta vie !",
+"Montre ta force à tes adversaires, {0} !",
+"Tu ne peux plus m'arrêter. {0}, attaque !"
+],
+"attack": [
+"{0}, attaque ce corps {1} !",
+"{0}, détruis ce corps {1} !",
+"{0}, bats {1} !",
+"{0}, fonce vers le corps {1} !",
+"{0}, libère ta puissance sur {1} !" ],
+"ondirectattack": [
+"hateful......",
+"C'est juste {0} !",
+"Effectivement, je suis encore trop faible..."
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active {0}.",
+"J'utilise l'effet de {0}.",
+"J'utilise le pouvoir de {0}."
+],
+"summon": [
+"C'est le point culminant ! Viens {0}.",
+"Viens, ​​{0} !",
+"Montre-toi, {0} !",
+"J'ai invoqué le puissant {0} !",
+"J'appelle {0} pour rejoindre le combat !",
+"J'ai appelé {0}.",
+"J'invoque {0}."
+],
+"setmonster": [
+"J'ai placé un monstre monobloc.",
+"Mon côté indique que j'ai placé un monstre monobloc." ],
+"chaining": [
+"Regarde ! Active toi {0} !",
+"J'utilise le pouvoir de {0}.",
+"Très bonne tactique… mais je refuse ! {0} !",
+"On dirait que tu as oublié mon {0} !",
+"As-tu pensé que j'ai {0} ?"
+]
+}

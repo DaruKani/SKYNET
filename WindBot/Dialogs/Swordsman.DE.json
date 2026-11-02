@@ -1,0 +1,75 @@
+{
+  "welcome": [
+    "Hallo, ich bin ein Roboter.",
+    "Die KI-Funktion wird gerade getestet. Bitte melde Probleme rechtzeitig."
+  ],
+  "deckerror": [
+    "Entschuldigung, anscheinend stimmt die Anzahl von {0} in meinem Deck nicht."
+  ],
+  "duelstart": [
+    "Der Spaß fängt gerade erst an!",
+    "Bring mit Duellen ein Lächeln!"
+  ],
+  "newturn": [
+    "Mein Zug, ich ziehe eine Karte!",
+    "Mein Zug, Karte ziehen!",
+    "Ich habe eine Karte gezogen."
+  ],
+  "endturn": [
+    "Zug beendet.",
+    "Mein Zug ist vorbei.",
+    "Du bist dran."
+  ],
+  "directattack": [
+    "{0}, Direktangriff!",
+    "{0}, greif den Gegner direkt an!",
+    "{0}, keine Verteidigung – Angriff!",
+    "{0}, greif die Lebenspunkte des Gegners an!",
+    "{0}, Direktangriff auf die Lebenspunkte des Gegners!",
+    "{0}, besiege den Gegner mit einem Direktangriff!",
+    "{0}, nutze Direktangriffe, um den Gegner zu besiegen!",
+    "{0}, entfessle deine Macht mit einem Direktangriff!",
+    "Mein {0} wird deine LP zerquetschen!",
+    "Zeig dem Gegner deine Kraft, {0}!",
+    "Du kannst mich nicht mehr stoppen. {0}, Angriff!"
+  ],
+  "attack": [
+    "{0}, greif diesen {1} an!",
+    "{0}, zerstöre diesen {1}!",
+    "{0}, besiege {1}!",
+    "{0}, stürm auf jenen {1} los!",
+    "{0}, entfessle deine Kraft gegen {1}!"
+  ],
+  "ondirectattack": [
+    "Verdammt...",
+    "Es ist doch nur {0}!",
+    "Glaubst du, du kannst mich so besiegen?"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere {0}.",
+    "Ich nutze den Effekt von {0}.",
+    "Ich nutze die Kraft von {0}."
+  ],
+  "summon": [
+    "Ich beschwöre {0}.",
+    "Komm heraus, {0}!",
+    "Erscheine, {0}!",
+    "Ich beschwöre den mächtigen {0}!",
+    "Ich rufe {0} in den Kampf!",
+    "Ich rufe {0}.",
+    "Lass mich {0} beschwören."
+  ],
+  "setmonster": [
+    "Ich setze ein Monster.",
+    "Ich setze ein Monster verdeckt."
+  ],
+  "chaining": [
+    "Sieh her! Ich aktiviere {0}!",
+    "Ich nutze die Kraft von {0}.",
+    "Bereit! Ich setze {0} ein!",
+    "Damit bin ich nicht einverstanden. {0}, aktiviere dich!",
+    "Anscheinend hast du meinen {0} vergessen!",
+    "Hast du bedacht, dass ich {0} habe?"
+  ]
+}

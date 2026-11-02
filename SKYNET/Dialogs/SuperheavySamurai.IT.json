@@ -1,0 +1,45 @@
+{
+  "welcome": [
+    "È l'ora dello spuntino di mezzanotte!",
+    "Posso giocare qualunque mazzo Pendulum!",
+    "Cosa? Dici che Super Heavy Samurai non è un mazzo Pendulum?"
+  ],
+  "deckerror": [
+    "Il numero di {0} è sbagliato! Passa alla modalità illimitata!"
+  ],
+  "duelstart": [
+    "Ti mostrerò il fascino dei Super Heavy Samurai!"
+  ],
+  "newturn": [
+    "Pesco una carta! Benkei, non venire a salvarmi!",
+    "Pesco una carta! P-Body, non venire a salvarmi!"
+  ],
+  "endturn": [
+    "Hehe, tocca a te!",
+    "Ti piace il mio campo?"
+  ],
+  "directattack": [
+    "Uso {0} per attaccare direttamente!",
+  ],
+  "attack": [
+    "Uso {0} per attaccare {1}!"
+  ],
+  "ondirectattack": [
+    "Non combattere! Non combattere!",
+    "Uwaa! Sto per essere sconfitto~"
+  ],
+  "facedownmonstername": "Mostro",
+  "activate": [
+    "Fufufu, l'effetto di {0} è troppo potente!",
+    "Fufufu, uso l'effetto di {0}."
+  ],
+  "summon": [
+    "Fufufu, evoco {0}!"
+  ],
+  "setmonster": [
+    "Fufufu, metto un mostro."
+  ],
+  "chaining": [
+    "In questo momento! Si attiva l'effetto di {0}!"
+  ]
+}

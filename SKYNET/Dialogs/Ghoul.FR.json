@@ -1,0 +1,64 @@
+{
+"welcome": [
+"Bonjour à tous, je suis un nouveau joueur",
+"Comment jouez-vous à Yu-Gi-Oh ?",
+"Heureusement que je ne joue pas à Yu-Gi-Oh."
+],
+"deckerror": [
+"{0} dans le deck est mort"
+],
+"duelstart": [
+"Et si je ne veux pas travailler ?",
+"Et si je ne veux pas travailler parce que mon QI est bas ?"
+],
+"newturn": [
+"Tant de nouvelles cartes horribles",
+"Ce jeu est tellement difficile à jouer",
+"Si paresseux, peux pas bouger"
+],
+"endturn": [
+"Je n'ai pas d'autre choix que de mourir",
+"Pas maintenant, je ne sais pas quand",
+"Trop chaud, besoin d'une glace"
+],
+"directattack": [
+"On dirait un mauvais payeur",
+"Un vieux mauvais payeur, calme"
+],
+"attack": [
+"On dirait pas un mauvais payeur",
+"Effrayant"
+],
+"ondirectattack": [
+"Waouh !",
+"C'est si terrible que ça ?",
+"On dirait un mauvais payeur",
+"Je ne supporte pas ça !"
+],
+"facedownmonstername": "Pigeon",
+"activate": [
+"Je sais pas pourquoi je passe",
+"J'ai passé, ça fait du bien"
+],
+"summon": [
+"Horrible",
+"Ce ne sont pas mes affaires",
+"C'est toujours ça, ça ne me regarde pas",
+"J'ai passé, ça fait du bien"
+],
+"setmonster": [
+"Je me relâche, je ne veux pas me mettre à jour",
+"Alors je vais le passer",
+],
+"chaining": [
+"C'est quoi ça ?",
+"Mais j'ai réussi",
+"Pas bon",
+"Horrible"
+],
+"surrender": [
+"C'est terrible (fuit)",
+"Ce jeu est difficile à jouer (fuit)",
+"Heureusement, je ne joue pas à Yu-Gi-Oh (fuit)"
+]
+}

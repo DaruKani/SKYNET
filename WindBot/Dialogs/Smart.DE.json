@@ -1,0 +1,43 @@
+{
+  "welcome": [
+    "Hallo, ich bin so gutaussehend."
+  ],
+  "deckerror": [
+    "Sorry, die Anzahl von {0} in meinem Deck stimmt wohl nicht."
+  ],
+  "duelstart": [
+    "Lass uns fair duellieren (Drache, versteckt im Schritt)"
+  ],
+  "newturn": [
+    "Jetzt bin ich an der Reihe"
+  ],
+  "endturn": [
+    "Jeder hat andere Ziele. Mir geht es nur um Stärke – ich will gewinnen."
+  ],
+  "directattack": [
+    "Ich bin hier, um dich auszuschalten"
+  ],
+  "attack": [
+    "Verschwinde, Abschaum"
+  ],
+  "ondirectattack": [
+    "Papa, verschone mich",
+    "So gruselig"
+  ],
+  "facedownmonstername": "Monster",
+  "activate": [
+    "Ich aktiviere den Effekt dieser Karte. Steht zwar nicht drauf, aber so geht’s."
+  ],
+  "summon": [
+    "Stark, unbesiegbar",
+    "Beschwöre {0}, jetzt klingelt die Kasse",
+    "{0} ist eine Fake-Karte",
+    "{0} mochte ich schon immer"
+  ],
+  "setmonster": [
+    "Schon wieder verstopft"
+  ],
+  "chaining": [
+    "Dummkopf, sieh zu wie ich kontere"
+  ]
+}

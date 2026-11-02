@@ -1,0 +1,57 @@
+{
+"welcome": [
+"Bonjour, joueur de cartes",
+"Bonjour, bienvenue pour jouer aux cartes avec moi"
+],
+"deckerror": [
+"Désolé, mon deck nécessite {0} pour jouer"
+],
+"duelstart": [
+"Hé, je vais utiliser mon deuxième frère pour te battre.",
+"Mon deck n'est pas mauvais, juste quelques cartes bannies",
+"Je ne peux jouer que des decks simples, n'utilise pas de cartes bannies pour me combattre."
+],
+"newturn": [
+"C'est mon tour, je pioche une carte ! (sort discrètement d'entre les jambes)",
+"Je pioche une carte"
+],
+"endturn": [
+"J'ai fini, c'est ton tour",
+"C'est ton tour, ce n'est pas un duel multi-canaux, si ?" ],
+"directattack": [
+"{0}, attaque l'adversaire !",
+"{0}, écrase-le !",
+"{0}, frappe-le !"
+],
+"attack": [
+"{0}, renverse {1} !",
+"Hé, {0}, attaque {1} !"
+],
+"ondirectattack": [
+"Ah, ne me frappe pas, je vais mettre une carte bannie pour que tu puisses jouer avec",
+"Ouais, trop fort, tu peux m'aider ?",
+"Ça fait mal… Je veux débrancher l'alimentation"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"Hé, j'active {0}",
+"Ha ha, j'utilise le pouvoir de {0}"
+],
+"summon": [
+"J'invoque (élimine) {0} !",
+"Sors de là, mon petit monstre {0} !"
+],
+"setmonster": [
+"Je place un monstre inconnu." ],
+"chaining": [
+"Hé, je peux utiliser une carte bannie ?",
+"Hein, j'active {0} !",
+"Désolé, j'ai {0}",
+"Ha ha, active l'effet de {0} !"
+],
+"custom": [
+"Gua ! Le corps principal va se battre !",
+"Je ne peux pas jouer si ma main est bloquée !!!",
+"Hé, pas de panique, il reste encore une place pour jouer (￣y▽￣)╭"
+]
+}

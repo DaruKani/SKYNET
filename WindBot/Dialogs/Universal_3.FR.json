@@ -1,0 +1,76 @@
+{
+"welcome": [
+"Bonjour, je suis un robot.",
+"L'IA est en cours de test. Merci de signaler tout problème à temps."
+],
+"deckerror": [
+"Mon deck super mainstream nécessite {0} pour être joué."
+],
+"duelstart": [
+"Le deck Orcust est en cours de test. Il est normal d'être mauvais. Merci de me donner plus de conseils.",
+"Le Super mainstream fait partie de Yu-Gi-Oh. Ne jouez pas si vous n'êtes pas satisfait.",
+"Copier le mainstream fait partie de Yu-Gi-Oh. Ne jouez pas si vous n'êtes pas satisfait.",
+"Que dois-je faire si je ne sais pas comment utiliser le deck copié ?"
+],
+"newturn": [
+"C'est mon tour, je pioche une carte !",
+"Mon tour, je pioche une carte !",
+"J'ai pioché une carte." ],
+"endturn": [
+"Fin du tour.",
+"Mon tour est terminé.",
+"J'ai toujours l'impression que cette vague est un peu une perte...",
+"C'est ton tour."
+],
+"directattack": [
+"{0}, attaque directe !",
+"{0}, attaque directement l'adversaire !",
+"{0}, il n'y a plus de défense, attaque !",
+"{0}, attaque la vie de l'adversaire !",
+"{0}, attaque directement la vie de l'adversaire !",
+"{0}, bats l'adversaire avec une attaque directe !",
+"{0}, bats l'adversaire avec une attaque directe !",
+"{0}, utilise une attaque directe pour vaincre l'adversaire !",
+"{0}, libère ta puissance avec une attaque directe !",
+"Mon {0} va écraser ta vie !",
+"Montre ta puissance à l'adversaire, {0} !",
+"Tu ne peux plus m'arrêter. {0}, attaque !" ],
+"attack": [
+"{0}, attaque ce {1} !",
+"{0}, détruis ce {1} !",
+"{0}, bats {1} !",
+"{0}, fonce sur ce {1} !",
+"{0}, libère ton pouvoir sur {1} !"
+],
+"ondirectattack": [
+"Zut…",
+"C'est juste {0} !",
+"Je suis encore trop faible…"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active {0}.",
+"J'utilise l'effet de {0}.",
+"J'utilise le pouvoir de {0}." ],
+"summon": [
+"J'invoque {0}.",
+"Sors, ​​{0} !",
+"Apparaît, {0} !",
+"J'invoque la belle {0} !",
+"J'invoque le puissant {0} !",
+"J'appelle {0} au combat !",
+"J'appelle {0}.",
+"Laisse-moi invoquer {0}."
+],
+"setmonster": [
+"Je place un monstre.",
+"Je place un monstre face cachée."
+],
+"chaining": [
+"Regarde ! J'active {0} !",
+"J'utilise le pouvoir de {0}.",
+"Prêt ! J'utilise {0} !",
+"On dirait que tu avez oublié mon {0} !",
+"As-tu déjà songé que j'ai {0} ?"
+]
+}

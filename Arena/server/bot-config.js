@@ -2,15 +2,30 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { sameWindBotEndpoint } = require('./arena-settings');
 const { skynetCatalog, validateSkynetRuntime } = require('./skynet-config');
+
+// WindBot WriteUnicode(Username, 20) reserves one UTF-16 unit for the terminator.
+const MAX_PARTICIPANT_NAME_LENGTH = 19;
+
+function participantName(name) {
+    if (name.length <= MAX_PARTICIPANT_NAME_LENGTH) return name;
+    const suffix = '-' + crypto.createHash('sha256').update(name, 'utf8').digest('hex').slice(0, 8);
+    let prefix = '';
+    for (const character of name) {
+        if (prefix.length + character.length > MAX_PARTICIPANT_NAME_LENGTH - suffix.length) break;
+        prefix += character;
+    }
+    return prefix + suffix;
+}
 
 function parseBotConfig(content) {
     const bots = new Map();
     const blocks = content.split(/(?=^!)/m);
     for (const block of blocks) {
         const match = block.match(
-            /^!([^\r\n]+)[\s\S]*?^Name=\S+\s+Deck=(?:'([^']+)'|(\S+))\s+Dialog=(\S+)/m,
+            /^!([^\r\n]+)[\s\S]*?^Name=(?:'[^'\r\n]+'|\S+)\s+Deck=(?:'([^'\r\n]+)'|(\S+))\s+Dialog=(\S+)/m,
         );
         if (!match || /\bSELECT_DECKFILE\b/.test(block)) {
             continue;
@@ -135,7 +150,7 @@ function makeCompetitor(instance, bot, source, slot, rankName) {
         endpointHost: instance.mode !== 'remote' ? '127.0.0.1' : instance.host,
         endpointPort: instance.port,
         executionMode: instance.mode,
-        rankName: rankName || `${source === 'current' ? 'C' : 'B'}-${bot.label}`,
+        rankName: participantName(rankName || `${source === 'current' ? 'C' : 'B'}-${bot.label}`),
         runtimeDir: instance.runtimeDir,
         slot,
         source,
@@ -161,9 +176,9 @@ function validateRankNames(matchups, settings) {
         }`);
     }
     const rankNames = [...competitorsByRankName.keys()];
-    const overlongRankNames = rankNames.filter((name) => [...name].length > 20);
+    const overlongRankNames = rankNames.filter((name) => name.length > MAX_PARTICIPANT_NAME_LENGTH);
     if (overlongRankNames.length > 0) {
-        throw new Error(`This run generated ranking names exceeding 20 characters: ${
+        throw new Error(`This run generated ranking names exceeding ${MAX_PARTICIPANT_NAME_LENGTH} UTF-16 units: ${
             overlongRankNames.map((name) => `“${name}”`).join(', ')
         }`);
     }

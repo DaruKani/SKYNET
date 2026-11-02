@@ -1,4 +1,4 @@
-name: SKYNET validation
+name: WindBot, SKYNET and Arena validation
 on:
   push:
     branches: [main]
@@ -12,29 +12,43 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: microsoft/setup-msbuild@v3
-      - name: Build Debug
-        run: msbuild Skynet.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
-      - name: Build Release
-        run: msbuild Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Build WindBot Debug
+        run: msbuild WindBot/WindBot.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
+      - name: Build WindBot Release
+        run: msbuild WindBot/WindBot.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Build SKYNET Debug
+        run: msbuild SKYNET/Skynet.sln /t:Build /p:Configuration=Debug /p:Platform="Any CPU"
+      - name: Build SKYNET Release
+        run: msbuild SKYNET/Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
       - name: Validate learning tools
-        run: python Tools/Skynet/test_learning.py
+        run: python SKYNET/Tools/Skynet/test_learning.py
       - name: Validate bounded research inspector
-        run: python Tools/Skynet/test_ygo_agent_inspection.py
+        run: python SKYNET/Tools/Skynet/test_ygo_agent_inspection.py
       - name: Validate public-observation shadow mapping
-        run: python Tools/Skynet/test_ygo_agent_shadow.py
+        run: python SKYNET/Tools/Skynet/test_ygo_agent_shadow.py
       - name: Validate card-selection demonstration audits
-        run: python Tools/Skynet/test_demonstrations.py
+        run: python SKYNET/Tools/Skynet/test_demonstrations.py
       - name: Validate owned Arena process cleanup
-        run: python Tools/Skynet/test_arena_process_owner.py
+        run: python Arena/Tools/test_arena_process_owner.py
       - name: Stage explicit product payload
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path Artifacts/package/Data -Force | Out-Null
-          ./Tools/Skynet/Install-MDPro4.ps1 -GameRoot Artifacts/package -Configuration Release
+          ./SKYNET/Tools/Skynet/Install-MDPro4.ps1 -GameRoot Artifacts/package -Configuration Release
       - uses: actions/upload-artifact@v6
         with:
           name: SKYNET-windows
           path: Artifacts/package/Data/Skynet/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        with:
+          name: WindBot-windows
+          path: |
+            WindBot/bin/Release/
+            WindBot/BotWrapper/bin/Release/
+            WindBot/LICENSE
+            WindBot/README.md
+            WindBot/resource-provenance.json
           if-no-files-found: error
   arena:
     runs-on: windows-2022
@@ -57,5 +71,7 @@ jobs:
       image: mono:6.8.0.123
     steps:
       - uses: actions/checkout@v6
-      - name: Build with legacy Mono
-        run: msbuild Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Build SKYNET with legacy Mono
+        run: msbuild SKYNET/Skynet.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Build WindBot with legacy Mono
+        run: msbuild WindBot/WindBot.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"

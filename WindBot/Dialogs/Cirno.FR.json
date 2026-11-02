@@ -1,0 +1,64 @@
+{
+"welcome": [
+"Je suis le plus fort !",
+"L'IA est en cours de test. Merci de signaler tout problème.",
+"Qu'est-ce qu'une Crêpe Grenouille, c'est délicieux ?"
+],
+"deckerror": [
+"Pourquoi mon {0} ne peut-il pas être utilisé ?"
+],
+"duelstart": [
+"Laisse-moi te geler !",
+"Si c'est juste pour vaincre les humains, je suis suffisant !"
+],
+"newturn": [
+"Même si c'est un peu soudain, je vais te vaincre !",
+"C'est mon tour, je pioche une carte !"
+],
+"endturn": [
+"Épargne ta vie !",
+"Meurs de froid sous mon sérieux !"
+],
+"directattack": [
+"{0}, attaque directe !",
+"Incapable de résister à un seul coup !",
+"Les faibles seront vaincus !",
+"J'ai la flemme de compter, j'en parlerai après le combat !",
+"Super ⑨ Martial God Tyrant Slash !",
+"Talisman de glace 「Blizzard de Diamand」"
+],
+"attack": [
+"{0}, attaque ce {1} !",
+"{0}, détruis ce {1} !",
+"{0}, élimine {1} !",
+"Talisman de glace 「Chute de glaçons」"
+],
+"ondirectattack": [
+"Ne sois pas ridicule~. Pour quelqu'un comme toi, je te garderai congelé avec du bœuf anglais !!",
+"Qu'est-ce qu'il y a de si effrayant avec un minuscule {0} !",
+"Les imbéciles n'attrapent pas froid !"
+],
+"facedownmonstername": "Monstre",
+"activate": [
+"J'active {0}.",
+"J'utilise l'effet de {0}.",
+"Mon {0} est le plus puissant !"
+],
+"summon": [
+"J'invoque {0}.",
+"Sors, ​​{0} !",
+"Apparaît, {0} !",
+"J'ai invoqué le puissant {0} !",
+"J'ai appelé {0}."
+],
+"setmonster": [
+"J'ai placé un monstre.",
+"Si tu n'as pas peur de la mort, viens m'attaquer !"
+],
+"chaining": [
+"Regardez ! J'active {0} !",
+"J'utilise le pouvoir de {0}.",
+"Craignez mon {0} !",
+"Talisman de Gel 「Gel Parfait」"
+]
+}
