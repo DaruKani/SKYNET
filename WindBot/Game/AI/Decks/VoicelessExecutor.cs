@@ -9,7 +9,7 @@ using YGOSharp.OCGWrapper.Enums;
 
 namespace WindBot.Game.AI.Decks
 {
-    [Deck("Voiceless", "AI_Voiceless", "NotFinished")]
+    [Deck("Voiceless", "AI_Voiceless")]
     public partial class VoicelessExecutor : DefaultExecutor
     {
         public class CardId
@@ -63,7 +63,12 @@ namespace WindBot.Game.AI.Decks
         public VoicelessExecutor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
-            AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
+            // A grave trigger can shield an on-field search from Ash (for
+            // example Mo Ye above Chixiao). Target the live lower chain link
+            // with an actually offered Veiler/Impermanence first.
+            AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, VoicelessNegateShieldedMonster);
+            AddExecutor(ExecutorType.Activate, CardId.InfiniteImperm, VoicelessNegateShieldedMonster);
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossom, VoicelessAshBlossom);
             AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, DefaultEffectVeiler);
             AddExecutor(ExecutorType.Activate, CardId.InfiniteImperm, DefaultInfiniteImpermanence);
             AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
@@ -316,11 +321,23 @@ namespace WindBot.Game.AI.Decks
         }
         public List<ClientCard> SPLittleKnightSelectMaterial(bool needToUseEffect = false)
         {
+            // Keeping Lo beside an active Skull preserves the omni-negate and
+            // Barrier's protection. An optional removal Link must use spare
+            // bodies, rather than turn that established board off.
+            int liveSkulls = Bot.GetMonsters().Count(card => card.IsCode(CardId.VVSkullGuard)
+                && card.IsFaceup() && !card.IsDisabled());
+            int faceupLos = Bot.GetMonsters().Count(card => card.IsCode(CardId.Lo) && card.IsFaceup());
             List<ClientCard> candidates = GetCanBeUsedForLinkMaterial(true)
                 .Where(card => card.HasType(CardType.Effect)
-                    && (!card.HasType(CardType.Link) || card.LinkCount <= 2)).ToList();
+                    && (!card.HasType(CardType.Link) || card.LinkCount <= 2)
+                    && !(liveSkulls > 0 && faceupLos > 0
+                        && (card.IsCode(CardId.Lo) && faceupLos == 1
+                            || card.IsCode(CardId.VVSkullGuard) && !card.IsDisabled() && liveSkulls == 1))).ToList();
             return Util.GetLinkMaterials(candidates, 2, 2, 2).FirstOrDefault(materials =>
                 (!needToUseEffect || materials.Any(card => card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)))
+                && (liveSkulls == 0 || faceupLos == 0
+                    || materials.Count(card => card.IsCode(CardId.Lo)) < faceupLos
+                        && materials.Count(card => card.IsCode(CardId.VVSkullGuard) && !card.IsDisabled()) < liveSkulls)
                 && Util.GetBotAvailZonesFromExtraDeck(materials) > 0) ?? new List<ClientCard>();
         }
         public List<ClientCard> GetDangerousCardinEnemyGrave(bool onlyMonster = false)
@@ -358,6 +375,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (ActivateDescription == -1 || ActivateDescription == Util.GetStringId(CardId.SPLittleKnight, 0))
             {
+                // This effect forbids every friendly direct attack for the rest
+                // of the turn, even when it only banishes a spent grave card.
+                // Preserve the attack gained by making S:P on an open field.
+                if (CheckCanDirectAttack() && Bot.GetMonsters().Any(card => card.IsAttack()
+                    && !card.Attacked && card.Attack > 0)) return false;
                 // banish card
                 List<ClientCard> problemCardList = GetProblematicEnemyCardList(true, selfType: CardType.Monster);
                 problemCardList.AddRange(GetDangerousCardinEnemyGrave(false));
@@ -386,7 +408,7 @@ namespace WindBot.Game.AI.Decks
                     if (Duel.Player == 1)
                     {
                         selfMonster = Bot.GetMonsters().Where(card => card.IsAttack()).OrderBy(card => card.Attack).FirstOrDefault();
-                        if (!Util.IsOneEnemyBetterThanValue(selfMonster.Attack, true)) selfMonster = null;
+                        if (selfMonster != null && !Util.IsOneEnemyBetterThanValue(selfMonster.Attack, true)) selfMonster = null;
                     }
                 }
                 if (selfMonster != null)
@@ -649,6 +671,43 @@ namespace WindBot.Game.AI.Decks
             if (ActivateDescription != Util.GetStringId(CardId.VVSkullGuard, 1)
                 || Duel.LastChainPlayer != 1 || !HasFaceupLo() || Card.IsDisabled()) return false;
             return AcceptVoicelessEffect(1);
+        }
+
+        private bool VoicelessNegateShieldedMonster()
+        {
+            if (DefaultCheckWhetherCardIsNegated(Card) || Duel.LastChainPlayer != 1
+                || Duel.CurrentChainInfo.Count < 2 || Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0)) return false;
+            ChainInfo last = Duel.CurrentChainInfo.Last();
+            if (last.ActivateLocation != CardLocation.Grave) return false;
+            for (int index = Duel.CurrentChainInfo.Count - 2; index >= 0; index--)
+            {
+                ChainInfo chain = Duel.CurrentChainInfo[index];
+                ClientCard target = chain.RelatedCard;
+                if (chain.ActivatePlayer != 1 || chain.ActivateLocation != CardLocation.MonsterZone
+                    || Duel.NegatedChainIndexList.Contains(index + 1) || target == null
+                    || target.Controller != 1 || target.Location != CardLocation.MonsterZone
+                    || !target.IsFaceup() || target.IsDisabled() || target.IsShouldNotBeTarget()
+                    || target.IsShouldNotBeSpellTrapTarget()) continue;
+                AI.SelectCard(target);
+                return true;
+            }
+            return false;
+        }
+
+        private bool VoicelessAshBlossom()
+        {
+            ChainInfo chain = Duel.CurrentChainInfo.LastOrDefault();
+            ClientCard droll = Bot.Hand.FirstOrDefault(card => card.IsCode(CardId.Droll));
+            // With an empty public GY, Gaia's opening search must add from deck.
+            // Let a usable Droll cover subsequent searches and retain Ash for
+            // Crimson Resonator's deck summons. A recovery from GY, an already
+            // established board, or an unavailable Droll keeps normal Ash logic.
+            if (Duel.Player == 1 && Duel.LastChainPlayer == 1 && chain != null
+                && chain.IsActivateCode(98173209) && chain.ActivateDescription == Util.GetStringId(98173209, 0)
+                && chain.ActivateLocation == CardLocation.SpellZone && Enemy.GetMonsterCount() == 0
+                && Enemy.Graveyard.Count == 0 && droll != null
+                && !DefaultCheckWhetherCardIsNegated(droll) && !DefaultCheckWhetherBotWillBeBanished(droll)) return false;
+            return DefaultAshBlossomAndJoyousSpring();
         }
 
         private bool SauravisEffect()

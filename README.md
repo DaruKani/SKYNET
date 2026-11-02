@@ -9,21 +9,15 @@ SKYNET training project have their own source trees, solutions and executables.
 | `SKYNET/` | Experimental general duel AI, reviewed expert modes, episode collection and offline learning; produces `SKYNET.exe` | [SKYNET capabilities and training](SKYNET/README.md) |
 | `Arena/` | Browser console for comparing bots and recording results; includes dedicated-server setup tools | [Arena setup and running instructions](Arena/README.md) |
 
-WindBot was restored from the explicitly selected `windbot-elder` checkout at
-revision `0aa00265d7b378f7e0aee59dedb298d4e356b9b3`. Its original project, namespaces,
-deck names and executable names are retained. The existing SKYNET work was moved
-intact; this split does not change its duel policy or train a new model. All three
-folders remain part of this Git repository, so changes can be reviewed and committed
-together. The former `windbot-elder` checkout was retired after verifying all
-292 retained source/runtime files against its latest `Rush_Support` commit.
-A complete local archive, including Git history and ignored files, remains in
-`Artifacts/retired-windbot-elder-20261102/`. The verification and restore location
-are recorded in [the migration receipt](WindBot/repository-migration.json).
+All three folders share this Git repository. Work on normal executors in
+`WindBot/`; train and evaluate the general AI in `SKYNET/`; compare frozen
+versions in `Arena/`. Each bot keeps its own executable, resources and duel state.
 
-New normal executors now use the [RDA-based template](WindBot/Templates/RdaPlannerExecutor.cs.template)
-and [current authoring guide](WindBot/Guides/ExecutorAuthoring.md). The four newly
-imported bots, their provenance and validation limits are described in
-[WindBot's README](WindBot/README.md#executor-imports-and-rda-first-authoring).
+For new normal executors, start with the
+[RDA-based template](WindBot/Templates/RdaPlannerExecutor.cs.template) and
+[authoring guide](WindBot/Guides/ExecutorAuthoring.md). Existing executors can be
+improved in place. The template supplies planning structure; card effects and
+selection callbacks still need script-backed implementation and testing.
 
 ## Build the bots
 
@@ -75,7 +69,7 @@ Source paths and hashes are recorded in
 use it for normal WindBot and use explicit deck profiles for SKYNET. Original bot
 and dialog names are preserved.
 
-## Validation and preserved local data
+## Validation
 
 ```powershell
 python SKYNET/Tools/Skynet/test_learning.py
@@ -88,23 +82,15 @@ npm test
 npm run build
 ```
 
-The obsolete root `LegacyWindBot/` and `Files for MDPro4/` folders were removed
-after archiving and verifying all 487 files. `LegacyWindBot` held the old bot
-source snapshot; `Files for MDPro4` held the deferred October 2026 game-integration
-patch, source snapshots and installed SKYNET payload. Neither is needed to build
-or run the current projects. Historical material remains in the local, ignored
-[`historical-folders.zip`](Artifacts/retired-local-folders-20261102/historical-folders.zip)
-with a per-file SHA-256 [`manifest`](Artifacts/retired-local-folders-20261102/manifest.json).
-The ZIP retains the original folder paths, including all 83 executor sources
-referenced by SKYNET's historical catalog. These local backups are not published
-to Git; use `WindBot/` for ongoing normal-bot development.
+Normal-bot checks, fixed-hand combo fixtures and the latest measured executor
+results are documented in [WindBot's README](WindBot/README.md). Preserve a
+baseline executable before changing behavior, then compare it with a frozen
+candidate using the same decks, database, scripts and opponents. Use a Debug
+WindBot build with `Debug=True` when diagnosing decisions from duel traces.
 
-The previous ignored root `Artifacts/`, `bin/` and `obj/` folders remain local
-historical material. New builds use the separate project folders.
-Arena stores local settings and results under `Arena/data/` by default;
-check saved absolute paths when selecting a newly built version. Historical
-benchmark receipts are evidence for their recorded binaries, not new results for
-this layout.
+Arena stores settings and results in `Arena/data/` by default. Select the exact
+runtime paths in Settings; rebuilding a different directory does not update a
+saved path. Local logs and test receipts belong under ignored `Artifacts/`.
 
 WindBot/YGOSharp attribution and licenses are retained. SKYNET's current coverage,
 learning limits and research provenance remain documented in its own README.

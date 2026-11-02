@@ -131,7 +131,18 @@ internal static class VoicelessChecks
 
     private static ClientCard Card(int id, CardLocation location)
     {
-        return new ClientCard(id, location, 0, (int)CardPosition.FaceUpAttack) { Controller = 0 };
+        var card = new ClientCard(id, location, 0, (int)CardPosition.FaceUpAttack) { Controller = 0 };
+        if (card.Data != null)
+        {
+            // A constructor supplies identity only. Populate the public values
+            // that a real query would provide; zero Type/Level hid material bugs.
+            foreach (string property in new[] { "Type", "Level", "Attribute", "Race", "Attack", "Defense", "LinkMarker" })
+                typeof(ClientCard).GetProperty(property).SetValue(card,
+                    typeof(YGOSharp.OCGWrapper.Card).GetProperty(property).GetValue(card.Data, null), null);
+            if (card.HasType(CardType.Link))
+                typeof(ClientCard).GetProperty("LinkCount").SetValue(card, card.Data.Level, null);
+        }
+        return card;
     }
 
     private static int Desc(int id, int index) { return id * 16 + index; }
@@ -170,6 +181,166 @@ internal static class VoicelessChecks
 
     private static void Effects()
     {
+        Run("S:P preserves open-field direct attacks instead of banishing a spent grave card", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Turn = 3;
+            ClientCard littleKnight = f.Add(29301450, CardLocation.MonsterZone);
+            f.Add(20001443, CardLocation.Grave, 1);
+            Require(!f.AI.OnSelectEffectYn(littleKnight, Desc(29301450, 0)),
+                "Optional grave banish disabled the available direct attack");
+            Require(((ICollection)typeof(GameAI).GetField("m_selector", Flags).GetValue(f.AI)).Count == 0,
+                "Declining the attack lock left a stale banish selection");
+        });
+        Run("S:P still removes cards on turn one, Main2, and against an occupied monster field", () =>
+        {
+            foreach (int scenario in new[] { 0, 1, 2, 3 })
+            {
+                var f = new Fixture();
+                f.Duel.Turn = scenario == 0 ? 1 : 3;
+                if (scenario == 1) f.Duel.Phase = DuelPhase.Main2;
+                ClientCard littleKnight = f.Add(29301450, CardLocation.MonsterZone);
+                if (scenario == 3) littleKnight.Attacked = true;
+                f.Add(20001443, scenario == 2 ? CardLocation.MonsterZone : CardLocation.Grave, 1);
+                Require(f.AI.OnSelectEffectYn(littleKnight, Desc(29301450, 0)),
+                    "Useful S:P removal rejected for scenario " + scenario);
+            }
+        });
+        Run("Droll covers opening Gaia while Ash is retained for Crimson Resonator", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard ash = f.Add(14558127, CardLocation.Hand);
+            f.Add(94145021, CardLocation.Hand);
+            ClientCard gaia = f.Add(98173209, CardLocation.SpellZone, 1);
+            f.Chain(gaia, Desc(98173209, 0), false);
+            Require(!f.AI.OnSelectEffectYn(ash, 0), "Ash duplicated the available opening Droll plan");
+            f.ClearChain();
+            ClientCard crimson = f.Add(34761841, CardLocation.MonsterZone, 1);
+            f.Chain(crimson, Desc(34761841, 1), false);
+            Require(f.AI.OnSelectEffectYn(ash, 0), "Ash did not answer the deck-summoning payoff");
+        });
+        Run("Gaia is still Ashed without Droll or with a possible grave recovery", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard ash = f.Add(14558127, CardLocation.Hand);
+            ClientCard gaia = f.Add(98173209, CardLocation.SpellZone, 1);
+            f.Chain(gaia, Desc(98173209, 0), false);
+            Require(f.AI.OnSelectEffectYn(ash, 0), "No-Droll opening lost its only response");
+            f.ClearChain();
+            f.Add(94145021, CardLocation.Hand);
+            f.Add(62991792, CardLocation.Grave, 1);
+            f.Chain(gaia, Desc(98173209, 0), false);
+            Require(f.AI.OnSelectEffectYn(ash, 0), "A possible GY add was assumed to trigger Droll");
+        });
+        Run("Banishing floodgate prevents relying on Droll's grave cost", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard ash = f.Add(14558127, CardLocation.Hand);
+            f.Add(94145021, CardLocation.Hand);
+            f.Add(30241314, CardLocation.SpellZone, 1);
+            ClientCard gaia = f.Add(98173209, CardLocation.SpellZone, 1);
+            f.Chain(gaia, Desc(98173209, 0), false);
+            Require(f.AI.OnSelectEffectYn(ash, 0), "Unavailable Droll cost suppressed Ash");
+        });
+        Run("Imperm targets Chixiao below Mo Ye instead of spending Ash on the draw", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard ash = f.Add(14558127, CardLocation.Hand);
+            ClientCard imperm = f.Add(10045474, CardLocation.SpellZone);
+            ClientCard chixiao = f.Add(69248256, CardLocation.MonsterZone, 1);
+            ClientCard moye = f.Add(20001443, CardLocation.Grave, 1);
+            f.Chain(chixiao, Desc(69248256, 0), false);
+            f.Duel.CurrentChain.Add(moye);
+            f.Duel.CurrentChainInfo.Add(new ChainInfo(moye, 1, Desc(20001443, 1)));
+            int chosen = f.AI.OnSelectChain(new[] { ash, imperm }, new[] { 0, 0 }, new[] { false, false });
+            Require(chosen == 1, "Grave draw consumed Ash while a lower field search remained live");
+            IsCard(f.Select(HintMsg.Disable, chixiao), 69248256);
+        });
+        Run("Ash remains available when the shielded monster has left the field", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard ash = f.Add(14558127, CardLocation.Hand);
+            ClientCard imperm = f.Add(10045474, CardLocation.SpellZone);
+            ClientCard chixiao = f.Add(69248256, CardLocation.MonsterZone, 1);
+            ClientCard moye = f.Add(20001443, CardLocation.Grave, 1);
+            f.Chain(chixiao, Desc(69248256, 0), false);
+            f.Duel.CurrentChain.Add(moye);
+            f.Duel.CurrentChainInfo.Add(new ChainInfo(moye, 1, Desc(20001443, 1)));
+            f.Duel.Fields[1].MonsterZone[chixiao.Sequence] = null;
+            f.Duel.Fields[1].Graveyard.Add(chixiao);
+            chixiao.Location = CardLocation.Grave;
+            int chosen = f.AI.OnSelectChain(new[] { ash, imperm }, new[] { 0, 0 }, new[] { false, false });
+            Require(chosen == 0, "Unavailable field target suppressed the still-offered Ash response");
+            Require(((ICollection)typeof(GameAI).GetField("m_selector", Flags).GetValue(f.AI)).Count == 0,
+                "Rejected lower-link negate queued a stale target");
+        });
+        Run("S:P does not consume the only Lo of an active Skull board", () =>
+        {
+            var f = new Fixture();
+            f.Add(Lo, CardLocation.MonsterZone);
+            f.Add(Skull, CardLocation.MonsterZone);
+            f.Add(Linkuriboh, CardLocation.MonsterZone);
+            f.Add(84815190, CardLocation.MonsterZone, 1);
+            ClientCard littleKnight = Card(29301450, CardLocation.Extra);
+            Require(f.OfferSummon(littleKnight, true).Action != MainPhaseAction.MainAction.SpSummon,
+                "Optional S:P removal dismantled the active Skull/Lo core");
+            Require(f.Executor.SPLittleKnightSelectMaterial(true).Count == 0,
+                "Material selector retained a protected core member");
+        });
+        Run("S:P removal remains available using spare bodies beside the core", () =>
+        {
+            var f = new Fixture();
+            ClientCard lo = f.Add(Lo, CardLocation.MonsterZone);
+            ClientCard skull = f.Add(Skull, CardLocation.MonsterZone);
+            ClientCard link = f.Add(Linkuriboh, CardLocation.MonsterZone);
+            ClientCard diviner = f.Add(Diviner, CardLocation.MonsterZone);
+            f.Add(84815190, CardLocation.MonsterZone, 1);
+            var materials = f.Executor.SPLittleKnightSelectMaterial(true);
+            Require(materials.Count == 2 && materials.Contains(link) && materials.Contains(diviner),
+                "Spare legal removal materials were not retained");
+            Require(!materials.Contains(lo) && !materials.Contains(skull), "Core member selected despite spare bodies");
+            Require(f.OfferSummon(Card(29301450, CardLocation.Extra), true).Action == MainPhaseAction.MainAction.SpSummon,
+                "Spare-body S:P removal was rejected");
+        });
+        Run("S:P still uses a lone Lo when no Skull core exists", () =>
+        {
+            var f = new Fixture();
+            ClientCard lo = f.Add(Lo, CardLocation.MonsterZone);
+            ClientCard link = f.Add(Linkuriboh, CardLocation.MonsterZone);
+            var materials = f.Executor.SPLittleKnightSelectMaterial(true);
+            Require(materials.Count == 2 && materials.Contains(lo) && materials.Contains(link),
+                "Core guard prohibited recovery removal with no Skull");
+        });
+        Run("S:P may use a spare Lo but cannot consume every copy beside Skull", () =>
+        {
+            var f = new Fixture();
+            f.Add(Lo, CardLocation.MonsterZone);
+            f.Add(Lo, CardLocation.MonsterZone);
+            f.Add(Skull, CardLocation.MonsterZone);
+            f.Add(Linkuriboh, CardLocation.MonsterZone);
+            var materials = f.Executor.SPLittleKnightSelectMaterial();
+            Require(materials.Count == 2 && materials.Count(card => card.IsCode(Lo)) == 1
+                && materials.Any(card => card.IsCode(Linkuriboh)), "Material group consumed both copies of Lo");
+        });
+        Run("Stale S:P candidate safely rejects a field with no attack-position monster", () =>
+        {
+            var f = new Fixture();
+            f.Duel.Player = 1;
+            // Defensive callback input, deliberately not a legal engine offer:
+            // a Link cannot be in defense and this S:P is no longer on-field.
+            ClientCard littleKnight = f.Add(29301450, CardLocation.Grave);
+            ClientCard lo = f.Add(Lo, CardLocation.MonsterZone);
+            lo.Position = (int)CardPosition.FaceUpDefence;
+            ClientCard enemy = f.Add(20001443, CardLocation.MonsterZone, 1);
+            f.Chain(enemy, Desc(20001443, 0), false);
+            Require(!f.AI.OnSelectEffectYn(littleKnight, Desc(29301450, 1)),
+                "Unthreatened defense-only field unexpectedly used S:P");
+        });
         Run("Lo normal summon starts an empty-board route", () =>
         {
             var f = new Fixture();

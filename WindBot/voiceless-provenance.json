@@ -4,7 +4,7 @@
   "registration": {
     "name": "Voiceless",
     "deck": "AI_Voiceless",
-    "level": "NotFinished"
+    "level": "Normal"
   },
   "origin": {
     "baselineSourceRevision": "1871a48eba8663e596534f7b15c6a5650339137c",
@@ -727,5 +727,541 @@
     "The supplied combo headings were normalized to minimum starters; required cards must remain available.",
     "Opponent-turn extensions depend on their actual trigger and successful resolution.",
     "No claim of exhaustive card, matchup, tag-duel or tournament-format coverage."
-  ]
+  ],
+  "recordScope": "Initial route implementation evidence is retained below; latestReview records the subsequent loss-analysis update.",
+  "latestReview": {
+    "date": "2026-11-02",
+    "baselineRevision": "363f7eb0f38cdbbc59d184268fc2f357a8f2f18c",
+    "deckListsUnchanged": true,
+    "builds": {
+      "DebugAnyCPU": "passed",
+      "ReleaseAnyCPU": "passed",
+      "CSharp6ChangedSources": "passed; isolated compile supplies only assembly-internal Program.Rand",
+      "inheritedWarnings": 5
+    },
+    "arenaReceipt": "Artifacts/executor-review-20261102/arena-summary.json",
+    "arenaStatus": "completed",
+    "sourceHashes": {
+      "WindBot/Game/AI/Decks/VoicelessExecutor.cs": "60d53566762da54dcc82ac90ca6da9185533effab803884a5ec39cfa8214cce2",
+      "WindBot/Game/AI/Decks/VoicelessPlanner.cs": "f46c76601e7c86898f1af906293c41d4d9f361d9093812cfe8d899c6a3b74ced",
+      "WindBot/Tools/VoicelessChecks.cs": "bdd97578b7f95775755073a27366915175f91abe4cf5c6db1cba7c9450fe63fd"
+    },
+    "scriptEvidence": {
+      "path": "D:\\Programs\\GitHub\\MDPro4_Data\\Data\\script.zip",
+      "sha256": "7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb",
+      "entries": {
+        "29301450": {
+          "entry": "script/c29301450.lua",
+          "sha256": "e9458deaa2e8ec9c2a21bd753870a03b0e62af2150f806f6bb86d5d35c59fdf0"
+        },
+        "69248256": {
+          "entry": "script/c69248256.lua",
+          "sha256": "011611fe67fa5125eb0de42cb19ce1903f89c7c7877419eb1650ce588267392f"
+        },
+        "20001443": {
+          "entry": "script/c20001443.lua",
+          "sha256": "09f63d115ee5caf47ac294f8d3e1b6e395de15eabc88b42196d873b616a1d627"
+        },
+        "98173209": {
+          "entry": "script/c98173209.lua",
+          "sha256": "40e9af88a355ca67a7db19d99d5f346600220e74c0bb3bb35f6e8e37d3f858e3"
+        },
+        "34761841": {
+          "entry": "script/c34761841.lua",
+          "sha256": "cbc14ae886e45cee56bbed2f1108b41f7d0b5d2178cb5b2ee4ef779942f4f23e"
+        },
+        "94145021": {
+          "entry": "script/c94145021.lua",
+          "sha256": "c280468b08f71f25a4e126157a300632393294db291c91ecb6b337be472d7bc1"
+        },
+        "10774240": {
+          "entry": "script/c10774240.lua",
+          "sha256": "0d57b5ccd222faaf4f1807f2e167851aa8e4ac73a72c36113bb32c36c46007d6"
+        },
+        "98477480": {
+          "entry": "script/c98477480.lua",
+          "sha256": "8b84503992fd5ec23267b7588bfb8494637852c6e3fab697181ada25929fbd07"
+        },
+        "86310763": {
+          "entry": "script/c86310763.lua",
+          "sha256": "6bc87e3946a20d79a2f266becde38864a920b05cc275b61e862db2acf4609727"
+        },
+        "87451661": {
+          "entry": "script/c87451661.lua",
+          "sha256": "7ecf4d5e59194622cf03984cfc108c53a22933155050d115859c3763541de2ac"
+        }
+      }
+    },
+    "observedFindings": [
+      {
+        "id": "shielded-chixiao",
+        "trace": "Artifacts/voiceless-loss-review-20261102/baseline/lo-skull-Swordsoul-first/duel-01/client-0.log",
+        "lines": [
+          140,
+          173
+        ],
+        "duelResult": "Lose, line248",
+        "observed": "Chixiao CL1 followed by Mo Ye GY draw CL2; own Ash negates the draw while set Impermanence waits. Chixiao banishes Blackout, whose token enables Baronne. Imperm is spent later on Baronne destruction.",
+        "change": "A legally offered Veiler/Imperm can target a still-live lower opposing field link beneath a GY trigger before Ash. Rejects departed, disabled, untargetable, already-negated targets and chains already containing our response."
+      },
+      {
+        "id": "rda-early-ash",
+        "trace": "Artifacts/executor-review-20261102/arena-candidate-processes/916e025a-7d4e-4651-b28d-6d1c42f8e882.log",
+        "lines": [
+          37,
+          65
+        ],
+        "duelResult": "Lose, line217",
+        "observed": "Ash spends itself on opening Gaia; Droll follows Soul search. Red Rising then revives Crimson Resonator, whose deck summons resolve after both hand traps are gone.",
+        "change": "With usable Droll in our hand, empty public enemy GY and monster field, decline Ash on Gaia search and retain it for deck summons. Retains normal Ash response when Droll is negated/banished as cost or Gaia can recover from GY. This is a bounded tactic, not proof all RDA searches should resolve."
+      },
+      {
+        "id": "sp-direct-attack-lock",
+        "trace": "Artifacts/executor-review-20261102/arena-candidate-processes/2418c420-8749-48f5-b812-5bb6d2f9c274.log",
+        "lines": [
+          405,
+          418
+        ],
+        "duelResult": "This observed fault occurred in a duel later won at line614; do not call it the cause of that match loss.",
+        "observed": "S:P banishes spent Mo Ye from GY with no opposing monster, then goes BattleStart/Main2 without attacking. Matching Lua applies a turn-long direct-attack restriction to every friendly monster.",
+        "change": "Decline optional on-summon banish only on our attack-capable turn before Main2, with empty enemy monster field and an unused positive-ATK attacker. Turn1/Main2/occupied enemy field/already-attacked controls retain banish."
+      }
+    ],
+    "additionalCorrections": [
+      {
+        "id": "sp-core-materials",
+        "classification": "Code defect proved by synthetic actual-dispatcher material checks",
+        "change": "Optional S:P material subsets leave at least one face-up Lo and one active Skull when the pair is established; spare bodies and no-core recovery remain allowed."
+      },
+      {
+        "id": "sp-null-guard",
+        "classification": "Defensive stale-candidate guard; not claimed to be a live legal-engine failure",
+        "change": "No dereference if no own attack-position monster remains. Normally the legally present Link S:P itself is attack-position."
+      },
+      {
+        "id": "fixture-metadata",
+        "classification": "Regression fixture correctness",
+        "change": "Fixture cards now populate public queried Type/Level/Attribute/Race/Attack/Defense/Link metadata from explicit CDB. Previous zero-Type construction hid material behavior. Original27 checks still pass."
+      }
+    ],
+    "validation": {
+      "prefinalFocused": "Artifacts/voiceless-loss-review-20261102/focused-candidate/report.json",
+      "prefinalFocusedPassed": 36,
+      "prefinalNativeNine": "Artifacts/voiceless-loss-review-20261102/native-nine/result.json",
+      "prefinalNativeNinePassed": 9,
+      "final": "passed",
+      "finalDebugSha256": "c0312fd611ec77f60575b54769fa3ce5776c7680c2f360f3aec45a3f1447c112",
+      "focused": {
+        "receipt": "Artifacts\\voiceless-loss-review-20261102\\focused-final\\report.json",
+        "passed": true,
+        "passedChecks": 39,
+        "totalChecks": 39
+      },
+      "frozenBaselineSameChecks": {
+        "receipt": "Artifacts\\voiceless-loss-review-20261102\\focused-baseline-final\\report.json",
+        "expectedFailures": [
+          "S:P preserves open-field direct attacks instead of banishing a spent grave card",
+          "Droll covers opening Gaia while Ash is retained for Crimson Resonator",
+          "Imperm targets Chixiao below Mo Ye instead of spending Ash on the draw",
+          "S:P does not consume the only Lo of an active Skull board",
+          "S:P removal remains available using spare bodies beside the core",
+          "S:P may use a spare Lo but cannot consume every copy beside Skull",
+          "Stale S:P candidate safely rejects a field with no attack-position monster"
+        ],
+        "original27ChecksPassed": true
+      },
+      "nativeNine": {
+        "receipt": "Artifacts\\voiceless-loss-review-20261102\\native-nine-final\\result.json",
+        "passed": true,
+        "passedScenarios": 9,
+        "coreSeed": null
+      },
+      "nativeInteractions": {
+        "receipt": "Artifacts\\voiceless-loss-review-20261102\\interactions-final\\result.json",
+        "passed": true,
+        "duels": 4,
+        "rdaMemory": "off",
+        "coreSeed": null,
+        "results": [
+          {
+            "name": "chixiao-chain-shield",
+            "version": "baseline",
+            "status": "passed",
+            "duelResult": "loss",
+            "improvedMilestone": false
+          },
+          {
+            "name": "chixiao-chain-shield",
+            "version": "candidate",
+            "status": "passed",
+            "duelResult": "win",
+            "improvedMilestone": true
+          },
+          {
+            "name": "gaia-droll-ash",
+            "version": "baseline",
+            "status": "passed",
+            "duelResult": "loss",
+            "improvedMilestone": false
+          },
+          {
+            "name": "gaia-droll-ash",
+            "version": "candidate",
+            "status": "passed",
+            "duelResult": "loss",
+            "improvedMilestone": true
+          }
+        ]
+      },
+      "finalIntegratedCandidate": {
+        "version": "candidate-v4",
+        "debugSha256": "8ff56a0cf9b3b37f1fbe9b1aa0173c804a611a726c61aab3f8f9ed6b39980fc3",
+        "passed": true,
+        "voicelessSourcesUnchanged": true,
+        "focused": {
+          "receipt": "Artifacts/voiceless-loss-review-20261102/focused-integration-v4/report.json",
+          "passed": true,
+          "passedChecks": 39,
+          "totalChecks": 39
+        },
+        "nativeNine": {
+          "receipt": "Artifacts/voiceless-loss-review-20261102/native-integration-v4/result.json",
+          "passed": true,
+          "passedScenarios": 9,
+          "coreSeed": null
+        },
+        "pairedInteractions": "Preserved earlier v3 paired interaction receipt; same Voiceless executor/planner source hashes. Final v4 binary differs in Odion only."
+      },
+      "acceptedCombination": {
+        "version": "accepted-final",
+        "debugSha256": "b3d3a98178c4d07bdc43f09b85234d78b2791e5278eed6f0990c4f73f7c55fe3",
+        "passed": true,
+        "voicelessSourcesUnchanged": true,
+        "changeFromCandidateV4": "Odion reverted to exact baseline source after its Arena regression; Voiceless source/harness hashes unchanged.",
+        "focused": {
+          "receipt": "Artifacts/voiceless-loss-review-20261102/focused-accepted-final/report.json",
+          "passed": true,
+          "passedChecks": 39,
+          "totalChecks": 39
+        },
+        "nativeNine": {
+          "receipt": "Artifacts/voiceless-loss-review-20261102/native-accepted-final/result.json",
+          "passed": true,
+          "passedScenarios": 9,
+          "coreSeed": null
+        },
+        "retainedArenaEvidence": {
+          "candidateVersion": "candidate-v4",
+          "debugSha256": "8ff56a0cf9b3b37f1fbe9b1aa0173c804a611a726c61aab3f8f9ed6b39980fc3",
+          "voicelessSourceEqualityVerified": true,
+          "scope": "Candidate-v4 Arena outcomes remain evidence for their recorded binary; accepted-final reruns establish integration/route behavior after the unrelated Odion rollback, not fresh Arena wins."
+        },
+        "retainedPairedInteractions": "v3 paired interaction receipts preserved; exact Voiceless source/harness hashes still match."
+      },
+      "normalRegistrationBuild": {
+        "debugSha256": "7516a6abd7452abc7587953a69f0832729fb016767f12575de3ed4c502f5ac58",
+        "releaseSha256": "e7cf2eb6198f7262f85c4596c08fe8342a05b565847060b01100dfe0a53a0aa7",
+        "compiledRegistration": {
+          "name": "Voiceless",
+          "file": "AI_Voiceless",
+          "level": "Normal"
+        },
+        "focusedPassed": 39,
+        "focusedReceipt": "Artifacts/executor-review-20261102/voiceless-normal/report.json",
+        "nativeScenariosPassed": 9,
+        "nativeReceipt": "Artifacts/executor-review-20261102/native-normal/result.json",
+        "decisionCodeUnchanged": true
+      }
+    },
+    "limits": [
+      "Original three-match opponent results had startup-only Release logs and no saved replay; their individual loss causes cannot be reconstructed.",
+      "New Arena diagnostic run 301299d0 used evolving RDA memory and is excluded from frozen strength statistics. Its observed public decisions remain valid diagnostic evidence.",
+      "Twelve early fixed-opening native duels were diagnostic only; RDA memory was not disabled.",
+      "No claim that any isolated tactical repair guarantees a match win.",
+      "The initial 44-match report did not freeze RDA memory. Its RDA comparison is historical pilot evidence; the new fixed-opponent runs disable collection and memory decisions explicitly."
+    ],
+    "plannerChanged": false,
+    "heldOutTraceReview": {
+      "runId": "80257cf1-55dd-4a54-9858-0fbba5e0d356",
+      "completedCandidateProcesses": 40,
+      "individualDuelsLogged": 103,
+      "nonzeroExits": 0,
+      "forcedCleanup": 0,
+      "exceptions": 0,
+      "observed": [
+        "Impermanence targets Chixiao below Mo Ye",
+        "S:P uses spare bodies and preserves Skull/Lo",
+        "S:P skips optional grave banish and keeps direct attacks, including a lethal finish"
+      ],
+      "notClearlyObserved": [
+        "Gaia/Droll/Ash coordination (covered by native paired fixture)",
+        "Defensive stale S:P null guard (focused fixture only)"
+      ],
+      "remainingLossPatterns": [
+        "Insufficient opening starters/tributes",
+        "Repeated interruptions stopping Diviner and later Lo recovery",
+        "Established RDA Abyss, banishment and Hypernova removal boards"
+      ]
+    },
+    "testedCandidateRuntimes": {
+      "Debug": "8ff56a0cf9b3b37f1fbe9b1aa0173c804a611a726c61aab3f8f9ed6b39980fc3",
+      "Release": "424a276d45bfebfcf96d07a28821d094ee8b41333ce093496dbc4b73c032f308"
+    },
+    "acceptedRuntimes": {
+      "Debug": "7516a6abd7452abc7587953a69f0832729fb016767f12575de3ed4c502f5ac58",
+      "Release": "e7cf2eb6198f7262f85c4596c08fe8342a05b565847060b01100dfe0a53a0aa7"
+    },
+    "arenaComparison": {
+      "scoreUnit": "authoritative SRVPro best-of-three matches, not individual duels",
+      "comparisons": {
+        "Voiceless vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 12,
+            "losses": 8,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "24de194c-efb9-426d-8288-8e5ed6687322"
+            ],
+            "winRate95WilsonPercent": [
+              38.7,
+              78.1
+            ]
+          },
+          "candidate": {
+            "wins": 15,
+            "losses": 5,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "80257cf1-55dd-4a54-9858-0fbba5e0d356"
+            ],
+            "winRate95WilsonPercent": [
+              53.1,
+              88.8
+            ]
+          }
+        },
+        "Voiceless vs Swordsoul": {
+          "baseline": {
+            "wins": 9,
+            "losses": 11,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "24de194c-efb9-426d-8288-8e5ed6687322"
+            ],
+            "winRate95WilsonPercent": [
+              25.8,
+              65.8
+            ]
+          },
+          "candidate": {
+            "wins": 12,
+            "losses": 8,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "80257cf1-55dd-4a54-9858-0fbba5e0d356"
+            ],
+            "winRate95WilsonPercent": [
+              38.7,
+              78.1
+            ]
+          }
+        },
+        "Metalmorph vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "b45a3518-49cc-48bb-baed-0c75b334ba2f"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 1,
+            "losses": 5,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "ac858f7d-a6bc-4e91-9514-f482b2cf2862"
+            ],
+            "winRate95WilsonPercent": [
+              3.0,
+              56.4
+            ]
+          }
+        },
+        "Metalmorph vs Swordsoul": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "b45a3518-49cc-48bb-baed-0c75b334ba2f"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 4,
+            "losses": 2,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "ac858f7d-a6bc-4e91-9514-f482b2cf2862"
+            ],
+            "winRate95WilsonPercent": [
+              30.0,
+              90.3
+            ]
+          }
+        },
+        "Odion vs TheCrimsonKing": {
+          "baseline": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "a3ab4e71-f5c3-4dd8-ae22-d8dba3ec8b88"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          },
+          "candidate": {
+            "wins": 0,
+            "losses": 6,
+            "flees": 0,
+            "matches": 6,
+            "runs": [
+              "20057d2c-8b87-42ac-9a0b-cfe3e48cc2cb"
+            ],
+            "winRate95WilsonPercent": [
+              0.0,
+              39.0
+            ]
+          }
+        },
+        "Odion vs Swordsoul": {
+          "baseline": {
+            "wins": 9,
+            "losses": 11,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "a3ab4e71-f5c3-4dd8-ae22-d8dba3ec8b88",
+              "fab395fc-b36a-4554-ae4a-1db25b31b9d3"
+            ],
+            "winRate95WilsonPercent": [
+              25.8,
+              65.8
+            ]
+          },
+          "candidate": {
+            "wins": 2,
+            "losses": 18,
+            "flees": 0,
+            "matches": 20,
+            "runs": [
+              "20057d2c-8b87-42ac-9a0b-cfe3e48cc2cb",
+              "4827d6e4-833d-499d-87ea-e6dbbc08951f"
+            ],
+            "winRate95WilsonPercent": [
+              2.8,
+              30.1
+            ]
+          }
+        }
+      },
+      "completedMatches": 156,
+      "completedClientProcesses": 312,
+      "nonzeroExits": 0,
+      "forcedCleanup": 0,
+      "clientErrorLogs": [],
+      "settings": {
+        "shuffled": true,
+        "coreRngSeed": null,
+        "noDeckCheck": true,
+        "rdaMemory": "disabled by .json.off marker",
+        "rooms": 2,
+        "targetPort": "recorded per run",
+        "opponentPort": 12398
+      },
+      "excludedRuns": [
+        {
+          "id": "301299d0-ec74-4e7f-b606-917b1a4ce168",
+          "reason": "excluded-memory-enabled-diagnostic",
+          "observedMatches": 28
+        },
+        {
+          "id": "ea01977d-8783-4e7e-a82c-c0db0b178b07",
+          "reason": "excluded-marker-verification",
+          "observedMatches": 6
+        }
+      ],
+      "limits": [
+        "Different shuffled draws; no paired core seed or enforced first-turn balance.",
+        "Twenty per opponent/version for Voiceless and Odion-Swordsoul, six for other personal matchups; intervals are wide.",
+        "Task-owned loopback HTTP-to-CLI adapters launch frozen real WindBot clients; SRVPro supplies results.",
+        "No exhaustive card, format or competitive-strength guarantee."
+      ],
+      "decisions": {
+        "Voiceless": "accept tested source changes",
+        "Metalmorph": "accept tested source changes",
+        "Odion": "reject broad candidate and retain original 363f7eb source"
+      },
+      "sourceIdentity": {
+        "Voiceless": "only Deck attribute differs from tested candidate-v4",
+        "Metalmorph": "exact source match to tested candidate-v4",
+        "Odion": "exact original source restored"
+      },
+      "acceptedBuildNote": "Arena results retain candidate-v4 identity. Final build restores original Odion and changes only Voiceless registration to Normal; accepted Voiceless/Metalmorph decision code matches tested candidate-v4. Final builds, 70 focused checks, 22 import assertions and 9 native scenarios were rerun.",
+      "opponentAndMemoryFilesUnchanged": true,
+      "registrationPromotion": {
+        "request": "Remove NotFinished from Voiceless registration",
+        "before": "[Deck(\"Voiceless\", \"AI_Voiceless\", \"NotFinished\")]",
+        "after": "[Deck(\"Voiceless\", \"AI_Voiceless\")]",
+        "effectiveLevel": "Normal (DeckAttribute default)",
+        "beforeSourceSha256": "59cd4878038c4948cc94d236daedb7b99791f7fbf2018412892f7d7e8277e02d",
+        "afterSourceSha256": "60d53566762da54dcc82ac90ca6da9185533effab803884a5ec39cfa8214cce2",
+        "onlyRegistrationChanged": true
+      }
+    },
+    "decision": "accepted tactical fixes; Normal registration requested by owner",
+    "preRegistrationAcceptedRuntimes": {
+      "Debug": "b3d3a98178c4d07bdc43f09b85234d78b2791e5278eed6f0990c4f73f7c55fe3",
+      "Release": "b759044c775d6eeaac2b5d39ddbbf1a3525589ebaf16c08b9583af9ca99f069c"
+    },
+    "registrationPromotion": {
+      "request": "Remove NotFinished from Voiceless registration",
+      "before": "[Deck(\"Voiceless\", \"AI_Voiceless\", \"NotFinished\")]",
+      "after": "[Deck(\"Voiceless\", \"AI_Voiceless\")]",
+      "effectiveLevel": "Normal (DeckAttribute default)",
+      "beforeSourceSha256": "59cd4878038c4948cc94d236daedb7b99791f7fbf2018412892f7d7e8277e02d",
+      "afterSourceSha256": "60d53566762da54dcc82ac90ca6da9185533effab803884a5ec39cfa8214cce2",
+      "onlyRegistrationChanged": true
+    },
+    "testedCandidateSourceHashes": {
+      "WindBot/Game/AI/Decks/VoicelessExecutor.cs": "59cd4878038c4948cc94d236daedb7b99791f7fbf2018412892f7d7e8277e02d",
+      "WindBot/Game/AI/Decks/VoicelessPlanner.cs": "f46c76601e7c86898f1af906293c41d4d9f361d9093812cfe8d899c6a3b74ced",
+      "WindBot/Tools/VoicelessChecks.cs": "bdd97578b7f95775755073a27366915175f91abe4cf5c6db1cba7c9450fe63fd"
+    }
+  },
+  "initialRegistration": {
+    "name": "Voiceless",
+    "deck": "AI_Voiceless",
+    "level": "NotFinished"
+  }
 }
