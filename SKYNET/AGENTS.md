@@ -26,8 +26,10 @@ General deck play is the goal; user profiles are optional improvements, not a
 requirement for every new deck.
 
 The transport and general helpers derive from WindBot/YGOSharp. Keep the original
-license and attribution. The ignored `../LegacyWindBot` directory preserves the
-previous local workspace; it is not source for this build or publication.
+license and attribution. The previous local workspace is preserved in
+`../Artifacts/retired-local-folders-20261102/historical-folders.zip`, under its
+original `LegacyWindBot/` paths; it is not source for this build or publication.
+Current normal-bot source lives in `../WindBot/`.
 
 ## Decision correctness
 

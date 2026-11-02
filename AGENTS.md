@@ -18,8 +18,10 @@ This repository has three independent source folders:
 These folders share this repository's Git history, not compiled C# source or
 mutable duel state. Do not merge the two agents' decision/callback lifecycles.
 Expedition gameplay, progression and campaign content remain outside scope.
-The ignored root `LegacyWindBot/` and existing root build/artifact folders preserve
-historical local data; they are not current build inputs or publication payloads.
+The retired `LegacyWindBot/` and `Files for MDPro4/` folders are preserved in the
+local `Artifacts/retired-local-folders-20261102/historical-folders.zip` archive.
+Use `WindBot/` for current normal-bot source. Historical archives and existing root
+build/artifact folders are not current build inputs or publication payloads.
 
 ## Runtime data and safety
 

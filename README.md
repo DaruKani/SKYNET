@@ -88,9 +88,20 @@ npm test
 npm run build
 ```
 
-The previous ignored root `Artifacts/`, `bin/`, `obj/` and `LegacyWindBot/` folders
-are preserved as local historical material. New builds use the separate project
-folders. Arena stores local settings and results under `Arena/data/` by default;
+The obsolete root `LegacyWindBot/` and `Files for MDPro4/` folders were removed
+after archiving and verifying all 487 files. `LegacyWindBot` held the old bot
+source snapshot; `Files for MDPro4` held the deferred October 2026 game-integration
+patch, source snapshots and installed SKYNET payload. Neither is needed to build
+or run the current projects. Historical material remains in the local, ignored
+[`historical-folders.zip`](Artifacts/retired-local-folders-20261102/historical-folders.zip)
+with a per-file SHA-256 [`manifest`](Artifacts/retired-local-folders-20261102/manifest.json).
+The ZIP retains the original folder paths, including all 83 executor sources
+referenced by SKYNET's historical catalog. These local backups are not published
+to Git; use `WindBot/` for ongoing normal-bot development.
+
+The previous ignored root `Artifacts/`, `bin/` and `obj/` folders remain local
+historical material. New builds use the separate project folders.
+Arena stores local settings and results under `Arena/data/` by default;
 check saved absolute paths when selecting a newly built version. Historical
 benchmark receipts are evidence for their recorded binaries, not new results for
 this layout.

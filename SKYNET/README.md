@@ -142,17 +142,23 @@ needs quality checks; imitation must not turn a known bug into a training target
 83 archived files and the shared helper, with hashes, registration-line excerpts
 and overridden hooks. Every entry is marked `source-only` and `unreviewed`.
 This is a lexical index, not dependency analysis or a runtime card catalog.
-The ignored archive at `../LegacyWindBot/` is needed to follow those historical
-local source references. The catalog preserves the workspace-relative paths and
-hashes recorded before the folder split; it has not been relabeled as reviewed.
+The former `../LegacyWindBot/` folder has been retired. Its files are preserved
+under their original paths inside the local, ignored
+[`historical-folders.zip`](../Artifacts/retired-local-folders-20261102/historical-folders.zip).
+All 83 archived executor hashes still match the catalog. The catalog preserves
+the workspace-relative paths and hashes recorded before the folder split;
+those paths identify historical sources, not current filesystem dependencies,
+and entries have not been relabeled as reviewed. The same distinction applies
+to historical source paths in `Catalog/expert-baselines.json`.
 
-To generate a fresh index at a new output path:
+To generate a fresh index of the current normal WindBot sources at a new output
+path, run from `SKYNET/`:
 
 ```powershell
 python Tools/Skynet/catalog_sources.py `
   --workspace-root .. `
-  --executor-dir LegacyWindBot/Game/AI/Decks `
-  --shared-source SKYNET/Game/AI/DefaultExecutor.cs `
+  --executor-dir WindBot/Game/AI/Decks `
+  --shared-source WindBot/Game/AI/DefaultExecutor.cs `
   --output SKYNET/Artifacts/catalog-review.json
 ```
 
