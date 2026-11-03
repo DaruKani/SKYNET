@@ -160,17 +160,27 @@ namespace WindBot.Game.AI.Decks
             if (targets.Count == 0)
                 return null;
 
-            bool preventsLethal = Duel.Player == 1 &&
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints;
+            int remainingAttack = GetRemainingEnemyBattleAttack();
+            int preventedDamage = targets
+                .Where(target => target.IsAttack() && !target.Attacked)
+                .Sum(target => Math.Max(0, target.Attack / 2));
+            bool preventsLethal = remainingAttack >= Bot.LifePoints &&
+                remainingAttack - preventedDamage < Bot.LifePoints;
+            ClientCard last = Util.GetLastChainCard();
+            bool stopsLiveBattleEffect = Duel.Player == 1 &&
+                Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2 &&
+                Duel.LastChainPlayer == 1 && last != null && Duel.CurrentChain.Contains(last) &&
+                targets.Contains(last);
             int score = targets.Sum(GetObservedThreatScore) - 1100;
             score -= costs.Take(targets.Count).Sum(GetDropletCostValue) / 3;
             if (targets.Count > 1)
                 score += 1400 * (targets.Count - 1);
             if (preventsLethal)
                 score += 8000;
-            ClientCard last = Util.GetLastChainCard();
             if (Duel.LastChainPlayer == 1 && last != null && targets.Contains(last))
                 score += 1000;
+            if (stopsLiveBattleEffect)
+                score += 1800;
             if (score < 3000)
                 return null;
 
@@ -178,7 +188,8 @@ namespace WindBot.Game.AI.Decks
             {
                 Kind = TacticalActionKind.ForbiddenDroplet,
                 Score = score,
-                Reason = preventsLethal ? "halve attackers to prevent lethal" :
+                Reason = preventsLethal ? "halve remaining attackers to prevent lethal" :
+                    stopsLiveBattleEffect ? "negate a live Battle Phase monster effect" :
                     targets.Count > 1 ? "positive multi-negate exchange" : "best available untargeted negate"
             };
             result.Targets.AddRange(targets);

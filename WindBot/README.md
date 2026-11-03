@@ -198,7 +198,11 @@ type also prevents a matching response, preserves the last copy of core engine
 resources unless the exchange justifies it, and is held when Widow or Crown
 solves the same threat more efficiently. The same dynamic reserve values are
 used for hand/field/GY costs and Link materials; an unspent setup Zero is heavily
-protected from generic Link conversion.
+protected from generic Link conversion. Battle Phase Droplet decisions count only
+enemy attackers that have not attacked yet, so an already-spent Kagari cannot
+create a false lethal alarm. In the mirror, a live Sky Striker Ace effect is an
+explicit chain target, allowing Droplet to stop the effect before damage instead
+of being wasted after that monster has already attacked.
 
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a

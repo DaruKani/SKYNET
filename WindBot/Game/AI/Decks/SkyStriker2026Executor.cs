@@ -2807,10 +2807,11 @@ namespace WindBot.Game.AI.Decks
                 IsImportantForbiddenDropletTarget(last))
                 result.Add(last);
 
-            int projectedAttack = Util.GetTotalAttackingMonsterAttack(1);
+            int projectedAttack = GetRemainingEnemyBattleAttack();
             if (Duel.Player == 1 && projectedAttack >= Bot.LifePoints)
             {
-                foreach (ClientCard attacker in candidates.Where(card => card.IsAttack())
+                foreach (ClientCard attacker in candidates.Where(card =>
+                    card.IsAttack() && !card.Attacked)
                     .OrderByDescending(card => card.Attack))
                 {
                     if (projectedAttack < Bot.LifePoints)
@@ -2837,9 +2838,26 @@ namespace WindBot.Game.AI.Decks
 
         private bool IsImportantForbiddenDropletTarget(ClientCard target)
         {
-            return target != null && (target.IsFloodgate() || target.IsMonsterDangerous() ||
+            if (target == null)
+                return false;
+            ClientCard last = Util.GetLastChainCard();
+            bool liveMirrorAceEffect = SkyStrikerMirrorObserved &&
+                Duel.LastChainPlayer == 1 && last == target && Duel.CurrentChain.Contains(last) &&
+                IsSkyStrikerAce(target) &&
+                target.HasType(CardType.Link);
+            return liveMirrorAceEffect || target.IsFloodgate() || target.IsMonsterDangerous() ||
                 target.IsMonsterInvincible() ||
-                target.IsMonsterShouldBeDisabledBeforeItUseEffect());
+                target.IsMonsterShouldBeDisabledBeforeItUseEffect();
+        }
+
+        private int GetRemainingEnemyBattleAttack()
+        {
+            if (Duel.Player != 1 || Duel.Phase <= DuelPhase.Main1 ||
+                Duel.Phase >= DuelPhase.Main2)
+                return 0;
+            return Enemy.GetMonsters()
+                .Where(card => card.IsFaceup() && card.IsAttack() && !card.Attacked)
+                .Sum(card => Math.Max(0, card.Attack));
         }
 
         private bool CanUseWidowAnchorInstead(ClientCard target)
