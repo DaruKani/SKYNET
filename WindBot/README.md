@@ -179,9 +179,18 @@ offered by the duel server.
 
 The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
 the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
-Virtuous resource line. The first destruction activation sends Albion and sets
-another Fallen & the Virtuous during the End Phase; a later activation falls back
-to Ecclesia and the Dark Dragon. The user-owned MDPro4 deck file is not modified.
+Virtuous resource line. It normally sends Albion while another Fallen & the
+Virtuous remains in the Deck. Albion sets that copy during the bot's End Phase
+when there is room and a usable follow-up cost, but adds it to hand during the
+opponent's End Phase or when a set copy would be redundant. If a Level 8 Fusion
+is already recoverable and a second opposing card remains, the bot can send
+Ecclesia first for its additional shuffle; unavailable routes fall back to the
+remaining Extra Deck choices. An unused hand copy is set in the bot's Main Phase
+only when a later activation still has a valid Extra Deck or Ecclesia route.
+Forbidden Crown now chains only to a live opposing
+field-monster effect, a classified board threat, or a lethal attacker, and tracks
+its intended monster so another response does not negate the same card twice.
+The user-owned MDPro4 deck file is not modified.
 
 After building, start it from the output directory with an explicit database and
 compatible duel host, for example:

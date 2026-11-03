@@ -101,6 +101,7 @@ namespace WindBot.Game.AI.Decks
         private bool SphereModeTributesPending;
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
+        private ClientCard ForbiddenCrownTarget;
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
@@ -218,6 +219,8 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpellSet, CardId.WidowAnchor, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.SharkCannon, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.Linkage, SetLinkage);
+            AddExecutor(ExecutorType.SpellSet, CardId.TheFallenAndTheVirtuous,
+                SetFallenAndVirtuous);
             AddExecutor(ExecutorType.SpellSet, CardId.ForbiddenDroplet, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.ForbiddenCrown, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.TwinTwisters, Util.IsTurn1OrMain2);
@@ -257,6 +260,7 @@ namespace WindBot.Game.AI.Decks
             SphereModeTributesPending = false;
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
+            ForbiddenCrownTarget = null;
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
@@ -273,6 +277,7 @@ namespace WindBot.Game.AI.Decks
         public override void OnChainEnd()
         {
             AmatsuRedirectPending = false;
+            ForbiddenCrownTarget = null;
             CurrentChainHandledCards.Clear();
             base.OnChainEnd();
         }
@@ -362,12 +367,8 @@ namespace WindBot.Game.AI.Decks
                 if (activating.IsCode(CardId.TheFallenAndTheVirtuous))
                 {
                     if (hint == HintMsg.ToGrave && cards.Any(card => card.Location == CardLocation.Extra))
-                        return Util.CheckSelectCount(OrderCardsById(cards, new[]
-                        {
-                            CardId.AlbionTheBrandedDragon,
-                            CardId.DragonThatDevoursTheDogma,
-                            CardId.EcclesiaAndTheDarkDragon
-                        }, false), cards, min, max);
+                        return Util.CheckSelectCount(OrderCardsById(cards,
+                            GetFallenAndVirtuousExtraDeckPriority(), false), cards, min, max);
                     if (hint == HintMsg.Destroy)
                         return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
                     if (hint == HintMsg.SpSummon)
@@ -424,12 +425,8 @@ namespace WindBot.Game.AI.Decks
                 solving.IsActivateCode(CardId.TheFallenAndTheVirtuous))
             {
                 if (hint == HintMsg.ToGrave && cards.Any(card => card.Location == CardLocation.Extra))
-                    return Util.CheckSelectCount(OrderCardsById(cards, new[]
-                    {
-                        CardId.AlbionTheBrandedDragon,
-                        CardId.DragonThatDevoursTheDogma,
-                        CardId.EcclesiaAndTheDarkDragon
-                    }, false), cards, min, max);
+                    return Util.CheckSelectCount(OrderCardsById(cards,
+                        GetFallenAndVirtuousExtraDeckPriority(), false), cards, min, max);
                 if (hint == HintMsg.Destroy)
                     return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
             }
@@ -513,7 +510,20 @@ namespace WindBot.Game.AI.Decks
 
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.ForbiddenCrown) && hint == HintMsg.Faceup)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+            {
+                List<ClientCard> ordered = new List<ClientCard>();
+                ClientCard intended = cards.FirstOrDefault(card =>
+                    card == ForbiddenCrownTarget || ForbiddenCrownTarget != null &&
+                    card.Controller == ForbiddenCrownTarget.Controller &&
+                    card.Location == ForbiddenCrownTarget.Location &&
+                    card.Sequence == ForbiddenCrownTarget.Sequence &&
+                    card.IsCode(ForbiddenCrownTarget.Id));
+                if (intended != null)
+                    ordered.Add(intended);
+                ordered.AddRange(OrderEnemyTargets(cards).Where(card => !ordered.Contains(card)));
+                ForbiddenCrownTarget = null;
+                return Util.CheckSelectCount(ordered, cards, min, max);
+            }
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.ReturnToHand)
@@ -744,11 +754,13 @@ namespace WindBot.Game.AI.Decks
                 solving.IsActivateCode(CardId.AlbionTheBrandedDragon))
             {
                 int set = options.IndexOf(1153);
-                if (set >= 0)
-                    return set;
                 int add = options.IndexOf(1190);
+                if (set >= 0 && ShouldSetFallenAndVirtuousFromAlbion())
+                    return set;
                 if (add >= 0)
                     return add;
+                if (set >= 0)
+                    return set;
             }
 
             int destroyMonsters = options.IndexOf(Util.GetStringId(CardId.LightningStorm, 0));
@@ -796,11 +808,55 @@ namespace WindBot.Game.AI.Decks
 
         private bool ForbiddenCrownEffect()
         {
-            ClientCard target = GetEnemyMonsterTarget(false);
+            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                card.IsCode(CardId.ForbiddenCrown)))
+                return false;
+
+            ClientCard target = null;
+            if (Duel.CurrentChain.Count > 0)
+            {
+                ClientCard last = Util.GetLastChainCard();
+                if (Duel.LastChainPlayer != 1 || !IsUsableForbiddenCrownTarget(last))
+                    return false;
+                target = last;
+            }
+            else
+            {
+                IEnumerable<ClientCard> candidates = Enemy.GetMonsters().Where(
+                    IsUsableForbiddenCrownTarget);
+                if (Duel.Player == 0)
+                {
+                    target = candidates.FirstOrDefault(card => card.IsFloodgate() ||
+                        card.IsMonsterShouldBeDisabledBeforeItUseEffect());
+                }
+                else
+                {
+                    target = candidates.FirstOrDefault(card => card.IsFloodgate() ||
+                        card.IsMonsterDangerous() ||
+                        card.IsMonsterShouldBeDisabledBeforeItUseEffect());
+                    if (target == null && Bot.UnderAttack)
+                    {
+                        ClientCard attacker = Enemy.BattlingMonster;
+                        if (IsUsableForbiddenCrownTarget(attacker) &&
+                            attacker.Attack >= Bot.LifePoints)
+                            target = attacker;
+                    }
+                }
+            }
+
             if (target == null)
                 return false;
-            return Duel.Player == 1 || Duel.CurrentChain.Count > 0 ||
-                target.IsFloodgate() || target == Util.GetProblematicEnemyMonster();
+
+            ForbiddenCrownTarget = target;
+            MarkCurrentChainHandled(target);
+            return true;
+        }
+
+        private bool IsUsableForbiddenCrownTarget(ClientCard target)
+        {
+            return target != null && target.Controller == 1 &&
+                target.Location == CardLocation.MonsterZone && target.IsMonster() &&
+                target.IsFaceup() && !target.IsDisabled() && !IsCurrentChainHandled(target);
         }
 
         private bool RadiantTyphoonVisionEffect()
@@ -828,6 +884,32 @@ namespace WindBot.Game.AI.Decks
         {
             return Card.Location == CardLocation.Grave && Duel.Phase == DuelPhase.End &&
                 Bot.HasInDeck(CardId.TheFallenAndTheVirtuous);
+        }
+
+        private bool ShouldSetFallenAndVirtuousFromAlbion()
+        {
+            if (Duel.Player != 0 || Duel.Phase != DuelPhase.End ||
+                Bot.GetSpellCountWithoutField() >= 5 ||
+                Bot.HasInSpellZone(CardId.TheFallenAndTheVirtuous))
+                return false;
+
+            return HasFallenAndVirtuousFollowUp();
+        }
+
+        private bool SetFallenAndVirtuous()
+        {
+            return Util.IsTurn1OrMain2() && Bot.GetSpellCountWithoutField() < 5 &&
+                !Bot.HasInSpellZone(CardId.TheFallenAndTheVirtuous) &&
+                HasFallenAndVirtuousFollowUp();
+        }
+
+        private bool HasFallenAndVirtuousFollowUp()
+        {
+            return Bot.HasInExtra(CardId.AlbionTheBrandedDragon) ||
+                Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
+                Bot.HasInExtra(CardId.EcclesiaAndTheDarkDragon) ||
+                Bot.GetMonsters().Concat(Bot.Graveyard)
+                    .Any(card => card.IsCode(CardId.EcclesiaAndTheDarkDragon));
         }
 
         private bool DragonThatDevoursTheDogmaEffect()
@@ -2470,6 +2552,34 @@ namespace WindBot.Game.AI.Decks
                 .ThenByDescending(card => card.IsFaceup() ? 1 : 0)
                 .ThenByDescending(GetCardUtility)
                 .ToList();
+        }
+
+        private int[] GetFallenAndVirtuousExtraDeckPriority()
+        {
+            List<int> result = new List<int>();
+            bool canUseEcclesiaNow = Duel.Player == 0 &&
+                (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) &&
+                Enemy.GetFieldCount() > 1 &&
+                Bot.Graveyard.Concat(Bot.Banished).Any(card =>
+                    card.IsCode(CardId.AlbionTheBrandedDragon,
+                        CardId.DragonThatDevoursTheDogma));
+
+            if (canUseEcclesiaNow)
+                result.Add(CardId.EcclesiaAndTheDarkDragon);
+
+            if (Bot.HasInDeck(CardId.TheFallenAndTheVirtuous))
+            {
+                result.Add(CardId.AlbionTheBrandedDragon);
+                result.Add(CardId.DragonThatDevoursTheDogma);
+            }
+
+            if (!result.Contains(CardId.EcclesiaAndTheDarkDragon))
+                result.Add(CardId.EcclesiaAndTheDarkDragon);
+            if (!result.Contains(CardId.AlbionTheBrandedDragon))
+                result.Add(CardId.AlbionTheBrandedDragon);
+            if (!result.Contains(CardId.DragonThatDevoursTheDogma))
+                result.Add(CardId.DragonThatDevoursTheDogma);
+            return result.ToArray();
         }
 
         private IList<ClientCard> SelectLemnisgateRecycleCards(IList<ClientCard> cards, int min, int max)
