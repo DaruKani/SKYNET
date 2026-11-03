@@ -204,6 +204,14 @@ create a false lethal alarm. In the mirror, a live Sky Striker Ace effect is an
 explicit chain target, allowing Droplet to stop the effect before damage instead
 of being wasted after that monster has already attacked.
 
+Widow Anchor preserves the empty Main Monster Zone as a deck invariant. On the
+opponent's turn it negates without taking control, because the stolen monster
+cannot be converted into Link material and would disable the remaining Sky
+Striker spells. The control option is used there only when changing control of
+the current attacker prevents lethal damage. The same turn-aware conversion
+check prevents Shark Cannon from reviving an unusable monster into the Main
+Monster Zone during the opponent's turn.
+
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a
 hidden identity. In the mirror, Shark Cannon prioritizes denying Raye/Roze and

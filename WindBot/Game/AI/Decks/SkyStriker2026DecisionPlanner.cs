@@ -108,9 +108,11 @@ namespace WindBot.Game.AI.Decks
                 target.IsShouldNotBeTarget() || target.IsShouldNotBeSpellTrapTarget())
                 return null;
 
+            bool emergencyControl = HaveThreeSpellsInGrave() &&
+                ShouldTakeControlForEmergencyDefense(target);
             bool takeControl = HaveThreeSpellsInGrave() &&
-                CanImmediatelyUseControlledMonster(target,
-                    Duel.Player == 0 && Duel.Phase < DuelPhase.Main2);
+                (emergencyControl || CanImmediatelyUseControlledMonster(target,
+                    Duel.Player == 0 && Duel.Phase < DuelPhase.Main2));
             ClientCard last = Util.GetLastChainCard();
             bool answeringMonster = Duel.LastChainPlayer == 1 && last == target;
             bool stoppingBattle = target == Enemy.BattlingMonster && Bot.UnderAttack;
@@ -119,7 +121,7 @@ namespace WindBot.Game.AI.Decks
                 score += 1200;
             if (takeControl)
                 score += 2400;
-            if (stoppingBattle)
+            if (stoppingBattle && takeControl)
             {
                 int projectedDamage = Math.Max(0, target.Attack -
                     (Bot.BattlingMonster == null ? 0 : Bot.BattlingMonster.GetDefensePower()));
@@ -137,8 +139,9 @@ namespace WindBot.Game.AI.Decks
                 Kind = TacticalActionKind.WidowAnchor,
                 Score = score,
                 TakeControl = takeControl,
-                Reason = takeControl ? "negate and convert target into tempo/material" :
-                    stoppingBattle ? "stop meaningful battle damage" : "efficient single-target negate"
+                Reason = emergencyControl ? "take control to stop lethal damage" :
+                    takeControl ? "negate and convert target into tempo/material" :
+                    stoppingBattle ? "negate an attacking monster effect" : "efficient single-target negate"
             };
             result.Targets.Add(target);
             return result;

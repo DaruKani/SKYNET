@@ -852,17 +852,7 @@ namespace WindBot.Game.AI.Decks
             if (desc == Util.GetStringId(CardId.AreaZero, 2))
                 return true;
             if (desc == Util.GetStringId(CardId.WidowAnchor, 0))
-            {
-                if (Duel.Player == 1)
-                {
-                    if (Bot.UnderAttack && WidowAnchorTakeControl &&
-                        WidowAnchorTarget == Enemy.BattlingMonster)
-                        return true;
-                    return !Bot.GetSpells().Any(card => card.IsFacedown() &&
-                        card.IsCode(CardId.WidowAnchor));
-                }
                 return WidowAnchorTakeControl && WidowAnchorTarget != null;
-            }
             if (desc == Util.GetStringId(CardId.SharkCannon, 0))
                 return !SharkCannonBanishOnly && ShouldReviveWithSharkCannon(SharkCannonTarget);
             if (desc == Util.GetStringId(CardId.KnightmarePhoenix, 1) ||
@@ -1626,7 +1616,7 @@ namespace WindBot.Game.AI.Decks
             if (target == null || target.Controller != 1 || !HaveThreeSpellsInGrave() || Duel.Phase == DuelPhase.End)
                 return false;
             if (Duel.Player == 1)
-                return true;
+                return false;
 
             if (target.IsCode(CardId.Raye, CardId.Kagari, CardId.Shizuku, CardId.Hayate))
             {
@@ -1701,6 +1691,17 @@ namespace WindBot.Game.AI.Decks
                     return true;
             }
             return false;
+        }
+
+        private bool ShouldTakeControlForEmergencyDefense(ClientCard target)
+        {
+            if (Duel.Player != 1 || target == null || !Bot.UnderAttack ||
+                target != Enemy.BattlingMonster)
+                return false;
+            int defendingPower = Bot.BattlingMonster == null
+                ? 0 : Bot.BattlingMonster.GetDefensePower();
+            int projectedDamage = Math.Max(0, target.Attack - defendingPower);
+            return projectedDamage >= Bot.LifePoints;
         }
 
         private bool SharkCannonEffect()
