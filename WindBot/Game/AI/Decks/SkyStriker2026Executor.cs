@@ -11,6 +11,27 @@ namespace WindBot.Game.AI.Decks
     [Deck("SkyStriker2026", "AI_SkyStriker2026")]
     public class SkyStriker2026Executor : DefaultExecutor
     {
+        private enum HornetZeroSetupStage
+        {
+            None,
+            AwaitFirstToken,
+            NeedKagari,
+            KagariReady,
+            AwaitSecondToken,
+            NeedBridgeLink,
+            NeedZero
+        }
+
+        private enum LinkageOtkStage
+        {
+            None,
+            SummonKagari,
+            KagariReady,
+            SummonZero,
+            ZeroReady,
+            RayeRozeReady
+        }
+
         public class CardId
         {
             public const int Raye = 26077387;
@@ -102,6 +123,11 @@ namespace WindBot.Game.AI.Decks
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
+        private ClientCard LinkageOtkSendTarget;
+        private HornetZeroSetupStage HornetSetupStage;
+        private LinkageOtkStage LinkageOtk;
+        private bool RayeToZeroSetupPending;
+        private bool PreserveEmptyMainZoneForZero;
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
@@ -261,6 +287,11 @@ namespace WindBot.Game.AI.Decks
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
+            LinkageOtkSendTarget = null;
+            HornetSetupStage = HornetZeroSetupStage.None;
+            LinkageOtk = LinkageOtkStage.None;
+            RayeToZeroSetupPending = false;
+            PreserveEmptyMainZoneForZero = false;
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
@@ -278,8 +309,42 @@ namespace WindBot.Game.AI.Decks
         {
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
+            LinkageOtkSendTarget = null;
+
+            if (RayeToZeroSetupPending && !Bot.HasInMonstersZone(CardId.Zero))
+                RayeToZeroSetupPending = false;
+            if (HornetSetupStage == HornetZeroSetupStage.AwaitFirstToken &&
+                !Bot.HasInMonstersZone(CardId.Token))
+                HornetSetupStage = HornetZeroSetupStage.None;
+            if (HornetSetupStage == HornetZeroSetupStage.AwaitSecondToken &&
+                !Bot.HasInMonstersZone(CardId.Token))
+                HornetSetupStage = HornetZeroSetupStage.None;
+            if (LinkageOtk == LinkageOtkStage.SummonKagari &&
+                !Bot.HasInMonstersZone(CardId.Kagari))
+                LinkageOtk = LinkageOtkStage.None;
+            if (LinkageOtk == LinkageOtkStage.SummonZero &&
+                !Bot.HasInMonstersZone(CardId.Zero))
+                LinkageOtk = LinkageOtkStage.None;
+            if (LinkageOtk == LinkageOtkStage.RayeRozeReady &&
+                (!Bot.HasInMonstersZone(CardId.Raye) ||
+                !Bot.HasInMonstersZone(CardId.Roze)))
+                LinkageOtk = LinkageOtkStage.None;
+
             CurrentChainHandledCards.Clear();
             base.OnChainEnd();
+        }
+
+        public override void OnNewPhase()
+        {
+            if (LinkageOtk != LinkageOtkStage.None &&
+                (Duel.Phase <= DuelPhase.Main1 || Duel.Phase >= DuelPhase.Main2))
+                LinkageOtk = LinkageOtkStage.None;
+            if (HornetSetupStage != HornetZeroSetupStage.None &&
+                Duel.Phase != DuelPhase.Main1)
+                HornetSetupStage = HornetZeroSetupStage.None;
+            if (Duel.Phase != DuelPhase.Main1)
+                RayeToZeroSetupPending = false;
+            base.OnNewPhase();
         }
 
         public override void OnMove(ClientCard card, int previousControler, int previousLocation,
@@ -294,6 +359,12 @@ namespace WindBot.Game.AI.Decks
                 (currentControler != 0 ||
                 (currentLocation & (int)CardLocation.MonsterZone) == 0))
                 ControlledEnemyCards.Remove(card);
+
+            if (card != null && card.IsCode(CardId.Zero) && previousControler == 0 &&
+                (previousLocation & (int)CardLocation.MonsterZone) != 0 &&
+                (currentControler != 0 ||
+                (currentLocation & (int)CardLocation.MonsterZone) == 0))
+                PreserveEmptyMainZoneForZero = false;
 
             if (card != null && previousControler == 0 && currentControler == 0 &&
                 previousLocation == (int)CardLocation.Grave &&
@@ -318,22 +389,56 @@ namespace WindBot.Game.AI.Decks
                 (previousLocation & (int)CardLocation.MonsterZone) == 0 &&
                 (currentLocation & (int)CardLocation.MonsterZone) != 0)
             {
+                if (card.IsCode(CardId.Token))
+                {
+                    if (HornetSetupStage == HornetZeroSetupStage.AwaitFirstToken)
+                        HornetSetupStage = HornetZeroSetupStage.NeedKagari;
+                    else if (HornetSetupStage == HornetZeroSetupStage.AwaitSecondToken)
+                        HornetSetupStage = HornetZeroSetupStage.NeedBridgeLink;
+                }
+
                 if (card.IsCode(CardId.Kagari))
+                {
                     KagariSummoned = true;
+                    if (HornetSetupStage == HornetZeroSetupStage.NeedKagari)
+                        HornetSetupStage = HornetZeroSetupStage.KagariReady;
+                    if (LinkageOtk == LinkageOtkStage.SummonKagari)
+                        LinkageOtk = LinkageOtkStage.KagariReady;
+                }
                 else if (card.IsCode(CardId.Shizuku))
                     ShizukuSummoned = true;
                 else if (card.IsCode(CardId.Hayate))
                     HayateSummoned = true;
                 else if (card.IsCode(CardId.Zero))
+                {
+                    bool setupZero = HornetSetupStage == HornetZeroSetupStage.NeedZero ||
+                        RayeToZeroSetupPending;
                     ZeroSummoned = true;
+                    if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
+                        HornetSetupStage = HornetZeroSetupStage.None;
+                    if (RayeToZeroSetupPending)
+                        RayeToZeroSetupPending = false;
+                    if (LinkageOtk == LinkageOtkStage.SummonZero)
+                        LinkageOtk = LinkageOtkStage.ZeroReady;
+                    if (setupZero)
+                        PreserveEmptyMainZoneForZero = true;
+                }
                 else if (card.IsCode(CardId.Camellia))
                     CamelliaSummoned = true;
                 else if (card.IsCode(CardId.Amatsu))
+                {
                     AmatsuSummoned = true;
+                    if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
+                        HornetSetupStage = HornetZeroSetupStage.NeedZero;
+                }
                 else if (card.IsCode(CardId.Azalea))
                     AzaleaSummoned = true;
                 else if (card.IsCode(CardId.Zeke))
                     ZekeSummoned = true;
+
+                if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink &&
+                    card.IsCode(CardId.Hayate, CardId.Shizuku))
+                    HornetSetupStage = HornetZeroSetupStage.NeedZero;
             }
             base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
@@ -440,11 +545,17 @@ namespace WindBot.Game.AI.Decks
             {
                 if (hint == HintMsg.ToGrave)
                 {
-                    List<ClientCard> ordered = cards
+                    List<ClientCard> ordered = new List<ClientCard>();
+                    ClientCard intended = FindMatchingOfferedCard(cards, LinkageOtkSendTarget);
+                    if (intended != null)
+                        ordered.Add(intended);
+                    ordered.AddRange(cards
+                        .Where(card => !ordered.Contains(card))
                         .OrderBy(card => IsSkyStrikerAce(card) && card.Attacked ? 0 :
                             ControlledEnemyCards.Contains(card) ? 1 : 2)
                         .ThenBy(GetFieldResourceValue)
-                        .ToList();
+                        .ToList());
+                    LinkageOtkSendTarget = null;
                     return Util.CheckSelectCount(ordered, cards, min, max);
                 }
                 if (hint == HintMsg.SpSummon)
@@ -455,8 +566,7 @@ namespace WindBot.Game.AI.Decks
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Zero))
             {
                 if (hint == HintMsg.AddToHand)
-                    return Util.CheckSelectCount(OrderCardsById(cards, GetSkyStrikerSearchPriority(true), false),
-                        cards, min, max);
+                    return SelectZeroSearch(cards, min, max);
                 if (hint == HintMsg.SpSummon)
                     return Util.CheckSelectCount(OrderCardsById(cards, new[] { CardId.Raye, CardId.Roze }, false),
                         cards, min, max);
@@ -531,7 +641,7 @@ namespace WindBot.Game.AI.Decks
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.SpSummon)
-                return Util.CheckSelectCount(OrderCardsById(cards, GetLinkageExtraDeckPriority(), false),
+                return Util.CheckSelectCount(OrderCardsById(cards, GetLemnisgateExtraDeckPriority(), false),
                     cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 &&
@@ -613,6 +723,15 @@ namespace WindBot.Game.AI.Decks
             return base.OnSelectPlace(cardId, player, location, available);
         }
 
+        public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
+        {
+            if (LinkageOtk == LinkageOtkStage.RayeRozeReady &&
+                (cardId == CardId.Raye || cardId == CardId.Roze) &&
+                positions.Contains(CardPosition.FaceUpAttack))
+                return CardPosition.FaceUpAttack;
+            return base.OnSelectPosition(cardId, positions);
+        }
+
         public override ClientCard OnSelectAttacker(IList<ClientCard> attackers, IList<ClientCard> defenders)
         {
             ClientCard hayate = attackers.FirstOrDefault(card => card.IsCode(CardId.Hayate));
@@ -675,7 +794,11 @@ namespace WindBot.Game.AI.Decks
         public override bool OnSelectYesNo(int desc)
         {
             if (desc == Util.GetStringId(CardId.Zero, 2))
+            {
+                if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
+                    return false;
                 return Enemy.GetFieldCount() > 0;
+            }
             if (desc == Util.GetStringId(CardId.Roze, 2))
                 return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
             if (desc == Util.GetStringId(CardId.Lemnisgate, 1))
@@ -933,7 +1056,11 @@ namespace WindBot.Game.AI.Decks
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
             if (Card.Location == CardLocation.Hand)
+            {
+                if (PreserveEmptyMainZoneForZero && Bot.HasInMonstersZone(CardId.Zero))
+                    return false;
                 return Bot.MonsterZone.Any(card => card != null && IsSkyStrikerAce(card));
+            }
             return Card.Location == CardLocation.Grave;
         }
 
@@ -960,12 +1087,16 @@ namespace WindBot.Game.AI.Decks
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
             if (ActivateDescription == Util.GetStringId(CardId.Zero, 0))
-                return true;
+                return LinkageOtk != LinkageOtkStage.ZeroReady;
             if (ActivateDescription != Util.GetStringId(CardId.Zero, 1))
                 return false;
             if (Duel.Player == 0 && Duel.Phase > DuelPhase.Main1 &&
                 Duel.Phase < DuelPhase.Main2 && Card.Attacked)
+            {
+                if (LinkageOtk == LinkageOtkStage.ZeroReady)
+                    LinkageOtk = LinkageOtkStage.RayeRozeReady;
                 return true;
+            }
             return Duel.Player == 1 && (Enemy.GetFieldCount() > 0 || DefaultOnBecomeTarget() ||
                 Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints);
         }
@@ -981,8 +1112,33 @@ namespace WindBot.Game.AI.Decks
                 return DefaultOnBecomeTarget() || Duel.CurrentChain.Count > 0;
 
             if (Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2)
+            {
+                if (LinkageOtk == LinkageOtkStage.KagariReady)
+                {
+                    ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
+                        card.IsCode(CardId.Kagari) && card.Attacked);
+                    if (kagari != null && Bot.HasInExtra(CardId.Zero))
+                    {
+                        LinkageOtkSendTarget = kagari;
+                        LinkageOtk = LinkageOtkStage.SummonZero;
+                        return true;
+                    }
+                }
+
+                if (LinkageOtk == LinkageOtkStage.None)
+                {
+                    ClientCard attacker = GetLinkageOtkStarter();
+                    if (attacker != null)
+                    {
+                        LinkageOtkSendTarget = attacker;
+                        LinkageOtk = LinkageOtkStage.SummonKagari;
+                        return true;
+                    }
+                }
+
                 return Bot.GetMonsters().Any(card => IsSkyStrikerAceLink(card) && card.Attacked) ||
                     Bot.GetMonsterCount() == 0;
+            }
 
             if (Duel.Phase == DuelPhase.Main1)
                 return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
@@ -996,6 +1152,10 @@ namespace WindBot.Game.AI.Decks
         private bool LemnisgateEffect()
         {
             if (Card.Location == CardLocation.Grave)
+            {
+                if (LinkageOtk != LinkageOtkStage.None ||
+                    HornetSetupStage != HornetZeroSetupStage.None)
+                    return false;
                 return Bot.HasInExtra(new[]
                 {
                     CardId.Zero,
@@ -1004,9 +1164,13 @@ namespace WindBot.Game.AI.Decks
                     CardId.Kagari,
                     CardId.Hayate
                 });
+            }
 
             int spells = Bot.Graveyard.Count(card => card.IsSpell() && IsSkyStrikerCard(card));
             int monsters = Bot.Graveyard.Count(card => card.IsMonster() && IsSkyStrikerAce(card));
+            if (HornetSetupStage == HornetZeroSetupStage.NeedZero &&
+                spells > 0 && monsters > 0)
+                return true;
             if (spells >= 2 && monsters >= 2 && Enemy.GetFieldCount() > 0)
                 return true;
             return Duel.Phase == DuelPhase.End && spells > 0 && monsters > 0;
@@ -1016,11 +1180,26 @@ namespace WindBot.Game.AI.Decks
         {
             if (ZeroSummoned)
                 return false;
-            List<ClientCard> materials = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Zero))
+
+            if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
+                return false;
+
+            List<ClientCard> candidates = Bot.GetMonsters()
+                .Where(card => card.IsFaceup() && IsSkyStrikerAce(card) && !card.IsCode(CardId.Zero))
                 .OrderBy(GetLinkMaterialValue)
-                .Take(2)
                 .ToList();
+            List<ClientCard> materials = candidates.Take(2).ToList();
+
+            if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
+            {
+                ClientCard token = candidates.FirstOrDefault(card => card.IsCode(CardId.Token));
+                ClientCard bridge = candidates.FirstOrDefault(card =>
+                    card.IsCode(CardId.Amatsu, CardId.Hayate, CardId.Shizuku));
+                materials = token != null && bridge != null
+                    ? new List<ClientCard> { bridge, token }
+                    : new List<ClientCard>();
+            }
+
             if (materials.Count != 2 || Util.GetBotAvailZonesFromExtraDeck(materials) == 0)
                 return false;
             AI.SelectMaterials(materials);
@@ -1065,6 +1244,17 @@ namespace WindBot.Game.AI.Decks
         {
             if (AmatsuSummoned)
                 return false;
+
+            if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
+            {
+                ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
+                    card.IsFaceup() && card.IsCode(CardId.Kagari));
+                if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
+                    return false;
+                AI.SelectMaterials(new[] { kagari });
+                return true;
+            }
+
             ClientCard material = Bot.GetMonsters()
                 .Where(card => card.IsFaceup() && IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Amatsu))
                 .OrderBy(GetLinkMaterialValue)
@@ -1307,8 +1497,19 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Phase != DuelPhase.Main1)
                 return false;
 
-            if (Bot.GetMonstersExtraZoneCount() == 0)
+            if (HornetSetupStage == HornetZeroSetupStage.KagariReady &&
+                Bot.HasInMonstersZone(CardId.Kagari) && Bot.GetMonstersInMainZone().Count == 0)
+            {
+                HornetSetupStage = HornetZeroSetupStage.AwaitSecondToken;
                 return true;
+            }
+
+            if (Bot.GetMonstersExtraZoneCount() == 0)
+            {
+                if (ShouldStartHornetZeroSetup())
+                    HornetSetupStage = HornetZeroSetupStage.AwaitFirstToken;
+                return true;
+            }
 
             if (!Bot.HasInMonstersZone(CardId.Linkuriboh))
             {
@@ -1695,6 +1896,17 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectPosition(Duel.Player == 0 ? CardPosition.FaceUpAttack : CardPosition.FaceUpDefence);
                 return true;
             }
+
+            if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
+                return false;
+
+            if (ShouldUseRayeForZeroSetup())
+            {
+                RayeToZeroSetupPending = true;
+                RayeSelectTarget();
+                return true;
+            }
+
             bool shouldTag = Util.IsChainTarget(Card) ||
                 Card == Bot.BattlingMonster && Duel.Player == 1 ||
                 Duel.Player == 0 && Duel.Phase == DuelPhase.Main2;
@@ -1715,6 +1927,12 @@ namespace WindBot.Game.AI.Decks
 
         private void RayeSelectTarget()
         {
+            if (RayeToZeroSetupPending && !ZeroSummoned && Bot.HasInExtra(CardId.Zero))
+            {
+                AI.SelectCard(CardId.Zero);
+                return;
+            }
+
             if (Duel.Player == 1 && !AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu))
             {
                 AI.SelectCard(CardId.Amatsu, CardId.Shizuku, CardId.Kagari, CardId.Hayate);
@@ -1745,6 +1963,18 @@ namespace WindBot.Game.AI.Decks
         {
             if (KagariSummoned)
                 return false;
+
+            if (HornetSetupStage == HornetZeroSetupStage.NeedKagari)
+            {
+                ClientCard token = Bot.GetMonsters().FirstOrDefault(card =>
+                    card.IsFaceup() && card.IsCode(CardId.Token));
+                if (token == null || Util.GetBotAvailZonesFromExtraDeck(new[] { token }) == 0)
+                    return false;
+                KagariSummoned = true;
+                AI.SelectMaterials(new[] { token });
+                return true;
+            }
+
             if (!Bot.HasInGraveyard(new[]
             {
                 CardId.Engage,
@@ -1762,6 +1992,31 @@ namespace WindBot.Game.AI.Decks
         {
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
+            if (LinkageOtk == LinkageOtkStage.KagariReady)
+            {
+                ClientCard linkage = Bot.GetGraveyardSpells().FirstOrDefault(card =>
+                    card.IsCode(CardId.Linkage));
+                if (linkage == null)
+                {
+                    LinkageOtk = LinkageOtkStage.None;
+                    return false;
+                }
+                AI.SelectCard(linkage);
+                return true;
+            }
+
+            if (HornetSetupStage == HornetZeroSetupStage.KagariReady)
+            {
+                ClientCard hornet = Bot.GetGraveyardSpells().FirstOrDefault(card =>
+                    card.IsCode(CardId.HornetDrones));
+                if (hornet != null)
+                {
+                    AI.SelectCard(hornet);
+                    return true;
+                }
+                HornetSetupStage = HornetZeroSetupStage.None;
+            }
+
             ClientCard target = Bot.GetGraveyardSpells().FirstOrDefault(card => card.IsCode(CardId.Engage));
             if (target == null && EmptyMainMonsterZone() && Util.GetProblematicEnemyMonster() != null)
                 target = Bot.GetGraveyardSpells().FirstOrDefault(card => card.IsCode(CardId.Afterburners));
@@ -1776,6 +2031,19 @@ namespace WindBot.Game.AI.Decks
 
         private bool HayateSummon()
         {
+            if (HayateSummoned)
+                return false;
+            if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
+            {
+                ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
+                    card.IsFaceup() && card.IsCode(CardId.Kagari));
+                if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
+                    return false;
+                HayateSummoned = true;
+                AI.SelectMaterials(new[] { kagari });
+                return true;
+            }
+
             if (Util.IsTurn1OrMain2())
                 return false;
             if (HaveThreeSpellsInGrave() && !Util.IsAllEnemyBetter())
@@ -2326,7 +2594,20 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShizukuSummon()
         {
-            if (ShizukuSummoned || !Util.IsTurn1OrMain2())
+            if (ShizukuSummoned)
+                return false;
+            if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
+            {
+                ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
+                    card.IsFaceup() && card.IsCode(CardId.Kagari));
+                if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
+                    return false;
+                ShizukuSummoned = true;
+                AI.SelectMaterials(new[] { kagari });
+                return true;
+            }
+
+            if (!Util.IsTurn1OrMain2())
                 return false;
             ShizukuSummoned = true;
             return true;
@@ -2367,12 +2648,19 @@ namespace WindBot.Game.AI.Decks
         private int[] GetSkyStrikerSearchPriority(bool includeEngage)
         {
             List<int> result = new List<int>();
-            bool haveAceAccess = Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.Raye) ||
-                Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.Roze);
-            if (!haveAceAccess)
+            bool openingSetup = Duel.Player == 0 && Duel.Phase == DuelPhase.Main1 &&
+                Bot.GetMonstersExtraZoneCount() == 0;
+            bool haveLiveAceAccess = Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
+                Bot.HasInHandOrHasInMonstersZone(CardId.Roze);
+            if (!haveLiveAceAccess)
             {
                 result.Add(CardId.Raye);
+                result.Add(CardId.HornetDrones);
                 result.Add(CardId.Roze);
+            }
+            else if (openingSetup && !Bot.HasInHandOrInSpellZone(CardId.HornetDrones))
+            {
+                result.Add(CardId.HornetDrones);
             }
             if (includeEngage)
                 result.Add(CardId.Engage);
@@ -2542,6 +2830,67 @@ namespace WindBot.Game.AI.Decks
             return result;
         }
 
+        private IList<ClientCard> SelectZeroSearch(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            int otherSpellsInGrave = Bot.Graveyard.Count(card =>
+                card.IsSpell() && !card.IsCode(CardId.Engage));
+            CardLocation preferredEngageLocation = otherSpellsInGrave >= 3
+                ? CardLocation.Grave : CardLocation.Deck;
+
+            ordered.AddRange(cards.Where(card => card.IsCode(CardId.Engage) &&
+                card.Location == preferredEngageLocation));
+            ordered.AddRange(cards.Where(card => card.IsCode(CardId.Engage) &&
+                !ordered.Contains(card)));
+            ordered.AddRange(OrderCardsById(cards, GetSkyStrikerSearchPriority(true), false)
+                .Where(card => !ordered.Contains(card)));
+            return Util.CheckSelectCount(ordered, cards, min, max);
+        }
+
+        private ClientCard FindMatchingOfferedCard(IList<ClientCard> cards, ClientCard intended)
+        {
+            if (intended == null)
+                return null;
+            return cards.FirstOrDefault(card => card == intended ||
+                card.Controller == intended.Controller && card.Location == intended.Location &&
+                card.Sequence == intended.Sequence && card.IsCode(intended.Id));
+        }
+
+        private bool ShouldUseRayeForZeroSetup()
+        {
+            return Card.Location == CardLocation.MonsterZone && Duel.Player == 0 &&
+                Duel.Phase == DuelPhase.Main1 && Duel.CurrentChain.Count == 0 &&
+                LinkageOtk == LinkageOtkStage.None && !ZeroSummoned &&
+                Bot.HasInExtra(CardId.Zero) && Bot.GetMonsterCount() == 1 &&
+                (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
+        }
+
+        private bool ShouldStartHornetZeroSetup()
+        {
+            return HornetSetupStage == HornetZeroSetupStage.None &&
+                LinkageOtk == LinkageOtkStage.None && !KagariSummoned && !ZeroSummoned &&
+                Bot.HasInExtra(CardId.Kagari) && Bot.HasInExtra(CardId.Zero) &&
+                Bot.HasInExtra(new[] { CardId.Amatsu, CardId.Hayate, CardId.Shizuku }) &&
+                (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
+        }
+
+        private ClientCard GetLinkageOtkStarter()
+        {
+            if (Enemy.GetFieldCount() > 0 || KagariSummoned || ZeroSummoned ||
+                !Bot.HasInExtra(CardId.Kagari) || !Bot.HasInExtra(CardId.Zero) ||
+                !(Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) ||
+                !(Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze)))
+                return null;
+
+            ClientCard attacker = Bot.GetMonsters().FirstOrDefault(card =>
+                card.IsFaceup() && card.Sequence >= 5 && card.HasType(CardType.Link) &&
+                card.Attacked && !card.IsCode(CardId.Kagari, CardId.Zero) &&
+                card.GetAttackPower() >= 1500);
+            if (attacker == null || attacker.GetAttackPower() + 6500 < Enemy.LifePoints)
+                return null;
+            return attacker;
+        }
+
         private List<ClientCard> OrderEnemyTargets(IList<ClientCard> cards)
         {
             ClientCard problematic = Util.GetProblematicEnemyMonster();
@@ -2601,6 +2950,15 @@ namespace WindBot.Game.AI.Decks
         private int[] GetLinkageExtraDeckPriority()
         {
             List<int> result = new List<int>();
+            if (LinkageOtk == LinkageOtkStage.SummonKagari)
+                return Bot.HasInExtra(CardId.Kagari)
+                    ? new[] { CardId.Kagari }
+                    : new int[0];
+            if (LinkageOtk == LinkageOtkStage.SummonZero)
+                return Bot.HasInExtra(CardId.Zero)
+                    ? new[] { CardId.Zero }
+                    : new int[0];
+
             bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
             if (battle && !KagariSummoned && Bot.HasInGraveyard(new[]
             {
@@ -2627,6 +2985,21 @@ namespace WindBot.Game.AI.Decks
                 CardId.Hayate
             });
             return result.Distinct().Where(Bot.HasInExtra).ToArray();
+        }
+
+        private int[] GetLemnisgateExtraDeckPriority()
+        {
+            return new[]
+            {
+                CardId.Azalea,
+                CardId.Camellia,
+                CardId.Amatsu,
+                CardId.Shizuku,
+                CardId.Kagari,
+                CardId.Hayate,
+                CardId.Zero,
+                CardId.Zeke
+            }.Where(Bot.HasInExtra).ToArray();
         }
 
         private List<ClientCard> GetModernLinkTwoMaterials(Func<ClientCard, bool> filter, bool requireAceLink)

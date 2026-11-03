@@ -192,6 +192,27 @@ field-monster effect, a classified board threat, or a lethal attacker, and track
 its intended monster so another response does not negate the same card twice.
 The user-owned MDPro4 deck file is not modified.
 
+The opening setup now treats Engage and Reinforcement of the Army as access to
+Raye or Hornet Drones. A lone Raye can tag directly into Zero. The legal Drones
+route is Token into Kagari (Kagari, not Shizuku, recovers Drones), a second Token,
+Kagari into Amatsu with Hayate/Shizuku as fallbacks, then the bridge Link plus the
+Token into Zero. If Lemnisgate is available, that route first recycles the spent
+Drones/Kagari pair so Lemnisgate remains in the GY beside Zero. Outside the OTK
+route, Zero always accepts its search and prioritizes Engage. When both Deck and
+GY copies are offered, it takes Engage from the GY only if at least three other
+Spells will remain there; otherwise it takes a Deck copy and preserves the GY
+Engage toward the three-Spell threshold.
+
+The Linkage OTK starts only after the opposing field is empty, an unused
+1500-or-higher Link Monster in the Extra Monster Zone has attacked, Kagari and
+Zero remain unused, Raye/Roze are available from Deck/GY, and the conservative
+damage total reaches the opponent's LP. It sends that attacker for Kagari,
+recovers Linkage and attacks with Kagari, sends Kagari for Zero, deliberately declines
+Zero's search, attacks with Zero, then tags into Raye and Roze without taking the
+optional destruction. Its minimum modeled damage is 8,000 before Linkage's
+LIGHT/DARK bonus. Lemnisgate's GY Link trigger is held during this sequence so it
+does not consume either final attacker.
+
 After building, start it from the output directory with an explicit database and
 compatible duel host, for example:
 
