@@ -199,6 +199,15 @@ board threat, or otherwise lethal attackers. It sends exactly one expendable
 card per planned negate, will not spend protected Raye/Engage/Linkage resources,
 and yields to Widow Anchor when that card can negate and take the same monster
 for an immediate Link or battle use.
+
+Mirror-match policy is enabled only after the opponent reveals a Sky Striker
+card on the public field, in a public zone, or on the Chain; it never inspects a
+hidden identity. In the mirror, Shark Cannon prioritizes denying Raye/Roze and
+revives them when they can become immediate Link material, Widow Anchor can take
+an otherwise non-threatening opposing Ace for the same purpose, Multirole is the
+first face-up back-row removal target, and searches raise Shark Cannon, Widow
+Anchor and Multirole ahead of generic follow-up when their mirror conditions are
+present.
 The user-owned MDPro4 deck file is not modified.
 
 The opening setup now treats Engage and Reinforcement of the Army as access to

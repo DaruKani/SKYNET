@@ -130,6 +130,7 @@ namespace WindBot.Game.AI.Decks
         private bool RayeToZeroSetupPending;
         private bool PreserveEmptyMainZoneForZero;
         private bool ZeroSearchPending;
+        private bool SkyStrikerMirrorObserved;
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
@@ -156,7 +157,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Raye, RayeEffect);
             AddExecutor(ExecutorType.Activate, CardId.Roze, RozeEffect);
             AddExecutor(ExecutorType.Activate, CardId.TwinTwisters, TwinTwistersEffect);
-            AddExecutor(ExecutorType.Activate, CardId.MysticalSpaceTyphoon, DefaultMysticalSpaceTyphoon);
+            AddExecutor(ExecutorType.Activate, CardId.MysticalSpaceTyphoon, MysticalSpaceTyphoonEffect);
             AddExecutor(ExecutorType.Activate, CardId.HarpiesFeatherDuster, DefaultHarpiesFeatherDusterFirst);
             AddExecutor(ExecutorType.Activate, CardId.Raigeki, DefaultRaigeki);
             AddExecutor(ExecutorType.Activate, CardId.LightningStorm, LightningStormEffect);
@@ -311,6 +312,13 @@ namespace WindBot.Game.AI.Decks
             base.OnSummoning();
         }
 
+        public override void OnChaining(int player, ClientCard card)
+        {
+            if (player == 1)
+                ObserveSkyStrikerMirror(card, true);
+            base.OnChaining(player, card);
+        }
+
         public override void OnChainEnd()
         {
             AmatsuRedirectPending = false;
@@ -358,6 +366,8 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousControler, int previousLocation,
             int currentControler, int currentLocation)
         {
+            if (currentControler == 1)
+                ObserveSkyStrikerMirror(card, IsPublicOpponentLocation(card, currentLocation));
             ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
             if (card != null && MultiroleSetCards.Contains(card) &&
                 (currentControler != 0 || currentLocation != (int)CardLocation.SpellZone))
@@ -856,7 +866,10 @@ namespace WindBot.Game.AI.Decks
             }
             if (desc == Util.GetStringId(CardId.Afterburners, 0))
             {
-                ClientCard target = Util.GetBestEnemySpell();
+                ClientCard target = SkyStrikerMirrorObserved
+                    ? GetMirrorPriorityEnemySpell() : null;
+                if (target == null)
+                    target = Util.GetBestEnemySpell();
                 if (target == null)
                     return false;
                 AI.SelectCard(target);
@@ -936,6 +949,23 @@ namespace WindBot.Game.AI.Decks
         private bool LightningStormEffect()
         {
             return Enemy.GetMonsters().Any(card => card.IsAttack()) || Enemy.GetSpellCount() > 0;
+        }
+
+        private bool MysticalSpaceTyphoonEffect()
+        {
+            if (SkyStrikerMirrorObserved &&
+                !Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                    card.IsCode(CardId.MysticalSpaceTyphoon)))
+            {
+                ClientCard target = GetMirrorPriorityEnemySpell();
+                if (target != null)
+                {
+                    MarkCurrentChainHandled(target);
+                    AI.SelectCard(target);
+                    return true;
+                }
+            }
+            return DefaultMysticalSpaceTyphoon();
         }
 
         private bool ForbiddenDropletEffect()
@@ -1738,7 +1768,9 @@ namespace WindBot.Game.AI.Decks
                 return false;
 
             List<ClientCard> targets = Enemy.GetGraveyardMonsters()
-                .OrderByDescending(card => card.Attack)
+                .OrderBy(card => SkyStrikerMirrorObserved && card.IsCode(CardId.Raye) ? 0 :
+                    SkyStrikerMirrorObserved && card.IsCode(CardId.Roze) ? 1 : 2)
+                .ThenByDescending(card => card.Attack)
                 .ToList();
 
             ChainInfo lastChain = Duel.CurrentChainInfo.LastOrDefault();
@@ -1760,6 +1792,24 @@ namespace WindBot.Game.AI.Decks
 
             if (Duel.CurrentChain.Count > 0)
                 return false;
+
+            if (SkyStrikerMirrorObserved && Duel.Player == 0 &&
+                Duel.Phase == DuelPhase.Main1 && EmptyMainMonsterZone())
+            {
+                ClientCard mirrorAce = targets.FirstOrDefault(card =>
+                    card.IsCode(CardId.Raye, CardId.Roze));
+                if (mirrorAce != null)
+                {
+                    bool canTakeForLink = HaveThreeSpellsInGrave() &&
+                        ShouldReviveWithSharkCannon(mirrorAce);
+                    SharkCannonBanishOnly = !canTakeForLink;
+                    SharkCannonTarget = mirrorAce;
+                    AI.SelectCard(mirrorAce);
+                    if (canTakeForLink)
+                        AI.SelectPosition(CardPosition.FaceUpAttack);
+                    return true;
+                }
+            }
 
             if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1 ||
                 !EmptyMainMonsterZone() || !HaveThreeSpellsInGrave())
@@ -2711,6 +2761,19 @@ namespace WindBot.Game.AI.Decks
             }
             if (includeEngage)
                 result.Add(CardId.Engage);
+            if (SkyStrikerMirrorObserved)
+            {
+                if (Enemy.GetGraveyardMonsters().Any(card =>
+                    card.IsCode(CardId.Raye, CardId.Roze)) &&
+                    !Bot.HasInHandOrInSpellZone(CardId.SharkCannon))
+                    result.Add(CardId.SharkCannon);
+                if (Enemy.GetMonsters().Any(card => card.IsFaceup() &&
+                    IsSkyStrikerAce(card)) &&
+                    !Bot.HasInHandOrInSpellZone(CardId.WidowAnchor))
+                    result.Add(CardId.WidowAnchor);
+                if (!Bot.HasInHandOrInSpellZone(CardId.Multirole))
+                    result.Add(CardId.Multirole);
+            }
             if (!Bot.HasInHandOrInSpellZone(CardId.Linkage))
                 result.Add(CardId.Linkage);
             if (!Bot.HasInHandOrInSpellZone(CardId.HornetDrones))
@@ -2763,6 +2826,18 @@ namespace WindBot.Game.AI.Decks
                 candidates.GetShouldBeDisabledBeforeItUseEffectMonster();
             if (target != null)
                 return target;
+
+            if (SkyStrikerMirrorObserved && Duel.Player == 0 &&
+                HaveThreeSpellsInGrave())
+            {
+                ClientCard mirrorLink = candidates
+                    .Where(card => IsSkyStrikerAce(card) && !card.IsCode(CardId.Zero) &&
+                        CanImmediatelyUseControlledMonster(card, true))
+                    .OrderByDescending(GetMirrorMonsterPriority)
+                    .FirstOrDefault();
+                if (mirrorLink != null)
+                    return mirrorLink;
+            }
 
             if (problematicOnly)
             {
@@ -3028,6 +3103,8 @@ namespace WindBot.Game.AI.Decks
             ClientCard bestSpell = Util.GetBestEnemySpell();
             return cards
                 .OrderByDescending(card => card.Controller == 1 ? 1 : 0)
+                .ThenByDescending(card => SkyStrikerMirrorObserved &&
+                    card.IsCode(CardId.Multirole) ? 1 : 0)
                 .ThenByDescending(card => card == problematic || card == bestSpell || card.IsFloodgate() ? 1 : 0)
                 .ThenByDescending(card => card.IsFaceup() ? 1 : 0)
                 .ThenByDescending(GetCardUtility)
@@ -3042,6 +3119,13 @@ namespace WindBot.Game.AI.Decks
                 .ToList();
             if (candidates.Count == 0)
                 return null;
+
+            if (SkyStrikerMirrorObserved)
+            {
+                ClientCard mirrorSpell = GetMirrorPriorityEnemySpell();
+                if (mirrorSpell != null && candidates.Contains(mirrorSpell))
+                    return mirrorSpell;
+            }
 
             int threatThreshold = Math.Max(2400, Util.GetBestAttack(Bot));
             ClientCard problematic = Util.GetProblematicEnemyCard(threatThreshold, true);
@@ -3215,6 +3299,59 @@ namespace WindBot.Game.AI.Decks
                     CardId.Azalea, CardId.Zeke, CardId.Engage, CardId.Linkage,
                     CardId.Lemnisgate, CardId.HornetDrones, CardId.WidowAnchor,
                     CardId.SharkCannon));
+        }
+
+        private void ObserveSkyStrikerMirror(ClientCard card, bool isPublic)
+        {
+            if (SkyStrikerMirrorObserved || !isPublic || card == null || card.Id == 0 ||
+                !IsSkyStrikerCard(card))
+                return;
+            SkyStrikerMirrorObserved = true;
+            Logger.DebugWriteLine("[SkyStriker2026] Public Sky Striker card observed; " +
+                "mirror policy enabled by " + (card.Name ?? card.Id.ToString()));
+        }
+
+        private bool IsPublicOpponentLocation(ClientCard card, int location)
+        {
+            if (card == null || card.Id == 0)
+                return false;
+            if ((location & (int)CardLocation.Grave) != 0)
+                return true;
+            if ((location & (int)CardLocation.Removed) != 0)
+                return card.IsFaceup();
+            if ((location & ((int)CardLocation.MonsterZone | (int)CardLocation.SpellZone)) != 0)
+                return card.IsFaceup();
+            return false;
+        }
+
+        private ClientCard GetMirrorPriorityEnemySpell()
+        {
+            if (!SkyStrikerMirrorObserved)
+                return null;
+            return Enemy.GetSpells()
+                .Where(card => card.IsFaceup() && !IsCurrentChainHandled(card) &&
+                    card.IsCode(CardId.Multirole, CardId.AreaZero))
+                .OrderBy(card => card.IsCode(CardId.Multirole) ? 0 : 1)
+                .FirstOrDefault();
+        }
+
+        private int GetMirrorMonsterPriority(ClientCard card)
+        {
+            if (card == null)
+                return 0;
+            if (card.IsCode(CardId.Raye))
+                return 8;
+            if (card.IsCode(CardId.Kagari))
+                return 7;
+            if (card.IsCode(CardId.Shizuku))
+                return 6;
+            if (card.IsCode(CardId.Hayate))
+                return 5;
+            if (card.IsCode(CardId.Camellia, CardId.Azalea, CardId.Zeke))
+                return 4;
+            if (card.IsCode(CardId.Roze))
+                return 3;
+            return 1;
         }
 
         private bool IsSkyStrikerAce(ClientCard card)
