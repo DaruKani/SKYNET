@@ -216,6 +216,23 @@ does not consume either final attacker.
 After building, start it from the output directory with an explicit database and
 compatible duel host, for example:
 
+For the local MDPro4 setup, open a compatible room on port `7911`, then
+double-click `Tools\Run-SkyStriker2026.bat`. The launcher locates Visual Studio
+MSBuild, builds `Debug|Any CPU`, and joins `127.0.0.1:7911` with decision logging
+enabled. It only reads the external card database and does not modify MDPro4's
+deck or settings files. The defaults and optional overrides are:
+
+```cmd
+WindBot\Tools\Run-SkyStriker2026.bat
+WindBot\Tools\Run-SkyStriker2026.bat --build-only
+WindBot\Tools\Run-SkyStriker2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb"
+WindBot\Tools\Run-SkyStriker2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb" "room-password"
+```
+
+The fourth argument is optional `HostInfo` for a room that requires it. If the
+room is not listening yet, WindBot reports a connection failure; start or reopen
+the room and run the launcher again. The equivalent manual command is:
+
 ```powershell
 Push-Location .\WindBot\bin\Debug
 try {
