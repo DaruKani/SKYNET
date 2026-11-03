@@ -186,7 +186,11 @@ opponent's End Phase or when a set copy would be redundant. If a Level 8 Fusion
 is already recoverable and a second opposing card remains, the bot can send
 Ecclesia first for its additional shuffle; unavailable routes fall back to the
 remaining Extra Deck choices. An unused hand copy is set in the bot's Main Phase
-only when a later activation still has a valid Extra Deck or Ecclesia route.
+only when a later activation still has a valid Extra Deck or Ecclesia route. Its
+destruction mode is held unless the face-up target is a floodgate, a dangerous
+or otherwise unanswerable card, a live Continuous/Equip/Field Spell resolving
+on the Chain, or an attacker contributing to lethal damage; a harmless face-up
+card is no longer enough reason to spend the effect merely to send Albion.
 Forbidden Crown now chains only to a live opposing
 field-monster effect, a classified board threat, or a lethal attacker, and tracks
 its intended monster so another response does not negate the same card twice.

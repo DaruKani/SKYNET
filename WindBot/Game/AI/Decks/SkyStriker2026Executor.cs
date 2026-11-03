@@ -123,6 +123,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
+        private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard LinkageOtkSendTarget;
         private HornetZeroSetupStage HornetSetupStage;
         private LinkageOtkStage LinkageOtk;
@@ -288,6 +289,7 @@ namespace WindBot.Game.AI.Decks
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
+            FallenAndVirtuousDestroyTarget = null;
             LinkageOtkSendTarget = null;
             HornetSetupStage = HornetZeroSetupStage.None;
             LinkageOtk = LinkageOtkStage.None;
@@ -311,6 +313,7 @@ namespace WindBot.Game.AI.Decks
         {
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
+            FallenAndVirtuousDestroyTarget = null;
             LinkageOtkSendTarget = null;
 
             if (RayeToZeroSetupPending && !Bot.HasInMonstersZone(CardId.Zero))
@@ -481,7 +484,7 @@ namespace WindBot.Game.AI.Decks
                         return Util.CheckSelectCount(OrderCardsById(cards,
                             GetFallenAndVirtuousExtraDeckPriority(), false), cards, min, max);
                     if (hint == HintMsg.Destroy)
-                        return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                        return SelectFallenAndVirtuousDestroyTarget(cards, min, max);
                     if (hint == HintMsg.SpSummon)
                         return Util.CheckSelectCount(cards.OrderByDescending(GetCardUtility).ToList(), cards, min, max);
                 }
@@ -539,7 +542,7 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(OrderCardsById(cards,
                         GetFallenAndVirtuousExtraDeckPriority(), false), cards, min, max);
                 if (hint == HintMsg.Destroy)
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                    return SelectFallenAndVirtuousDestroyTarget(cards, min, max);
             }
 
             if (solving != null && solving.ActivatePlayer == 0 &&
@@ -869,9 +872,9 @@ namespace WindBot.Game.AI.Decks
             int reviveFallen = options.IndexOf(Util.GetStringId(CardId.TheFallenAndTheVirtuous, 2));
             if (destroyFallen >= 0 || reviveFallen >= 0)
             {
-                bool hasFaceupEnemy = Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                    .Any(card => card.IsFaceup());
-                if (destroyFallen >= 0 && hasFaceupEnemy)
+                if (!IsLiveFallenAndVirtuousDestroyTarget(FallenAndVirtuousDestroyTarget))
+                    FallenAndVirtuousDestroyTarget = GetFallenAndVirtuousDestroyTarget();
+                if (destroyFallen >= 0 && FallenAndVirtuousDestroyTarget != null)
                     return destroyFallen;
                 if (reviveFallen >= 0)
                     return reviveFallen;
@@ -997,15 +1000,17 @@ namespace WindBot.Game.AI.Decks
 
         private bool FallenAndVirtuousEffect()
         {
+            FallenAndVirtuousDestroyTarget = GetFallenAndVirtuousDestroyTarget();
             bool canPayDestroyCost = Bot.HasInExtra(CardId.AlbionTheBrandedDragon) ||
                 Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
                 Bot.HasInExtra(CardId.EcclesiaAndTheDarkDragon);
-            bool canDestroy = canPayDestroyCost && Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                .Any(card => card.IsFaceup());
+            bool canDestroy = canPayDestroyCost && FallenAndVirtuousDestroyTarget != null;
             bool hasEcclesia = Bot.GetMonsters().Concat(Bot.Graveyard)
                 .Any(card => card.IsCode(CardId.EcclesiaAndTheDarkDragon));
             bool canRevive = hasEcclesia && Bot.Graveyard.Concat(Enemy.Graveyard)
                 .Any(card => card.IsMonster() && card.IsCanRevive());
+            if (canDestroy)
+                MarkCurrentChainHandled(FallenAndVirtuousDestroyTarget);
             return canDestroy || canRevive;
         }
 
@@ -2916,6 +2921,59 @@ namespace WindBot.Game.AI.Decks
                 .ThenByDescending(card => card.IsFaceup() ? 1 : 0)
                 .ThenByDescending(GetCardUtility)
                 .ToList();
+        }
+
+        private ClientCard GetFallenAndVirtuousDestroyTarget()
+        {
+            List<ClientCard> candidates = Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Where(card => card.IsFaceup() && !card.IsShouldNotBeTarget() &&
+                    !card.IsShouldNotBeSpellTrapTarget() && !IsCurrentChainHandled(card))
+                .ToList();
+            if (candidates.Count == 0)
+                return null;
+
+            int threatThreshold = Math.Max(2400, Util.GetBestAttack(Bot));
+            ClientCard problematic = Util.GetProblematicEnemyCard(threatThreshold, true);
+            if (problematic != null && candidates.Contains(problematic))
+                return problematic;
+
+            ClientCard problematicSpell = Util.GetProblematicEnemySpell();
+            if (problematicSpell != null && candidates.Contains(problematicSpell))
+                return problematicSpell;
+
+            ClientCard last = Util.GetLastChainCard();
+            if (Duel.LastChainPlayer == 1 && last != null && candidates.Contains(last) &&
+                last.IsSpell() && last.HasType(CardType.Continuous | CardType.Equip | CardType.Field))
+                return last;
+
+            if (Duel.Player == 1 &&
+                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints)
+            {
+                return candidates.Where(card => card.IsMonster() && card.IsAttack())
+                    .OrderByDescending(card => card.Attack)
+                    .FirstOrDefault();
+            }
+
+            return null;
+        }
+
+        private bool IsLiveFallenAndVirtuousDestroyTarget(ClientCard target)
+        {
+            return target != null && target.Controller == 1 && target.IsFaceup() &&
+                (target.Location == CardLocation.MonsterZone ||
+                target.Location == CardLocation.SpellZone);
+        }
+
+        private IList<ClientCard> SelectFallenAndVirtuousDestroyTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            ClientCard intended = FindMatchingOfferedCard(cards, FallenAndVirtuousDestroyTarget);
+            if (intended != null)
+                ordered.Add(intended);
+            ordered.AddRange(OrderEnemyTargets(cards).Where(card => !ordered.Contains(card)));
+            FallenAndVirtuousDestroyTarget = null;
+            return Util.CheckSelectCount(ordered, cards, min, max);
         }
 
         private int[] GetFallenAndVirtuousExtraDeckPriority()
