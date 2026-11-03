@@ -82,6 +82,8 @@ namespace WindBot.Game.AI.Decks
             public const int SuperStarslayerTyphon = 93039339;
             public const int ForbiddenDroplet = 24299458;
             public const int ForbiddenCrown = 98829635;
+            public const int TheHallowedAzamina = 94845588;
+            public const int AzaminaDebtors = 20934683;
             public const int Raigeki = 12580477;
             public const int LightningStorm = 14532163;
             public const int HarpiesFeatherDuster = 18144506;
@@ -962,9 +964,20 @@ namespace WindBot.Game.AI.Decks
 
         private bool MysticalSpaceTyphoonEffect()
         {
-            if (SkyStrikerMirrorObserved &&
-                !Duel.CurrentChain.Any(card => card.Controller == 0 &&
-                    card.IsCode(CardId.MysticalSpaceTyphoon)))
+            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                card.IsCode(CardId.MysticalSpaceTyphoon)))
+                return false;
+            ClientCard azaminaResource = Enemy.GetSpells()
+                .Where(IsAzaminaFusionResourceDisruption)
+                .OrderByDescending(GetSpellTrapDestructionScore)
+                .FirstOrDefault();
+            if (azaminaResource != null)
+            {
+                MarkCurrentChainHandled(azaminaResource);
+                AI.SelectCard(azaminaResource);
+                return true;
+            }
+            if (SkyStrikerMirrorObserved)
             {
                 ClientCard target = GetMirrorPriorityEnemySpell();
                 if (target != null)
@@ -1190,13 +1203,41 @@ namespace WindBot.Game.AI.Decks
                 return Math.Max(0, monsterScore);
             }
 
-            if (!target.HasType(CardType.Continuous | CardType.Equip |
-                CardType.Field | CardType.Pendulum))
+            return GetSpellTrapDestructionScore(target);
+        }
+
+        private int GetSpellTrapDestructionScore(ClientCard target)
+        {
+            if (target == null || target.Controller != 1 ||
+                (!target.IsSpell() && !target.HasType(CardType.Trap)))
+                return 0;
+            if (IsAzaminaFusionResourceDisruption(target))
+                return 9000;
+            if (target.IsFacedown())
+                return 1800;
+            if (!IsPersistentSpellTrap(target))
                 return 0;
             int score = target.IsFloodgate() ? 6500 : 3500;
             if (SkyStrikerMirrorObserved && target.IsCode(CardId.Multirole, CardId.AreaZero))
                 score += target.IsCode(CardId.Multirole) ? 5000 : 2800;
             return score;
+        }
+
+        private bool IsPersistentSpellTrap(ClientCard card)
+        {
+            return card != null && card.HasType(CardType.Continuous | CardType.Equip |
+                CardType.Field | CardType.Pendulum);
+        }
+
+        private bool IsAzaminaFusionResourceDisruption(ClientCard target)
+        {
+            if (target == null || target.Controller != 1 || !target.IsFaceup() ||
+                !target.HasSetcode(0x19e))
+                return false;
+            ClientCard last = Util.GetLastChainCard();
+            return Duel.LastChainPlayer == 1 && last != null &&
+                Duel.CurrentChain.Contains(last) &&
+                last.IsCode(CardId.TheHallowedAzamina, CardId.AzaminaDebtors);
         }
 
         private bool HasSetSkyStrikerInteraction()
@@ -1498,8 +1539,7 @@ namespace WindBot.Game.AI.Decks
 
             List<ClientCard> targets = Enemy.GetSpells()
                 .Where(card => card.IsFloodgate() || card.IsFacedown() ||
-                    card.HasType(CardType.Continuous) || card.HasType(CardType.Equip) ||
-                    card.HasType(CardType.Field) || card.HasType(CardType.Pendulum))
+                    IsPersistentSpellTrap(card) || IsAzaminaFusionResourceDisruption(card))
                 .Where(card => !IsCurrentChainHandled(card))
                 .Distinct()
                 .ToList();
@@ -1512,7 +1552,7 @@ namespace WindBot.Game.AI.Decks
                 return false;
 
             targets = targets
-                .OrderBy(card => card.IsFloodgate() ? 0 : card.IsFaceup() ? 1 : 2)
+                .OrderByDescending(GetSpellTrapDestructionScore)
                 .Take(2)
                 .ToList();
 

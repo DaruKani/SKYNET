@@ -326,14 +326,9 @@ namespace WindBot.Game.AI.Decks
             }
             else
             {
-                score = target.IsFloodgate() ? 6500 : 1000;
-                if (target.HasType(CardType.Continuous | CardType.Equip | CardType.Field | CardType.Pendulum))
-                    score += 2500;
-                if (SkyStrikerMirrorObserved && target.IsCode(CardId.Multirole, CardId.AreaZero))
-                    score += target.IsCode(CardId.Multirole) ? 5000 : 2800;
-                ClientCard last = Util.GetLastChainCard();
-                if (Duel.LastChainPlayer == 1 && last == target)
-                    score += 1600;
+                score = GetSpellTrapDestructionScore(target);
+                if (score == 0)
+                    return 0;
             }
             // Sending Albion while another TFTV remains converts this removal into
             // an End Phase replacement, so it carries almost no long-term cost.

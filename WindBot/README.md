@@ -221,6 +221,17 @@ so would immediately enable the opponent's Raye in the Graveyard. The optional
 destruction prompt is tied to that scored target instead of selecting an arbitrary
 face-up card after Raye and Roze are summoned.
 
+Spell/Trap destruction follows resolution semantics instead of treating every
+card on the Chain as a negate. A face-up Normal, Quick-Play or Ritual Spell, or a
+Normal/Counter Trap, has zero interruption value after successful activation
+unless an explicit card-text interaction applies. Continuous, Field, Equip,
+Pendulum and Continuous Trap cards retain destruction value because their effects
+depend on remaining face-up. The explicit Azamina exception recognizes The
+Hallowed Azamina and Azamina Debtors: a publicly visible face-up "Sinful Spoils"
+card is a high-priority target because removing that resolution resource can deny
+the Fusion Summon. This shared classification is used by Zero, TFTV, Mystical
+Space Typhoon and Twin Twisters.
+
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a
 hidden identity. In the mirror, Shark Cannon prioritizes denying Raye/Roze and
