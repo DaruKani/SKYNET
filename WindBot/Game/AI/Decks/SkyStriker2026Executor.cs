@@ -130,6 +130,7 @@ namespace WindBot.Game.AI.Decks
         private bool RayeToZeroSetupPending;
         private bool PreserveEmptyMainZoneForZero;
         private bool ZeroSearchPending;
+        private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
@@ -159,7 +160,6 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.HarpiesFeatherDuster, DefaultHarpiesFeatherDusterFirst);
             AddExecutor(ExecutorType.Activate, CardId.Raigeki, DefaultRaigeki);
             AddExecutor(ExecutorType.Activate, CardId.LightningStorm, LightningStormEffect);
-            AddExecutor(ExecutorType.Activate, CardId.ForbiddenDroplet, ForbiddenDropletEffect);
             AddExecutor(ExecutorType.Activate, CardId.ForbiddenCrown, ForbiddenCrownEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.ReinforcementOfTheArmy, ReinforcementOfTheArmyEffect);
@@ -174,6 +174,7 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.Activate, CardId.Multirole, MultiroleActivation);
             AddExecutor(ExecutorType.Activate, CardId.WidowAnchor, WidowAnchorEffectFirst);
+            AddExecutor(ExecutorType.Activate, CardId.ForbiddenDroplet, ForbiddenDropletEffect);
             AddExecutor(ExecutorType.Activate, CardId.Afterburners, AfterburnersEffect);
             AddExecutor(ExecutorType.Activate, CardId.JammingWaves, JammingWavesEffect);
             AddExecutor(ExecutorType.SpellSet, CardId.AreaZero, AreaZeroSetForJammingWaves);
@@ -296,6 +297,7 @@ namespace WindBot.Game.AI.Decks
             RayeToZeroSetupPending = false;
             PreserveEmptyMainZoneForZero = false;
             ZeroSearchPending = false;
+            ForbiddenDropletTargets.Clear();
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
@@ -315,6 +317,7 @@ namespace WindBot.Game.AI.Decks
             ForbiddenCrownTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             LinkageOtkSendTarget = null;
+            ForbiddenDropletTargets.Clear();
 
             if (RayeToZeroSetupPending && !Bot.HasInMonstersZone(CardId.Zero))
                 RayeToZeroSetupPending = false;
@@ -491,8 +494,17 @@ namespace WindBot.Game.AI.Decks
 
                 if (activating.IsCode(CardId.ForbiddenDroplet) && hint == HintMsg.ToGrave)
                 {
-                    List<ClientCard> costs = cards.OrderBy(GetDropletCostValue).ToList();
-                    return Util.CheckSelectCount(costs, cards, min, Math.Min(max, Enemy.GetMonsters().Count));
+                    List<ClientCard> safeCosts = cards.Where(card =>
+                        GetDropletCostValue(card) < 5000).OrderBy(GetDropletCostValue).ToList();
+                    if (safeCosts.Count < min && cancelable)
+                    {
+                        ForbiddenDropletTargets.Clear();
+                        return new List<ClientCard>();
+                    }
+                    int planned = Math.Min(ForbiddenDropletTargets.Count, safeCosts.Count);
+                    int desired = Math.Min(max, Math.Max(min, planned));
+                    List<ClientCard> costs = safeCosts.Take(desired).ToList();
+                    return Util.CheckSelectCount(costs, cards, desired, desired);
                 }
 
                 if (activating.IsCode(CardId.Camellia) && hint == HintMsg.ToGrave &&
@@ -625,7 +637,7 @@ namespace WindBot.Game.AI.Decks
 
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.ForbiddenDroplet) && hint == HintMsg.OperateCard)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                return SelectForbiddenDropletTargets(cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.ForbiddenCrown) && hint == HintMsg.Faceup)
@@ -928,14 +940,29 @@ namespace WindBot.Game.AI.Decks
 
         private bool ForbiddenDropletEffect()
         {
-            List<ClientCard> targets = Enemy.GetMonsters()
-                .Where(card => card.IsFaceup() && card.HasType(CardType.Effect) && !card.IsDisabled())
-                .ToList();
+            ForbiddenDropletTargets.Clear();
+            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                card.IsCode(CardId.ForbiddenDroplet)))
+                return false;
+
+            List<ClientCard> targets = GetForbiddenDropletTargets();
             if (targets.Count == 0)
                 return false;
-            return Duel.Player == 1 || Duel.CurrentChain.Count > 0 ||
-                targets.Any(card => card.IsFloodgate() || card == Util.GetProblematicEnemyMonster()) ||
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints;
+
+            if (targets.Count == 1 && CanUseWidowAnchorInstead(targets[0]))
+                return false;
+
+            int costCount = GetAvailableForbiddenDropletCosts().Count;
+            if (costCount == 0)
+                return false;
+
+            ForbiddenDropletTargets.AddRange(targets.Take(costCount));
+            foreach (ClientCard target in ForbiddenDropletTargets)
+                MarkCurrentChainHandled(target);
+            Logger.DebugWriteLine("[SkyStriker2026] Droplet targets=" +
+                string.Join(",", ForbiddenDropletTargets.Select(card =>
+                    card.Name ?? card.Id.ToString()).ToArray()));
+            return ForbiddenDropletTargets.Count > 0;
         }
 
         private bool ForbiddenCrownEffect()
@@ -2749,6 +2776,90 @@ namespace WindBot.Game.AI.Decks
             return candidates.GetHighestAttackMonster();
         }
 
+        private List<ClientCard> GetForbiddenDropletTargets()
+        {
+            List<ClientCard> candidates = Enemy.GetMonsters()
+                .Where(card => card.IsFaceup() && card.HasType(CardType.Effect) &&
+                    !card.IsDisabled() && !IsCurrentChainHandled(card))
+                .ToList();
+            List<ClientCard> result = new List<ClientCard>();
+            if (candidates.Count == 0)
+                return result;
+
+            ClientCard last = Util.GetLastChainCard();
+            if (Duel.LastChainPlayer == 1 && last != null && candidates.Contains(last) &&
+                IsImportantForbiddenDropletTarget(last))
+                result.Add(last);
+
+            int projectedAttack = Util.GetTotalAttackingMonsterAttack(1);
+            if (Duel.Player == 1 && projectedAttack >= Bot.LifePoints)
+            {
+                foreach (ClientCard attacker in candidates.Where(card => card.IsAttack())
+                    .OrderByDescending(card => card.Attack))
+                {
+                    if (projectedAttack < Bot.LifePoints)
+                        break;
+                    if (!result.Contains(attacker))
+                        result.Add(attacker);
+                    projectedAttack -= Math.Max(0, attacker.Attack / 2);
+                }
+            }
+
+            if (result.Count == 0)
+            {
+                ClientCard threat = candidates.FirstOrDefault(card =>
+                    IsImportantForbiddenDropletTarget(card));
+                if (threat != null)
+                    result.Add(threat);
+            }
+
+            return result;
+        }
+
+        private bool IsImportantForbiddenDropletTarget(ClientCard target)
+        {
+            return target != null && (target.IsFloodgate() || target.IsMonsterDangerous() ||
+                target.IsMonsterInvincible() ||
+                target.IsMonsterShouldBeDisabledBeforeItUseEffect());
+        }
+
+        private bool CanUseWidowAnchorInstead(ClientCard target)
+        {
+            if (target == null || !EmptyMainMonsterZone() || target.IsDisabled() ||
+                target.IsShouldNotBeTarget() || target.IsShouldNotBeSpellTrapTarget() ||
+                Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                    card.IsCode(CardId.WidowAnchor)))
+                return false;
+
+            return Duel.Player == 0
+                ? Bot.HasInHandOrInSpellZone(CardId.WidowAnchor)
+                : Bot.HasInSpellZone(CardId.WidowAnchor);
+        }
+
+        private List<ClientCard> GetAvailableForbiddenDropletCosts()
+        {
+            return Bot.Hand.Concat(Bot.GetMonsters()).Concat(Bot.GetSpells())
+                .Where(card => card != null && card != Card && !card.IsCode(CardId.Token) &&
+                    GetDropletCostValue(card) < 5000)
+                .OrderBy(GetDropletCostValue)
+                .ToList();
+        }
+
+        private IList<ClientCard> SelectForbiddenDropletTargets(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            foreach (ClientCard target in ForbiddenDropletTargets)
+            {
+                ClientCard offered = FindMatchingOfferedCard(cards, target);
+                if (offered != null && !ordered.Contains(offered))
+                    ordered.Add(offered);
+            }
+            ordered.AddRange(OrderEnemyTargets(cards).Where(card => !ordered.Contains(card)));
+            ForbiddenDropletTargets.Clear();
+            return Util.CheckSelectCount(ordered, cards, min, max);
+        }
+
         private bool IsCurrentChainHandled(ClientCard card)
         {
             return card != null && CurrentChainHandledCards.Contains(card);
@@ -3145,7 +3256,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.PotOfDesires, CardId.ReinforcementOfTheArmy))
                 return 50;
             if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.Zero))
+                CardId.WidowAnchor, CardId.Zero, CardId.Multirole, CardId.Lemnisgate))
                 return 5000;
             return 500 + GetCardUtility(card);
         }
@@ -3179,7 +3290,8 @@ namespace WindBot.Game.AI.Decks
                 return int.MaxValue;
             if (ControlledEnemyCards.Contains(card))
                 return 0;
-            if (card.Location == CardLocation.SpellZone && card.IsFaceup() && card != Card)
+            if (card.Location == CardLocation.SpellZone && card.IsFaceup() && card != Card &&
+                !card.HasType(CardType.Continuous | CardType.Equip | CardType.Field))
                 return 25;
             return card.Location == CardLocation.Hand
                 ? GetHandResourceValue(card) : GetFieldResourceValue(card);

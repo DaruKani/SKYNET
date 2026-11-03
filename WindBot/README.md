@@ -194,6 +194,11 @@ card is no longer enough reason to spend the effect merely to send Albion.
 Forbidden Crown now chains only to a live opposing
 field-monster effect, a classified board threat, or a lethal attacker, and tracks
 its intended monster so another response does not negate the same card twice.
+Forbidden Droplet is reserved for a live high-value monster effect, a classified
+board threat, or otherwise lethal attackers. It sends exactly one expendable
+card per planned negate, will not spend protected Raye/Engage/Linkage resources,
+and yields to Widow Anchor when that card can negate and take the same monster
+for an immediate Link or battle use.
 The user-owned MDPro4 deck file is not modified.
 
 The opening setup now treats Engage and Reinforcement of the Army as access to
