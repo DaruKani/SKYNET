@@ -123,6 +123,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
+        private ClientCard ZeroDestroyTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard FallenAndVirtuousReviveTarget;
         private ClientCard LinkageOtkSendTarget;
@@ -294,6 +295,7 @@ namespace WindBot.Game.AI.Decks
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
+            ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
             FallenAndVirtuousPreferDestroy = false;
@@ -329,6 +331,7 @@ namespace WindBot.Game.AI.Decks
         {
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
+            ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
             FallenAndVirtuousPreferDestroy = false;
@@ -615,7 +618,7 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(OrderCardsById(cards, new[] { CardId.Raye, CardId.Roze }, false),
                         cards, min, max);
                 if (hint == HintMsg.Destroy)
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                    return SelectZeroDestroyTarget(cards, min, max);
             }
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Roze) &&
@@ -841,7 +844,8 @@ namespace WindBot.Game.AI.Decks
             {
                 if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
                     return false;
-                return Enemy.GetFieldCount() > 0;
+                ZeroDestroyTarget = GetBestZeroDestroyTarget();
+                return ZeroDestroyTarget != null;
             }
             if (desc == Util.GetStringId(CardId.Roze, 2))
                 return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
@@ -1144,8 +1148,75 @@ namespace WindBot.Game.AI.Decks
                     LinkageOtk = LinkageOtkStage.RayeRozeReady;
                 return true;
             }
-            return Duel.Player == 1 && (Enemy.GetFieldCount() > 0 || DefaultOnBecomeTarget() ||
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints);
+            if (Duel.Player != 1)
+                return false;
+
+            bool escapingRemoval = DefaultOnBecomeTarget();
+            bool preventingLethal = GetRemainingEnemyBattleAttack() >= Bot.LifePoints;
+            ClientCard destroyTarget = GetBestZeroDestroyTarget();
+            int destroyScore = GetZeroDestroyScore(destroyTarget);
+            int minimumDestroyScore = HasSetSkyStrikerInteraction() ? 8000 : 6500;
+            bool valuableInterruption = destroyScore >= minimumDestroyScore;
+            bool activate = escapingRemoval || preventingLethal || valuableInterruption;
+            Logger.DebugWriteLine("[SkyStriker2026] Zero quick escape=" +
+                escapingRemoval.ToString() + " lethal=" + preventingLethal.ToString() +
+                " destroy=" + (destroyTarget == null ? "none" :
+                    destroyTarget.Name ?? destroyTarget.Id.ToString()) +
+                " score=" + destroyScore.ToString() + " threshold=" +
+                minimumDestroyScore.ToString() + " activate=" + activate.ToString());
+            return activate;
+        }
+
+        private ClientCard GetBestZeroDestroyTarget()
+        {
+            return Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Where(card => card != null && card.IsFaceup())
+                .OrderByDescending(GetZeroDestroyScore)
+                .FirstOrDefault(card => GetZeroDestroyScore(card) > 0);
+        }
+
+        private int GetZeroDestroyScore(ClientCard target)
+        {
+            if (target == null || target.Controller != 1 || !target.IsFaceup())
+                return 0;
+            if (target.IsMonster())
+            {
+                if (SkyStrikerMirrorObserved && IsSkyStrikerAceLink(target) &&
+                    Enemy.GetGraveyardMonsters().Any(card => card.IsCode(CardId.Raye)))
+                    return 0;
+                int monsterScore = GetObservedThreatScore(target);
+                if (Duel.CurrentChain.Contains(target))
+                    monsterScore -= 1800;
+                return Math.Max(0, monsterScore);
+            }
+
+            if (!target.HasType(CardType.Continuous | CardType.Equip |
+                CardType.Field | CardType.Pendulum))
+                return 0;
+            int score = target.IsFloodgate() ? 6500 : 3500;
+            if (SkyStrikerMirrorObserved && target.IsCode(CardId.Multirole, CardId.AreaZero))
+                score += target.IsCode(CardId.Multirole) ? 5000 : 2800;
+            return score;
+        }
+
+        private bool HasSetSkyStrikerInteraction()
+        {
+            return Bot.GetSpells().Any(card => card.IsFacedown() &&
+                card.IsCode(CardId.WidowAnchor, CardId.SharkCannon, CardId.Linkage));
+        }
+
+        private IList<ClientCard> SelectZeroDestroyTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            ClientCard intended = FindMatchingOfferedCard(cards, ZeroDestroyTarget);
+            if (intended != null)
+                ordered.Add(intended);
+            ordered.AddRange(cards.Where(card => card.Controller == 1 &&
+                !ordered.Contains(card)).OrderByDescending(GetZeroDestroyScore));
+            ordered.AddRange(cards.Where(card => !ordered.Contains(card)));
+            ZeroDestroyTarget = null;
+            return Util.CheckSelectCount(ordered, cards, min, max);
         }
 
         private bool LinkageEffect()

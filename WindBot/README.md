@@ -212,6 +212,15 @@ the current attacker prevents lethal damage. The same turn-aware conversion
 check prevents Shark Cannon from reviving an unusable monster into the Main
 Monster Zone during the opponent's turn.
 
+Zero's Quick Effect is not fired merely because the opponent has any card on the
+field. Outside the Linkage OTK attack sequence it now requires a removal dodge,
+lethal defense, or a high-value persistent target whose destruction repays losing
+Zero and filling both Main Monster Zones. Normal Spells that have already spent
+their effects are worth zero, and a mirror Ace Link is not destroyed when doing
+so would immediately enable the opponent's Raye in the Graveyard. The optional
+destruction prompt is tied to that scored target instead of selecting an arbitrary
+face-up card after Raye and Roze are summoned.
+
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a
 hidden identity. In the mirror, Shark Cannon prioritizes denying Raye/Roze and
