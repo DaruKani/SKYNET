@@ -179,26 +179,26 @@ offered by the duel server.
 
 The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
 the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
-Virtuous resource line. It normally sends Albion while another Fallen & the
-Virtuous remains in the Deck. Albion sets that copy during the bot's End Phase
-when there is room and a usable follow-up cost, but adds it to hand during the
-opponent's End Phase or when a set copy would be redundant. If a Level 8 Fusion
-is already recoverable and a second opposing card remains, the bot can send
-Ecclesia first for its additional shuffle; unavailable routes fall back to the
-remaining Extra Deck choices. An unused hand copy is set in the bot's Main Phase
-only when a later activation still has a valid Extra Deck or Ecclesia route. Its
-destruction mode is held unless the face-up target is a floodgate, a dangerous
-or otherwise unanswerable card, a live Continuous/Equip/Field Spell resolving
-on the Chain, or an attacker contributing to lethal damage; a harmless face-up
-card is no longer enough reason to spend the effect merely to send Albion.
-Forbidden Crown now chains only to a live opposing
-field-monster effect, a classified board threat, or a lethal attacker, and tracks
-its intended monster so another response does not negate the same card twice.
-Forbidden Droplet is reserved for a live high-value monster effect, a classified
-board threat, or otherwise lethal attackers. It sends exactly one expendable
-card per planned negate, will not spend protected Raye/Engage/Linkage resources,
-and yields to Widow Anchor when that card can negate and take the same monster
-for an immediate Link or battle use.
+Virtuous resource line. It always sends Albion first while another Fallen & the
+Virtuous remains in the Deck, then scores the remaining Ecclesia/Dogma sends.
+Albion sets the replacement during the bot's End Phase so it is live on the
+opponent's turn; during the opponent's End Phase it normally adds the card to
+hand, setting only to avoid the hand-size discard. The activation compares the
+best observed destruction with every legal graveyard revival and holds the card
+unless one branch reaches its minimum payoff. A harmless face-up card is no
+longer enough reason to spend the effect merely to send an Extra Deck monster.
+
+Forbidden Crown, Widow Anchor and Forbidden Droplet now share a tactical decision
+layer instead of accepting independently in executor order. For every observed
+window it scores the resolving monster, floodgate/danger classifications, battle
+lethal, targetability, Widow's immediate control/Link conversion, Droplet's
+number and value of costs, and multi-negate payoff. Only the highest scoring
+known response commits selections. Droplet prefers a disposable cost whose card
+type also prevents a matching response, preserves the last copy of core engine
+resources unless the exchange justifies it, and is held when Widow or Crown
+solves the same threat more efficiently. The same dynamic reserve values are
+used for hand/field/GY costs and Link materials; an unspent setup Zero is heavily
+protected from generic Link conversion.
 
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a
@@ -223,6 +223,12 @@ Engage toward the three-Spell threshold. The executor tracks Zero entering the
 Monster Zone so this search is still accepted when the duel server reports its
 activation description as unknown (`-1`); the deliberate Linkage OTK search skip
 remains the only strategic exception.
+
+Linkage is no longer a generic empty-board conversion into the first available
+Ace. In Main Phase it defers to live Raye, Engage/ROTA or Drones access; only when
+those better starters are unavailable does it enter a tracked fallback route
+whose Extra Deck choice is locked to Zero. The existing battle-phase Kagari ->
+Zero lethal route remains separate and owns its own send targets.
 
 The Linkage OTK starts only after the opposing field is empty, an unused
 1500-or-higher Link Monster in the Extra Monster Zone has attacked, Kagari and
@@ -264,11 +270,13 @@ try {
 finally { Pop-Location }
 ```
 
-This is a heuristic executor, not an exhaustive combo search or proof of lethal.
-It does not predict unknown opposing cards, and its Linkage/resource ordering can
-miss a stronger line in unusual boards. Debug/Release compilation and deck-list
-checks do not substitute for a script-backed duel; record real duel outcomes as
-separate evidence before treating the executor as competitively tuned.
+This is a hybrid executor: supported setup/OTK routes use tracked stages, while
+competing interaction uses a pure observed-state scoring layer before the normal
+executor commits an offered action. It is not an exhaustive Lua simulator or a
+proof of lethal, does not predict unknown opposing cards, and cards outside the
+modeled packages still use ordinary WindBot handlers. Debug/Release compilation
+and deck-list checks do not substitute for a script-backed duel; record real duel
+outcomes separately before treating the executor as competitively tuned.
 
 ## Voiceless Voice routes and recovery
 

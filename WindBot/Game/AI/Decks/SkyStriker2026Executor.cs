@@ -9,7 +9,7 @@ using WindBot.Game.AI;
 namespace WindBot.Game.AI.Decks
 {
     [Deck("SkyStriker2026", "AI_SkyStriker2026")]
-    public class SkyStriker2026Executor : DefaultExecutor
+    public partial class SkyStriker2026Executor : DefaultExecutor
     {
         private enum HornetZeroSetupStage
         {
@@ -124,12 +124,15 @@ namespace WindBot.Game.AI.Decks
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
+        private ClientCard FallenAndVirtuousReviveTarget;
         private ClientCard LinkageOtkSendTarget;
         private HornetZeroSetupStage HornetSetupStage;
         private LinkageOtkStage LinkageOtk;
         private bool RayeToZeroSetupPending;
         private bool PreserveEmptyMainZoneForZero;
         private bool ZeroSearchPending;
+        private bool LinkageSetupToZeroPending;
+        private bool FallenAndVirtuousPreferDestroy;
         private bool SkyStrikerMirrorObserved;
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
@@ -292,12 +295,15 @@ namespace WindBot.Game.AI.Decks
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
             FallenAndVirtuousDestroyTarget = null;
+            FallenAndVirtuousReviveTarget = null;
+            FallenAndVirtuousPreferDestroy = false;
             LinkageOtkSendTarget = null;
             HornetSetupStage = HornetZeroSetupStage.None;
             LinkageOtk = LinkageOtkStage.None;
             RayeToZeroSetupPending = false;
             PreserveEmptyMainZoneForZero = false;
             ZeroSearchPending = false;
+            LinkageSetupToZeroPending = false;
             ForbiddenDropletTargets.Clear();
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
@@ -324,6 +330,8 @@ namespace WindBot.Game.AI.Decks
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
             FallenAndVirtuousDestroyTarget = null;
+            FallenAndVirtuousReviveTarget = null;
+            FallenAndVirtuousPreferDestroy = false;
             LinkageOtkSendTarget = null;
             ForbiddenDropletTargets.Clear();
 
@@ -341,6 +349,8 @@ namespace WindBot.Game.AI.Decks
             if (LinkageOtk == LinkageOtkStage.SummonZero &&
                 !Bot.HasInMonstersZone(CardId.Zero))
                 LinkageOtk = LinkageOtkStage.None;
+            if (LinkageSetupToZeroPending && !Bot.HasInMonstersZone(CardId.Zero))
+                LinkageSetupToZeroPending = false;
             if (LinkageOtk == LinkageOtkStage.RayeRozeReady &&
                 (!Bot.HasInMonstersZone(CardId.Raye) ||
                 !Bot.HasInMonstersZone(CardId.Roze)))
@@ -360,6 +370,8 @@ namespace WindBot.Game.AI.Decks
                 HornetSetupStage = HornetZeroSetupStage.None;
             if (Duel.Phase != DuelPhase.Main1)
                 RayeToZeroSetupPending = false;
+            if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2)
+                LinkageSetupToZeroPending = false;
             base.OnNewPhase();
         }
 
@@ -433,9 +445,10 @@ namespace WindBot.Game.AI.Decks
                 else if (card.IsCode(CardId.Zero))
                 {
                     bool setupZero = HornetSetupStage == HornetZeroSetupStage.NeedZero ||
-                        RayeToZeroSetupPending;
+                        RayeToZeroSetupPending || LinkageSetupToZeroPending;
                     ZeroSummoned = true;
                     ZeroSearchPending = true;
+                    LinkageSetupToZeroPending = false;
                     if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
                         HornetSetupStage = HornetZeroSetupStage.None;
                     if (RayeToZeroSetupPending)
@@ -499,7 +512,7 @@ namespace WindBot.Game.AI.Decks
                     if (hint == HintMsg.Destroy)
                         return SelectFallenAndVirtuousDestroyTarget(cards, min, max);
                     if (hint == HintMsg.SpSummon)
-                        return Util.CheckSelectCount(cards.OrderByDescending(GetCardUtility).ToList(), cards, min, max);
+                        return SelectFallenAndVirtuousReviveTarget(cards, min, max);
                 }
 
                 if (activating.IsCode(CardId.ForbiddenDroplet) && hint == HintMsg.ToGrave)
@@ -899,7 +912,9 @@ namespace WindBot.Game.AI.Decks
             {
                 if (!IsLiveFallenAndVirtuousDestroyTarget(FallenAndVirtuousDestroyTarget))
                     FallenAndVirtuousDestroyTarget = GetFallenAndVirtuousDestroyTarget();
-                if (destroyFallen >= 0 && FallenAndVirtuousDestroyTarget != null)
+                if (destroyFallen >= 0 && FallenAndVirtuousDestroyTarget != null &&
+                    (FallenAndVirtuousPreferDestroy || reviveFallen < 0 ||
+                    FallenAndVirtuousReviveTarget == null))
                     return destroyFallen;
                 if (reviveFallen >= 0)
                     return reviveFallen;
@@ -971,73 +986,26 @@ namespace WindBot.Game.AI.Decks
         private bool ForbiddenDropletEffect()
         {
             ForbiddenDropletTargets.Clear();
-            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
-                card.IsCode(CardId.ForbiddenDroplet)))
+            TacticalDecision decision = GetBestTacticalDecision();
+            if (decision.Kind != TacticalActionKind.ForbiddenDroplet)
                 return false;
-
-            List<ClientCard> targets = GetForbiddenDropletTargets();
-            if (targets.Count == 0)
-                return false;
-
-            if (targets.Count == 1 && CanUseWidowAnchorInstead(targets[0]))
-                return false;
-
-            int costCount = GetAvailableForbiddenDropletCosts().Count;
-            if (costCount == 0)
-                return false;
-
-            ForbiddenDropletTargets.AddRange(targets.Take(costCount));
+            ForbiddenDropletTargets.AddRange(decision.Targets);
             foreach (ClientCard target in ForbiddenDropletTargets)
                 MarkCurrentChainHandled(target);
-            Logger.DebugWriteLine("[SkyStriker2026] Droplet targets=" +
-                string.Join(",", ForbiddenDropletTargets.Select(card =>
-                    card.Name ?? card.Id.ToString()).ToArray()));
+            LogTacticalDecision(decision);
             return ForbiddenDropletTargets.Count > 0;
         }
 
         private bool ForbiddenCrownEffect()
         {
-            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
-                card.IsCode(CardId.ForbiddenCrown)))
+            TacticalDecision decision = GetBestTacticalDecision();
+            if (decision.Kind != TacticalActionKind.ForbiddenCrown ||
+                decision.Targets.Count == 0)
                 return false;
-
-            ClientCard target = null;
-            if (Duel.CurrentChain.Count > 0)
-            {
-                ClientCard last = Util.GetLastChainCard();
-                if (Duel.LastChainPlayer != 1 || !IsUsableForbiddenCrownTarget(last))
-                    return false;
-                target = last;
-            }
-            else
-            {
-                IEnumerable<ClientCard> candidates = Enemy.GetMonsters().Where(
-                    IsUsableForbiddenCrownTarget);
-                if (Duel.Player == 0)
-                {
-                    target = candidates.FirstOrDefault(card => card.IsFloodgate() ||
-                        card.IsMonsterShouldBeDisabledBeforeItUseEffect());
-                }
-                else
-                {
-                    target = candidates.FirstOrDefault(card => card.IsFloodgate() ||
-                        card.IsMonsterDangerous() ||
-                        card.IsMonsterShouldBeDisabledBeforeItUseEffect());
-                    if (target == null && Bot.UnderAttack)
-                    {
-                        ClientCard attacker = Enemy.BattlingMonster;
-                        if (IsUsableForbiddenCrownTarget(attacker) &&
-                            attacker.Attack >= Bot.LifePoints)
-                            target = attacker;
-                    }
-                }
-            }
-
-            if (target == null)
-                return false;
-
+            ClientCard target = decision.Targets[0];
             ForbiddenCrownTarget = target;
             MarkCurrentChainHandled(target);
+            LogTacticalDecision(decision);
             return true;
         }
 
@@ -1058,17 +1026,23 @@ namespace WindBot.Game.AI.Decks
         private bool FallenAndVirtuousEffect()
         {
             FallenAndVirtuousDestroyTarget = GetFallenAndVirtuousDestroyTarget();
+            FallenAndVirtuousReviveTarget = GetBestFallenAndVirtuousReviveTarget();
             bool canPayDestroyCost = Bot.HasInExtra(CardId.AlbionTheBrandedDragon) ||
                 Bot.HasInExtra(CardId.DragonThatDevoursTheDogma) ||
                 Bot.HasInExtra(CardId.EcclesiaAndTheDarkDragon);
-            bool canDestroy = canPayDestroyCost && FallenAndVirtuousDestroyTarget != null;
+            int destroyScore = canPayDestroyCost
+                ? GetFallenAndVirtuousDestroyScore(FallenAndVirtuousDestroyTarget) : 0;
             bool hasEcclesia = Bot.GetMonsters().Concat(Bot.Graveyard)
                 .Any(card => card.IsCode(CardId.EcclesiaAndTheDarkDragon));
-            bool canRevive = hasEcclesia && Bot.Graveyard.Concat(Enemy.Graveyard)
-                .Any(card => card.IsMonster() && card.IsCanRevive());
-            if (canDestroy)
+            int reviveScore = hasEcclesia
+                ? GetFallenAndVirtuousReviveScore(FallenAndVirtuousReviveTarget) : 0;
+            FallenAndVirtuousPreferDestroy = destroyScore >= reviveScore;
+            if (FallenAndVirtuousPreferDestroy && destroyScore >= 3500)
                 MarkCurrentChainHandled(FallenAndVirtuousDestroyTarget);
-            return canDestroy || canRevive;
+            bool activate = Math.Max(destroyScore, reviveScore) >= 3500;
+            Logger.DebugWriteLine("[SkyStriker2026] TFTV destroy=" + destroyScore +
+                " revive=" + reviveScore + " activate=" + activate);
+            return activate;
         }
 
         private bool AlbionTheBrandedDragonEffect()
@@ -1079,12 +1053,18 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShouldSetFallenAndVirtuousFromAlbion()
         {
-            if (Duel.Player != 0 || Duel.Phase != DuelPhase.End ||
-                Bot.GetSpellCountWithoutField() >= 5 ||
+            if (Duel.Phase != DuelPhase.End || Bot.GetSpellCountWithoutField() >= 5 ||
                 Bot.HasInSpellZone(CardId.TheFallenAndTheVirtuous))
                 return false;
+            if (!HasFallenAndVirtuousFollowUp())
+                return false;
 
-            return HasFallenAndVirtuousFollowUp();
+            // At our End Phase, setting gives live interaction for the opponent's
+            // turn. At the opponent's End Phase, hand is normally more flexible;
+            // set only to avoid the hand-size discard or a known hand lock.
+            if (Duel.Player == 0)
+                return true;
+            return Bot.Hand.Count >= 6;
         }
 
         private bool SetFallenAndVirtuous()
@@ -1217,11 +1197,21 @@ namespace WindBot.Game.AI.Decks
                     Bot.GetMonsterCount() == 0;
             }
 
-            if (Duel.Phase == DuelPhase.Main1)
-                return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
-
-            if (Duel.Phase == DuelPhase.Main2)
-                return Bot.GetMonsterCount() == 0 || Enemy.GetFieldCount() > 0;
+            if (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2)
+            {
+                if (Bot.GetMonsterCount() == 0)
+                {
+                    if (HasBetterZeroStarterThanLinkage())
+                        return false;
+                    if (Bot.HasInExtra(CardId.Zero))
+                    {
+                        LinkageSetupToZeroPending = true;
+                        return true;
+                    }
+                }
+                return Enemy.GetFieldCount() > 0 &&
+                    Bot.GetMonsters().Any(card => IsDisposableMonster(card));
+            }
 
             return false;
         }
@@ -1603,80 +1593,31 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.Player != 0 || Duel.CurrentChain.Count > 0)
                 return false;
-
-            ClientCard target = GetEnemyMonsterTarget(true);
-            if (target == null)
+            TacticalDecision decision = GetBestTacticalDecision();
+            if (decision.Kind != TacticalActionKind.WidowAnchor ||
+                decision.Targets.Count == 0)
                 return false;
-
-            bool canTakeControl = CanImmediatelyUseControlledMonster(target,
-                Duel.Phase < DuelPhase.Main2);
-            bool shouldNegate = target.IsFloodgate() || target.IsMonsterDangerous() ||
-                target.IsMonsterInvincible() || target.IsMonsterShouldBeDisabledBeforeItUseEffect();
-            if (!shouldNegate && !canTakeControl)
-                return false;
-            if (!canTakeControl && Bot.HasInHand(CardId.Afterburners))
-                return false;
-
+            ClientCard target = decision.Targets[0];
             WidowAnchorTarget = target;
-            WidowAnchorTakeControl = canTakeControl;
+            WidowAnchorTakeControl = decision.TakeControl;
             MarkCurrentChainHandled(target);
             AI.SelectCard(target);
+            LogTacticalDecision(decision);
             return true;
         }
 
         private bool WidowAnchorEffect()
         {
-            if (Duel.CurrentChain.Any(card => card.Controller == 0 && card.IsCode(CardId.WidowAnchor)))
+            TacticalDecision decision = GetBestTacticalDecision();
+            if (decision.Kind != TacticalActionKind.WidowAnchor ||
+                decision.Targets.Count == 0)
                 return false;
-
-            ClientCard target = Enemy.BattlingMonster;
-            if (Duel.CurrentChain.Count == 0 && Duel.Player == 1 && Bot.UnderAttack &&
-                HaveThreeSpellsInGrave() && target != null &&
-                target.HasType(CardType.Effect) && !target.IsDisabled() &&
-                !target.IsShouldNotBeTarget() && !target.IsShouldNotBeSpellTrapTarget())
-            {
-                ClientCard defender = Bot.BattlingMonster;
-                int defenderPower = defender == null ? 0 : defender.GetDefensePower();
-                bool wouldDestroyDefender = defender != null &&
-                    (target.Attack > defenderPower || target.Attack == defenderPower && defender.IsAttack());
-                int battleDamage = defender == null ? target.Attack :
-                    defender.IsAttack() ? Math.Max(0, target.Attack - defenderPower) : 0;
-                bool shouldStopAttack = battleDamage >= 2000 || battleDamage >= Bot.LifePoints ||
-                    wouldDestroyDefender && !IsDisposableMonster(defender);
-                if (shouldStopAttack)
-                {
-                    WidowAnchorTarget = target;
-                    WidowAnchorTakeControl = true;
-                    MarkCurrentChainHandled(target);
-                    AI.SelectCard(target);
-                    return true;
-                }
-            }
-
-            target = DefaultGetDisableMonsterTarget();
-            if (target != null)
-            {
-                WidowAnchorTarget = target;
-                WidowAnchorTakeControl = CanImmediatelyUseControlledMonster(target,
-                    Duel.Player == 0 && Duel.Phase < DuelPhase.Main2);
-                MarkCurrentChainHandled(target);
-                AI.SelectCard(target);
-                return true;
-            }
-
-            if (Duel.CurrentChain.Count > 0 || !HaveThreeSpellsInGrave() || Duel.Player != 0 ||
-                Duel.Phase < DuelPhase.Main1 || Duel.Phase >= DuelPhase.Main2)
-                return false;
-
-            target = GetEnemyMonsterTarget(false);
-            if (target == null || target.IsDisabled() || target.HasType(CardType.Normal))
-                return false;
-            if (!CanImmediatelyUseControlledMonster(target, true))
-                return false;
-            WidowAnchorTakeControl = true;
+            ClientCard target = decision.Targets[0];
+            WidowAnchorTakeControl = decision.TakeControl;
             WidowAnchorTarget = target;
             MarkCurrentChainHandled(target);
             AI.SelectCard(target);
+            LogTacticalDecision(decision);
             return true;
         }
 
@@ -2880,6 +2821,9 @@ namespace WindBot.Game.AI.Decks
                 }
             }
 
+            if (Duel.CurrentChain.Count > 0 && result.Count == 0)
+                return result;
+
             if (result.Count == 0)
             {
                 ClientCard threat = candidates.FirstOrDefault(card =>
@@ -3080,6 +3024,25 @@ namespace WindBot.Game.AI.Decks
                 (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
         }
 
+        private bool HasBetterZeroStarterThanLinkage()
+        {
+            if (NormalSummoned)
+                return false;
+            if (Bot.HasInHand(CardId.Raye))
+                return true;
+            if (Bot.HasInHandOrInSpellZone(CardId.HornetDrones) &&
+                Bot.GetMonstersExtraZoneCount() == 0 && Duel.Phase == DuelPhase.Main1)
+                return true;
+            if (Bot.HasInDeck(CardId.Raye) &&
+                Bot.HasInHandOrInSpellZone(new[]
+                {
+                    CardId.Engage,
+                    CardId.ReinforcementOfTheArmy
+                }))
+                return true;
+            return false;
+        }
+
         private ClientCard GetLinkageOtkStarter()
         {
             if (Enemy.GetFieldCount() > 0 || KagariSummoned || ZeroSummoned ||
@@ -3119,37 +3082,9 @@ namespace WindBot.Game.AI.Decks
                 .ToList();
             if (candidates.Count == 0)
                 return null;
-
-            if (SkyStrikerMirrorObserved)
-            {
-                ClientCard mirrorSpell = GetMirrorPriorityEnemySpell();
-                if (mirrorSpell != null && candidates.Contains(mirrorSpell))
-                    return mirrorSpell;
-            }
-
-            int threatThreshold = Math.Max(2400, Util.GetBestAttack(Bot));
-            ClientCard problematic = Util.GetProblematicEnemyCard(threatThreshold, true);
-            if (problematic != null && candidates.Contains(problematic))
-                return problematic;
-
-            ClientCard problematicSpell = Util.GetProblematicEnemySpell();
-            if (problematicSpell != null && candidates.Contains(problematicSpell))
-                return problematicSpell;
-
-            ClientCard last = Util.GetLastChainCard();
-            if (Duel.LastChainPlayer == 1 && last != null && candidates.Contains(last) &&
-                last.IsSpell() && last.HasType(CardType.Continuous | CardType.Equip | CardType.Field))
-                return last;
-
-            if (Duel.Player == 1 &&
-                Util.GetTotalAttackingMonsterAttack(1) >= Bot.LifePoints)
-            {
-                return candidates.Where(card => card.IsMonster() && card.IsAttack())
-                    .OrderByDescending(card => card.Attack)
-                    .FirstOrDefault();
-            }
-
-            return null;
+            ClientCard best = candidates.OrderByDescending(GetFallenAndVirtuousDestroyScore)
+                .FirstOrDefault();
+            return GetFallenAndVirtuousDestroyScore(best) >= 3500 ? best : null;
         }
 
         private bool IsLiveFallenAndVirtuousDestroyTarget(ClientCard target)
@@ -3174,6 +3109,12 @@ namespace WindBot.Game.AI.Decks
         private int[] GetFallenAndVirtuousExtraDeckPriority()
         {
             List<int> result = new List<int>();
+            // Albion is the default first send while another TFTV remains in Deck:
+            // it replaces the spent interaction in the End Phase.
+            if (Bot.HasInExtra(CardId.AlbionTheBrandedDragon) &&
+                Bot.HasInDeck(CardId.TheFallenAndTheVirtuous))
+                result.Add(CardId.AlbionTheBrandedDragon);
+
             bool canUseEcclesiaNow = Duel.Player == 0 &&
                 (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) &&
                 Enemy.GetFieldCount() > 1 &&
@@ -3186,7 +3127,6 @@ namespace WindBot.Game.AI.Decks
 
             if (Bot.HasInDeck(CardId.TheFallenAndTheVirtuous))
             {
-                result.Add(CardId.AlbionTheBrandedDragon);
                 result.Add(CardId.DragonThatDevoursTheDogma);
             }
 
@@ -3223,6 +3163,10 @@ namespace WindBot.Game.AI.Decks
                     ? new[] { CardId.Kagari }
                     : new int[0];
             if (LinkageOtk == LinkageOtkStage.SummonZero)
+                return Bot.HasInExtra(CardId.Zero)
+                    ? new[] { CardId.Zero }
+                    : new int[0];
+            if (LinkageSetupToZeroPending)
                 return Bot.HasInExtra(CardId.Zero)
                     ? new[] { CardId.Zero }
                     : new int[0];
@@ -3392,9 +3336,9 @@ namespace WindBot.Game.AI.Decks
             if (card.IsCode(CardId.RadiantTyphoonVision, CardId.UpstartGoblin,
                 CardId.PotOfDesires, CardId.ReinforcementOfTheArmy))
                 return 50;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.Zero, CardId.Multirole, CardId.Lemnisgate))
-                return 5000;
+            int reserve = GetStrategicReserveValue(card);
+            if (reserve > 0)
+                return reserve;
             return 500 + GetCardUtility(card);
         }
 
@@ -3402,9 +3346,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (card == null)
                 return int.MaxValue;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.Lemnisgate))
-                return 5000;
+            int reserve = GetStrategicReserveValue(card);
+            if (reserve > 0)
+                return reserve;
             return GetCardUtility(card);
         }
 
@@ -3414,10 +3358,10 @@ namespace WindBot.Game.AI.Decks
                 return int.MaxValue;
             int copies = Bot.Hand.Count(candidate => candidate.IsCode(card.Id));
             if (copies > 1)
-                return 0;
-            if (card.IsCode(CardId.Raye, CardId.Roze, CardId.Engage, CardId.Linkage,
-                CardId.WidowAnchor, CardId.ForbiddenDroplet))
-                return 5000;
+                return 100;
+            int reserve = GetStrategicReserveValue(card);
+            if (reserve > 0)
+                return reserve;
             return card.IsMonster() ? Math.Max(100, card.Attack) : 500;
         }
 
@@ -3430,8 +3374,15 @@ namespace WindBot.Game.AI.Decks
             if (card.Location == CardLocation.SpellZone && card.IsFaceup() && card != Card &&
                 !card.HasType(CardType.Continuous | CardType.Equip | CardType.Field))
                 return 25;
-            return card.Location == CardLocation.Hand
+            int value = card.Location == CardLocation.Hand
                 ? GetHandResourceValue(card) : GetFieldResourceValue(card);
+            ClientCard last = Util.GetLastChainCard();
+            bool matchesResponseType = Duel.LastChainPlayer == 1 && last != null &&
+                (last.IsMonster() && card.IsMonster() || last.IsSpell() && card.IsSpell() ||
+                last.HasType(CardType.Trap) && card.HasType(CardType.Trap));
+            if (value < 5000 && matchesResponseType)
+                value = Math.Max(0, value - 1000);
+            return value;
         }
 
         private int GetEnemyGraveResourceValue(ClientCard card)
@@ -3488,9 +3439,15 @@ namespace WindBot.Game.AI.Decks
                 return 100;
             if (card.IsCode(CardId.AshBlossom, CardId.GhostOgre, CardId.EffectVeiler))
                 return 200;
+            if (card.IsCode(CardId.Zero))
+            {
+                if (PreserveEmptyMainZoneForZero || !card.Attacked)
+                    return 6000;
+                return 2400;
+            }
             if (card.IsCode(CardId.Kagari, CardId.Hayate, CardId.Shizuku,
-                CardId.Zero, CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke))
-                return 1500 + card.LinkCount * 100;
+                CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke))
+                return (card.Attacked ? 1300 : 2100) + card.LinkCount * 100;
             return Math.Max(300, card.Attack) + card.LinkCount * 100;
         }
 
