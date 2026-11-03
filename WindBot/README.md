@@ -201,7 +201,10 @@ Drones/Kagari pair so Lemnisgate remains in the GY beside Zero. Outside the OTK
 route, Zero always accepts its search and prioritizes Engage. When both Deck and
 GY copies are offered, it takes Engage from the GY only if at least three other
 Spells will remain there; otherwise it takes a Deck copy and preserves the GY
-Engage toward the three-Spell threshold.
+Engage toward the three-Spell threshold. The executor tracks Zero entering the
+Monster Zone so this search is still accepted when the duel server reports its
+activation description as unknown (`-1`); the deliberate Linkage OTK search skip
+remains the only strategic exception.
 
 The Linkage OTK starts only after the opposing field is empty, an unused
 1500-or-higher Link Monster in the Extra Monster Zone has attacked, Kagari and

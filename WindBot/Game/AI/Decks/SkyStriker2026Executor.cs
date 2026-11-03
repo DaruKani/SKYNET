@@ -128,6 +128,7 @@ namespace WindBot.Game.AI.Decks
         private LinkageOtkStage LinkageOtk;
         private bool RayeToZeroSetupPending;
         private bool PreserveEmptyMainZoneForZero;
+        private bool ZeroSearchPending;
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
@@ -292,6 +293,7 @@ namespace WindBot.Game.AI.Decks
             LinkageOtk = LinkageOtkStage.None;
             RayeToZeroSetupPending = false;
             PreserveEmptyMainZoneForZero = false;
+            ZeroSearchPending = false;
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
@@ -364,7 +366,10 @@ namespace WindBot.Game.AI.Decks
                 (previousLocation & (int)CardLocation.MonsterZone) != 0 &&
                 (currentControler != 0 ||
                 (currentLocation & (int)CardLocation.MonsterZone) == 0))
+            {
                 PreserveEmptyMainZoneForZero = false;
+                ZeroSearchPending = false;
+            }
 
             if (card != null && previousControler == 0 && currentControler == 0 &&
                 previousLocation == (int)CardLocation.Grave &&
@@ -414,6 +419,7 @@ namespace WindBot.Game.AI.Decks
                     bool setupZero = HornetSetupStage == HornetZeroSetupStage.NeedZero ||
                         RayeToZeroSetupPending;
                     ZeroSummoned = true;
+                    ZeroSearchPending = true;
                     if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
                         HornetSetupStage = HornetZeroSetupStage.None;
                     if (RayeToZeroSetupPending)
@@ -1084,10 +1090,19 @@ namespace WindBot.Game.AI.Decks
 
         private bool ZeroEffect()
         {
+            bool searchEffect = ActivateDescription == Util.GetStringId(CardId.Zero, 0) ||
+                ActivateDescription == -1 && ZeroSearchPending;
+            if (searchEffect)
+            {
+                ZeroSearchPending = false;
+                bool activateSearch = LinkageOtk != LinkageOtkStage.ZeroReady &&
+                    !DefaultCheckWhetherCardIsNegated(Card);
+                Logger.DebugWriteLine("[SkyStriker2026] Zero summon search desc=" +
+                    ActivateDescription.ToString() + " activate=" + activateSearch.ToString());
+                return activateSearch;
+            }
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Zero, 0))
-                return LinkageOtk != LinkageOtkStage.ZeroReady;
             if (ActivateDescription != Util.GetStringId(CardId.Zero, 1))
                 return false;
             if (Duel.Player == 0 && Duel.Phase > DuelPhase.Main1 &&
