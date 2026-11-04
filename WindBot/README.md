@@ -171,6 +171,9 @@ Deck and 15-card Side Deck were imported from the user-supplied
 the user's request; appearance and accessory metadata remain outside the versioned
 runtime deck resource.
 
+The latest 2026-11-04 refresh replaces Forbidden Droplet and Triple Tactics
+Talent with two Pot of Desires, without changing the 15-card Extra or Side Deck.
+
 The executor prioritizes an OTK when going second and a Zero-centered setup when
 going first. It covers Raye/Roze access, Engage/Kagari recovery, Linkage battle
 extension, Lemnisgate recycling, Zero/Amatsu/Widow Anchor interaction, the modern
@@ -178,6 +181,18 @@ Camellia/Azalea/Zeke links, the Fallen/Dogma/Ecclesia package and TY-PHON. The
 listed Side Deck board breakers and counter traps have ordinary executor support.
 All target, material, recycle and option choices remain restricted to candidates
 offered by the duel server.
+
+Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
+future list chooses to include Talent. Talent prefers taking a high-value monster
+only when it creates lethal or removes a major threat, otherwise it draws two
+before using the hand-shuffle fallback; its control and revealed-hand prompts use
+only server-offered cards. Ultimate Sky is set for the opponent's turn, chains
+its dedicated negate only to an opponent's monster effect activated in the hand
+or GY, and spends LP on the field-negate mode only for scored face-up threats
+while preserving a safe LP reserve outside emergencies. Kaina is available as a
+defensive Raye tag and Main Phase 2 Link, targeting the strongest opponent
+monster that can still attack; it is also recognized throughout Link, Lemnisgate
+and mirror-selection policy.
 
 The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
 the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
@@ -242,7 +257,8 @@ an otherwise non-threatening opposing Ace for the same purpose, Multirole is the
 first face-up back-row removal target, and searches raise Shark Cannon, Widow
 Anchor and Multirole ahead of generic follow-up when their mirror conditions are
 present.
-The user-owned MDPro4 deck file is not modified.
+The source `Sky striker.ydk` remains unchanged; only the explicitly requested
+`_Skystriker_2026.ydk` companion is synchronized outside the repository.
 
 The opening setup now treats Engage and Reinforcement of the Army as access to
 Raye or Hornet Drones. A lone Raye can tag directly into Zero. The legal Drones

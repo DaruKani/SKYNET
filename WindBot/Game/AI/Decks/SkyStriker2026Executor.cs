@@ -39,6 +39,7 @@ namespace WindBot.Game.AI.Decks
             public const int Kagari = 63288573;
             public const int Shizuku = 90673288;
             public const int Hayate = 8491308;
+            public const int Kaina = 12421694;
             public const int Zero = 76072561;
             public const int Camellia = 63013339;
             public const int Amatsu = 25072579;
@@ -71,6 +72,8 @@ namespace WindBot.Game.AI.Decks
             public const int PotOfDesires = 35261759;
             public const int FoolishBurialGoods = 35726888;
             public const int UpstartGoblin = 70368879;
+            public const int TripleTacticsTalent = 25311006;
+            public const int UltimateSky = 38817295;
             public const int MetalfoesFusion = 73594093;
             public const int TwinTwisters = 43898403;
             public const int MysticalSpaceTyphoon = 5318639;
@@ -105,6 +108,7 @@ namespace WindBot.Game.AI.Decks
         private bool KagariSummoned;
         private bool ShizukuSummoned;
         private bool HayateSummoned;
+        private bool KainaSummoned;
         private bool ZeroSummoned;
         private bool CamelliaSummoned;
         private bool AmatsuSummoned;
@@ -125,6 +129,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard WidowAnchorTarget;
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
+        private ClientCard TripleTacticsTalentTarget;
         private ClientCard ZeroDestroyTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard FallenAndVirtuousReviveTarget;
@@ -138,6 +143,7 @@ namespace WindBot.Game.AI.Decks
         private bool FallenAndVirtuousPreferDestroy;
         private bool SkyStrikerMirrorObserved;
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
+        private readonly List<ClientCard> UltimateSkyTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
@@ -167,11 +173,13 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.HarpiesFeatherDuster, DefaultHarpiesFeatherDusterFirst);
             AddExecutor(ExecutorType.Activate, CardId.Raigeki, DefaultRaigeki);
             AddExecutor(ExecutorType.Activate, CardId.LightningStorm, LightningStormEffect);
+            AddExecutor(ExecutorType.Activate, CardId.UltimateSky, UltimateSkyEffect);
             AddExecutor(ExecutorType.Activate, CardId.ForbiddenCrown, ForbiddenCrownEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.ReinforcementOfTheArmy, ReinforcementOfTheArmyEffect);
             AddExecutor(ExecutorType.Activate, CardId.FoolishBurialGoods, FoolishBurialGoodsEffect);
             AddExecutor(ExecutorType.Activate, CardId.PotOfDesires, PotOfDesiresEffect);
+            AddExecutor(ExecutorType.Activate, CardId.TripleTacticsTalent, TripleTacticsTalentEffect);
             AddExecutor(ExecutorType.Activate, CardId.UpstartGoblin, UpstartGoblinEffect);
             AddExecutor(ExecutorType.Activate, CardId.RadiantTyphoonVision, RadiantTyphoonVisionEffect);
             AddExecutor(ExecutorType.Activate, CardId.TheFallenAndTheVirtuous, FallenAndVirtuousEffect);
@@ -234,6 +242,8 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.SpSummon, CardId.Hayate, HayateSummon);
             AddExecutor(ExecutorType.Activate, CardId.Hayate, HayateEffect);
+            AddExecutor(ExecutorType.SpSummon, CardId.Kaina, KainaSummon);
+            AddExecutor(ExecutorType.Activate, CardId.Kaina, KainaEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.Shizuku, ShizukuSummon);
             AddExecutor(ExecutorType.Activate, CardId.AreaZero, AreaZeroEffect);
             AddExecutor(ExecutorType.Summon, CardId.SphereMode, SphereModeSummon);
@@ -255,6 +265,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpellSet, CardId.WidowAnchor, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.SharkCannon, Util.IsTurn1OrMain2);
             AddExecutor(ExecutorType.SpellSet, CardId.Linkage, SetLinkage);
+            AddExecutor(ExecutorType.SpellSet, CardId.UltimateSky, SetUltimateSky);
             AddExecutor(ExecutorType.SpellSet, CardId.TheFallenAndTheVirtuous,
                 SetFallenAndVirtuous);
             AddExecutor(ExecutorType.SpellSet, CardId.ForbiddenDroplet, Util.IsTurn1OrMain2);
@@ -278,6 +289,7 @@ namespace WindBot.Game.AI.Decks
             KagariSummoned = false;
             ShizukuSummoned = false;
             HayateSummoned = false;
+            KainaSummoned = false;
             ZeroSummoned = false;
             CamelliaSummoned = false;
             AmatsuSummoned = false;
@@ -297,6 +309,7 @@ namespace WindBot.Game.AI.Decks
             WidowAnchorTarget = null;
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
+            TripleTacticsTalentTarget = null;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
@@ -309,6 +322,7 @@ namespace WindBot.Game.AI.Decks
             ZeroSearchPending = false;
             LinkageSetupToZeroPending = false;
             ForbiddenDropletTargets.Clear();
+            UltimateSkyTargets.Clear();
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
@@ -333,12 +347,14 @@ namespace WindBot.Game.AI.Decks
         {
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
+            TripleTacticsTalentTarget = null;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
             FallenAndVirtuousPreferDestroy = false;
             LinkageOtkSendTarget = null;
             ForbiddenDropletTargets.Clear();
+            UltimateSkyTargets.Clear();
 
             if (RayeToZeroSetupPending && !Bot.HasInMonstersZone(CardId.Zero))
                 RayeToZeroSetupPending = false;
@@ -414,7 +430,8 @@ namespace WindBot.Game.AI.Decks
             bool gainedEnemyMonster = card != null && previousControler == 1 && currentControler == 0 &&
                 (currentLocation & (int)CardLocation.MonsterZone) != 0 &&
                 solving != null && solving.ActivatePlayer == 0 &&
-                solving.IsActivateCode(CardId.WidowAnchor, CardId.SharkCannon);
+                solving.IsActivateCode(CardId.WidowAnchor, CardId.SharkCannon,
+                    CardId.TripleTacticsTalent);
             if (gainedEnemyMonster)
             {
                 if (!ControlledEnemyCards.Contains(card))
@@ -447,6 +464,8 @@ namespace WindBot.Game.AI.Decks
                     ShizukuSummoned = true;
                 else if (card.IsCode(CardId.Hayate))
                     HayateSummoned = true;
+                else if (card.IsCode(CardId.Kaina))
+                    KainaSummoned = true;
                 else if (card.IsCode(CardId.Zero))
                 {
                     bool setupZero = HornetSetupStage == HornetZeroSetupStage.NeedZero ||
@@ -477,7 +496,7 @@ namespace WindBot.Game.AI.Decks
                     ZekeSummoned = true;
 
                 if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink &&
-                    card.IsCode(CardId.Hayate, CardId.Shizuku))
+                    card.IsCode(CardId.Hayate, CardId.Kaina, CardId.Shizuku))
                     HornetSetupStage = HornetZeroSetupStage.NeedZero;
             }
             base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
@@ -534,6 +553,14 @@ namespace WindBot.Game.AI.Decks
                     List<ClientCard> costs = safeCosts.Take(desired).ToList();
                     return Util.CheckSelectCount(costs, cards, desired, desired);
                 }
+
+                if (activating.IsCode(CardId.UltimateSky) &&
+                    (hint == HintMsg.Disable || hint == HintMsg.Faceup ||
+                    hint == HintMsg.Target || hint == HintMsg.Select))
+                    return SelectUltimateSkyTargets(cards, min, max);
+
+                if (activating.IsCode(CardId.Kaina) && hint == HintMsg.Faceup)
+                    return SelectKainaTarget(cards, min, max);
 
                 if (activating.IsCode(CardId.Camellia) && hint == HintMsg.ToGrave &&
                     cards.Any(card => card.Controller == 1))
@@ -666,6 +693,19 @@ namespace WindBot.Game.AI.Decks
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.ForbiddenDroplet) && hint == HintMsg.OperateCard)
                 return SelectForbiddenDropletTargets(cards, min, max);
+
+            if (solving != null && solving.ActivatePlayer == 0 &&
+                solving.IsActivateCode(CardId.TripleTacticsTalent))
+            {
+                if (hint == HintMsg.Control)
+                    return SelectTripleTacticsTalentControlTarget(cards, min, max);
+                if (hint == HintMsg.ToDeck)
+                    return SelectTripleTacticsTalentHandTarget(cards, min, max);
+            }
+
+            if (solving != null && solving.ActivatePlayer == 0 &&
+                solving.IsActivateCode(CardId.Kaina) && hint == HintMsg.Faceup)
+                return SelectKainaTarget(cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.ForbiddenCrown) && hint == HintMsg.Faceup)
@@ -889,6 +929,24 @@ namespace WindBot.Game.AI.Decks
 
         public override int OnSelectOption(IList<int> options)
         {
+            int ultimateField = options.IndexOf(Util.GetStringId(CardId.UltimateSky, 1));
+            int ultimateChain = options.IndexOf(Util.GetStringId(CardId.UltimateSky, 2));
+            if (ultimateField >= 0 || ultimateChain >= 0)
+            {
+                if (ultimateChain >= 0 && IsLiveUltimateSkyChainNegate())
+                    return ultimateChain;
+                if (ultimateField >= 0)
+                    return ultimateField;
+                return ultimateChain;
+            }
+
+            int talentDraw = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 0));
+            int talentControl = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 1));
+            int talentShuffle = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 2));
+            if (talentDraw >= 0 || talentControl >= 0 || talentShuffle >= 0)
+                return SelectTripleTacticsTalentOption(options, talentDraw,
+                    talentControl, talentShuffle);
+
             int drawVision = options.IndexOf(Util.GetStringId(CardId.RadiantTyphoonVision, 2));
             int searchMst = options.IndexOf(Util.GetStringId(CardId.RadiantTyphoonVision, 3));
             if (drawVision >= 0 || searchMst >= 0)
@@ -960,6 +1018,228 @@ namespace WindBot.Game.AI.Decks
         private bool LightningStormEffect()
         {
             return Enemy.GetMonsters().Any(card => card.IsAttack()) || Enemy.GetSpellCount() > 0;
+        }
+
+        private bool UltimateSkyEffect()
+        {
+            UltimateSkyTargets.Clear();
+            if (DefaultCheckWhetherCardIsNegated(Card) ||
+                Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                    card.IsCode(CardId.UltimateSky)))
+                return false;
+
+            if (IsLiveUltimateSkyChainNegate())
+            {
+                ClientCard last = Util.GetLastChainCard();
+                MarkCurrentChainHandled(last);
+                Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: negate opponent " +
+                    "hand/GY monster effect " + (last == null ? "unknown" :
+                    last.Name ?? last.Id.ToString()));
+                return true;
+            }
+
+            if (Duel.CurrentChain.Count > 0)
+                return false;
+
+            UltimateSkyTargets.AddRange(GetUltimateSkyFieldTargets());
+            if (UltimateSkyTargets.Count == 0)
+                return false;
+            TacticalDecision alternative = GetBestTacticalDecision();
+            int ultimateScore = UltimateSkyTargets.Sum(GetUltimateSkyNegateScore) -
+                UltimateSkyTargets.Count * 400;
+            if (alternative.Kind != TacticalActionKind.None &&
+                alternative.Score >= ultimateScore)
+            {
+                UltimateSkyTargets.Clear();
+                return false;
+            }
+            foreach (ClientCard target in UltimateSkyTargets)
+                MarkCurrentChainHandled(target);
+            Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: field negate targets=" +
+                string.Join(",", UltimateSkyTargets.Select(card =>
+                    card.Name ?? card.Id.ToString()).ToArray()));
+            return true;
+        }
+
+        private bool IsLiveUltimateSkyChainNegate()
+        {
+            ChainInfo last = Duel.CurrentChainInfo.LastOrDefault();
+            if (last == null || last.ActivatePlayer != 1 ||
+                !last.HasLocation(CardLocation.Hand | CardLocation.Grave) ||
+                (last.ActivateType & (int)CardType.Monster) == 0 ||
+                IsCurrentChainHandled(last.RelatedCard))
+                return false;
+            return !Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0 &&
+                chain.IsActivateCode(CardId.UltimateSky));
+        }
+
+        private List<ClientCard> GetUltimateSkyFieldTargets()
+        {
+            int enemyFaceupMonsters = Enemy.GetMonsters().Count(card => card.IsFaceup());
+            if (Enemy.GetMonsterCount() <= Bot.GetMonsterCount())
+                return new List<ClientCard>();
+
+            int maximumByLife = Math.Max(0, (Bot.LifePoints - 1) / 800);
+            int maximum = Math.Min(enemyFaceupMonsters, maximumByLife);
+            if (maximum == 0)
+                return new List<ClientCard>();
+
+            List<ClientCard> candidates = Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Where(card => card.IsFaceup() && !card.IsDisabled() &&
+                    !IsCurrentChainHandled(card) && GetUltimateSkyNegateScore(card) >= 2600)
+                .OrderByDescending(GetUltimateSkyNegateScore)
+                .ToList();
+            if (candidates.Count == 0)
+                return candidates;
+
+            bool emergency = GetRemainingEnemyBattleAttack() >= Bot.LifePoints ||
+                GetUltimateSkyNegateScore(candidates[0]) >= 6500;
+            if (!emergency)
+            {
+                int safeMaximum = Math.Max(0, (Bot.LifePoints - 1601) / 800);
+                maximum = Math.Min(maximum, safeMaximum);
+            }
+            if (maximum == 0)
+                return new List<ClientCard>();
+            return candidates.Take(maximum).ToList();
+        }
+
+        private int GetUltimateSkyNegateScore(ClientCard target)
+        {
+            if (target == null || target.Controller != 1 || !target.IsFaceup() ||
+                target.IsDisabled())
+                return 0;
+            if (target.IsMonster())
+                return GetObservedThreatScore(target);
+            if (!IsPersistentSpellTrap(target))
+                return 0;
+            int score = target.IsFloodgate() ? 7000 : 3000;
+            if (SkyStrikerMirrorObserved && target.IsCode(CardId.Multirole, CardId.AreaZero))
+                score += target.IsCode(CardId.Multirole) ? 4200 : 2200;
+            return score;
+        }
+
+        private IList<ClientCard> SelectUltimateSkyTargets(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            foreach (ClientCard target in UltimateSkyTargets)
+            {
+                ClientCard offered = FindMatchingOfferedCard(cards, target);
+                if (offered != null && !ordered.Contains(offered))
+                    ordered.Add(offered);
+            }
+            int plannedOfferedCount = ordered.Count;
+            ordered.AddRange(cards.Where(card => card.Controller == 1 && !ordered.Contains(card))
+                .OrderByDescending(GetUltimateSkyNegateScore));
+
+            if (min == 0 && plannedOfferedCount == 0)
+            {
+                UltimateSkyTargets.Clear();
+                return new List<ClientCard>();
+            }
+
+            int desired = max == 1 ? 1 : Math.Min(max,
+                Math.Max(min, plannedOfferedCount));
+            IList<ClientCard> selected = Util.CheckSelectCount(ordered, cards,
+                Math.Max(min, Math.Min(desired, ordered.Count)),
+                Math.Max(min, Math.Min(desired, ordered.Count)));
+            if (selected != null)
+            {
+                foreach (ClientCard selectedCard in selected)
+                {
+                    ClientCard planned = UltimateSkyTargets.FirstOrDefault(target =>
+                        FindMatchingOfferedCard(new[] { selectedCard }, target) != null);
+                    if (planned != null)
+                        UltimateSkyTargets.Remove(planned);
+                }
+            }
+            return selected;
+        }
+
+        private bool SetUltimateSky()
+        {
+            return Util.IsTurn1OrMain2() && Bot.GetSpellCountWithoutField() < 5;
+        }
+
+        private bool TripleTacticsTalentEffect()
+        {
+            TripleTacticsTalentTarget = GetTripleTacticsTalentControlTarget();
+            return !DefaultCheckWhetherCardIsNegated(Card) &&
+                (ShouldUseTripleTacticsTalentControl(TripleTacticsTalentTarget) ||
+                DefaultCheckWhetherBotCanDraw() && Bot.Deck.Count >= 2 ||
+                Enemy.Hand.Count > 0);
+        }
+
+        private int SelectTripleTacticsTalentOption(IList<int> options,
+            int draw, int control, int shuffle)
+        {
+            TripleTacticsTalentTarget = GetTripleTacticsTalentControlTarget();
+            if (control >= 0 && ShouldUseTripleTacticsTalentControl(
+                TripleTacticsTalentTarget))
+                return control;
+            if (draw >= 0 && DefaultCheckWhetherBotCanDraw() && Bot.Deck.Count >= 2)
+                return draw;
+            if (shuffle >= 0 && Enemy.Hand.Count > 0)
+                return shuffle;
+            if (control >= 0 && TripleTacticsTalentTarget != null)
+                return control;
+            return draw >= 0 ? draw : shuffle >= 0 ? shuffle : control;
+        }
+
+        private ClientCard GetTripleTacticsTalentControlTarget()
+        {
+            return Enemy.GetMonsters()
+                .OrderByDescending(GetTripleTacticsTalentControlScore)
+                .FirstOrDefault();
+        }
+
+        private int GetTripleTacticsTalentControlScore(ClientCard target)
+        {
+            if (target == null || target.Controller != 1)
+                return 0;
+            int score = target.IsFaceup() ? GetObservedThreatScore(target) : 1200;
+            if (Duel.Phase == DuelPhase.Main1 && target.IsFaceup())
+                score += Math.Max(0, target.Attack);
+            if (IsSkyStrikerAceLink(target))
+                score += 2200;
+            return score;
+        }
+
+        private bool ShouldUseTripleTacticsTalentControl(ClientCard target)
+        {
+            if (target == null)
+                return false;
+            int score = GetTripleTacticsTalentControlScore(target);
+            int attackOnBoard = Bot.GetMonsters().Where(card => card.IsFaceup())
+                .Sum(card => Math.Max(0, card.Attack));
+            bool createsLethal = Duel.Phase == DuelPhase.Main1 && target.IsFaceup() &&
+                attackOnBoard + Math.Max(0, target.Attack) >= Enemy.LifePoints;
+            return createsLethal || score >= 6000;
+        }
+
+        private IList<ClientCard> SelectTripleTacticsTalentControlTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            ClientCard intended = FindMatchingOfferedCard(cards, TripleTacticsTalentTarget);
+            if (intended != null)
+                ordered.Add(intended);
+            ordered.AddRange(cards.Where(card => !ordered.Contains(card))
+                .OrderByDescending(GetTripleTacticsTalentControlScore));
+            return Util.CheckSelectCount(ordered, cards, min, max);
+        }
+
+        private IList<ClientCard> SelectTripleTacticsTalentHandTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = cards.OrderByDescending(card =>
+                card.IsCode(CardId.MaxxC, CardId.MulcharmyFuwalos,
+                    CardId.AshBlossom, CardId.DrollLockBird) ? 10000 :
+                card.IsFloodgate() || card.IsMonsterDangerous() ? 8000 :
+                card.IsMonster() ? Math.Max(1000, card.Attack) : 2000)
+                .ToList();
+            return Util.CheckSelectCount(ordered, cards, min, max);
         }
 
         private bool MysticalSpaceTyphoonEffect()
@@ -1329,6 +1609,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     CardId.Zero,
                     CardId.Amatsu,
+                    CardId.Kaina,
                     CardId.Shizuku,
                     CardId.Kagari,
                     CardId.Hayate
@@ -1363,7 +1644,8 @@ namespace WindBot.Game.AI.Decks
             {
                 ClientCard token = candidates.FirstOrDefault(card => card.IsCode(CardId.Token));
                 ClientCard bridge = candidates.FirstOrDefault(card =>
-                    card.IsCode(CardId.Amatsu, CardId.Hayate, CardId.Shizuku));
+                    card.IsCode(CardId.Amatsu, CardId.Hayate, CardId.Kaina,
+                        CardId.Shizuku));
                 materials = token != null && bridge != null
                     ? new List<ClientCard> { bridge, token }
                     : new List<ClientCard>();
@@ -1766,7 +2048,8 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Player == 1)
                 return false;
 
-            if (target.IsCode(CardId.Raye, CardId.Kagari, CardId.Shizuku, CardId.Hayate))
+            if (target.IsCode(CardId.Raye, CardId.Kagari, CardId.Shizuku,
+                CardId.Hayate, CardId.Kaina))
             {
                 bool canSummonKagari = !target.IsCode(CardId.Kagari) && !KagariSummoned &&
                     Bot.HasInExtra(CardId.Kagari);
@@ -1964,6 +2247,7 @@ namespace WindBot.Game.AI.Decks
                     CardId.Engage,
                     CardId.Kagari,
                     CardId.Shizuku,
+                    CardId.Kaina,
                     CardId.WidowAnchor,
                     CardId.HornetDrones,
                     CardId.SharkCannon,
@@ -2068,6 +2352,7 @@ namespace WindBot.Game.AI.Decks
             return (!KagariSummoned && Bot.HasInExtra(CardId.Kagari)) ||
                 (!ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku)) ||
                 (!HayateSummoned && Bot.HasInExtra(CardId.Hayate)) ||
+                (!KainaSummoned && Bot.HasInExtra(CardId.Kaina)) ||
                 (!AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu)) ||
                 (!ZeroSummoned && Bot.HasInExtra(CardId.Zero));
         }
@@ -2121,9 +2406,21 @@ namespace WindBot.Game.AI.Decks
                 return;
             }
 
+            bool battleDefense = Duel.Player == 1 &&
+                Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2 &&
+                Enemy.GetMonsters().Any(card => card.IsFaceup() && card.IsAttack() &&
+                    !card.Attacked);
+            if (battleDefense && !KainaSummoned && Bot.HasInExtra(CardId.Kaina))
+            {
+                AI.SelectCard(CardId.Kaina, CardId.Amatsu, CardId.Shizuku,
+                    CardId.Kagari, CardId.Hayate);
+                return;
+            }
+
             if (Duel.Player == 1 && !AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu))
             {
-                AI.SelectCard(CardId.Amatsu, CardId.Shizuku, CardId.Kagari, CardId.Hayate);
+                AI.SelectCard(CardId.Amatsu, CardId.Kaina, CardId.Shizuku,
+                    CardId.Kagari, CardId.Hayate);
                 return;
             }
 
@@ -2142,9 +2439,11 @@ namespace WindBot.Game.AI.Decks
                 CardId.Afterburners,
                 CardId.JammingWaves
             }))
-                AI.SelectCard(CardId.Kagari, CardId.Zero, CardId.Amatsu, CardId.Shizuku, CardId.Hayate);
+                AI.SelectCard(CardId.Kagari, CardId.Zero, CardId.Amatsu,
+                    CardId.Kaina, CardId.Shizuku, CardId.Hayate);
             else
-                AI.SelectCard(CardId.Shizuku, CardId.Amatsu, CardId.Kagari, CardId.Hayate);
+                AI.SelectCard(CardId.Shizuku, CardId.Amatsu, CardId.Kaina,
+                    CardId.Kagari, CardId.Hayate);
         }
 
         private bool KagariSummon()
@@ -2267,6 +2566,65 @@ namespace WindBot.Game.AI.Decks
             else
                 AI.SelectCard(CardId.Engage, CardId.WidowAnchor, CardId.HornetDrones, CardId.SharkCannon);
             return true;
+        }
+
+        private bool KainaSummon()
+        {
+            if (KainaSummoned)
+                return false;
+
+            ClientCard material = Bot.GetMonsters()
+                .Where(card => card.IsFaceup() && IsSkyStrikerAce(card) &&
+                    !card.HasAttribute(CardAttribute.Earth))
+                .OrderBy(GetLinkMaterialValue)
+                .FirstOrDefault();
+            if (material == null || Util.GetBotAvailZonesFromExtraDeck(
+                new[] { material }) == 0)
+                return false;
+
+            bool setupBridge = HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink;
+            bool defensiveEndBoard = Duel.Player == 0 && Duel.Phase == DuelPhase.Main2 &&
+                GetBestKainaTarget(Enemy.GetMonsters()) != null;
+            if (!setupBridge && !defensiveEndBoard)
+                return false;
+
+            KainaSummoned = true;
+            AI.SelectMaterials(new[] { material });
+            return true;
+        }
+
+        private bool KainaEffect()
+        {
+            if (DefaultCheckWhetherCardIsNegated(Card))
+                return false;
+            ClientCard target = GetBestKainaTarget(Enemy.GetMonsters());
+            if (target == null)
+                return false;
+            AI.SelectCard(target);
+            return true;
+        }
+
+        private ClientCard GetBestKainaTarget(IEnumerable<ClientCard> cards)
+        {
+            return cards.Where(card => card != null && card.Controller == 1 &&
+                card.IsFaceup() && card.IsMonster())
+                .OrderByDescending(card => !card.Attacked && card.IsAttack() ? 1 : 0)
+                .ThenByDescending(card => card.Attack)
+                .ThenByDescending(GetObservedThreatScore)
+                .FirstOrDefault();
+        }
+
+        private IList<ClientCard> SelectKainaTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            ClientCard preferred = GetBestKainaTarget(cards);
+            List<ClientCard> ordered = new List<ClientCard>();
+            if (preferred != null)
+                ordered.Add(preferred);
+            ordered.AddRange(cards.Where(card => !ordered.Contains(card))
+                .OrderByDescending(card => !card.Attacked && card.IsAttack() ? 1 : 0)
+                .ThenByDescending(card => card.Attack));
+            return Util.CheckSelectCount(ordered, cards, min, max);
         }
 
         private ClientCard GetHayateCrashTarget(ClientCard hayate, IList<ClientCard> defenders)
@@ -2782,7 +3140,8 @@ namespace WindBot.Game.AI.Decks
 
             if (Bot.HasInMonstersZone(CardId.Shizuku) ||
                 Bot.HasInExtra(CardId.Shizuku) && Bot.GetMonsters().Any(card =>
-                    card.IsCode(CardId.Raye, CardId.Kagari, CardId.Hayate)))
+                    card.IsCode(CardId.Raye, CardId.Kagari, CardId.Hayate,
+                        CardId.Kaina)))
                 return false;
             List<ClientCard> materials = GetLinkMaterials(4, 2, 4, true, false);
             if (materials == null)
@@ -3092,8 +3451,9 @@ namespace WindBot.Game.AI.Decks
                 card.IsCode(CardId.Token, CardId.GlowUpBulb, CardId.Linkuriboh, CardId.AshBlossom,
                     CardId.GhostOgre, CardId.EffectVeiler, CardId.MaxxC))
                 return true;
-            return !card.IsCode(CardId.Raye, CardId.Roze, CardId.Kagari, CardId.Hayate, CardId.Shizuku,
-                CardId.Zero, CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke,
+            return !card.IsCode(CardId.Raye, CardId.Roze, CardId.Kagari, CardId.Hayate,
+                CardId.Kaina, CardId.Shizuku, CardId.Zero, CardId.Camellia,
+                CardId.Amatsu, CardId.Azalea, CardId.Zeke,
                 CardId.CrystronHalqifibrax, CardId.BorrelswordDragon,
                 CardId.TopologicBomberDragon, CardId.KnightmareUnicorn);
         }
@@ -3220,7 +3580,8 @@ namespace WindBot.Game.AI.Decks
             return HornetSetupStage == HornetZeroSetupStage.None &&
                 LinkageOtk == LinkageOtkStage.None && !KagariSummoned && !ZeroSummoned &&
                 Bot.HasInExtra(CardId.Kagari) && Bot.HasInExtra(CardId.Zero) &&
-                Bot.HasInExtra(new[] { CardId.Amatsu, CardId.Hayate, CardId.Shizuku }) &&
+                Bot.HasInExtra(new[] { CardId.Amatsu, CardId.Hayate,
+                    CardId.Kaina, CardId.Shizuku }) &&
                 (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
         }
 
@@ -3476,6 +3837,8 @@ namespace WindBot.Game.AI.Decks
                 result.Add(CardId.Kagari);
             if (!ShizukuSummoned)
                 result.Add(CardId.Shizuku);
+            if (!KainaSummoned)
+                result.Add(CardId.Kaina);
             result.AddRange(new[]
             {
                 CardId.Azalea,
@@ -3493,6 +3856,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.Azalea,
                 CardId.Camellia,
                 CardId.Amatsu,
+                CardId.Kaina,
                 CardId.Shizuku,
                 CardId.Kagari,
                 CardId.Hayate,
@@ -3526,7 +3890,7 @@ namespace WindBot.Game.AI.Decks
         {
             return card != null && (card.HasSetcode(0x115) || card.HasSetcode(0x1115) ||
                 card.IsCode(CardId.Raye, CardId.Roze, CardId.Kagari, CardId.Shizuku,
-                    CardId.Hayate, CardId.Zero, CardId.Camellia, CardId.Amatsu,
+                    CardId.Hayate, CardId.Kaina, CardId.Zero, CardId.Camellia, CardId.Amatsu,
                     CardId.Azalea, CardId.Zeke, CardId.Engage, CardId.Linkage,
                     CardId.Lemnisgate, CardId.HornetDrones, CardId.WidowAnchor,
                     CardId.SharkCannon));
@@ -3578,10 +3942,12 @@ namespace WindBot.Game.AI.Decks
                 return 6;
             if (card.IsCode(CardId.Hayate))
                 return 5;
-            if (card.IsCode(CardId.Camellia, CardId.Azalea, CardId.Zeke))
+            if (card.IsCode(CardId.Kaina))
                 return 4;
-            if (card.IsCode(CardId.Roze))
+            if (card.IsCode(CardId.Camellia, CardId.Azalea, CardId.Zeke))
                 return 3;
+            if (card.IsCode(CardId.Roze))
+                return 2;
             return 1;
         }
 
@@ -3589,7 +3955,7 @@ namespace WindBot.Game.AI.Decks
         {
             return card != null && card.IsMonster() && (card.HasSetcode(0x1115) ||
                 card.IsCode(CardId.Raye, CardId.Roze, CardId.Token, CardId.Kagari,
-                    CardId.Shizuku, CardId.Hayate, CardId.Zero, CardId.Camellia,
+                    CardId.Shizuku, CardId.Hayate, CardId.Kaina, CardId.Zero, CardId.Camellia,
                     CardId.Amatsu, CardId.Azalea, CardId.Zeke));
         }
 
@@ -3733,7 +4099,7 @@ namespace WindBot.Game.AI.Decks
                 return 2400;
             }
             if (card.IsCode(CardId.Kagari, CardId.Hayate, CardId.Shizuku,
-                CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke))
+                CardId.Kaina, CardId.Camellia, CardId.Amatsu, CardId.Azalea, CardId.Zeke))
                 return (card.Attacked ? 1300 : 2100) + card.LinkCount * 100;
             return Math.Max(300, card.Attack) + card.LinkCount * 100;
         }

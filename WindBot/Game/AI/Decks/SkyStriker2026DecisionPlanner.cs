@@ -304,6 +304,12 @@ namespace WindBot.Game.AI.Decks
                 return Bot.HasInExtra(CardId.AlbionTheBrandedDragon) ? 3300 : 2200;
             if (card.IsCode(CardId.ForbiddenCrown))
                 return 2400;
+            if (card.IsCode(CardId.UltimateSky))
+                return 4300;
+            if (card.IsCode(CardId.TripleTacticsTalent))
+                return 3500;
+            if (card.IsCode(CardId.Kaina))
+                return 2400;
             return 0;
         }
 
@@ -357,7 +363,8 @@ namespace WindBot.Game.AI.Decks
                 score += target.LinkCount * 600;
             if (target.IsCode(CardId.Raye, CardId.Roze))
                 score += 2800;
-            if (target.IsCode(CardId.Kagari, CardId.Zero, CardId.Shizuku, CardId.Hayate))
+            if (target.IsCode(CardId.Kagari, CardId.Zero, CardId.Shizuku,
+                CardId.Hayate, CardId.Kaina))
                 score += 2200;
             if (target.IsFloodgate())
                 score += 3000;
