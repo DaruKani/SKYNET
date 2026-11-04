@@ -166,8 +166,10 @@ The original `Deck=SkyStriker` executor and `Decks/AI_SkyStriker.ydk` remain
 unchanged. The separate `Deck=SkyStriker2026` entry loads the new ordinary WindBot
 executor and `Decks/AI_SkyStriker2026.ydk`. Its 40-card Main Deck, 15-card Extra
 Deck and 15-card Side Deck were imported from the user-supplied
-`D:\Games\MDPro4\Deck\Sky striker.ydk` on 2026-11-03; MDPro4 appearance and
-accessory metadata are intentionally not part of the runtime deck resource.
+`D:\Games\MDPro4\Deck\Sky striker.ydk` on 2026-11-04. The companion MDPro4 deck
+`D:\Games\MDPro4\Deck\_Skystriker_2026.ydk` was refreshed from the same source at
+the user's request; appearance and accessory metadata remain outside the versioned
+runtime deck resource.
 
 The executor prioritizes an OTK when going second and a Zero-centered setup when
 going first. It covers Raye/Roze access, Engage/Kagari recovery, Linkage battle
