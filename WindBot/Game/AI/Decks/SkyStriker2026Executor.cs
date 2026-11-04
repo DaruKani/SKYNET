@@ -3430,6 +3430,16 @@ namespace WindBot.Game.AI.Decks
                 result.Add(CardId.Roze);
             }
 
+            // Replay 2026-11-04: once Zero/starter access was already secured,
+            // Engage searched another Raye and ended with no interaction. A live
+            // first-turn engine should convert Engage into Widow before redundant
+            // access such as Hornet Drones.
+            bool establishedFirstTurn = !needStarter && Duel.Player == 0 &&
+                Duel.Phase == DuelPhase.Main1 && Duel.Turn == 1;
+            if (establishedFirstTurn &&
+                !Bot.HasInHandOrInSpellZone(CardId.WidowAnchor))
+                result.Add(CardId.WidowAnchor);
+
             ClientCard problemMonster = Util.GetProblematicEnemyMonster();
             if (problemMonster != null)
             {
@@ -4215,13 +4225,14 @@ namespace WindBot.Game.AI.Decks
                 CardId.Shizuku,
                 CardId.Kagari,
                 CardId.Zero,
-                CardId.Azalea,
                 CardId.Camellia,
                 CardId.Zeke,
                 CardId.Hayate,
                 CardId.Amatsu,
                 CardId.Kaina
             });
+            if (GetBestAzaleaDestroyTarget() != null)
+                result.Add(CardId.Azalea);
             return result.Distinct().Where(Bot.HasInExtra).ToArray();
         }
 

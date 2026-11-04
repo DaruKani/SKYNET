@@ -200,6 +200,13 @@ activates the summon trigger against the highest-value legal opposing card, and
 accounts for losing itself when the GY contains three or fewer Spells. Its battle
 trigger remains available whenever a legal Spell banish cost exists.
 
+The user-supplied 2026-11-04 mirror replay is treated as opt-in decision evidence,
+not as an automatically promoted model checkpoint. It adds regression policy for
+three observed failures: an established first-turn Zero converts Engage into
+Widow Anchor before redundant monster access; Lemnisgate does not spend a single
+pair at the End Phase for no bounce or extension; and its GY Link effect does not
+consume Raye plus Roze for Azalea when Azalea has no opposing destruction target.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two
