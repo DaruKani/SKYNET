@@ -130,6 +130,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
         private ClientCard TripleTacticsTalentTarget;
+        private int LemnisgateRecyclePairCount;
         private ClientCard ZeroDestroyTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard FallenAndVirtuousReviveTarget;
@@ -310,6 +311,7 @@ namespace WindBot.Game.AI.Decks
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
+            LemnisgateRecyclePairCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
@@ -348,6 +350,7 @@ namespace WindBot.Game.AI.Decks
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
+            LemnisgateRecyclePairCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
@@ -726,7 +729,7 @@ namespace WindBot.Game.AI.Decks
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.ReturnToHand)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                return SelectLemnisgateBounceTargets(cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.SpSummon)
@@ -892,7 +895,9 @@ namespace WindBot.Game.AI.Decks
             if (desc == Util.GetStringId(CardId.Roze, 2))
                 return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
             if (desc == Util.GetStringId(CardId.Lemnisgate, 1))
-                return Enemy.GetFieldCount() > 0;
+                return ShouldUseLemnisgateGraveLink();
+            if (desc == Util.GetStringId(CardId.Lemnisgate, 2))
+                return GetUsefulLemnisgateBounceTargets().Count > 0;
             if (desc == Util.GetStringId(CardId.Engage, 0))
                 return true;
             if (desc == Util.GetStringId(CardId.AreaZero, 2))
@@ -1601,29 +1606,145 @@ namespace WindBot.Game.AI.Decks
         private bool LemnisgateEffect()
         {
             if (Card.Location == CardLocation.Grave)
+                return ShouldUseLemnisgateGraveLink();
+
+            List<ClientCard> spells = Bot.Graveyard.Where(card =>
+                card.IsSpell() && IsSkyStrikerCard(card)).ToList();
+            List<ClientCard> monsters = Bot.Graveyard.Where(card =>
+                card.IsMonster() && IsSkyStrikerAce(card)).ToList();
+            int maximumPairs = Math.Min(spells.Count, monsters.Count);
+            if (maximumPairs == 0)
+                return false;
+
+            int usefulBounces = GetUsefulLemnisgateBounceTargets().Count;
+            bool stageGraveLink = ShouldStageLemnisgateGraveLink();
+            bool recoverExtraDeckAce = monsters.Any(IsSkyStrikerAceLink) &&
+                (Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End ||
+                Bot.ExtraDeck.Count(IsSkyStrikerAceLink) <= 3);
+
+            if (usefulBounces >= 2 && maximumPairs >= 3)
+                LemnisgateRecyclePairCount = 3;
+            else if (usefulBounces >= 1 && maximumPairs >= 2)
+                LemnisgateRecyclePairCount = 2;
+            else if (stageGraveLink || recoverExtraDeckAce)
+                LemnisgateRecyclePairCount = 1;
+            else
+                return false;
+
+            int projectedSpellCount = GetSpellCountInGrave() -
+                LemnisgateRecyclePairCount + 1;
+            if (projectedSpellCount < 3 && usefulBounces == 0 && !stageGraveLink)
             {
-                if (LinkageOtk != LinkageOtkStage.None ||
-                    HornetSetupStage != HornetZeroSetupStage.None)
-                    return false;
-                return Bot.HasInExtra(new[]
+                LemnisgateRecyclePairCount = 0;
+                return false;
+            }
+
+            Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate: recycle pairs=" +
+                LemnisgateRecyclePairCount + ", useful bounces=" + usefulBounces +
+                ", stage grave Link=" + stageGraveLink);
+            return true;
+        }
+
+        private bool ShouldStageLemnisgateGraveLink()
+        {
+            if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1)
+                return false;
+            if (!Bot.HasInExtra(new[]
+            {
+                CardId.Kagari,
+                CardId.Zero,
+                CardId.Hayate,
+                CardId.Amatsu
+            }))
+                return false;
+            return Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
+                Bot.HasInHandOrHasInMonstersZone(CardId.Roze) ||
+                Bot.HasInHandOrInSpellZone(CardId.HornetDrones) ||
+                Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
+                Bot.GetMonsters().Any(card => card.IsFaceup() && IsSkyStrikerAce(card));
+        }
+
+        private bool ShouldUseLemnisgateGraveLink()
+        {
+            List<ClientCard> materials = Bot.GetMonsters().Where(card =>
+                card.IsFaceup()).ToList();
+            if (materials.Count == 0 || GetLemnisgateExtraDeckPriority().Length == 0)
+                return false;
+
+            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
+            if (battle)
+            {
+                if (Duel.Player == 0)
+                    return materials.Any(card => card.Attacked &&
+                        (IsSkyStrikerAce(card) || ControlledEnemyCards.Contains(card)));
+                return Enemy.GetMonsters().Any(card => card.IsFaceup() && card.IsAttack() &&
+                    !card.Attacked) && Bot.HasInExtra(new[] { CardId.Kaina, CardId.Amatsu });
+            }
+
+            if (Duel.Player == 1)
+            {
+                bool dangerousMonster = Enemy.GetMonsters().Any(card => card.IsFaceup() &&
+                    (card.Attack >= 2000 || GetObservedThreatScore(card) >= 4000));
+                return dangerousMonster && Bot.HasInExtra(new[]
                 {
-                    CardId.Zero,
                     CardId.Amatsu,
-                    CardId.Kaina,
-                    CardId.Shizuku,
-                    CardId.Kagari,
-                    CardId.Hayate
+                    CardId.Kaina
                 });
             }
 
-            int spells = Bot.Graveyard.Count(card => card.IsSpell() && IsSkyStrikerCard(card));
-            int monsters = Bot.Graveyard.Count(card => card.IsMonster() && IsSkyStrikerAce(card));
             if (HornetSetupStage == HornetZeroSetupStage.NeedZero &&
-                spells > 0 && monsters > 0)
+                materials.Count >= 2 && Bot.HasInExtra(CardId.Zero))
                 return true;
-            if (spells >= 2 && monsters >= 2 && Enemy.GetFieldCount() > 0)
-                return true;
-            return Duel.Phase == DuelPhase.End && spells > 0 && monsters > 0;
+
+            if (Duel.Phase == DuelPhase.Main1)
+            {
+                bool kagariPayoff = !KagariSummoned && Bot.HasInExtra(CardId.Kagari) &&
+                    Bot.Graveyard.Any(card => card.IsCode(CardId.Engage, CardId.Linkage,
+                        CardId.WidowAnchor, CardId.HornetDrones));
+                return kagariPayoff || materials.Count >= 2 && !ZeroSummoned &&
+                    Bot.HasInExtra(CardId.Zero);
+            }
+
+            return (Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End) &&
+                !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku);
+        }
+
+        private List<ClientCard> GetUsefulLemnisgateBounceTargets()
+        {
+            return Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Concat(Bot.GetMonsters()).Concat(Bot.GetSpells())
+                .Where(card => GetLemnisgateBounceValue(card) >= 2500)
+                .OrderByDescending(GetLemnisgateBounceValue)
+                .ToList();
+        }
+
+        private int GetLemnisgateBounceValue(ClientCard card)
+        {
+            if (card == null)
+                return 0;
+            if (card.Controller == 0)
+            {
+                if (ControlledEnemyCards.Contains(card))
+                    return 7500;
+                if (IsSkyStrikerAceLink(card) && card.Attacked)
+                    return 2600 + card.LinkCount * 300;
+                return 0;
+            }
+
+            if (card.IsMonster())
+            {
+                int score = card.IsFaceup() ? GetObservedThreatScore(card) : 1200;
+                if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz |
+                    CardType.Link))
+                    score += 1800;
+                return score;
+            }
+            if (IsPersistentSpellTrap(card))
+                return card.IsFloodgate() ? 9000 : 4500;
+
+            // Returning a resolving Normal/Quick-Play Spell or Trap does not undo
+            // its effect, so it is deliberately worth nothing here.
+            return card.IsFacedown() ? 800 : 0;
         }
 
         private bool ZeroSummon()
@@ -3208,22 +3329,36 @@ namespace WindBot.Game.AI.Decks
             List<int> result = new List<int>();
             if (ShouldPrioritizeLinkageForOtkSearch() || ShouldPrepareWidowLinkageOtk())
                 result.Add(CardId.Linkage);
-            bool openingSetup = Duel.Player == 0 && Duel.Phase == DuelPhase.Main1 &&
-                Bot.GetMonstersExtraZoneCount() == 0;
-            bool haveLiveAceAccess = Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
-                Bot.HasInHandOrHasInMonstersZone(CardId.Roze);
-            if (!haveLiveAceAccess)
+
+            // Shizuku should normally take Engage when the server offers it. Engage
+            // itself cannot search another Engage, so this entry is ignored there.
+            if (includeEngage)
+                result.Add(CardId.Engage);
+
+            bool needStarter = !HasLiveSkyStrikerAccess();
+            if (needStarter)
             {
                 result.Add(CardId.Raye);
                 result.Add(CardId.HornetDrones);
                 result.Add(CardId.Roze);
             }
-            else if (openingSetup && !Bot.HasInHandOrInSpellZone(CardId.HornetDrones))
+
+            ClientCard problemMonster = Util.GetProblematicEnemyMonster();
+            if (problemMonster != null)
             {
-                result.Add(CardId.HornetDrones);
+                if (!Bot.HasInHandOrInSpellZone(CardId.WidowAnchor))
+                    result.Add(CardId.WidowAnchor);
+                if (EmptyMainMonsterZone())
+                    result.Add(CardId.Afterburners);
             }
-            if (includeEngage)
-                result.Add(CardId.Engage);
+
+            if (EmptyMainMonsterZone() && Enemy.GetSpells().Any(card =>
+                card.IsFacedown() && !IsCurrentChainHandled(card)))
+                result.Add(CardId.JammingWaves);
+
+            if (CanProfitablySearchLemnisgate())
+                result.Add(CardId.Lemnisgate);
+
             if (SkyStrikerMirrorObserved)
             {
                 if (Enemy.GetGraveyardMonsters().Any(card =>
@@ -3237,13 +3372,22 @@ namespace WindBot.Game.AI.Decks
                 if (!Bot.HasInHandOrInSpellZone(CardId.Multirole))
                     result.Add(CardId.Multirole);
             }
+
+            bool graveyardThreat = Enemy.GetGraveyardMonsters().Any(card =>
+                card.IsMonsterDangerous() || card.IsFloodgate());
+            if (graveyardThreat && !Bot.HasInHandOrInSpellZone(CardId.SharkCannon))
+                result.Add(CardId.SharkCannon);
+
+            if (!Bot.HasInHandOrInSpellZone(CardId.Multirole) &&
+                (Duel.Turn == 1 || GetSpellCountInGrave() >= 2))
+                result.Add(CardId.Multirole);
             if (!Bot.HasInHandOrInSpellZone(CardId.Linkage))
                 result.Add(CardId.Linkage);
             if (!Bot.HasInHandOrInSpellZone(CardId.HornetDrones))
                 result.Add(CardId.HornetDrones);
-            if (Util.GetProblematicEnemyMonster() != null)
+            if (problemMonster != null)
                 result.Add(CardId.WidowAnchor);
-            if (EmptyMainMonsterZone() && Util.GetProblematicEnemyMonster() != null)
+            if (EmptyMainMonsterZone() && problemMonster != null)
                 result.Add(CardId.Afterburners);
             if (EmptyMainMonsterZone() && Enemy.GetSpells().Any(card =>
                 card.IsFacedown() && !IsCurrentChainHandled(card)))
@@ -3273,6 +3417,33 @@ namespace WindBot.Game.AI.Decks
                 CardId.Roze
             });
             return result.Distinct().ToArray();
+        }
+
+        private bool HasLiveSkyStrikerAccess()
+        {
+            if (Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
+                Bot.HasInHandOrHasInMonstersZone(CardId.Roze) ||
+                Bot.GetMonsters().Any(IsSkyStrikerAce))
+                return true;
+            return EmptyMainMonsterZone() &&
+                Bot.HasInHandOrInSpellZone(CardId.HornetDrones);
+        }
+
+        private bool CanProfitablySearchLemnisgate()
+        {
+            if (Bot.HasInHandOrInSpellZone(CardId.Lemnisgate))
+                return false;
+            int spells = Bot.Graveyard.Count(card => card.IsSpell() &&
+                IsSkyStrikerCard(card));
+            int monsters = Bot.Graveyard.Count(card => card.IsMonster() &&
+                IsSkyStrikerAce(card));
+            if (spells == 0 || monsters == 0)
+                return false;
+            if (spells >= 2 && monsters >= 2 &&
+                GetUsefulLemnisgateBounceTargets().Count > 0)
+                return true;
+            return ShouldStageLemnisgateGraveLink() ||
+                Bot.Graveyard.Any(IsSkyStrikerAceLink);
         }
 
         private ClientCard GetEnemyMonsterTarget(bool problematicOnly)
@@ -3790,17 +3961,84 @@ namespace WindBot.Game.AI.Decks
         private IList<ClientCard> SelectLemnisgateRecycleCards(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> spells = cards.Where(card => card.IsSpell())
-                .OrderBy(GetGraveResourceValue).ToList();
+                .OrderByDescending(GetLemnisgateRecycleValue).ToList();
             List<ClientCard> monsters = cards.Where(card => card.IsMonster())
-                .OrderBy(GetGraveResourceValue).ToList();
-            int pairCount = Math.Min(Math.Min(spells.Count, monsters.Count), max / 2);
+                .OrderByDescending(GetLemnisgateRecycleValue).ToList();
+            int maximumPairs = Math.Min(Math.Min(spells.Count, monsters.Count), max / 2);
+            int pairCount = LemnisgateRecyclePairCount > 0
+                ? Math.Min(LemnisgateRecyclePairCount, maximumPairs)
+                : Math.Min(1, maximumPairs);
+            pairCount = Math.Max((min + 1) / 2, pairCount);
             List<ClientCard> selected = new List<ClientCard>();
             for (int i = 0; i < pairCount; ++i)
             {
                 selected.Add(spells[i]);
                 selected.Add(monsters[i]);
             }
-            return Util.CheckSelectCount(selected, cards, min, max);
+            int exactCount = pairCount * 2;
+            return Util.CheckSelectCount(selected, cards, exactCount, exactCount);
+        }
+
+        private int GetLemnisgateRecycleValue(ClientCard card)
+        {
+            if (card == null)
+                return 0;
+            if (card.IsMonster())
+            {
+                if (card.IsCode(CardId.Zero))
+                    return 11000;
+                if (card.IsCode(CardId.Kagari))
+                    return 10000;
+                if (card.IsCode(CardId.Shizuku))
+                    return 9000;
+                if (card.IsCode(CardId.Hayate, CardId.Amatsu))
+                    return 8200;
+                if (card.IsCode(CardId.Kaina, CardId.Camellia, CardId.Azalea,
+                    CardId.Zeke))
+                    return 7400;
+                if (card.IsCode(CardId.Roze))
+                    return Bot.Graveyard.Count(candidate => candidate.IsCode(CardId.Roze)) > 1
+                        ? 2200 : 300;
+                if (card.IsCode(CardId.Raye))
+                    return Bot.Graveyard.Count(candidate => candidate.IsCode(CardId.Raye)) > 1
+                        ? 1800 : 100;
+                return 1000;
+            }
+
+            bool kagariCanRecover = !KagariSummoned && Bot.HasInExtra(CardId.Kagari);
+            if (card.IsCode(CardId.Engage))
+                return kagariCanRecover ? 2600 : 11000;
+            if (card.IsCode(CardId.Linkage))
+                return kagariCanRecover && (LinkageOtk != LinkageOtkStage.None ||
+                    GetLinkageOtkStarter() != null) ? 2400 : 10000;
+            if (card.IsCode(CardId.WidowAnchor))
+                return 9000;
+            if (card.IsCode(CardId.HornetDrones))
+                return 8500;
+            if (card.IsCode(CardId.Lemnisgate))
+                return 8000;
+            if (card.IsCode(CardId.SharkCannon))
+                return 7000;
+            if (card.IsCode(CardId.Multirole))
+                return 6500;
+            return 4000;
+        }
+
+        private IList<ClientCard> SelectLemnisgateBounceTargets(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = cards.OrderByDescending(GetLemnisgateBounceValue)
+                .ToList();
+            int usefulCount = ordered.Count(card => GetLemnisgateBounceValue(card) >= 2500);
+            int desired = Math.Min(max, Math.Max(min, usefulCount));
+            IList<ClientCard> selected = Util.CheckSelectCount(ordered, cards,
+                desired, desired);
+            if (selected != null)
+            {
+                foreach (ClientCard target in selected.Where(card => card.Controller == 1))
+                    MarkCurrentChainHandled(target);
+            }
+            return selected;
         }
 
         private int[] GetLinkageExtraDeckPriority()
@@ -3851,18 +4089,53 @@ namespace WindBot.Game.AI.Decks
 
         private int[] GetLemnisgateExtraDeckPriority()
         {
-            return new[]
+            List<int> result = new List<int>();
+            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
+            if (Duel.Player == 1)
             {
-                CardId.Azalea,
-                CardId.Camellia,
-                CardId.Amatsu,
-                CardId.Kaina,
+                if (battle)
+                    result.Add(CardId.Kaina);
+                result.Add(CardId.Amatsu);
+                result.Add(CardId.Kaina);
+            }
+            else if (battle)
+            {
+                result.Add(CardId.Zero);
+                if (!KagariSummoned && Bot.Graveyard.Any(card => card.IsSpell()))
+                    result.Add(CardId.Kagari);
+                result.Add(CardId.Amatsu);
+                result.Add(CardId.Hayate);
+                result.Add(CardId.Kaina);
+            }
+            else if (Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End)
+            {
+                result.Add(CardId.Shizuku);
+                result.Add(CardId.Kaina);
+                result.Add(CardId.Amatsu);
+            }
+            else
+            {
+                if (!KagariSummoned && Bot.Graveyard.Any(card => card.IsCode(
+                    CardId.Engage, CardId.Linkage, CardId.WidowAnchor,
+                    CardId.HornetDrones)))
+                    result.Add(CardId.Kagari);
+                result.Add(CardId.Zero);
+                result.Add(CardId.Hayate);
+                result.Add(CardId.Amatsu);
+            }
+            result.AddRange(new[]
+            {
                 CardId.Shizuku,
                 CardId.Kagari,
-                CardId.Hayate,
                 CardId.Zero,
-                CardId.Zeke
-            }.Where(Bot.HasInExtra).ToArray();
+                CardId.Azalea,
+                CardId.Camellia,
+                CardId.Zeke,
+                CardId.Hayate,
+                CardId.Amatsu,
+                CardId.Kaina
+            });
+            return result.Distinct().Where(Bot.HasInExtra).ToArray();
         }
 
         private List<ClientCard> GetModernLinkTwoMaterials(Func<ClientCard, bool> filter, bool requireAceLink)

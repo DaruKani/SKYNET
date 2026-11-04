@@ -297,7 +297,7 @@ namespace WindBot.Game.AI.Decks
             if (card.IsCode(CardId.Multirole))
                 return 4700;
             if (card.IsCode(CardId.Lemnisgate))
-                return 3800;
+                return 5200;
             if (card.IsCode(CardId.HornetDrones))
                 return 3500;
             if (card.IsCode(CardId.TheFallenAndTheVirtuous))

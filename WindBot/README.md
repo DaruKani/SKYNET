@@ -182,6 +182,18 @@ listed Side Deck board breakers and counter traps have ordinary executor support
 All target, material, recycle and option choices remain restricted to candidates
 offered by the duel server.
 
+Engage now treats Raye, Hornet Drones and Roze as emergency starter searches only
+when no live Sky Striker access is already available. Otherwise its search order
+is goal-driven: Linkage for a prepared OTK, Widow Anchor or Maneuver cards for an
+observed board, Shark Cannon for a known GY threat, and Lemnisgate or Multirole for
+resource conversion. Lemnisgate separately scores its equal monster/Spell recycle
+pairs, preserves Raye/Roze in the GY where possible, restores spent Extra Deck
+Aces and high-value Spells, and pays four or six shuffled cards only when one or
+two useful bounce targets exist. Its two optional prompts are handled separately:
+the field effect will not bounce a resolving non-persistent Spell/Trap, while the
+GY effect Link Summons only for a battle extension, defensive Kaina/Amatsu,
+Kagari recovery, Zero setup or Shizuku end board.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two
