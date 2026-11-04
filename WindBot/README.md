@@ -194,6 +194,12 @@ the field effect will not bounce a resolving non-persistent Spell/Trap, while th
 GY effect Link Summons only for a battle extension, defensive Kaina/Amatsu,
 Kagari recovery, Zero setup or Shizuku end board.
 
+Azalea accepts both the explicit effect description and MDPro4's description-less
+optional summon callback. It plans a target before spending Link materials,
+activates the summon trigger against the highest-value legal opposing card, and
+accounts for losing itself when the GY contains three or fewer Spells. Its battle
+trigger remains available whenever a legal Spell banish cost exists.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two

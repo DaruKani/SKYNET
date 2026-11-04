@@ -130,6 +130,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard SharkCannonTarget;
         private ClientCard ForbiddenCrownTarget;
         private ClientCard TripleTacticsTalentTarget;
+        private ClientCard AzaleaDestroyTarget;
         private int LemnisgateRecyclePairCount;
         private ClientCard ZeroDestroyTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
@@ -311,6 +312,7 @@ namespace WindBot.Game.AI.Decks
             SharkCannonTarget = null;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
+            AzaleaDestroyTarget = null;
             LemnisgateRecyclePairCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
@@ -350,6 +352,7 @@ namespace WindBot.Game.AI.Decks
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
+            AzaleaDestroyTarget = null;
             LemnisgateRecyclePairCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
@@ -570,7 +573,7 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
 
                 if (activating.IsCode(CardId.Azalea) && hint == HintMsg.Destroy)
-                    return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+                    return SelectAzaleaDestroyTarget(cards, min, max);
 
                 if (activating.IsCode(CardId.Azalea) && hint == HintMsg.Remove)
                     return Util.CheckSelectCount(cards.OrderBy(GetGraveResourceValue).ToList(),
@@ -1793,12 +1796,23 @@ namespace WindBot.Game.AI.Decks
 
         private bool AzaleaSummon()
         {
-            if (AzaleaSummoned || Enemy.GetFieldCount() == 0)
+            if (AzaleaSummoned)
+                return false;
+            AzaleaDestroyTarget = GetBestAzaleaDestroyTarget();
+            if (AzaleaDestroyTarget == null)
                 return false;
             List<ClientCard> materials = GetModernLinkTwoMaterials(card =>
                 card.HasAttribute(CardAttribute.Light | CardAttribute.Dark), false);
             if (materials == null)
                 return false;
+            int targetScore = GetAzaleaDestroyScore(AzaleaDestroyTarget);
+            int materialValue = materials.Sum(GetLinkMaterialValue);
+            bool azaleaWillLeave = GetSpellCountInGrave() <= 3;
+            if (azaleaWillLeave && targetScore + 1200 < materialValue)
+            {
+                AzaleaDestroyTarget = null;
+                return false;
+            }
             AI.SelectMaterials(materials);
             return true;
         }
@@ -1889,9 +1903,82 @@ namespace WindBot.Game.AI.Decks
         {
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
-            if (ActivateDescription == Util.GetStringId(CardId.Azalea, 0))
-                return Enemy.GetFieldCount() > 0;
-            return ActivateDescription == Util.GetStringId(CardId.Azalea, 1);
+
+            bool battleTrigger = ActivateDescription == Util.GetStringId(CardId.Azalea, 1) ||
+                ActivateDescription == -1 && Bot.BattlingMonster == Card &&
+                Enemy.BattlingMonster != null;
+            if (battleTrigger)
+                return Bot.Graveyard.Any(card => card.IsSpell());
+
+            bool summonTrigger = ActivateDescription == Util.GetStringId(CardId.Azalea, 0) ||
+                ActivateDescription == -1 && AI.SelectingEffectYn &&
+                Duel.LastSummonedCards.Contains(Card);
+            if (!summonTrigger)
+                return false;
+
+            if (!IsLiveAzaleaDestroyTarget(AzaleaDestroyTarget))
+                AzaleaDestroyTarget = GetBestAzaleaDestroyTarget();
+            if (AzaleaDestroyTarget == null)
+                return false;
+            MarkCurrentChainHandled(AzaleaDestroyTarget);
+            AI.SelectCard(AzaleaDestroyTarget);
+            Logger.DebugWriteLine("[SkyStriker2026] Azalea summon trigger: destroy " +
+                (AzaleaDestroyTarget.Name ?? AzaleaDestroyTarget.Id.ToString()) +
+                ", spells in GY=" + GetSpellCountInGrave());
+            return true;
+        }
+
+        private ClientCard GetBestAzaleaDestroyTarget()
+        {
+            return Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Where(IsLiveAzaleaDestroyTarget)
+                .OrderByDescending(GetAzaleaDestroyScore)
+                .FirstOrDefault();
+        }
+
+        private bool IsLiveAzaleaDestroyTarget(ClientCard target)
+        {
+            return target != null && target.Controller == 1 &&
+                (target.Location == CardLocation.MonsterZone ||
+                target.Location == CardLocation.SpellZone) &&
+                !target.IsShouldNotBeTarget() && !target.IsShouldNotBeMonsterTarget() &&
+                !IsCurrentChainHandled(target);
+        }
+
+        private int GetAzaleaDestroyScore(ClientCard target)
+        {
+            if (!IsLiveAzaleaDestroyTarget(target))
+                return 0;
+            int score;
+            if (target.IsMonster())
+            {
+                score = target.IsFaceup() ? GetObservedThreatScore(target) : 1400;
+                if (target.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz |
+                    CardType.Link))
+                    score += 1400;
+            }
+            else if (IsPersistentSpellTrap(target))
+                score = target.IsFloodgate() ? 9000 : 4500;
+            else
+                score = target.IsFacedown() ? 1800 : 300;
+
+            if (target == Util.GetProblematicEnemyMonster() ||
+                target == Util.GetBestEnemySpell() || target.IsFloodgate())
+                score += 3000;
+            return score;
+        }
+
+        private IList<ClientCard> SelectAzaleaDestroyTarget(
+            IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            ClientCard intended = FindMatchingOfferedCard(cards, AzaleaDestroyTarget);
+            if (intended != null)
+                ordered.Add(intended);
+            ordered.AddRange(cards.Where(card => !ordered.Contains(card))
+                .OrderByDescending(GetAzaleaDestroyScore));
+            AzaleaDestroyTarget = null;
+            return Util.CheckSelectCount(ordered, cards, min, max);
         }
 
         private bool RozeSummon()
