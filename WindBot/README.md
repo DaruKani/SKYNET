@@ -217,6 +217,17 @@ into an Azalea-led Linkage OTK. Only a line whose required cards and public stat
 are present is enabled; seeing the opponent perform it is not treated as proof that
 unknown cards exist in the bot's hand or Deck.
 
+The 2026-11-04 23:44 replay adds two further regression guards. An established
+turn-one Zero/Ace board keeps Roze in hand instead of Normal Summoning it solely
+to turn Roze into Kagari for an early Engage recovery. Lemnisgate no longer treats
+an arbitrary Ace or Linkage in hand as sufficient reason to recycle a single pair;
+the no-bounce GY-staging exception is limited to the tracked second-Hornet route
+where Drones plus Kagari are the exact pair and Zero is ready. It also refuses to
+chain the recycle effect over the bot's own unresolved effect. MDPro4 presents the
+recycle choice through repeated one-card `SelectUnselect` prompts, so the executor
+now advances that selection incrementally instead of indexing a nonexistent full
+monster/Spell candidate pair.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two

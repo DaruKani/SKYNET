@@ -132,6 +132,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard TripleTacticsTalentTarget;
         private ClientCard AzaleaDestroyTarget;
         private int LemnisgateRecyclePairCount;
+        private int LemnisgateRecycleSelectionCount;
         private ClientCard ZeroDestroyTarget;
         private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard FallenAndVirtuousReviveTarget;
@@ -314,6 +315,7 @@ namespace WindBot.Game.AI.Decks
             TripleTacticsTalentTarget = null;
             AzaleaDestroyTarget = null;
             LemnisgateRecyclePairCount = 0;
+            LemnisgateRecycleSelectionCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
@@ -354,6 +356,7 @@ namespace WindBot.Game.AI.Decks
             TripleTacticsTalentTarget = null;
             AzaleaDestroyTarget = null;
             LemnisgateRecyclePairCount = 0;
+            LemnisgateRecycleSelectionCount = 0;
             ZeroDestroyTarget = null;
             FallenAndVirtuousDestroyTarget = null;
             FallenAndVirtuousReviveTarget = null;
@@ -1611,6 +1614,12 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.Grave)
                 return ShouldUseLemnisgateGraveLink();
 
+            // Do not chain the field recycle to our own pending effect. Besides
+            // spending Lemnisgate without a tempo target, recycling Kagari's
+            // selected Spell here can make the recovery resolve without value.
+            if (Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0))
+                return false;
+
             List<ClientCard> spells = Bot.Graveyard.Where(card =>
                 card.IsSpell() && IsSkyStrikerCard(card)).ToList();
             List<ClientCard> monsters = Bot.Graveyard.Where(card =>
@@ -1645,6 +1654,7 @@ namespace WindBot.Game.AI.Decks
             Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate: recycle pairs=" +
                 LemnisgateRecyclePairCount + ", useful bounces=" + usefulBounces +
                 ", stage grave Link=" + stageGraveLink);
+            LemnisgateRecycleSelectionCount = 0;
             return true;
         }
 
@@ -1652,19 +1662,15 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1)
                 return false;
-            if (!Bot.HasInExtra(new[]
-            {
-                CardId.Kagari,
-                CardId.Zero,
-                CardId.Hayate,
-                CardId.Amatsu
-            }))
-                return false;
-            return Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
-                Bot.HasInHandOrHasInMonstersZone(CardId.Roze) ||
-                Bot.HasInHandOrInSpellZone(CardId.HornetDrones) ||
-                Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
-                Bot.GetMonsters().Any(card => card.IsFaceup() && IsSkyStrikerAce(card));
+
+            // Staging Lemnisgate in the GY is a committed setup, not a generic
+            // reason to recycle one pair. The known profitable setup is the
+            // tracked Hornet route: the second Token and bridge are ready for
+            // Zero while Drones plus Kagari form the exact recycle pair.
+            return HornetSetupStage == HornetZeroSetupStage.NeedZero &&
+                Bot.HasInExtra(CardId.Zero) &&
+                Bot.HasInGraveyard(CardId.HornetDrones) &&
+                Bot.HasInGraveyard(CardId.Kagari);
         }
 
         private bool ShouldUseLemnisgateGraveLink()
@@ -1993,6 +1999,14 @@ namespace WindBot.Game.AI.Decks
         private bool RozeSummon()
         {
             if (NormalSummoned || Bot.HasInHand(CardId.Raye))
+                return false;
+
+            // Once the turn-one Ace/Zero board is established, keep Roze as
+            // follow-up and leave the Main Monster Zone clear for Striker Spells.
+            // Normal Summoning it merely to cash in Kagari is not additional
+            // interaction and exposes two resources to one answer.
+            if (Duel.Turn == 1 && Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && IsSkyStrikerAceLink(card)))
                 return false;
             return true;
         }
@@ -2688,6 +2702,10 @@ namespace WindBot.Game.AI.Decks
             }
 
             if (ShouldReserveKagariForLinkageOtk())
+                return false;
+
+            if (Duel.Turn == 1 && Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && IsSkyStrikerAceLink(card)))
                 return false;
 
             if (!Bot.HasInGraveyard(new[]
@@ -4116,15 +4134,47 @@ namespace WindBot.Game.AI.Decks
 
         private IList<ClientCard> SelectLemnisgateRecycleCards(IList<ClientCard> cards, int min, int max)
         {
+            // MDPro4 implements this effect with SelectUnselect: each callback
+            // contains only the cards that may be clicked next, not the whole
+            // monster/Spell pool. Select one offered card at a time and finish
+            // only after the planned number of pairs has been completed.
+            if (max <= 1)
+            {
+                int desiredCount = Math.Max(2, LemnisgateRecyclePairCount * 2);
+                if (LemnisgateRecycleSelectionCount >= desiredCount && min == 0)
+                {
+                    LemnisgateRecycleSelectionCount = 0;
+                    return new List<ClientCard>();
+                }
+
+                ClientCard next = cards.OrderByDescending(GetLemnisgateRecycleValue)
+                    .FirstOrDefault();
+                if (next == null)
+                {
+                    if (min == 0)
+                    {
+                        LemnisgateRecycleSelectionCount = 0;
+                        return new List<ClientCard>();
+                    }
+                    return null;
+                }
+
+                LemnisgateRecycleSelectionCount++;
+                return new List<ClientCard> { next };
+            }
+
             List<ClientCard> spells = cards.Where(card => card.IsSpell())
                 .OrderByDescending(GetLemnisgateRecycleValue).ToList();
             List<ClientCard> monsters = cards.Where(card => card.IsMonster())
                 .OrderByDescending(GetLemnisgateRecycleValue).ToList();
             int maximumPairs = Math.Min(Math.Min(spells.Count, monsters.Count), max / 2);
+            int minimumPairs = (min + 1) / 2;
+            if (maximumPairs < minimumPairs)
+                return null;
             int pairCount = LemnisgateRecyclePairCount > 0
                 ? Math.Min(LemnisgateRecyclePairCount, maximumPairs)
                 : Math.Min(1, maximumPairs);
-            pairCount = Math.Max((min + 1) / 2, pairCount);
+            pairCount = Math.Max(minimumPairs, pairCount);
             List<ClientCard> selected = new List<ClientCard>();
             for (int i = 0; i < pairCount; ++i)
             {
