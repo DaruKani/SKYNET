@@ -197,15 +197,25 @@ Kagari recovery, Zero setup or Shizuku end board.
 Azalea accepts both the explicit effect description and MDPro4's description-less
 optional summon callback. It plans a target before spending Link materials,
 activates the summon trigger against the highest-value legal opposing card, and
-accounts for losing itself when the GY contains three or fewer Spells. Its battle
-trigger remains available whenever a legal Spell banish cost exists.
+accounts for losing itself when the GY contains three or fewer Spells. It may also
+be summoned without a destruction target when a controlled opposing LIGHT/DARK
+monster plus the bot's existing material produces the complete conservative
+Azalea -> Linkage -> Kagari -> Linkage -> Zero lethal route. Its battle trigger
+remains available whenever a legal Spell banish cost exists.
 
-The user-supplied 2026-11-04 mirror replay is treated as opt-in decision evidence,
-not as an automatically promoted model checkpoint. It adds regression policy for
-three observed failures: an established first-turn Zero converts Engage into
-Widow Anchor before redundant monster access; Lemnisgate does not spend a single
-pair at the End Phase for no bounce or extension; and its GY Link effect does not
-consume Raye plus Roze for Azalea when Azalea has no opposing destruction target.
+The four user-supplied 2026-11-03 and 2026-11-04 mirror logs are treated as opt-in
+two-sided decision evidence, not as automatically promoted model checkpoints.
+Public actions by either player may supply a positive demonstration or a negative
+regression case; hidden `UnKnowCard` identities are never reconstructed. Negative
+cases cover an established first-turn Zero searching redundant monster access,
+Lemnisgate spending a single pair for no bounce or extension, and its GY Link
+effect consuming Raye plus Roze for a targetless Azalea. Positive opponent examples
+cover Hayate sending Engage, Kagari recovering Linkage, Shizuku selecting follow-up,
+Zeke temporarily removing an opposing Ace, Shark Cannon denying Raye, multi-pair
+Lemnisgate tempo bounces, and Widow Anchor converting a stolen Amatsu with Zeke
+into an Azalea-led Linkage OTK. Only a line whose required cards and public state
+are present is enabled; seeing the opponent perform it is not treated as proof that
+unknown cards exist in the bot's hand or Deck.
 
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster

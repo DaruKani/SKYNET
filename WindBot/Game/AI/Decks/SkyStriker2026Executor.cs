@@ -1798,21 +1798,30 @@ namespace WindBot.Game.AI.Decks
         {
             if (AzaleaSummoned)
                 return false;
-            AzaleaDestroyTarget = GetBestAzaleaDestroyTarget();
-            if (AzaleaDestroyTarget == null)
-                return false;
             List<ClientCard> materials = GetModernLinkTwoMaterials(card =>
                 card.HasAttribute(CardAttribute.Light | CardAttribute.Dark), false);
             if (materials == null)
                 return false;
-            int targetScore = GetAzaleaDestroyScore(AzaleaDestroyTarget);
-            int materialValue = materials.Sum(GetLinkMaterialValue);
-            bool azaleaWillLeave = GetSpellCountInGrave() <= 3;
-            if (azaleaWillLeave && targetScore + 1200 < materialValue)
-            {
-                AzaleaDestroyTarget = null;
+
+            AzaleaDestroyTarget = GetBestAzaleaDestroyTarget();
+            bool linkageBridge = CanUseAzaleaAsLinkageBridge(materials);
+            if (AzaleaDestroyTarget == null && !linkageBridge)
                 return false;
+            if (AzaleaDestroyTarget != null)
+            {
+                int targetScore = GetAzaleaDestroyScore(AzaleaDestroyTarget);
+                int materialValue = materials.Sum(GetLinkMaterialValue);
+                bool azaleaWillLeave = GetSpellCountInGrave() <= 3;
+                if (azaleaWillLeave && targetScore + 1200 < materialValue && !linkageBridge)
+                {
+                    AzaleaDestroyTarget = null;
+                    return false;
+                }
             }
+
+            if (linkageBridge)
+                Logger.DebugWriteLine("[SkyStriker2026] Azalea: convert controlled monster " +
+                    "into Linkage OTK bridge");
             AI.SelectMaterials(materials);
             return true;
         }
@@ -2266,6 +2275,14 @@ namespace WindBot.Game.AI.Decks
                 if (canSummonKagari || canSummonHayate)
                     return true;
             }
+
+            // A successful mirror replay demonstrated that Widow Anchor can turn
+            // the opponent's DARK Ace into Azalea together with our existing Ace,
+            // then use Azalea as the first Linkage attacker. This is useful even
+            // when Azalea has no destruction target, but only when the complete
+            // conservative lethal route is already public and available.
+            if (CanPrepareAzaleaLinkageBridge(target))
+                return true;
 
             List<ClientCard> monsters = Bot.GetMonsters()
                 .Where(card => card.IsFaceup() && !card.IsCode(CardId.BorrelswordDragon))
@@ -3949,6 +3966,48 @@ namespace WindBot.Game.AI.Decks
             return canReachThreeSpells && canAccessLinkage;
         }
 
+        private bool CanPrepareAzaleaLinkageBridge(ClientCard target)
+        {
+            if (target == null || target.Controller != 1 || Duel.Player != 0 ||
+                Duel.Turn == 1 || Duel.Phase != DuelPhase.Main1 ||
+                Enemy.GetFieldCount() != 1 || AzaleaSummoned || KagariSummoned ||
+                ZeroSummoned || !target.HasAttribute(CardAttribute.Light | CardAttribute.Dark) ||
+                !Bot.HasInExtra(CardId.Azalea) || !Bot.HasInExtra(CardId.Kagari) ||
+                !Bot.HasInExtra(CardId.Zero) ||
+                !(Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) ||
+                !(Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze)) ||
+                1500 + 6500 < Enemy.LifePoints)
+                return false;
+
+            bool canAccessLinkage = Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
+                Bot.HasInHand(CardId.Engage) && Bot.HasInDeck(CardId.Linkage);
+            if (!canAccessLinkage)
+                return false;
+
+            return Bot.GetMonsters().Any(card => card.IsFaceup() &&
+                !card.IsCode(CardId.Zero) &&
+                card.HasAttribute(CardAttribute.Light | CardAttribute.Dark) &&
+                Bot.GetMonstersInMainZone().All(main => main == card) &&
+                Util.GetBotAvailZonesFromExtraDeck(new[] { card, target }) != 0);
+        }
+
+        private bool CanUseAzaleaAsLinkageBridge(IList<ClientCard> materials)
+        {
+            if (materials == null || materials.Count != 2 || Duel.Player != 0 ||
+                Duel.Turn == 1 || Duel.Phase != DuelPhase.Main1 ||
+                Enemy.GetFieldCount() != 0 || AzaleaSummoned || KagariSummoned ||
+                ZeroSummoned || !materials.Any(ControlledEnemyCards.Contains) ||
+                !Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
+                !Bot.HasInExtra(CardId.Kagari) || !Bot.HasInExtra(CardId.Zero) ||
+                !(Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) ||
+                !(Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze)) ||
+                1500 + 6500 < Enemy.LifePoints)
+                return false;
+
+            return !Bot.GetMonstersInMainZone().Any(card => !materials.Contains(card)) &&
+                Util.GetBotAvailZonesFromExtraDeck(materials) != 0;
+        }
+
         private ClientCard GetPreparedLinkageOtkStarter()
         {
             if (!CanPursuePreparedLinkageOtk() || !EmptyMainMonsterZone())
@@ -4231,7 +4290,10 @@ namespace WindBot.Game.AI.Decks
                 CardId.Amatsu,
                 CardId.Kaina
             });
-            if (GetBestAzaleaDestroyTarget() != null)
+            List<ClientCard> azaleaMaterials = GetModernLinkTwoMaterials(card =>
+                card.HasAttribute(CardAttribute.Light | CardAttribute.Dark), false);
+            if (GetBestAzaleaDestroyTarget() != null ||
+                CanUseAzaleaAsLinkageBridge(azaleaMaterials))
                 result.Add(CardId.Azalea);
             return result.Distinct().Where(Bot.HasInExtra).ToArray();
         }
