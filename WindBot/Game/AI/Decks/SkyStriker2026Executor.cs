@@ -143,6 +143,9 @@ namespace WindBot.Game.AI.Decks
         private bool PreserveEmptyMainZoneForZero;
         private bool ZeroSearchPending;
         private bool LinkageSetupToZeroPending;
+        private bool ZeroExitClearancePending;
+        private bool UltimateSkyLinkageSetupPending;
+        private bool OpponentAddedFromMainDeckThisTurn;
         private bool FallenAndVirtuousPreferDestroy;
         private bool SkyStrikerMirrorObserved;
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
@@ -327,6 +330,12 @@ namespace WindBot.Game.AI.Decks
             PreserveEmptyMainZoneForZero = false;
             ZeroSearchPending = false;
             LinkageSetupToZeroPending = false;
+            UltimateSkyLinkageSetupPending = false;
+            OpponentAddedFromMainDeckThisTurn = false;
+            if (ZeroExitClearancePending &&
+                (!Bot.HasInMonstersZone(CardId.Raye) ||
+                !Bot.HasInMonstersZone(CardId.Roze)))
+                ZeroExitClearancePending = false;
             ForbiddenDropletTargets.Clear();
             UltimateSkyTargets.Clear();
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
@@ -364,6 +373,12 @@ namespace WindBot.Game.AI.Decks
             LinkageOtkSendTarget = null;
             ForbiddenDropletTargets.Clear();
             UltimateSkyTargets.Clear();
+            UltimateSkyLinkageSetupPending = false;
+
+            if (ZeroExitClearancePending &&
+                (!Bot.HasInMonstersZone(CardId.Raye) ||
+                !Bot.HasInMonstersZone(CardId.Roze)))
+                ZeroExitClearancePending = false;
 
             if (RayeToZeroSetupPending && !Bot.HasInMonstersZone(CardId.Zero))
                 RayeToZeroSetupPending = false;
@@ -408,6 +423,16 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousControler, int previousLocation,
             int currentControler, int currentLocation)
         {
+            if (previousControler == 1 && currentControler == 1 &&
+                (previousLocation & (int)CardLocation.Deck) != 0 &&
+                (currentLocation & (int)CardLocation.Hand) != 0 &&
+                Duel.Phase != DuelPhase.Draw)
+            {
+                OpponentAddedFromMainDeckThisTurn = true;
+                Logger.DebugWriteLine("[SkyStriker2026] Droll window: opponent added " +
+                    "a card from Main Deck to hand outside the Draw Phase.");
+            }
+
             if (currentControler == 1)
                 ObserveSkyStrikerMirror(card, IsPublicOpponentLocation(card, currentLocation));
             ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
@@ -478,10 +503,12 @@ namespace WindBot.Game.AI.Decks
                 else if (card.IsCode(CardId.Zero))
                 {
                     bool setupZero = HornetSetupStage == HornetZeroSetupStage.NeedZero ||
-                        RayeToZeroSetupPending || LinkageSetupToZeroPending;
+                        RayeToZeroSetupPending || LinkageSetupToZeroPending ||
+                        ZeroExitClearancePending;
                     ZeroSummoned = true;
                     ZeroSearchPending = true;
                     LinkageSetupToZeroPending = false;
+                    ZeroExitClearancePending = false;
                     if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
                         HornetSetupStage = HornetZeroSetupStage.None;
                     if (RayeToZeroSetupPending)
@@ -901,7 +928,8 @@ namespace WindBot.Game.AI.Decks
             {
                 if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
                     return false;
-                ZeroDestroyTarget = GetBestZeroDestroyTarget();
+                if (ZeroDestroyTarget == null)
+                    ZeroDestroyTarget = GetBestZeroDestroyTarget();
                 return ZeroDestroyTarget != null;
             }
             if (desc == Util.GetStringId(CardId.Roze, 2))
@@ -1029,7 +1057,13 @@ namespace WindBot.Game.AI.Decks
 
         private bool DrollLockBirdEffect()
         {
-            return Duel.Player == 1 && Duel.LastChainPlayer == 1;
+            if (Duel.Phase == DuelPhase.Draw || !OpponentAddedFromMainDeckThisTurn)
+                return false;
+
+            OpponentAddedFromMainDeckThisTurn = false;
+            Logger.DebugWriteLine("[SkyStriker2026] Droll: use the observed " +
+                "Main Deck-to-hand response window.");
+            return true;
         }
 
         private bool LightningStormEffect()
@@ -1058,6 +1092,14 @@ namespace WindBot.Game.AI.Decks
             if (Duel.CurrentChain.Count > 0)
                 return false;
 
+            if (CanStartUltimateSkyLinkagePlan())
+            {
+                UltimateSkyLinkageSetupPending = true;
+                Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: activate as " +
+                    "Linkage fuel for an empty-board Zero recovery line.");
+                return true;
+            }
+
             UltimateSkyTargets.AddRange(GetUltimateSkyFieldTargets());
             if (UltimateSkyTargets.Count == 0)
                 return false;
@@ -1076,6 +1118,18 @@ namespace WindBot.Game.AI.Decks
                 string.Join(",", UltimateSkyTargets.Select(card =>
                     card.Name ?? card.Id.ToString()).ToArray()));
             return true;
+        }
+
+        private bool CanStartUltimateSkyLinkagePlan()
+        {
+            return Card.Location == CardLocation.Hand && Duel.Player == 0 &&
+                (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) &&
+                EmptyMainMonsterZone() && Bot.GetMonsterCount() == 0 &&
+                Enemy.GetMonsterCount() > 0 &&
+                Enemy.GetMonsters().Any(card => card.IsFaceup()) &&
+                Bot.LifePoints > 800 &&
+                Bot.HasInHand(CardId.Linkage) && Bot.HasInExtra(CardId.Zero) &&
+                !HasBetterZeroStarterThanLinkage();
         }
 
         private bool IsLiveUltimateSkyChainNegate()
@@ -1465,16 +1519,41 @@ namespace WindBot.Game.AI.Decks
             bool preventingLethal = GetRemainingEnemyBattleAttack() >= Bot.LifePoints;
             ClientCard destroyTarget = GetBestZeroDestroyTarget();
             int destroyScore = GetZeroDestroyScore(destroyTarget);
-            int minimumDestroyScore = HasSetSkyStrikerInteraction() ? 8000 : 6500;
-            bool valuableInterruption = destroyScore >= minimumDestroyScore;
-            bool activate = escapingRemoval || preventingLethal || valuableInterruption;
+            bool canClearNextTurn = CanPlanZeroExitClearance();
+            bool losingZeroInBattle = canClearNextTurn && Bot.UnderAttack &&
+                Bot.BattlingMonster != null && Bot.BattlingMonster.IsCode(CardId.Zero) &&
+                Enemy.BattlingMonster != null &&
+                Enemy.BattlingMonster.GetDefensePower() >=
+                    Bot.BattlingMonster.GetDefensePower();
+            int minimumDestroyScore = HasSetSkyStrikerInteraction() ? 7000 : 5200;
+            if (canClearNextTurn)
+                minimumDestroyScore -= 1500;
+            bool valuableInterruption = canClearNextTurn &&
+                destroyScore >= minimumDestroyScore;
+            bool activate = escapingRemoval || preventingLethal || losingZeroInBattle ||
+                valuableInterruption;
+            if (activate)
+            {
+                ZeroDestroyTarget = destroyTarget;
+                if (canClearNextTurn)
+                    ZeroExitClearancePending = true;
+            }
             Logger.DebugWriteLine("[SkyStriker2026] Zero quick escape=" +
                 escapingRemoval.ToString() + " lethal=" + preventingLethal.ToString() +
+                " battle=" + losingZeroInBattle.ToString() + " clear-next=" +
+                canClearNextTurn.ToString() +
                 " destroy=" + (destroyTarget == null ? "none" :
                     destroyTarget.Name ?? destroyTarget.Id.ToString()) +
                 " score=" + destroyScore.ToString() + " threshold=" +
                 minimumDestroyScore.ToString() + " activate=" + activate.ToString());
             return activate;
+        }
+
+        private bool CanPlanZeroExitClearance()
+        {
+            return EmptyMainMonsterZone() && Bot.HasInExtra(CardId.Zero) &&
+                (Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) &&
+                (Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze));
         }
 
         private ClientCard GetBestZeroDestroyTarget()
@@ -1491,10 +1570,16 @@ namespace WindBot.Game.AI.Decks
                 return 0;
             if (target.IsMonster())
             {
+                int monsterScore = GetObservedThreatScore(target);
+                if (SkyStrikerMirrorObserved && target.IsCode(CardId.Zero))
+                    monsterScore += 2600;
                 if (SkyStrikerMirrorObserved && IsSkyStrikerAceLink(target) &&
                     Enemy.GetGraveyardMonsters().Any(card => card.IsCode(CardId.Raye)))
-                    return 0;
-                int monsterScore = GetObservedThreatScore(target);
+                    monsterScore -= 2200;
+                if (Bot.UnderAttack && Enemy.BattlingMonster == target &&
+                    Bot.BattlingMonster != null &&
+                    Bot.BattlingMonster.IsCode(CardId.Zero))
+                    monsterScore += 5000;
                 if (Duel.CurrentChain.Contains(target))
                     monsterScore -= 1800;
                 return Math.Max(0, monsterScore);
@@ -1563,6 +1648,20 @@ namespace WindBot.Game.AI.Decks
                 !Bot.GetMonsters().Concat(Bot.GetSpells()).Any(card => card != Card) ||
                 !Bot.ExtraDeck.Any(IsSkyStrikerAceLink))
                 return false;
+
+            if (UltimateSkyLinkageSetupPending && Duel.Player == 0 &&
+                Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0 &&
+                    chain.IsActivateCode(CardId.UltimateSky)) &&
+                Bot.HasInExtra(CardId.Zero))
+            {
+                LinkageOtkSendTarget = Bot.GetSpells().FirstOrDefault(card =>
+                    card.IsCode(CardId.UltimateSky));
+                LinkageSetupToZeroPending = true;
+                UltimateSkyLinkageSetupPending = false;
+                Logger.DebugWriteLine("[SkyStriker2026] Linkage: chain to Ultimate Sky, " +
+                    "send it and restore Zero from the empty board.");
+                return true;
+            }
 
             // Outside the tracked Battle Phase replacement, keeping an existing
             // Ace while Linkage summons another one would put the new Ace in the
@@ -1787,6 +1886,17 @@ namespace WindBot.Game.AI.Decks
                 .ToList();
             List<ClientCard> materials = candidates.Take(2).ToList();
 
+            if (ZeroExitClearancePending)
+            {
+                ClientCard raye = candidates.FirstOrDefault(card =>
+                    card.IsCode(CardId.Raye));
+                ClientCard roze = candidates.FirstOrDefault(card =>
+                    card.IsCode(CardId.Roze));
+                materials = raye != null && roze != null
+                    ? new List<ClientCard> { raye, roze }
+                    : new List<ClientCard>();
+            }
+
             if (HornetSetupStage == HornetZeroSetupStage.NeedZero)
             {
                 ClientCard token = candidates.FirstOrDefault(card => card.IsCode(CardId.Token));
@@ -1802,7 +1912,7 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (!SkyStrikerLinkPreservesMainMonsterZone(materials, false))
                 return false;
-            if (ShouldDeferZeroForBattleDamage(materials))
+            if (!ZeroExitClearancePending && ShouldDeferZeroForBattleDamage(materials))
                 return false;
             AI.SelectMaterials(materials);
             SelectSkyStrikerLinkPlace();

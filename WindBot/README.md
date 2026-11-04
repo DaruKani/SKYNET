@@ -239,7 +239,10 @@ when an existing monster prevents that immediate clearance. The only temporary
 exception is the tracked Hornet bridge whose following Zero summon consumes both
 the bridge and Token. Main-Phase Linkage and untracked Lemnisgate GY Links cannot
 create a second Ace beside an existing Extra Monster Zone Ace while a Striker
-Spell plan remains live.
+Spell plan remains live. This is a planning constraint rather than a permanent
+ban: when Zero's defensive exit summons Raye and Roze, the executor records a
+next-turn clearance step and Link Summons a fresh Zero with both monsters before
+trying to spend another Sky Striker Spell.
 
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
@@ -248,10 +251,19 @@ before using the hand-shuffle fallback; its control and revealed-hand prompts us
 only server-offered cards. Ultimate Sky is set for the opponent's turn, chains
 its dedicated negate only to an opponent's monster effect activated in the hand
 or GY, and spends LP on the field-negate mode only for scored face-up threats
-while preserving a safe LP reserve outside emergencies. Kaina is available as a
+while preserving a safe LP reserve outside emergencies. On an otherwise empty
+own-turn board, Ultimate Sky can also be activated from hand as the explicit
+send card for a chained Linkage; that tracked recovery line summons Zero instead
+of passing with both cards stranded in hand. Kaina is available as a
 defensive Raye tag and Main Phase 2 Link, targeting the strongest opponent
 monster that can still attack; it is also recognized throughout Link, Lemnisgate
 and mirror-selection policy.
+
+Droll & Lock Bird uses the public movement event that an opponent added a card
+from the Main Deck to hand outside the Draw Phase. It no longer depends on the
+last Chain player still being the opponent after that Chain has finished, so an
+Engage, Zero or Linkage search opens the correct response window without reading
+the identity of a hidden card.
 
 The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
 the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
@@ -290,12 +302,13 @@ Monster Zone during the opponent's turn.
 
 Zero's Quick Effect is not fired merely because the opponent has any card on the
 field. Outside the Linkage OTK attack sequence it now requires a removal dodge,
-lethal defense, or a high-value persistent target whose destruction repays losing
-Zero and filling both Main Monster Zones. Normal Spells that have already spent
-their effects are worth zero, and a mirror Ace Link is not destroyed when doing
-so would immediately enable the opponent's Raye in the Graveyard. The optional
-destruction prompt is tied to that scored target instead of selecting an arbitrary
-face-up card after Raye and Roze are summoned.
+lethal defense, a losing battle, or a high-value target whose destruction repays
+the temporary loss of Zero. A mirror Raye in the opponent's Graveyard is a cost
+penalty rather than an absolute ban: the executor still takes a valuable battle
+or board interruption, then uses the recorded Raye/Roze-to-Zero clearance plan
+on its next turn. Normal Spells that have already spent their effects are worth
+zero. The optional destruction prompt is tied to the target scored at activation
+instead of selecting an arbitrary face-up card after Raye and Roze are summoned.
 
 Spell/Trap destruction follows resolution semantics instead of treating every
 card on the Chain as a negate. A face-up Normal, Quick-Play or Ritual Spell, or a
