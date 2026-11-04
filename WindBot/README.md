@@ -228,6 +228,19 @@ recycle choice through repeated one-card `SelectUnselect` prompts, so the execut
 now advances that selection incrementally instead of indexing a nonexistent full
 monster/Spell candidate pair.
 
+Main Monster Zone preservation is a shared executor invariant rather than a
+single-combo exception. Whenever a Sky Striker Spell remains in hand/on the field
+or a tracked Zero, Hornet or Linkage line still plans to use one, a Sky Striker
+Link Summon must consume every current Main Monster Zone blocker and the existing
+Extra Monster Zone Ace; otherwise the summon is rejected because the new Link
+would occupy a Main Monster Zone. The selected Link placement is explicitly
+restricted to an Extra Monster Zone. Normal Raye/Roze summons are likewise held
+when an existing monster prevents that immediate clearance. The only temporary
+exception is the tracked Hornet bridge whose following Zero summon consumes both
+the bridge and Token. Main-Phase Linkage and untracked Lemnisgate GY Links cannot
+create a second Ace beside an existing Extra Monster Zone Ace while a Striker
+Spell plan remains live.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two

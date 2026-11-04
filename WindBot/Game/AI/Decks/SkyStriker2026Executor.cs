@@ -644,8 +644,11 @@ namespace WindBot.Game.AI.Decks
                     return Util.CheckSelectCount(ordered, cards, min, max);
                 }
                 if (hint == HintMsg.SpSummon)
+                {
+                    SelectSkyStrikerLinkPlace();
                     return Util.CheckSelectCount(OrderCardsById(cards, GetLinkageExtraDeckPriority(), false),
                         cards, min, max);
+                }
             }
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Zero))
@@ -739,8 +742,11 @@ namespace WindBot.Game.AI.Decks
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.SpSummon)
+            {
+                SelectSkyStrikerLinkPlace();
                 return Util.CheckSelectCount(OrderCardsById(cards, GetLemnisgateExtraDeckPriority(), false),
                     cards, min, max);
+            }
 
             if (solving != null && solving.ActivatePlayer == 0 &&
                 solving.IsActivateCode(CardId.SuperStarslayerTyphon) && hint == HintMsg.ReturnToHand)
@@ -1558,6 +1564,13 @@ namespace WindBot.Game.AI.Decks
                 !Bot.ExtraDeck.Any(IsSkyStrikerAceLink))
                 return false;
 
+            // Outside the tracked Battle Phase replacement, keeping an existing
+            // Ace while Linkage summons another one would put the new Ace in the
+            // Main Monster Zone and turn off the rest of the Striker Spell plan.
+            if ((Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) &&
+                Bot.GetMonstersExtraZoneCount() > 0)
+                return false;
+
             if (Duel.Player == 1)
                 return DefaultOnBecomeTarget() || Duel.CurrentChain.Count > 0;
 
@@ -1680,6 +1693,10 @@ namespace WindBot.Game.AI.Decks
             if (materials.Count == 0 || GetLemnisgateExtraDeckPriority().Length == 0)
                 return false;
 
+            if (HasPlannedSkyStrikerSpell() && materials.Count > 1 &&
+                HornetSetupStage != HornetZeroSetupStage.NeedZero)
+                return false;
+
             bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
             if (battle)
             {
@@ -1783,9 +1800,12 @@ namespace WindBot.Game.AI.Decks
 
             if (materials.Count != 2 || Util.GetBotAvailZonesFromExtraDeck(materials) == 0)
                 return false;
+            if (!SkyStrikerLinkPreservesMainMonsterZone(materials, false))
+                return false;
             if (ShouldDeferZeroForBattleDamage(materials))
                 return false;
             AI.SelectMaterials(materials);
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -1797,6 +1817,7 @@ namespace WindBot.Game.AI.Decks
             if (materials == null || !materials.Any(IsSkyStrikerAceLink))
                 return false;
             AI.SelectMaterials(materials);
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -1829,6 +1850,7 @@ namespace WindBot.Game.AI.Decks
                 Logger.DebugWriteLine("[SkyStriker2026] Azalea: convert controlled monster " +
                     "into Linkage OTK bridge");
             AI.SelectMaterials(materials);
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -1840,6 +1862,7 @@ namespace WindBot.Game.AI.Decks
             if (materials == null)
                 return false;
             AI.SelectMaterials(materials);
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -1855,19 +1878,19 @@ namespace WindBot.Game.AI.Decks
                 if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
                     return false;
                 AI.SelectMaterials(new[] { kagari });
+                SelectSkyStrikerLinkPlace();
                 return true;
             }
 
-            ClientCard material = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Amatsu))
-                .OrderBy(GetLinkMaterialValue)
-                .FirstOrDefault();
-            if (material == null || Util.GetBotAvailZonesFromExtraDeck(new[] { material }) == 0)
+            ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
+                IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Amatsu), false);
+            if (material == null)
                 return false;
             bool usefulInterruption = Enemy.GetMonsters().Any(card => card.IsFaceup() && card.Attack >= 2000);
             if (!Util.IsTurn1OrMain2() && !usefulInterruption)
                 return false;
             AI.SelectMaterials(new[] { material });
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -2001,12 +2024,12 @@ namespace WindBot.Game.AI.Decks
             if (NormalSummoned || Bot.HasInHand(CardId.Raye))
                 return false;
 
-            // Once the turn-one Ace/Zero board is established, keep Roze as
-            // follow-up and leave the Main Monster Zone clear for Striker Spells.
-            // Normal Summoning it merely to cash in Kagari is not additional
-            // interaction and exposes two resources to one answer.
-            if (Duel.Turn == 1 && Bot.GetMonsters().Any(card =>
-                card.IsFaceup() && IsSkyStrikerAceLink(card)))
+            // If an Ace already occupies the Extra Monster Zone, Roze's next
+            // Link would be forced into the Main Monster Zone and switch off the
+            // Sky Striker Spells that the planner still intends to use.
+            if (HasPlannedSkyStrikerSpell() &&
+                (Bot.GetMonstersExtraZoneCount() > 0 ||
+                Bot.GetMonstersInMainZone().Count > 0))
                 return false;
             return true;
         }
@@ -2582,6 +2605,10 @@ namespace WindBot.Game.AI.Decks
 
         private bool RayeSummon()
         {
+            if (HasPlannedSkyStrikerSpell() &&
+                (Bot.GetMonstersExtraZoneCount() > 0 ||
+                Bot.GetMonstersInMainZone().Count > 0))
+                return false;
             return Bot.GetMonstersExtraZoneCount() == 0 ||
                 (Enemy.GetMonsterCount() == 0 && Duel.Phase == DuelPhase.Main1);
         }
@@ -2604,12 +2631,18 @@ namespace WindBot.Game.AI.Decks
             {
                 if (RayeGraveEffectUsed)
                     return false;
+                if (Duel.Player == 1 && Bot.GetSpells().Any(card =>
+                    card.IsFacedown() && card.IsSpell() && IsSkyStrikerCard(card)))
+                    return false;
                 RayeGraveEffectUsed = true;
                 AI.SelectPosition(Duel.Player == 0 ? CardPosition.FaceUpAttack : CardPosition.FaceUpDefence);
                 return true;
             }
 
             if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
+                return false;
+
+            if (HasPlannedSkyStrikerSpell() && Bot.GetMonstersExtraZoneCount() > 0)
                 return false;
 
             if (ShouldUseRayeForZeroSetup())
@@ -2639,6 +2672,7 @@ namespace WindBot.Game.AI.Decks
 
         private void RayeSelectTarget()
         {
+            SelectSkyStrikerLinkPlace();
             if (RayeToZeroSetupPending && !ZeroSummoned && Bot.HasInExtra(CardId.Zero))
             {
                 AI.SelectCard(CardId.Zero);
@@ -2698,14 +2732,11 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 KagariSummoned = true;
                 AI.SelectMaterials(new[] { token });
+                SelectSkyStrikerLinkPlace();
                 return true;
             }
 
             if (ShouldReserveKagariForLinkageOtk())
-                return false;
-
-            if (Duel.Turn == 1 && Bot.GetMonsters().Any(card =>
-                card.IsFaceup() && IsSkyStrikerAceLink(card)))
                 return false;
 
             if (!Bot.HasInGraveyard(new[]
@@ -2717,7 +2748,13 @@ namespace WindBot.Game.AI.Decks
                 CardId.JammingWaves
             }))
                 return false;
+            ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
+                IsSkyStrikerAce(card) && !card.HasAttribute(CardAttribute.Fire), false);
+            if (material == null)
+                return false;
             KagariSummoned = true;
+            AI.SelectMaterials(new[] { material });
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -2774,6 +2811,7 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 HayateSummoned = true;
                 AI.SelectMaterials(new[] { kagari });
+                SelectSkyStrikerLinkPlace();
                 return true;
             }
 
@@ -2782,6 +2820,7 @@ namespace WindBot.Game.AI.Decks
             {
                 HayateSummoned = true;
                 AI.SelectMaterials(new[] { otkBridge });
+                SelectSkyStrikerLinkPlace();
                 return true;
             }
 
@@ -2789,7 +2828,13 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (HaveThreeSpellsInGrave() && !Util.IsAllEnemyBetter())
                 return false;
+            ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
+                IsSkyStrikerAce(card) && !card.HasAttribute(CardAttribute.Wind), false);
+            if (material == null)
+                return false;
             HayateSummoned = true;
+            AI.SelectMaterials(new[] { material });
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -2816,16 +2861,12 @@ namespace WindBot.Game.AI.Decks
             if (KainaSummoned)
                 return false;
 
-            ClientCard material = Bot.GetMonsters()
-                .Where(card => card.IsFaceup() && IsSkyStrikerAce(card) &&
-                    !card.HasAttribute(CardAttribute.Earth))
-                .OrderBy(GetLinkMaterialValue)
-                .FirstOrDefault();
-            if (material == null || Util.GetBotAvailZonesFromExtraDeck(
-                new[] { material }) == 0)
+            bool setupBridge = HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink;
+            ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
+                IsSkyStrikerAce(card) && !card.HasAttribute(CardAttribute.Earth), setupBridge);
+            if (material == null)
                 return false;
 
-            bool setupBridge = HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink;
             bool defensiveEndBoard = Duel.Player == 0 && Duel.Phase == DuelPhase.Main2 &&
                 GetBestKainaTarget(Enemy.GetMonsters()) != null;
             if (!setupBridge && !defensiveEndBoard)
@@ -2833,6 +2874,7 @@ namespace WindBot.Game.AI.Decks
 
             KainaSummoned = true;
             AI.SelectMaterials(new[] { material });
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -3405,12 +3447,21 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 ShizukuSummoned = true;
                 AI.SelectMaterials(new[] { kagari });
+                SelectSkyStrikerLinkPlace();
                 return true;
             }
 
             if (!Util.IsTurn1OrMain2())
                 return false;
+            if (Duel.Turn == 1 && Bot.HasInMonstersZone(CardId.Zero))
+                return false;
+            ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
+                IsSkyStrikerAce(card) && !card.HasAttribute(CardAttribute.Water), false);
+            if (material == null)
+                return false;
             ShizukuSummoned = true;
+            AI.SelectMaterials(new[] { material });
+            SelectSkyStrikerLinkPlace();
             return true;
         }
 
@@ -4362,7 +4413,8 @@ namespace WindBot.Game.AI.Decks
                     List<ClientCard> materials = new List<ClientCard> { candidates[i], candidates[j] };
                     if (requireAceLink && !materials.Any(IsSkyStrikerAceLink))
                         continue;
-                    if (Util.GetBotAvailZonesFromExtraDeck(materials) != 0)
+                    if (Util.GetBotAvailZonesFromExtraDeck(materials) != 0 &&
+                        SkyStrikerLinkPreservesMainMonsterZone(materials, false))
                         return materials;
                 }
             }
@@ -4606,6 +4658,47 @@ namespace WindBot.Game.AI.Decks
         private bool EmptyMainMonsterZone()
         {
             return Bot.GetMonstersInMainZone().Count == 0;
+        }
+
+        private bool HasPlannedSkyStrikerSpell()
+        {
+            return Bot.Hand.Concat(Bot.GetSpells()).Any(card =>
+                    card.IsSpell() && IsSkyStrikerCard(card)) ||
+                ZeroSearchPending || LinkageOtk != LinkageOtkStage.None ||
+                HornetSetupStage != HornetZeroSetupStage.None;
+        }
+
+        private bool SkyStrikerLinkPreservesMainMonsterZone(
+            IList<ClientCard> materials, bool trackedImmediateClearance)
+        {
+            if (!HasPlannedSkyStrikerSpell() || trackedImmediateClearance)
+                return true;
+            if (materials == null || materials.Count == 0)
+                return false;
+
+            bool leavesMainMonster = Bot.GetMonstersInMainZone().Any(card =>
+                !materials.Contains(card));
+            bool leavesExistingExtraMonster = Bot.GetMonsters().Any(card =>
+                card.Sequence >= 5 && !materials.Contains(card));
+            return !leavesMainMonster && !leavesExistingExtraMonster;
+        }
+
+        private ClientCard GetSafeSkyStrikerLinkOneMaterial(
+            Func<ClientCard, bool> filter, bool trackedImmediateClearance)
+        {
+            return Bot.GetMonsters()
+                .Where(card => card.IsFaceup() && filter(card) &&
+                    Util.GetBotAvailZonesFromExtraDeck(new[] { card }) != 0 &&
+                    SkyStrikerLinkPreservesMainMonsterZone(
+                        new[] { card }, trackedImmediateClearance))
+                .OrderBy(GetLinkMaterialValue)
+                .FirstOrDefault();
+        }
+
+        private void SelectSkyStrikerLinkPlace()
+        {
+            if (HasPlannedSkyStrikerSpell())
+                AI.SelectPlace(Zones.ExtraMonsterZones);
         }
 
         private int GetSpellCountInGrave()
