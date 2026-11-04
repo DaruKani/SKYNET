@@ -272,6 +272,22 @@ optional destruction. Its minimum modeled damage is 8,000 before Linkage's
 LIGHT/DARK bonus. Lemnisgate's GY Link trigger is held during this sequence so it
 does not consume either final attacker.
 
+The pre-Battle planner now reserves that route before the first attack. If Widow
+Anchor has moved an opposing Ace into the Main Monster Zone, it can bridge that
+monster through Hayate to clear the zone instead of consuming the once-per-turn
+Kagari early. Upstart Goblin is held when its 1000 LP award would move the
+opponent out of the prepared lethal range, and a premature Zero Link Summon is
+deferred to Main Phase 2 when its materials would deal more Battle Phase damage.
+
+Pot of Desires is a conservative recovery action rather than an automatic
+opener. Deterministic Engage/ROTA access resolves first, and the bot normally
+requires Raye-or-Drones access, Linkage and Roze to be secured outside the Deck
+before risking ten cards; the exception is a genuinely low-hand emergency with
+no Ace access. Shark Cannon likewise chains to a Graveyard effect only when it
+removes an explicit Graveyard target or a known self-moving Raye, Roze or
+Camellia. Merely banishing an already-activated Graveyard card such as The Dragon
+that Devours the Dogma is not treated as negating that effect.
+
 After building, start it from the output directory with an explicit database and
 compatible duel host, for example:
 

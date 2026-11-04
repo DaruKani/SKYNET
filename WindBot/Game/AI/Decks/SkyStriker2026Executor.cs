@@ -171,8 +171,8 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.Activate, CardId.ReinforcementOfTheArmy, ReinforcementOfTheArmyEffect);
             AddExecutor(ExecutorType.Activate, CardId.FoolishBurialGoods, FoolishBurialGoodsEffect);
-            AddExecutor(ExecutorType.Activate, CardId.PotOfDesires, DefaultPotOfDesires);
-            AddExecutor(ExecutorType.Activate, CardId.UpstartGoblin);
+            AddExecutor(ExecutorType.Activate, CardId.PotOfDesires, PotOfDesiresEffect);
+            AddExecutor(ExecutorType.Activate, CardId.UpstartGoblin, UpstartGoblinEffect);
             AddExecutor(ExecutorType.Activate, CardId.RadiantTyphoonVision, RadiantTyphoonVisionEffect);
             AddExecutor(ExecutorType.Activate, CardId.TheFallenAndTheVirtuous, FallenAndVirtuousEffect);
             AddExecutor(ExecutorType.Activate, CardId.AlbionTheBrandedDragon, AlbionTheBrandedDragonEffect);
@@ -1371,6 +1371,8 @@ namespace WindBot.Game.AI.Decks
 
             if (materials.Count != 2 || Util.GetBotAvailZonesFromExtraDeck(materials) == 0)
                 return false;
+            if (ShouldDeferZeroForBattleDamage(materials))
+                return false;
             AI.SelectMaterials(materials);
             return true;
         }
@@ -1530,6 +1532,41 @@ namespace WindBot.Game.AI.Decks
             else
                 AI.SelectCard(CardId.ReinforcementOfTheArmy, CardId.UpstartGoblin, CardId.TwinTwisters);
             return true;
+        }
+
+        private bool PotOfDesiresEffect()
+        {
+            if (Bot.Deck.Count <= 15 || ShouldReserveKagariForLinkageOtk() ||
+                ShouldPrepareWidowLinkageOtk())
+                return false;
+
+            // Resolve deterministic access before risking ten unknown cards. Pot is
+            // a recovery tool here, not an automatic opener.
+            if (Bot.HasInHand(new[] { CardId.Engage, CardId.ReinforcementOfTheArmy }))
+                return false;
+
+            bool aceSecured = HasAccessibleCoreCard(CardId.Raye) ||
+                HasAccessibleCoreCard(CardId.HornetDrones);
+            bool linkageSecured = HasAccessibleCoreCard(CardId.Linkage);
+            bool rozeSecured = HasAccessibleCoreCard(CardId.Roze);
+            if (!aceSecured || !linkageSecured || !rozeSecured)
+                return Bot.Hand.Count <= 2 && !aceSecured;
+
+            return Bot.Hand.Count <= 3 || Duel.Turn >= 5 && Bot.Hand.Count <= 4;
+        }
+
+        private bool UpstartGoblinEffect()
+        {
+            // Do not raise the opponent from 8000 to 9000 while the exact Linkage
+            // damage line is already prepared.
+            return !ShouldReserveKagariForLinkageOtk() &&
+                !ShouldPrepareWidowLinkageOtk();
+        }
+
+        private bool HasAccessibleCoreCard(int cardId)
+        {
+            return Bot.HasInHand(cardId) || Bot.HasInSpellZone(cardId) ||
+                Bot.HasInMonstersZone(cardId) || Bot.HasInGraveyard(cardId);
         }
 
         private bool TwinTwistersEffect()
@@ -1832,6 +1869,7 @@ namespace WindBot.Game.AI.Decks
                 ClientCard chainTarget = targets.FirstOrDefault(card =>
                     lastChain.Targets.Contains(card));
                 if (chainTarget == null && lastChain.HasLocation(CardLocation.Grave) &&
+                    lastChain.IsActivateCode(CardId.Raye, CardId.Roze, CardId.Camellia) &&
                     lastChain.RelatedCard != null && targets.Contains(lastChain.RelatedCard))
                     chainTarget = lastChain.RelatedCard;
                 if (chainTarget != null)
@@ -2125,6 +2163,9 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
+            if (ShouldReserveKagariForLinkageOtk())
+                return false;
+
             if (!Bot.HasInGraveyard(new[]
             {
                 CardId.Engage,
@@ -2191,6 +2232,14 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 HayateSummoned = true;
                 AI.SelectMaterials(new[] { kagari });
+                return true;
+            }
+
+            ClientCard otkBridge = GetLinkageOtkBridgeMaterial();
+            if (otkBridge != null)
+            {
+                HayateSummoned = true;
+                AI.SelectMaterials(new[] { otkBridge });
                 return true;
             }
 
@@ -2798,6 +2847,8 @@ namespace WindBot.Game.AI.Decks
         private int[] GetSkyStrikerSearchPriority(bool includeEngage)
         {
             List<int> result = new List<int>();
+            if (ShouldPrioritizeLinkageForOtkSearch() || ShouldPrepareWidowLinkageOtk())
+                result.Add(CardId.Linkage);
             bool openingSetup = Duel.Player == 0 && Duel.Phase == DuelPhase.Main1 &&
                 Bot.GetMonstersExtraZoneCount() == 0;
             bool haveLiveAceAccess = Bot.HasInHandOrHasInMonstersZone(CardId.Raye) ||
@@ -3145,6 +3196,25 @@ namespace WindBot.Game.AI.Decks
                 (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
         }
 
+        private bool ShouldDeferZeroForBattleDamage(IList<ClientCard> materials)
+        {
+            if (Duel.Turn == 1 || Duel.Phase != DuelPhase.Main1 ||
+                Enemy.GetMonsterCount() > 0 || LinkageOtk != LinkageOtkStage.None)
+                return false;
+
+            int materialDamage = materials
+                .Where(card => !ControlledEnemyCards.Contains(card) && card.IsAttack() &&
+                    !card.Attacked)
+                .Sum(card => Math.Max(0, card.GetAttackPower()));
+            bool defer = materialDamage > 2000;
+            if (defer)
+            {
+                Logger.DebugWriteLine("[SkyStriker2026] defer Zero until Main2; " +
+                    "material battle damage=" + materialDamage);
+            }
+            return defer;
+        }
+
         private bool ShouldStartHornetZeroSetup()
         {
             return HornetSetupStage == HornetZeroSetupStage.None &&
@@ -3188,6 +3258,93 @@ namespace WindBot.Game.AI.Decks
             if (attacker == null || attacker.GetAttackPower() + 6500 < Enemy.LifePoints)
                 return null;
             return attacker;
+        }
+
+        private bool ShouldReserveKagariForLinkageOtk()
+        {
+            return GetPreparedLinkageOtkStarter() != null ||
+                GetLinkageOtkBridgeMaterial() != null;
+        }
+
+        private bool CanPursuePreparedLinkageOtk()
+        {
+            return Duel.Player == 0 && Duel.Turn > 1 && Duel.Phase == DuelPhase.Main1 &&
+                Duel.CurrentChain.Count == 0 && LinkageOtk == LinkageOtkStage.None &&
+                Enemy.GetFieldCount() == 0 && !KagariSummoned && !ZeroSummoned &&
+                (Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
+                Bot.HasInHand(CardId.Engage) && Bot.HasInDeck(CardId.Linkage)) &&
+                Bot.HasInExtra(CardId.Kagari) && Bot.HasInExtra(CardId.Zero) &&
+                (Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) &&
+                (Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze));
+        }
+
+        private bool ShouldPrioritizeLinkageForOtkSearch()
+        {
+            if (Duel.Player != 0 || Duel.Turn == 1 || Duel.Phase != DuelPhase.Main1 ||
+                Enemy.GetFieldCount() > 0 || KagariSummoned || ZeroSummoned ||
+                !Bot.HasInDeck(CardId.Linkage) || !Bot.HasInExtra(CardId.Kagari) ||
+                !Bot.HasInExtra(CardId.Zero) || !EmptyMainMonsterZone() ||
+                !(Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) ||
+                !(Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze)))
+                return false;
+            return Bot.GetMonsters().Any(card => card.IsFaceup() && card.Sequence >= 5 &&
+                IsSkyStrikerAceLink(card) && !card.Attacked &&
+                !card.IsCode(CardId.Kagari, CardId.Zero) &&
+                card.GetAttackPower() + 6500 >= Enemy.LifePoints);
+        }
+
+        private bool ShouldPrepareWidowLinkageOtk()
+        {
+            if (Duel.Player != 0 || Duel.Turn == 1 || Duel.Phase != DuelPhase.Main1 ||
+                !EmptyMainMonsterZone() || Enemy.GetFieldCount() != 1 ||
+                !Bot.HasInHandOrInSpellZone(CardId.WidowAnchor) ||
+                !Bot.HasInExtra(CardId.Hayate) || !Bot.HasInExtra(CardId.Kagari) ||
+                !Bot.HasInExtra(CardId.Zero) || KagariSummoned || ZeroSummoned ||
+                !(Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) ||
+                !(Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze)) ||
+                1500 + 6500 < Enemy.LifePoints)
+                return false;
+
+            ClientCard target = Enemy.GetMonsters().FirstOrDefault(card => card.IsFaceup() &&
+                IsSkyStrikerAceLink(card) && !card.IsDisabled() &&
+                !card.IsShouldNotBeTarget() && !card.IsShouldNotBeSpellTrapTarget());
+            if (target == null)
+                return false;
+
+            bool engageLive = Bot.HasInHand(CardId.Engage) ||
+                Duel.CurrentChain.Any(card => card.Controller == 0 && card.IsCode(CardId.Engage));
+            bool canReachThreeSpells = HaveThreeSpellsInGrave() ||
+                GetSpellCountInGrave() == 2 && engageLive;
+            bool canAccessLinkage = Bot.HasInHandOrInSpellZone(CardId.Linkage) ||
+                Bot.HasInDeck(CardId.Linkage) && engageLive;
+            return canReachThreeSpells && canAccessLinkage;
+        }
+
+        private ClientCard GetPreparedLinkageOtkStarter()
+        {
+            if (!CanPursuePreparedLinkageOtk() || !EmptyMainMonsterZone())
+                return null;
+            return Bot.GetMonsters().FirstOrDefault(card => card.IsFaceup() &&
+                card.Sequence >= 5 && IsSkyStrikerAceLink(card) && !card.Attacked &&
+                !card.IsCode(CardId.Kagari, CardId.Zero) &&
+                card.GetAttackPower() + 6500 >= Enemy.LifePoints);
+        }
+
+        private ClientCard GetLinkageOtkBridgeMaterial()
+        {
+            if (!CanPursuePreparedLinkageOtk() || HayateSummoned ||
+                !Bot.HasInExtra(CardId.Hayate))
+                return null;
+            List<ClientCard> mainMonsters = Bot.GetMonstersInMainZone();
+            if (mainMonsters.Count != 1)
+                return null;
+            ClientCard material = mainMonsters[0];
+            if (!material.IsFaceup() || !IsSkyStrikerAce(material) ||
+                material.HasAttribute(CardAttribute.Wind) ||
+                Util.GetBotAvailZonesFromExtraDeck(new[] { material }) == 0 ||
+                1500 + 6500 < Enemy.LifePoints)
+                return null;
+            return material;
         }
 
         private List<ClientCard> OrderEnemyTargets(IList<ClientCard> cards)
