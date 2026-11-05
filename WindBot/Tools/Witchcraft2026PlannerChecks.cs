@@ -14,6 +14,7 @@ internal static class Witchcraft2026PlannerChecks
         BindingFlags.Static | BindingFlags.Instance;
     private static Type StateType;
     private static Type PlannerType;
+    private static Type ExecutorType;
     private static readonly List<Dictionary<string, object>> Results =
         new List<Dictionary<string, object>>();
 
@@ -138,6 +139,40 @@ internal static class Witchcraft2026PlannerChecks
             "interruption replans from observed state");
     }
 
+    private static void CheckWalpurgisGuideTargets()
+    {
+        object current = BaseState();
+        Set(current, "HandWalpurgis", true);
+        List<string> kinds = new List<string>();
+        List<int> targets = new List<int>();
+        for (int action = 0; action < 8; action++)
+        {
+            object plan = Plan(current, CancellationToken.None);
+            IList steps = Steps(plan);
+            if (steps.Count == 0)
+                break;
+            object step = steps[0];
+            object strategicAction = Get(step, "Action");
+            kinds.Add(Get(strategicAction, "Kind").ToString());
+            targets.Add((int)Get(strategicAction, "SearchTarget"));
+            current = Get(step, "After");
+        }
+        int[] expectedTargets = { 64756282, 0, 21744288, 95245544, 59851535, 6071005 };
+        bool passed = targets.Take(expectedTargets.Length).SequenceEqual(expectedTargets) &&
+            kinds.Count == expectedTargets.Length &&
+            kinds.Skip(2).All(kind => kind == "ActivateLowWitchcrafter");
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "Walpurgis follows the published low-Witchcrafter ladder" },
+            { "passed", passed },
+            { "route", kinds.ToArray() },
+            { "targets", targets.ToArray() },
+            { "expectedTargets", expectedTargets }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "Walpurgis follows Genni -> Schmietta -> Pittore -> Potterie -> Marka");
+    }
+
     private static void CheckCancellation()
     {
         using (CancellationTokenSource cancellation = new CancellationTokenSource())
@@ -158,6 +193,29 @@ internal static class Witchcraft2026PlannerChecks
         }
     }
 
+    private static void CheckBifrostCostGate()
+    {
+        MethodInfo gate = ExecutorType.GetMethod("HasBifrostCost", Flags);
+        bool fresh = (bool)gate.Invoke(null, new object[]
+        {
+            new[] { 37442336, 53971455, 5559570 }
+        });
+        bool exhausted = (bool)gate.Invoke(null, new object[]
+        {
+            new[] { 37442336, 53971455 }
+        });
+        bool passed = fresh && !exhausted;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "Bifrost is rejected after its one legal cost package is spent" },
+            { "passed", passed },
+            { "freshExtraDeck", fresh },
+            { "spentExtraDeck", exhausted }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "Bifrost cost gate rejects the spent Extra Deck");
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length != 2)
@@ -169,6 +227,7 @@ internal static class Witchcraft2026PlannerChecks
         Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
         Type executor = assembly.GetType(
             "WindBot.Game.AI.Decks.Witchcraft2026Executor", true);
+        ExecutorType = executor;
         StateType = executor.GetNestedType("WitchcraftStrategicState", Flags);
         PlannerType = executor.GetNestedType("WitchcraftStrategicPlanner", Flags);
 
@@ -194,10 +253,7 @@ internal static class Witchcraft2026PlannerChecks
         Check("Marka opens Walpurgis", marka, "ActivateMarka",
             "ActivateWalpurgis");
 
-        object walpurgis = BaseState();
-        Set(walpurgis, "HandWalpurgis", true);
-        Check("Walpurgis route reaches a Witchcrafter fusion", walpurgis,
-            "ActivateWalpurgis", "ActivateLowWitchcrafter", "ActivateCelebration");
+        CheckWalpurgisGuideTargets();
 
         object terracottan = BaseState();
         Set(terracottan, "HandTerracottan", true);
@@ -213,10 +269,12 @@ internal static class Witchcraft2026PlannerChecks
 
         object potterie = BaseState();
         Set(potterie, "HandOtherLow", true);
+        Set(potterie, "HandLowId", 59851535);
         Check("Potterie plus any Spell starts the low Witchcrafter route", potterie,
             "NormalLowWitchcrafter", "ActivateLowWitchcrafter");
 
         CheckInterruptionReplans();
+        CheckBifrostCostGate();
         CheckCancellation();
 
         bool passedAll = Results.All(result => (bool)result["passed"]);

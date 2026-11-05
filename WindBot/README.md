@@ -185,8 +185,16 @@ Witchcrafter costs,
 Terracottan recovery and Extra Deck lock, Unveiling, Celebration and Confusion
 Fusion prompts, Rillie/Pupils/Vice-Madame, the Dark Magician of
 Destruction/Gaze/Dragoon package, Distortion and the listed hand traps. The
-planner regression includes the observed failure case where Schmietta plus any
-Spell must start the low-Witchcrafter route instead of ending the turn.
+planner regression includes the observed failure case where a spent Bifrost
+must not remain the only proposed action. It also asserts the exact guide ladder
+instead of inventing a completed board in the model: Walpurgis searches Genni,
+then Genni -> Schmietta -> Pittore -> Potterie -> Marka sends Creation,
+Celebration, Distortion and Confusion from the Deck in that order. The native
+callbacks continue the observed route through Dark Magician of Destruction,
+Gaze/Dragoon, Genni copying Creation for Terracottan, Pupils, Madame Rilliona,
+Vice-Madame, Edel reviving Dragoon and the recovered Distortion set. Graveyard
+effects are held until their required combo stage, and the decision log records
+each accepted guide action separately.
 
 Run the focused model fixtures after a Debug build:
 
@@ -222,10 +230,11 @@ finally { Pop-Location }
 `BotWrapper/bot.conf` exposes **Witchcraft 2026 (Planner)** so Arena can select
 the candidate and a frozen baseline independently. Arena cannot inject the combo
 hands used by the planner fixtures. The fixtures prove only deterministic model
-routes and cancellation; builds prove compilation; native completion and frozen
-Arena match results must be recorded separately. This first executor is broad
-enough to pilot the exact deck but does not claim exhaustive prompt coverage or
-competitive strength.
+routes, Bifrost cost gating and cancellation; builds prove compilation. Native
+completion and frozen Arena match results must be recorded separately, so this
+executor does not claim that the full route survives every engine prompt or
+interruption until a new native duel log shows it. It also does not claim
+exhaustive prompt coverage or competitive strength.
 
 ## Sky Striker 2026 executor
 

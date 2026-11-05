@@ -229,6 +229,17 @@ namespace WindBot.Game.AI.Decks
 
         private bool ViceMadameEffect()
         {
+            bool recoverGuideDistortion = Bot.HasInMonstersZone(CardId.MadameRillie, true) &&
+                Bot.HasInGraveyard(CardId.Distortion);
+            if (recoverGuideDistortion)
+            {
+                if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 2))
+                {
+                    LogGuideAction("Vice-Madame chains to Edel and recovers Distortion");
+                    return true;
+                }
+                return false;
+            }
             if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 0))
                 return Util.GetBestEnemyCard() != null;
             if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 1))
@@ -245,6 +256,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool FieldSpellAccessEffect()
         {
+            if (Card.IsCode(CardId.RainbowBridgeBifrost) && !CanPayBifrostCost())
+            {
+                Logger.DebugWriteLine("Witchcraft2026 rejects Bifrost: the three legal Extra Deck costs are no longer available.");
+                return false;
+            }
             if (!Bot.HasInDeck(CardId.Walpurgis) ||
                 !StrategicAllows(WitchcraftActionKind.ActivateFieldSpellAccess))
                 return false;
@@ -288,15 +304,13 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.SpellZone)
             {
-                _pendingSearchTarget = !Bot.HasInHand(CardId.MaidVerre) &&
-                    Bot.HasInDeck(CardId.MaidVerre) ? CardId.MaidVerre :
-                    !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+                _pendingSearchTarget = ChooseWalpurgisSearchTarget();
+                LogGuideAction("Walpurgis searches " + _pendingSearchTarget);
                 return true;
             }
             if (!StrategicAllows(WitchcraftActionKind.ActivateWalpurgis))
                 return false;
-            int fallback = !Bot.HasInHand(CardId.MaidVerre) && Bot.HasInDeck(CardId.MaidVerre)
-                ? CardId.MaidVerre : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+            int fallback = ChooseWalpurgisSearchTarget();
             _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
             return true;
         }
@@ -352,14 +366,34 @@ namespace WindBot.Game.AI.Decks
                     (!hasWalpurgis && !HasSpellInHand()) ||
                     !StrategicAllows(WitchcraftActionKind.ActivateLowWitchcrafter))
                     return false;
-                _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Haine);
+                int guideTarget = GetNextGuideLowWitchcrafter(Card.Id);
+                _pendingSearchTarget = ConsumeStrategicActionTarget(
+                    guideTarget != 0 ? guideTarget : CardId.Haine);
                 if (!hasWalpurgis)
                     AI.SelectCard(GetDiscardPriority());
                 _usedLowWitchcrafterEffects.Add(Card.Id);
+                LogGuideAction(Card.Id + " recruits " + _pendingSearchTarget);
                 return true;
             }
             if (Card.Location != CardLocation.Grave)
                 return false;
+            if (Card.IsCode(CardId.Genni) && Bot.HasInGraveyard(CardId.Creation) &&
+                Bot.HasInDeck(CardId.Terracottan))
+            {
+                _pendingSearchTarget = CardId.Terracottan;
+                LogGuideAction("Genni copies Creation to search Terracottan");
+                return true;
+            }
+            if (GuideComboNeedsGraveResources())
+            {
+                if (Card.IsCode(CardId.Schmietta) &&
+                    Bot.HasInMonstersZone(CardId.Pupils, true))
+                {
+                    LogGuideAction("Schmietta sends Madame Verre after Pupils is established");
+                    return true;
+                }
+                return false;
+            }
             if (Card.IsCode(CardId.Pittore))
                 return Bot.Hand.Count >= 2;
             if (Card.IsCode(CardId.Genni))
@@ -386,15 +420,26 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Hand)
             {
-                if (!Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode)) ||
+                if (!Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode)))
+                    return false;
+                bool guideRecovery = Bot.HasInGraveyard(CardId.Celebration) &&
+                    Bot.HasInMonstersZone(CardId.RedEyesDarkDragoon, true) &&
+                    Bot.Banished.Any(card => card.IsCode(CardId.Genni));
+                if (!guideRecovery &&
                     !StrategicAllows(WitchcraftActionKind.ActivateTerracottan))
                     return false;
                 _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Celebration);
+                if (guideRecovery)
+                    LogGuideAction("Terracottan recovers Celebration and Special Summons itself");
                 return true;
             }
             if (Card.Location == CardLocation.MonsterZone)
             {
-                _pendingFusionTarget = ChooseWitchcrafterFusion();
+                _pendingFusionTarget = Bot.HasInExtra(CardId.Pupils) &&
+                    Bot.HasInMonstersZone(CardId.RedEyesDarkDragoon, true)
+                    ? CardId.Pupils : ChooseWitchcrafterFusion();
+                if (_pendingFusionTarget == CardId.Pupils)
+                    LogGuideAction("Terracottan fuses itself with Dragoon into Pupils");
                 return _pendingFusionTarget != 0;
             }
             return false;
@@ -402,8 +447,18 @@ namespace WindBot.Game.AI.Decks
 
         private bool EdelEffect()
         {
-            return Card.Location == CardLocation.Hand || Bot.Graveyard.Any(card =>
-                card.IsCode(CardId.RedEyesDarkDragoon, CardId.MadameVerre, CardId.Haine));
+            if (ActivateDescription == Util.GetStringId(CardId.Edel, 1))
+            {
+                bool reviveDragoon = Bot.HasInGraveyard(CardId.RedEyesDarkDragoon);
+                if (reviveDragoon)
+                    LogGuideAction("Edel tributes itself to revive Dragoon");
+                return reviveDragoon || Bot.Graveyard.Any(card =>
+                    card.IsCode(CardId.MadameVerre, CardId.Haine));
+            }
+            if (ActivateDescription == Util.GetStringId(CardId.Edel, 0))
+                return HasSpellInHand() && Bot.Hand.Any(card => card.HasSetcode(
+                    WitchcrafterSetcode) && card.IsMonster());
+            return Card.Location == CardLocation.Hand;
         }
 
         private bool LacrimaEffect()
@@ -413,6 +468,15 @@ namespace WindBot.Game.AI.Decks
 
         private bool CelebrationEffect()
         {
+            if (Bot.HasInExtra(CardId.ViceMadame) &&
+                Bot.HasInMonstersZone(CardId.MadameRillie, true) &&
+                Bot.HasInGraveyard(CardId.Terracottan) &&
+                Bot.Banished.Any(card => card.IsCode(CardId.Marka)))
+            {
+                _pendingFusionTarget = CardId.ViceMadame;
+                LogGuideAction("Celebration returns Terracottan and Marka to Fusion Summon Vice-Madame");
+                return true;
+            }
             bool canFuse = Bot.Graveyard.Concat(Bot.Banished).Count(card =>
                 card.IsMonster() && card.HasRace(CardRace.SpellCaster)) >= 2;
             if (canFuse && StrategicAllows(WitchcraftActionKind.ActivateCelebration))
@@ -436,27 +500,42 @@ namespace WindBot.Game.AI.Decks
 
         private bool PupilsEffect()
         {
-            return true;
+            if (Bot.HasInHand(CardId.Celebration) &&
+                Bot.HasInGraveyard(CardId.MadameVerre) &&
+                Bot.HasInExtra(CardId.MadameRillie))
+            {
+                _pendingFusionTarget = CardId.MadameRillie;
+                LogGuideAction("Pupils copies Celebration to Fusion Summon Madame Rilliona");
+                return true;
+            }
+            return !GuideComboNeedsGraveResources();
         }
 
         private bool DarkMagicianOfDestructionSummon()
         {
-            return _spellActivatedThisTurn && Bot.GetMonsters().Any(card =>
+            bool result = _spellActivatedThisTurn && Bot.GetMonsters().Any(card =>
                 card.IsFaceup() && card.IsCode(CardId.Marka));
+            if (result)
+                LogGuideAction("banish Marka to Special Summon Dark Magician of Destruction");
+            return result;
         }
 
         private bool DarkMagicianOfDestructionEffect()
         {
             _pendingSearchTarget = CardId.GazeOfTimaeus;
+            LogGuideAction("Dark Magician of Destruction searches Gaze of Timaeus");
             return true;
         }
 
         private bool GazeOfTimaeusEffect()
         {
             _pendingFusionTarget = CardId.RedEyesDarkDragoon;
-            return Bot.HasInExtra(CardId.RedEyesDarkDragoon) &&
+            bool result = Bot.HasInExtra(CardId.RedEyesDarkDragoon) &&
                 (Bot.HasInGraveyard(CardId.DarkMagicianOfDestruction) ||
                 Bot.HasInMonstersZone(CardId.DarkMagicianOfDestruction));
+            if (result)
+                LogGuideAction("Gaze returns Dark Magician of Destruction and summons Dragoon");
+            return result;
         }
 
         private bool ExtraDeckSummon()
@@ -475,9 +554,61 @@ namespace WindBot.Game.AI.Decks
             if (!Util.IsTurn1OrMain2() || !Bot.GetMonsters().Any(card =>
                 card.IsFaceup() && card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5))
                 return false;
-            bool allowed = StrategicAllows(WitchcraftActionKind.SetDistortion);
+            bool allowed = Bot.HasInMonstersZone(CardId.MadameRillie, true) ||
+                Bot.HasInMonstersZone(CardId.ViceMadame, true) ||
+                StrategicAllows(WitchcraftActionKind.SetDistortion);
             ConsumeStrategicActionTarget(0);
             return allowed;
+        }
+
+        private bool CanPayBifrostCost()
+        {
+            return HasBifrostCost(Bot.ExtraDeck.Select(card => card.Id));
+        }
+
+        private static bool HasBifrostCost(IEnumerable<int> extraIds)
+        {
+            HashSet<int> ids = new HashSet<int>(extraIds);
+            return ids.Contains(CardId.CosmicQuasarDragon) &&
+                ids.Contains(CardId.DespianLuluwalilith) &&
+                ids.Contains(CardId.ElfnoteJunePride);
+        }
+
+        private int ChooseWalpurgisSearchTarget()
+        {
+            if (!_normalSummonUsed && Bot.HasInDeck(CardId.Genni))
+                return CardId.Genni;
+            if (!Bot.HasInHand(CardId.MaidVerre) && Bot.HasInDeck(CardId.MaidVerre))
+                return CardId.MaidVerre;
+            if (Bot.HasInDeck(CardId.Schmietta))
+                return CardId.Schmietta;
+            return CardId.Terracottan;
+        }
+
+        private static int GetNextGuideLowWitchcrafter(int source)
+        {
+            if (source == CardId.Genni) return CardId.Schmietta;
+            if (source == CardId.Schmietta) return CardId.Pittore;
+            if (source == CardId.Pittore) return CardId.Potterie;
+            if (source == CardId.Potterie) return CardId.Marka;
+            return 0;
+        }
+
+        private bool GuideComboNeedsGraveResources()
+        {
+            return Bot.HasInSpellZone(CardId.Walpurgis, true, true) &&
+                (Bot.HasInGraveyard(CardId.Genni) ||
+                Bot.Banished.Any(card => card.IsCode(CardId.Genni))) &&
+                (Bot.HasInExtra(CardId.DarkMagicianOfDestruction) ||
+                Bot.HasInMonstersZone(CardId.RedEyesDarkDragoon, true) ||
+                Bot.HasInHand(CardId.Terracottan) ||
+                Bot.HasInMonstersZone(CardId.Terracottan, true) ||
+                Bot.HasInMonstersZone(CardId.Pupils, true));
+        }
+
+        private static void LogGuideAction(string action)
+        {
+            Logger.DebugWriteLine("Witchcraft2026 guide action: " + action);
         }
 
         private int ChooseWitchcrafterFusion()
@@ -526,14 +657,25 @@ namespace WindBot.Game.AI.Decks
             }).ThenBy(card => card.Attack).ToList();
         }
 
-        private IList<ClientCard> OrderLowWitchcrafterCosts(IEnumerable<ClientCard> cards)
+        private IList<ClientCard> OrderLowWitchcrafterCosts(IEnumerable<ClientCard> cards,
+            int source)
         {
-            int[] ids =
-            {
-                CardId.Distortion, CardId.Celebration, CardId.Bystreet,
-                CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
-                CardId.Lacrima, CardId.RainbowBridgeBifrost, CardId.Terraforming
-            };
+            int guideCost = source == CardId.Genni ? CardId.Creation :
+                source == CardId.Schmietta ? CardId.Celebration :
+                source == CardId.Pittore ? CardId.Distortion :
+                source == CardId.Potterie ? CardId.ConfusionConfession : 0;
+            int[] ids = guideCost == 0
+                ? new[]
+                {
+                    CardId.Distortion, CardId.Celebration, CardId.Bystreet,
+                    CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
+                    CardId.Lacrima, CardId.RainbowBridgeBifrost, CardId.Terraforming
+                }
+                : new[]
+                {
+                    guideCost, CardId.Bystreet, CardId.Unveiling, CardId.Lacrima,
+                    CardId.RainbowBridgeBifrost, CardId.Terraforming
+                };
             List<int> order = ids.ToList();
             bool canUseDeckCost = Bot.HasInSpellZone(CardId.Walpurgis, true);
             return cards.OrderBy(card => canUseDeckCost &&
@@ -584,9 +726,10 @@ namespace WindBot.Game.AI.Decks
             if (source == CardId.Walpurgis && (hint == HintMsg.Discard || hint == HintMsg.ToGrave))
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
-                    CardId.Distortion, CardId.Celebration, CardId.Bystreet,
+                    CardId.RainbowBridgeBifrost, CardId.Distortion,
+                    CardId.Celebration, CardId.Bystreet,
                     CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
-                    CardId.Lacrima
+                    CardId.Lacrima, CardId.Terraforming, CardId.GazeOfTimaeus
                 }), cards, min, max);
 
             if (source == CardId.RainbowBridgeBifrost && hint == HintMsg.Remove)
@@ -597,13 +740,14 @@ namespace WindBot.Game.AI.Decks
                 }), cards, min, max);
 
             if (IsLowWitchcrafter(source) && hint == HintMsg.Discard)
-                return Util.CheckSelectCount(OrderLowWitchcrafterCosts(cards),
+                return Util.CheckSelectCount(OrderLowWitchcrafterCosts(cards, source),
                     cards, min, max);
 
             if (IsLowWitchcrafter(source) && hint == HintMsg.SpSummon)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
-                    CardId.Haine, CardId.MadameVerre, CardId.Edel,
+                    GetNextGuideLowWitchcrafter(source), CardId.Haine,
+                    CardId.MadameVerre, CardId.Edel,
                     CardId.MaidGenni, CardId.MaidVerre
                 }), cards, min, max);
 
@@ -627,13 +771,16 @@ namespace WindBot.Game.AI.Decks
             if (source == CardId.Schmietta && hint == HintMsg.ToGrave)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
-                    CardId.MadameVerre, CardId.Celebration, CardId.Distortion, CardId.Bystreet
+                    Bot.HasInMonstersZone(CardId.Pupils, true)
+                        ? CardId.MadameVerre : CardId.Celebration,
+                    CardId.MadameVerre, CardId.Celebration,
+                    CardId.Distortion, CardId.Bystreet
                 }), cards, min, max);
 
             if (source == CardId.Genni && hint == HintMsg.Remove)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
-                    CardId.Celebration, CardId.Creation, CardId.ConfusionConfession
+                    CardId.Creation, CardId.Celebration, CardId.ConfusionConfession
                 }), cards, min, max);
 
             if (source == CardId.Potterie && hint == HintMsg.AddToHand)
@@ -658,6 +805,18 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
                     CardId.Haine, CardId.Edel, CardId.MaidGenni, CardId.MadameVerre
+                }), cards, min, max);
+
+            if (source == CardId.Edel && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.RedEyesDarkDragoon, CardId.MadameVerre, CardId.Haine
+                }), cards, min, max);
+
+            if (source == CardId.Pupils && hint == HintMsg.Confirm)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Celebration, CardId.Creation, CardId.ConfusionConfession
                 }), cards, min, max);
 
             if (source == CardId.Celebration && hint == HintMsg.Destroy)
@@ -709,8 +868,16 @@ namespace WindBot.Game.AI.Decks
         {
             List<ClientCard> ordered = cards.OrderBy(card =>
             {
-                if (_pendingFusionTarget == CardId.MadameRillie && card.IsCode(CardId.MadameVerre))
-                    return -20;
+                if (_pendingFusionTarget == CardId.Pupils &&
+                    card.IsCode(CardId.Terracottan, CardId.RedEyesDarkDragoon))
+                    return card.IsCode(CardId.Terracottan) ? -30 : -29;
+                if (_pendingFusionTarget == CardId.MadameRillie &&
+                    card.IsCode(CardId.MadameVerre, CardId.Genni, CardId.Schmietta))
+                    return card.IsCode(CardId.MadameVerre) ? -30 :
+                        card.IsCode(CardId.Genni) ? -29 : -28;
+                if (_pendingFusionTarget == CardId.ViceMadame &&
+                    card.IsCode(CardId.Terracottan, CardId.Marka))
+                    return card.IsCode(CardId.Terracottan) ? -30 : -29;
                 if (card.Controller == 1)
                     return -10;
                 if (card.IsCode(CardId.Marka, CardId.Seed, CardId.Potterie,

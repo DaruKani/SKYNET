@@ -57,6 +57,9 @@ namespace WindBot.Game.AI.Decks
             public bool HandCelebration;
             public bool HandConfusion;
             public bool HandDistortion;
+            public int HandLowId;
+            public int FieldLowId;
+            public int GuideDepth;
             public bool FieldWalpurgis;
             public bool FieldMaidVerre;
             public bool FieldLow;
@@ -90,7 +93,8 @@ namespace WindBot.Game.AI.Decks
                     HandFieldSpellAccess, HandMastery, HandCreation, HandMarka,
                     HandWalpurgis, HandMaidVerre,
                     HandSchmietta, HandOtherLow, HandTerracottan, HandCelebration,
-                    HandConfusion, HandDistortion, FieldWalpurgis, FieldMaidVerre,
+                    HandConfusion, HandDistortion, HandLowId, FieldLowId, GuideDepth,
+                    FieldWalpurgis, FieldMaidVerre,
                     FieldLow, FieldLevelFiveWitchcrafter, GraveSchmietta,
                     GraveMadameVerre, GraveCelebration, GraveWitchcrafterSpell,
                     LowEffectUsed,
@@ -288,13 +292,11 @@ namespace WindBot.Game.AI.Decks
                     next.HandWalpurgis = false;
                     next.FieldWalpurgis = true;
                     next.SpellActivated = true;
-                    if (!next.HandMaidVerre && !next.FieldMaidVerre)
-                        next.HandMaidVerre = true;
-                    else
-                        next.HandSchmietta = true;
+                    next.HandOtherLow = true;
+                    next.HandLowId = CardId.Genni;
+                    next.GuideDepth = Math.Max(next.GuideDepth, 1);
                     yield return Step(WitchcraftActionKind.ActivateWalpurgis,
-                        !state.HandMaidVerre && !state.FieldMaidVerre
-                            ? CardId.MaidVerre : CardId.Schmietta, next);
+                        CardId.Genni, next);
                 }
 
                 if (state.HandMaidVerre && state.SpellActivated && !state.FieldMaidVerre)
@@ -319,6 +321,7 @@ namespace WindBot.Game.AI.Decks
                     next.NormalAvailable = false;
                     next.HandSchmietta = false;
                     next.FieldLow = true;
+                    next.FieldLowId = CardId.Schmietta;
                     yield return Step(WitchcraftActionKind.NormalSchmietta, 0, next);
                 }
 
@@ -328,25 +331,37 @@ namespace WindBot.Game.AI.Decks
                     next.NormalAvailable = false;
                     next.HandOtherLow = false;
                     next.FieldLow = true;
+                    next.FieldLowId = state.HandLowId != 0
+                        ? state.HandLowId : CardId.Genni;
+                    next.HandLowId = 0;
+                    if (next.FieldLowId == CardId.Genni && next.FieldWalpurgis)
+                        next.GuideDepth = Math.Max(next.GuideDepth, 2);
                     yield return Step(WitchcraftActionKind.NormalLowWitchcrafter, 0, next);
                 }
 
                 if (state.FieldLow && !state.LowEffectUsed &&
                     (state.FieldWalpurgis || state.HandSpellCount > 0))
                 {
-                    WitchcraftStrategicState next = Next(state);
-                    next.GraveSchmietta = next.GraveSchmietta || state.HandSchmietta == false;
-                    next.LowEffectUsed = true;
-                    next.GraveWitchcrafterSpell = true;
-                    next.GraveMadameVerre = true;
-                    next.FieldLevelFiveWitchcrafter = true;
-                    next.GraveCelebration = true;
-                    next.HandCelebration = true;
-                    next.HandSpellCount++;
-                    if (!state.FieldWalpurgis)
-                        next.HandSpellCount = Math.Max(0, next.HandSpellCount - 1);
-                    yield return Step(WitchcraftActionKind.ActivateLowWitchcrafter,
-                        CardId.Haine, next);
+                    int target = GetNextGuideLowWitchcrafter(state.FieldLowId);
+                    if (target != 0)
+                    {
+                        WitchcraftStrategicState next = Next(state);
+                        next.GraveSchmietta = next.GraveSchmietta ||
+                            state.FieldLowId == CardId.Schmietta;
+                        next.LowEffectUsed = false;
+                        next.GraveWitchcrafterSpell = true;
+                        next.GraveCelebration = next.GraveCelebration ||
+                            state.FieldLowId == CardId.Schmietta;
+                        next.FieldLowId = target;
+                        next.GuideDepth = Math.Max(next.GuideDepth,
+                            target == CardId.Schmietta ? 3 :
+                            target == CardId.Pittore ? 4 :
+                            target == CardId.Potterie ? 5 : 6);
+                        if (!state.FieldWalpurgis)
+                            next.HandSpellCount = Math.Max(0, next.HandSpellCount - 1);
+                        yield return Step(WitchcraftActionKind.ActivateLowWitchcrafter,
+                            target, next);
+                    }
                 }
 
                 if (state.HandTerracottan && state.GraveWitchcrafterSpell)
@@ -456,6 +471,7 @@ namespace WindBot.Game.AI.Decks
                 if (state.HandCelebration) score += 4;
                 if (state.GraveCelebration) score += 4;
                 if (state.GraveMadameVerre) score += 5;
+                score += state.GuideDepth * 12;
                 score += Math.Min(5, state.HandSpellCount);
                 if (state.WitchcrafterExtraLock && !state.BoardMadameRillie &&
                     !state.BoardViceMadame && !state.BoardPupils) score -= 7;
@@ -524,6 +540,16 @@ namespace WindBot.Game.AI.Decks
             IList<ClientCard> faceupLowWitchcrafters = Bot.GetMonsters()
                 .Where(card => card.IsFaceup() && IsLowWitchcrafter(card.Id))
                 .ToList();
+            ClientCard handLow = Bot.Hand.FirstOrDefault(card => card.IsCode(
+                CardId.Genni, CardId.Schmietta, CardId.Pittore, CardId.Potterie));
+            ClientCard fieldLow = faceupLowWitchcrafters.FirstOrDefault();
+            int fieldLowId = fieldLow == null ? 0 : fieldLow.Id;
+            int guideDepth = Bot.HasInSpellZone(CardId.Walpurgis, true, true) ? 1 : 0;
+            if (fieldLowId == CardId.Genni) guideDepth = 2;
+            else if (fieldLowId == CardId.Schmietta) guideDepth = 3;
+            else if (fieldLowId == CardId.Pittore) guideDepth = 4;
+            else if (fieldLowId == CardId.Potterie) guideDepth = 5;
+            else if (fieldLowId == CardId.Marka) guideDepth = 6;
             return new WitchcraftStrategicState
             {
                 MainPhase = Duel.Player == 0 &&
@@ -531,8 +557,8 @@ namespace WindBot.Game.AI.Decks
                 NormalAvailable = !_normalSummonUsed,
                 SpellActivated = _spellActivatedThisTurn,
                 EnemyDrawPressure = enemyResolvedEffectIdList.Contains(CardId.MaxxC),
-                HandFieldSpellAccess = Bot.Hand.Any(card => card.IsCode(
-                    CardId.RainbowBridgeBifrost, CardId.Terraforming)),
+                HandFieldSpellAccess = Bot.HasInHand(CardId.Terraforming) ||
+                    Bot.HasInHand(CardId.RainbowBridgeBifrost) && CanPayBifrostCost(),
                 HandMastery = Bot.HasInHand(CardId.SpellPowerMastery),
                 HandCreation = Bot.HasInHand(CardId.Creation),
                 HandMarka = Bot.HasInHand(CardId.Marka),
@@ -541,6 +567,9 @@ namespace WindBot.Game.AI.Decks
                 HandSchmietta = Bot.HasInHand(CardId.Schmietta),
                 HandOtherLow = Bot.Hand.Any(card => card.IsCode(
                     CardId.Pittore, CardId.Genni, CardId.Potterie)),
+                HandLowId = handLow == null ? 0 : handLow.Id,
+                FieldLowId = fieldLowId,
+                GuideDepth = guideDepth,
                 HandTerracottan = Bot.HasInHand(CardId.Terracottan),
                 HandCelebration = Bot.HasInHand(CardId.Celebration),
                 HandConfusion = Bot.HasInHand(CardId.ConfusionConfession),
