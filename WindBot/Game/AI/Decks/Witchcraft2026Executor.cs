@@ -265,6 +265,7 @@ namespace WindBot.Game.AI.Decks
                 !StrategicAllows(WitchcraftActionKind.ActivateFieldSpellAccess))
                 return false;
             _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Walpurgis);
+            _spellActivatedThisTurn = true;
             return true;
         }
 
@@ -275,6 +276,7 @@ namespace WindBot.Game.AI.Decks
             int fallback = Bot.HasInHand(CardId.MaidVerre)
                 ? CardId.MaidGenni : CardId.MaidVerre;
             _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
+            _spellActivatedThisTurn = true;
             return true;
         }
 
@@ -285,6 +287,7 @@ namespace WindBot.Game.AI.Decks
             int fallback = !Bot.HasInHand(CardId.Marka) && !Bot.HasInSpellZone(CardId.Walpurgis)
                 ? CardId.Marka : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
             _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
+            _spellActivatedThisTurn = true;
             return true;
         }
 
@@ -305,6 +308,7 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.SpellZone)
             {
                 _pendingSearchTarget = ChooseWalpurgisSearchTarget();
+                _spellActivatedThisTurn = true;
                 LogGuideAction("Walpurgis searches " + _pendingSearchTarget);
                 return true;
             }
@@ -312,6 +316,7 @@ namespace WindBot.Game.AI.Decks
                 return false;
             int fallback = ChooseWalpurgisSearchTarget();
             _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
+            _spellActivatedThisTurn = true;
             return true;
         }
 
@@ -351,6 +356,10 @@ namespace WindBot.Game.AI.Decks
         private bool LowWitchcrafterSummon()
         {
             if (_normalSummonUsed)
+                return false;
+            int preferred = Bot.HasInSpellZone(CardId.Walpurgis, true, true)
+                ? ChooseGuideLowId(Bot.Hand.Select(card => card.Id)) : 0;
+            if (preferred != 0 && Card.Id != preferred)
                 return false;
             WitchcraftActionKind kind = Card.IsCode(CardId.Schmietta)
                 ? WitchcraftActionKind.NormalSchmietta : WitchcraftActionKind.NormalLowWitchcrafter;
@@ -591,6 +600,16 @@ namespace WindBot.Game.AI.Decks
             if (source == CardId.Schmietta) return CardId.Pittore;
             if (source == CardId.Pittore) return CardId.Potterie;
             if (source == CardId.Potterie) return CardId.Marka;
+            return 0;
+        }
+
+        private static int ChooseGuideLowId(IEnumerable<int> handIds)
+        {
+            HashSet<int> ids = new HashSet<int>(handIds);
+            if (ids.Contains(CardId.Genni)) return CardId.Genni;
+            if (ids.Contains(CardId.Schmietta)) return CardId.Schmietta;
+            if (ids.Contains(CardId.Pittore)) return CardId.Pittore;
+            if (ids.Contains(CardId.Potterie)) return CardId.Potterie;
             return 0;
         }
 

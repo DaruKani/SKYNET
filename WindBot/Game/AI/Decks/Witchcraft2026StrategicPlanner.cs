@@ -322,7 +322,8 @@ namespace WindBot.Game.AI.Decks
                     next.HandSchmietta = false;
                     next.FieldLow = true;
                     next.FieldLowId = CardId.Schmietta;
-                    yield return Step(WitchcraftActionKind.NormalSchmietta, 0, next);
+                    yield return Step(WitchcraftActionKind.NormalSchmietta,
+                        CardId.Schmietta, next);
                 }
 
                 if (state.NormalAvailable && state.HandOtherLow)
@@ -336,7 +337,8 @@ namespace WindBot.Game.AI.Decks
                     next.HandLowId = 0;
                     if (next.FieldLowId == CardId.Genni && next.FieldWalpurgis)
                         next.GuideDepth = Math.Max(next.GuideDepth, 2);
-                    yield return Step(WitchcraftActionKind.NormalLowWitchcrafter, 0, next);
+                    yield return Step(WitchcraftActionKind.NormalLowWitchcrafter,
+                        next.FieldLowId, next);
                 }
 
                 if (state.FieldLow && !state.LowEffectUsed &&
@@ -540,8 +542,7 @@ namespace WindBot.Game.AI.Decks
             IList<ClientCard> faceupLowWitchcrafters = Bot.GetMonsters()
                 .Where(card => card.IsFaceup() && IsLowWitchcrafter(card.Id))
                 .ToList();
-            ClientCard handLow = Bot.Hand.FirstOrDefault(card => card.IsCode(
-                CardId.Genni, CardId.Schmietta, CardId.Pittore, CardId.Potterie));
+            int handLowId = ChooseGuideLowId(Bot.Hand.Select(card => card.Id));
             ClientCard fieldLow = faceupLowWitchcrafters.FirstOrDefault();
             int fieldLowId = fieldLow == null ? 0 : fieldLow.Id;
             int guideDepth = Bot.HasInSpellZone(CardId.Walpurgis, true, true) ? 1 : 0;
@@ -567,7 +568,7 @@ namespace WindBot.Game.AI.Decks
                 HandSchmietta = Bot.HasInHand(CardId.Schmietta),
                 HandOtherLow = Bot.Hand.Any(card => card.IsCode(
                     CardId.Pittore, CardId.Genni, CardId.Potterie)),
-                HandLowId = handLow == null ? 0 : handLow.Id,
+                HandLowId = handLowId,
                 FieldLowId = fieldLowId,
                 GuideDepth = guideDepth,
                 HandTerracottan = Bot.HasInHand(CardId.Terracottan),

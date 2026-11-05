@@ -157,7 +157,10 @@ internal static class Witchcraft2026PlannerChecks
             targets.Add((int)Get(strategicAction, "SearchTarget"));
             current = Get(step, "After");
         }
-        int[] expectedTargets = { 64756282, 0, 21744288, 95245544, 59851535, 6071005 };
+        int[] expectedTargets =
+        {
+            64756282, 64756282, 21744288, 95245544, 59851535, 6071005
+        };
         bool passed = targets.Take(expectedTargets.Length).SequenceEqual(expectedTargets) &&
             kinds.Count == expectedTargets.Length &&
             kinds.Skip(2).All(kind => kind == "ActivateLowWitchcrafter");
@@ -214,6 +217,25 @@ internal static class Witchcraft2026PlannerChecks
         });
         Console.WriteLine((passed ? "PASS " : "FAIL ") +
             "Bifrost cost gate rejects the spent Extra Deck");
+    }
+
+    private static void CheckGuideNormalPreference()
+    {
+        MethodInfo choose = ExecutorType.GetMethod("ChooseGuideLowId", Flags);
+        int selected = (int)choose.Invoke(null, new object[]
+        {
+            new[] { 95245544, 7656689, 64756282 }
+        });
+        bool passed = selected == 64756282;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "searched Genni wins over an opening Pittore" },
+            { "passed", passed },
+            { "selected", selected },
+            { "expected", 64756282 }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "searched Genni wins over opening Pittore");
     }
 
     private static int Main(string[] args)
@@ -275,6 +297,7 @@ internal static class Witchcraft2026PlannerChecks
 
         CheckInterruptionReplans();
         CheckBifrostCostGate();
+        CheckGuideNormalPreference();
         CheckCancellation();
 
         bool passedAll = Results.All(result => (bool)result["passed"]);

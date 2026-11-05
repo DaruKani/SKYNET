@@ -189,8 +189,12 @@ planner regression includes the observed failure case where a spent Bifrost
 must not remain the only proposed action. It also asserts the exact guide ladder
 instead of inventing a completed board in the model: Walpurgis searches Genni,
 then Genni -> Schmietta -> Pittore -> Potterie -> Marka sends Creation,
-Celebration, Distortion and Confusion from the Deck in that order. The native
-callbacks continue the observed route through Dark Magician of Destruction,
+Celebration, Distortion and Confusion from the Deck in that order. The
+normal-summon handler binds that planned Action to Genni's card identity, so an
+opening Pittore cannot consume the generic low-Witchcrafter Action first.
+Accepted Spell actions also update the same-turn Spell activity used by Dark
+Magician of Destruction instead of relying on an unrelated follow-up Spell.
+Native callbacks continue the observed route through Dark Magician of Destruction,
 Gaze/Dragoon, Genni copying Creation for Terracottan, Pupils, Madame Rilliona,
 Vice-Madame, Edel reviving Dragoon and the recovered Distortion set. Graveyard
 effects are held until their required combo stage, and the decision log records
