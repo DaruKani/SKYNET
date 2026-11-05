@@ -452,11 +452,11 @@ For the local MDPro4 setup, open a compatible room on port `7911`, then
 double-click `Tools\Run-SkyStriker2026.bat`. The launcher locates Visual Studio
 MSBuild, builds `Debug|Any CPU`, and joins `127.0.0.1:7911` with decision logging
 enabled. Every non-build run creates
-`WindBot\Logs\SkyStriker2026-yyyyMMdd-HHmmss.log`; Ultimate Sky records accepted
-and rejected timing windows, chain score/threshold, public field scores and the
-competing tactical response. It only reads the external card database and does
-not modify MDPro4's deck or settings files. The defaults and optional overrides
-are:
+`WindBot\Tools\SkyStriker2026-yyyyMMdd-HHmmss.log` beside the launcher itself;
+Ultimate Sky records accepted and rejected timing windows, chain score/threshold,
+public field scores and the competing tactical response. It only reads the
+external card database and does not modify MDPro4's deck or settings files. The
+defaults and optional overrides are:
 
 ```cmd
 WindBot\Tools\Run-SkyStriker2026.bat
@@ -475,7 +475,7 @@ try {
     .\WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN `
         "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
         Host=127.0.0.1 Port=7911 Debug=True `
-        "LogPath=..\..\Logs\SkyStriker2026-manual.log"
+        "LogPath=..\..\Tools\SkyStriker2026-manual.log"
 }
 finally { Pop-Location }
 ```

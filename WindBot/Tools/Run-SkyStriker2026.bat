@@ -25,10 +25,9 @@ set "WINDBOT_ROOT=%TOOLS_DIR%.."
 set "SOLUTION=%WINDBOT_ROOT%\WindBot.sln"
 set "OUTPUT_DIR=%WINDBOT_ROOT%\bin\Debug"
 set "BOT_EXE=%OUTPUT_DIR%\WindBot.exe"
-set "LOG_DIR=%WINDBOT_ROOT%\Logs"
 set "LOG_STAMP=%RANDOM%"
 for /f "delims=" %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "LOG_STAMP=%%I"
-set "LOG_PATH=%LOG_DIR%\SkyStriker2026-%LOG_STAMP%.log"
+set "LOG_PATH=%TOOLS_DIR%SkyStriker2026-%LOG_STAMP%.log"
 
 set "MSBUILD="
 if not defined MSBUILD if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
@@ -67,12 +66,6 @@ if not exist "%DB_PATH%" (
 
 if not exist "%BOT_EXE%" (
     echo ERROR: WindBot.exe was not produced at "%BOT_EXE%".
-    goto :failure
-)
-
-if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
-if errorlevel 1 (
-    echo ERROR: Unable to create log directory "%LOG_DIR%".
     goto :failure
 )
 
