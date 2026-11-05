@@ -282,6 +282,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool CreationEffect()
         {
+            if (GuideWalpurgisLineActive())
+            {
+                LogGuideAction("holds Creation until the Walpurgis guide line is complete");
+                return false;
+            }
             if (!StrategicAllows(WitchcraftActionKind.ActivateCreation))
                 return false;
             int fallback = !Bot.HasInHand(CardId.Marka) && !Bot.HasInSpellZone(CardId.Walpurgis)
@@ -342,6 +347,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Hand)
             {
+                if (GuideWalpurgisLineActive())
+                {
+                    LogGuideAction("holds Maid Verre so it cannot replace the documented low-Witchcrafter ladder");
+                    return false;
+                }
                 if (!_spellActivatedThisTurn)
                     return false;
                 bool allowed = StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
@@ -396,7 +406,10 @@ namespace WindBot.Game.AI.Decks
             if (GuideComboNeedsGraveResources())
             {
                 if (Card.IsCode(CardId.Schmietta) &&
-                    Bot.HasInMonstersZone(CardId.Pupils, true))
+                    Bot.HasInMonstersZone(CardId.Pupils, true) &&
+                    !Bot.HasInGraveyard(CardId.MadameVerre) &&
+                    !Bot.Banished.Any(card => card.IsCode(CardId.MadameVerre)) &&
+                    Bot.HasInDeck(CardId.MadameVerre))
                 {
                     LogGuideAction("Schmietta sends Madame Verre after Pupils is established");
                     return true;
@@ -510,7 +523,8 @@ namespace WindBot.Game.AI.Decks
         private bool PupilsEffect()
         {
             if (Bot.HasInHand(CardId.Celebration) &&
-                Bot.HasInGraveyard(CardId.MadameVerre) &&
+                (Bot.HasInGraveyard(CardId.MadameVerre) ||
+                Bot.Banished.Any(card => card.IsCode(CardId.MadameVerre))) &&
                 Bot.HasInExtra(CardId.MadameRillie))
             {
                 _pendingFusionTarget = CardId.MadameRillie;
@@ -611,6 +625,54 @@ namespace WindBot.Game.AI.Decks
             if (ids.Contains(CardId.Pittore)) return CardId.Pittore;
             if (ids.Contains(CardId.Potterie)) return CardId.Potterie;
             return 0;
+        }
+
+        private bool GuideWalpurgisLineActive()
+        {
+            if (!Bot.HasInSpellZone(CardId.Walpurgis, true, true) ||
+                Bot.HasInMonstersZone(CardId.ViceMadame, true))
+                return false;
+            if (!_normalSummonUsed &&
+                (Bot.HasInDeck(CardId.Genni) || Bot.HasInHand(CardId.Genni)))
+                return true;
+            if (Bot.HasInMonstersZone(CardId.Genni, true) ||
+                GuideComboNeedsGraveResources())
+                return true;
+            return Bot.HasInMonstersZone(CardId.MadameRillie, true) &&
+                Bot.HasInHand(CardId.Celebration);
+        }
+
+        private static int GetWalpurgisDiscardRank(int cardId, bool guideLine)
+        {
+            if (guideLine && cardId == CardId.MadameVerre) return -100;
+            if (cardId == CardId.RainbowBridgeBifrost) return 0;
+            if (guideLine && cardId == CardId.MaidVerre) return 1;
+            if (cardId == CardId.Distortion) return 2;
+            if (cardId == CardId.Celebration) return 3;
+            if (cardId == CardId.Bystreet) return 4;
+            if (cardId == CardId.Unveiling) return 5;
+            if (cardId == CardId.ConfusionConfession) return 6;
+            if (cardId == CardId.Creation) return 7;
+            if (cardId == CardId.Lacrima) return 8;
+            if (cardId == CardId.Terraforming) return 9;
+            if (cardId == CardId.SpellPowerMastery) return 10;
+            if (cardId == CardId.GazeOfTimaeus) return guideLine ? 900 : 10;
+            if (guideLine && cardId == CardId.Genni) return 1000;
+            return 100;
+        }
+
+        private static int ChooseWalpurgisDiscardId(IEnumerable<int> cardIds,
+            bool guideLine)
+        {
+            return cardIds.OrderBy(cardId => GetWalpurgisDiscardRank(cardId, guideLine))
+                .ThenBy(cardId => cardId).FirstOrDefault();
+        }
+
+        private IList<ClientCard> OrderWalpurgisDiscards(IEnumerable<ClientCard> cards)
+        {
+            bool guideLine = GuideWalpurgisLineActive();
+            return cards.OrderBy(card => GetWalpurgisDiscardRank(card.Id, guideLine))
+                .ThenBy(card => card.Attack).ToList();
         }
 
         private bool GuideComboNeedsGraveResources()
@@ -743,13 +805,8 @@ namespace WindBot.Game.AI.Decks
                     cards, min, max);
 
             if (source == CardId.Walpurgis && (hint == HintMsg.Discard || hint == HintMsg.ToGrave))
-                return Util.CheckSelectCount(OrderCardsById(cards, new[]
-                {
-                    CardId.RainbowBridgeBifrost, CardId.Distortion,
-                    CardId.Celebration, CardId.Bystreet,
-                    CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
-                    CardId.Lacrima, CardId.Terraforming, CardId.GazeOfTimaeus
-                }), cards, min, max);
+                return Util.CheckSelectCount(OrderWalpurgisDiscards(cards),
+                    cards, min, max);
 
             if (source == CardId.RainbowBridgeBifrost && hint == HintMsg.Remove)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]

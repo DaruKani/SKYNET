@@ -238,6 +238,51 @@ internal static class Witchcraft2026PlannerChecks
             "searched Genni wins over opening Pittore");
     }
 
+    private static void CheckGuideDiscardPreference()
+    {
+        MethodInfo choose = ExecutorType.GetMethod("ChooseWalpurgisDiscardId", Flags);
+        int selected = (int)choose.Invoke(null, new object[]
+        {
+            new[] { 21522601, 58139997, 22623509, 21744288, 64756282 }, true
+        });
+        bool passed = selected == 21522601;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "Walpurgis puts opening Madame Verre in the grave and preserves Genni" },
+            { "passed", passed },
+            { "selected", selected },
+            { "expected", 21522601 }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "Walpurgis preserves searched Genni and discards opening Madame Verre");
+    }
+
+    private static void CheckGuideNormalPrecedesCreation()
+    {
+        object state = BaseState();
+        Set(state, "FieldWalpurgis", true);
+        Set(state, "GuideDepth", 1);
+        Set(state, "HandCreation", true);
+        Set(state, "HandMaidVerre", true);
+        Set(state, "SpellActivated", true);
+        Set(state, "HandOtherLow", true);
+        Set(state, "HandLowId", 64756282);
+        object plan = Plan(state, CancellationToken.None);
+        string[] kinds = Kinds(plan);
+        int[] targets = Targets(plan);
+        bool passed = kinds.Length == 1 && kinds[0] == "NormalLowWitchcrafter" &&
+            targets.Length == 1 && targets[0] == 64756282;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "Genni normal summon precedes Creation and Maid Verre after Walpurgis" },
+            { "passed", passed },
+            { "route", kinds },
+            { "targets", targets }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "Genni normal summon precedes Creation and Maid Verre after Walpurgis");
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length != 2)
@@ -298,6 +343,8 @@ internal static class Witchcraft2026PlannerChecks
         CheckInterruptionReplans();
         CheckBifrostCostGate();
         CheckGuideNormalPreference();
+        CheckGuideDiscardPreference();
+        CheckGuideNormalPrecedesCreation();
         CheckCancellation();
 
         bool passedAll = Results.All(result => (bool)result["passed"]);

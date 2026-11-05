@@ -192,6 +192,13 @@ then Genni -> Schmietta -> Pittore -> Potterie -> Marka sends Creation,
 Celebration, Distortion and Confusion from the Deck in that order. The
 normal-summon handler binds that planned Action to Genni's card identity, so an
 opening Pittore cannot consume the generic low-Witchcrafter Action first.
+While that guide route is active, Creation and Maid Verre are held instead of
+cutting ahead of Walpurgis or the low-Witchcrafter ladder. Walpurgis also uses a
+guide-specific discard order: an opening Madame Verre is sent to the Graveyard
+for the later Pupils/Celebration Fusion while the searched Genni and the future
+Gaze of Timaeus are explicitly preserved. If Madame Verre is already there,
+Schmietta does not spend itself redundantly after Pupils and remains available
+as a documented Madame Rilliona material.
 Accepted Spell actions also update the same-turn Spell activity used by Dark
 Magician of Destruction instead of relying on an unrelated follow-up Spell.
 Native callbacks continue the observed route through Dark Magician of Destruction,

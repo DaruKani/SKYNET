@@ -252,7 +252,8 @@ namespace WindBot.Game.AI.Decks
                         CardId.MaidVerre, next);
                 }
 
-                if (state.HandCreation)
+                if (state.HandCreation && !(state.FieldWalpurgis &&
+                    state.GuideDepth > 0))
                 {
                     WitchcraftStrategicState next = Next(state);
                     next.HandCreation = false;
@@ -299,7 +300,9 @@ namespace WindBot.Game.AI.Decks
                         CardId.Genni, next);
                 }
 
-                if (state.HandMaidVerre && state.SpellActivated && !state.FieldMaidVerre)
+                if (state.HandMaidVerre && state.SpellActivated &&
+                    !state.FieldMaidVerre && !(state.FieldWalpurgis &&
+                    state.GuideDepth > 0))
                 {
                     WitchcraftStrategicState next = Next(state);
                     next.HandMaidVerre = false;
