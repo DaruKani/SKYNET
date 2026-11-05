@@ -190,6 +190,16 @@ Run the focused model fixtures after a Debug build:
   -OutputDirectory Artifacts/witchcraft-2026-planner-my-change
 ```
 
+For the same build-and-connect workflow as the Sky Striker launcher, double-click
+`Tools/Run-Witchcraft2026.bat` or pass explicit connection settings:
+
+```bat
+WindBot\Tools\Run-Witchcraft2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb" ""
+```
+
+Use `Run-Witchcraft2026.bat --build-only` to compile without joining a room. A
+timestamped decision log is written beside the launcher.
+
 For a native duel, provide the matching database and a compatible host explicitly:
 
 ```powershell
