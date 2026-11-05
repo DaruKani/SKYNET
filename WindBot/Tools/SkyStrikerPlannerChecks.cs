@@ -14,6 +14,7 @@ internal static class SkyStrikerPlannerChecks
 {
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic |
         BindingFlags.Static | BindingFlags.Instance;
+    private static Type ExecutorType;
     private static Type StateType;
     private static Type PlannerType;
     private static readonly List<Dictionary<string, object>> Results =
@@ -138,6 +139,50 @@ internal static class SkyStrikerPlannerChecks
         }
     }
 
+    private static void CheckUltimateSkyPolicy(string name, int threatId,
+        int observedScore, bool botTurn, int previousOwnCardId, bool expectedNegate)
+    {
+        const int threshold = 3600;
+        int actualScore = (int)ExecutorType.GetMethod(
+            "GetUltimateSkyChainPriority", Flags).Invoke(null, new object[]
+            {
+                threatId,
+                observedScore,
+                botTurn,
+                previousOwnCardId
+            });
+        bool actualNegate = actualScore >= threshold;
+        bool passed = actualNegate == expectedNegate;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedNegate", expectedNegate },
+            { "actualNegate", actualNegate },
+            { "actualScore", actualScore },
+            { "threshold", threshold }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": score=" +
+            actualScore + "/" + threshold + " negate=" + actualNegate);
+    }
+
+    private static void CheckUltimateSkyOptionLatch()
+    {
+        bool selected = (bool)ExecutorType.GetMethod(
+            "ShouldSelectUltimateSkyChainMode", Flags).Invoke(null,
+            new object[] { true, false });
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "Ultimate Sky option keeps the accepted chain-negate mode" },
+            { "passed", selected },
+            { "pending", true },
+            { "liveReevaluation", false },
+            { "selectedChainMode", selected }
+        });
+        Console.WriteLine((selected ? "PASS " : "FAIL ") +
+            "Ultimate Sky option keeps the accepted chain-negate mode");
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length != 2)
@@ -149,10 +194,10 @@ internal static class SkyStrikerPlannerChecks
         try
         {
             Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
-            Type executor = assembly.GetType(
+            ExecutorType = assembly.GetType(
                 "WindBot.Game.AI.Decks.SkyStriker2026Executor", true);
-            StateType = executor.GetNestedType("SkyStrategicState", Flags);
-            PlannerType = executor.GetNestedType("SkyStrategicPlanner", Flags);
+            StateType = ExecutorType.GetNestedType("SkyStrategicState", Flags);
+            PlannerType = ExecutorType.GetNestedType("SkyStrategicPlanner", Flags);
 
             // Warm the planner separately from bounded behavior assertions.
             Plan(BaseState());
@@ -217,10 +262,20 @@ internal static class SkyStrikerPlannerChecks
 
             CheckCancellation();
 
+            CheckUltimateSkyPolicy("Ultimate Sky preserves itself against a low-value hand effect",
+                99999999, 1600, true, 0, false);
+            CheckUltimateSkyPolicy("Ultimate Sky stops Maxx C on the bot turn",
+                23434538, 1600, true, 0, true);
+            CheckUltimateSkyPolicy("Ultimate Sky protects Engage from Ash Blossom",
+                14558127, 1600, true, 63166095, true);
+            CheckUltimateSkyPolicy("Ultimate Sky still stops an independently dangerous grave effect",
+                99999998, 4200, false, 0, true);
+            CheckUltimateSkyOptionLatch();
+
             bool passed = Results.All(result => (bool)result["passed"]);
             var report = new Dictionary<string, object>
             {
-                { "purpose", "Offline SkyStriker2026 bounded planner regression; not engine legality or strength evidence" },
+                { "purpose", "Offline SkyStriker2026 bounded planner and Ultimate Sky policy regression; not engine legality or strength evidence" },
                 { "checks", Results },
                 { "passed", passed }
             };

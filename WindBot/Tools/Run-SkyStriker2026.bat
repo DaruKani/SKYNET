@@ -25,6 +25,10 @@ set "WINDBOT_ROOT=%TOOLS_DIR%.."
 set "SOLUTION=%WINDBOT_ROOT%\WindBot.sln"
 set "OUTPUT_DIR=%WINDBOT_ROOT%\bin\Debug"
 set "BOT_EXE=%OUTPUT_DIR%\WindBot.exe"
+set "LOG_DIR=%WINDBOT_ROOT%\Logs"
+set "LOG_STAMP=%RANDOM%"
+for /f "delims=" %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "LOG_STAMP=%%I"
+set "LOG_PATH=%LOG_DIR%\SkyStriker2026-%LOG_STAMP%.log"
 
 set "MSBUILD="
 if not defined MSBUILD if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
@@ -66,16 +70,23 @@ if not exist "%BOT_EXE%" (
     goto :failure
 )
 
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+if errorlevel 1 (
+    echo ERROR: Unable to create log directory "%LOG_DIR%".
+    goto :failure
+)
+
 echo.
 echo Joining MDPro4 at %HOST%:%PORT% as SkyStriker2026...
 echo Open the compatible MDPro4 room before this connection attempt.
+echo Decision log: "%LOG_PATH%"
 pushd "%OUTPUT_DIR%"
 if errorlevel 1 goto :failure
 
 if defined HOST_INFO (
-    WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN "DbPath=%DB_PATH%" Host=%HOST% Port=%PORT% "HostInfo=%HOST_INFO%" Debug=True
+    WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN "DbPath=%DB_PATH%" Host=%HOST% Port=%PORT% "HostInfo=%HOST_INFO%" Debug=True "LogPath=%LOG_PATH%"
 ) else (
-    WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN "DbPath=%DB_PATH%" Host=%HOST% Port=%PORT% Debug=True
+    WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN "DbPath=%DB_PATH%" Host=%HOST% Port=%PORT% Debug=True "LogPath=%LOG_PATH%"
 )
 set "BOT_EXIT=%ERRORLEVEL%"
 popd

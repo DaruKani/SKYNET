@@ -312,13 +312,16 @@ Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two
 before using the hand-shuffle fallback; its control and revealed-hand prompts use
-only server-offered cards. Ultimate Sky is set for the opponent's turn, chains
-its dedicated negate only to an opponent's monster effect activated in the hand
-or GY, and spends LP on the field-negate mode only for scored face-up threats
-while preserving a safe LP reserve outside emergencies. On an otherwise empty
-own-turn board, Ultimate Sky can also be activated from hand as the explicit
-send card for a chained Linkage; that tracked recovery line summons Zero instead
-of passing with both cards stranded in hand. Kaina is available as a
+only server-offered cards. Ultimate Sky is set for the opponent's turn and its
+dedicated hand/GY negate now requires a 3,600-point threat threshold instead of
+answering every legal monster effect. Maxx "C", Mulcharmy Fuwalos and Droll on
+the bot's turn receive explicit stop value, while Ash Blossom, Ghost Belle,
+Ghost Ogre and Effect Veiler receive it only when they are answering a core
+Sky Striker engine effect. The field-negate mode spends LP only for scored
+face-up threats while preserving a safe LP reserve outside emergencies. On an
+otherwise empty own-turn board, Ultimate Sky can also be activated from hand as
+the explicit send card for a chained Linkage; that tracked recovery line summons
+Zero instead of passing with both cards stranded in hand. Kaina is available as a
 defensive Raye tag and Main Phase 2 Link, targeting the strongest opponent
 monster that can still attack; it is also recognized throughout Link, Lemnisgate
 and mirror-selection policy.
@@ -448,8 +451,12 @@ compatible duel host, for example:
 For the local MDPro4 setup, open a compatible room on port `7911`, then
 double-click `Tools\Run-SkyStriker2026.bat`. The launcher locates Visual Studio
 MSBuild, builds `Debug|Any CPU`, and joins `127.0.0.1:7911` with decision logging
-enabled. It only reads the external card database and does not modify MDPro4's
-deck or settings files. The defaults and optional overrides are:
+enabled. Every non-build run creates
+`WindBot\Logs\SkyStriker2026-yyyyMMdd-HHmmss.log`; Ultimate Sky records accepted
+and rejected timing windows, chain score/threshold, public field scores and the
+competing tactical response. It only reads the external card database and does
+not modify MDPro4's deck or settings files. The defaults and optional overrides
+are:
 
 ```cmd
 WindBot\Tools\Run-SkyStriker2026.bat
@@ -467,7 +474,8 @@ Push-Location .\WindBot\bin\Debug
 try {
     .\WindBot.exe Name=SkyStriker2026 Deck=SkyStriker2026 Dialog=Universal_3.EN `
         "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
-        Host=127.0.0.1 Port=7911
+        Host=127.0.0.1 Port=7911 Debug=True `
+        "LogPath=..\..\Logs\SkyStriker2026-manual.log"
 }
 finally { Pop-Location }
 ```
@@ -483,7 +491,8 @@ output directory:
 
 They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari bridge,
 Ultimate Sky/Linkage recovery, deterministic access before Pot and Raye/Roze
-Main Zone clearance routes. They do not execute Lua or prove engine legality.
+Main Zone clearance routes, plus Ultimate Sky's chain threat threshold and
+latched option choice. They do not execute Lua or prove engine legality.
 
 This remains a hybrid executor: bounded search covers the modeled setup/resource
 routes, tracked stages own script-specific sequences, and competing interaction

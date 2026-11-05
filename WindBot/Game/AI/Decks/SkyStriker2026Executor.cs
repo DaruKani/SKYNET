@@ -11,6 +11,8 @@ namespace WindBot.Game.AI.Decks
     [Deck("SkyStriker2026", "AI_SkyStriker2026")]
     public partial class SkyStriker2026Executor : DefaultExecutor
     {
+        private const int UltimateSkyChainNegateThreshold = 3600;
+
         private enum HornetZeroSetupStage
         {
             None,
@@ -145,9 +147,11 @@ namespace WindBot.Game.AI.Decks
         private bool LinkageSetupToZeroPending;
         private bool ZeroExitClearancePending;
         private bool UltimateSkyLinkageSetupPending;
+        private bool UltimateSkyChainNegatePending;
         private bool OpponentAddedFromMainDeckThisTurn;
         private bool FallenAndVirtuousPreferDestroy;
         private bool SkyStrikerMirrorObserved;
+        private string LastUltimateSkyTraceSignature;
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
         private readonly List<ClientCard> UltimateSkyTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
@@ -333,6 +337,8 @@ namespace WindBot.Game.AI.Decks
             ZeroSearchPending = false;
             LinkageSetupToZeroPending = false;
             UltimateSkyLinkageSetupPending = false;
+            UltimateSkyChainNegatePending = false;
+            LastUltimateSkyTraceSignature = null;
             OpponentAddedFromMainDeckThisTurn = false;
             if (ZeroExitClearancePending &&
                 (!Bot.HasInMonstersZone(CardId.Raye) ||
@@ -377,6 +383,8 @@ namespace WindBot.Game.AI.Decks
             ForbiddenDropletTargets.Clear();
             UltimateSkyTargets.Clear();
             UltimateSkyLinkageSetupPending = false;
+            UltimateSkyChainNegatePending = false;
+            LastUltimateSkyTraceSignature = null;
 
             if (ZeroExitClearancePending &&
                 (!Bot.HasInMonstersZone(CardId.Raye) ||
@@ -983,8 +991,13 @@ namespace WindBot.Game.AI.Decks
             int ultimateChain = options.IndexOf(Util.GetStringId(CardId.UltimateSky, 2));
             if (ultimateField >= 0 || ultimateChain >= 0)
             {
-                if (ultimateChain >= 0 && IsLiveUltimateSkyChainNegate())
+                if (ultimateChain >= 0 && ShouldSelectUltimateSkyChainMode(
+                    UltimateSkyChainNegatePending, IsLiveUltimateSkyChainNegate()))
+                {
+                    UltimateSkyChainNegatePending = false;
                     return ultimateChain;
+                }
+                UltimateSkyChainNegatePending = false;
                 if (ultimateField >= 0)
                     return ultimateField;
                 return ultimateChain;
@@ -1052,6 +1065,12 @@ namespace WindBot.Game.AI.Decks
             return base.OnSelectOption(options);
         }
 
+        private static bool ShouldSelectUltimateSkyChainMode(bool pending,
+            bool liveReevaluation)
+        {
+            return pending || liveReevaluation;
+        }
+
         private bool ReinforcementOfTheArmyEffect()
         {
             if (!StrategicAllows(SkyStrategicActionKind.ActivateReinforcement))
@@ -1081,49 +1100,65 @@ namespace WindBot.Game.AI.Decks
         private bool UltimateSkyEffect()
         {
             UltimateSkyTargets.Clear();
-            if (DefaultCheckWhetherCardIsNegated(Card) ||
-                Duel.CurrentChain.Any(card => card.Controller == 0 &&
-                    card.IsCode(CardId.UltimateSky)))
+            UltimateSkyChainNegatePending = false;
+            if (DefaultCheckWhetherCardIsNegated(Card))
+            {
+                TraceUltimateSkyDecision("hold: card is negated", 0, null);
                 return false;
+            }
+            if (Duel.CurrentChain.Any(card => card.Controller == 0 &&
+                card.IsCode(CardId.UltimateSky)))
+            {
+                TraceUltimateSkyDecision("hold: Ultimate Sky already in chain", 0, null);
+                return false;
+            }
 
-            if (IsLiveUltimateSkyChainNegate())
+            int chainScore = GetUltimateSkyChainNegateScore();
+            if (IsLiveUltimateSkyChainNegate(chainScore))
             {
                 ClientCard last = Util.GetLastChainCard();
+                UltimateSkyChainNegatePending = true;
                 MarkCurrentChainHandled(last);
-                Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: negate opponent " +
-                    "hand/GY monster effect " + (last == null ? "unknown" :
-                    last.Name ?? last.Id.ToString()));
+                TraceUltimateSkyDecision("activate: negate hand/GY monster", chainScore,
+                    null);
                 return true;
             }
 
             if (Duel.CurrentChain.Count > 0)
+            {
+                TraceUltimateSkyDecision("hold: chain effect below value threshold",
+                    chainScore, null);
                 return false;
+            }
 
             if (CanStartUltimateSkyLinkagePlan())
             {
                 UltimateSkyLinkageSetupPending = true;
-                Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: activate as " +
-                    "Linkage fuel for an empty-board Zero recovery line.");
+                TraceUltimateSkyDecision("activate: Linkage fuel for Zero", 0, null);
                 return true;
             }
 
             UltimateSkyTargets.AddRange(GetUltimateSkyFieldTargets());
             if (UltimateSkyTargets.Count == 0)
+            {
+                TraceUltimateSkyDecision("hold: no worthwhile field target", 0, null);
                 return false;
+            }
             TacticalDecision alternative = GetBestTacticalDecision();
             int ultimateScore = UltimateSkyTargets.Sum(GetUltimateSkyNegateScore) -
                 UltimateSkyTargets.Count * 400;
             if (alternative.Kind != TacticalActionKind.None &&
                 alternative.Score >= ultimateScore)
             {
+                TraceUltimateSkyDecision("hold: better tactical response", 0,
+                    alternative);
                 UltimateSkyTargets.Clear();
                 return false;
             }
+            TraceUltimateSkyDecision("activate: field negate score=" +
+                ultimateScore.ToString(), 0, alternative);
             foreach (ClientCard target in UltimateSkyTargets)
                 MarkCurrentChainHandled(target);
-            Logger.DebugWriteLine("[SkyStriker2026] Ultimate Sky: field negate targets=" +
-                string.Join(",", UltimateSkyTargets.Select(card =>
-                    card.Name ?? card.Id.ToString()).ToArray()));
             return true;
         }
 
@@ -1142,14 +1177,95 @@ namespace WindBot.Game.AI.Decks
 
         private bool IsLiveUltimateSkyChainNegate()
         {
+            return IsLiveUltimateSkyChainNegate(GetUltimateSkyChainNegateScore());
+        }
+
+        private bool IsLiveUltimateSkyChainNegate(int score)
+        {
             ChainInfo last = Duel.CurrentChainInfo.LastOrDefault();
             if (last == null || last.ActivatePlayer != 1 ||
                 !last.HasLocation(CardLocation.Hand | CardLocation.Grave) ||
                 (last.ActivateType & (int)CardType.Monster) == 0 ||
                 IsCurrentChainHandled(last.RelatedCard))
                 return false;
-            return !Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0 &&
-                chain.IsActivateCode(CardId.UltimateSky));
+            return score >= UltimateSkyChainNegateThreshold &&
+                !Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0 &&
+                    chain.IsActivateCode(CardId.UltimateSky));
+        }
+
+        private int GetUltimateSkyChainNegateScore()
+        {
+            ChainInfo last = Duel.CurrentChainInfo.LastOrDefault();
+            if (last == null || last.ActivatePlayer != 1 ||
+                !last.HasLocation(CardLocation.Hand | CardLocation.Grave) ||
+                (last.ActivateType & (int)CardType.Monster) == 0)
+                return 0;
+
+            ClientCard threat = last.RelatedCard ?? Util.GetLastChainCard();
+            ClientCard previousOwnCard = Duel.CurrentChain.Count >= 2
+                ? Duel.CurrentChain[Duel.CurrentChain.Count - 2] : null;
+            return GetUltimateSkyChainPriority(threat == null ? 0 : threat.Id,
+                GetObservedThreatScore(threat), Duel.Player == 0,
+                previousOwnCard == null || previousOwnCard.Controller != 0
+                    ? 0 : previousOwnCard.Id);
+        }
+
+        private static int GetUltimateSkyChainPriority(int threatId,
+            int observedThreatScore, bool botTurn, int previousOwnCardId)
+        {
+            int score = Math.Max(0, observedThreatScore);
+            if (botTurn && (threatId == CardId.MaxxC ||
+                threatId == CardId.MulcharmyFuwalos))
+                score += 5200;
+            if (botTurn && threatId == CardId.DrollLockBird)
+                score += 5000;
+
+            bool protectingEngine = previousOwnCardId == CardId.Engage ||
+                previousOwnCardId == CardId.Zero || previousOwnCardId == CardId.Raye ||
+                previousOwnCardId == CardId.Kagari ||
+                previousOwnCardId == CardId.Shizuku ||
+                previousOwnCardId == CardId.Linkage ||
+                previousOwnCardId == CardId.HornetDrones ||
+                previousOwnCardId == CardId.Lemnisgate ||
+                previousOwnCardId == CardId.Multirole ||
+                previousOwnCardId == CardId.TheFallenAndTheVirtuous;
+            bool engineHandTrap = threatId == CardId.AshBlossom ||
+                threatId == CardId.GhostBelle || threatId == CardId.GhostOgre ||
+                threatId == CardId.EffectVeiler;
+            if (protectingEngine && engineHandTrap)
+                score += 3400;
+            return score;
+        }
+
+        private void TraceUltimateSkyDecision(string decision, int chainScore,
+            TacticalDecision alternative)
+        {
+            ClientCard last = Util.GetLastChainCard();
+            string lastLabel = last == null ? "none" :
+                (last.Name ?? last.Id.ToString()) + "@" + last.Location.ToString();
+            string targets = string.Join(",", Enemy.GetMonsters()
+                .Concat(Enemy.GetSpells()).Where(card => card.IsFaceup())
+                .Select(card => (card.Name ?? card.Id.ToString()) + "=" +
+                    GetUltimateSkyNegateScore(card).ToString()).ToArray());
+            string alternativeLabel = alternative == null ? "none" :
+                alternative.Kind.ToString() + "=" + alternative.Score.ToString();
+            string signature = Duel.Turn.ToString() + "|" + Duel.Player.ToString() +
+                "|" + Duel.Phase.ToString() + "|" + Duel.CurrentChain.Count.ToString() +
+                "|" + decision + "|" + chainScore.ToString() + "|" + lastLabel +
+                "|" + targets + "|" + alternativeLabel;
+            if (signature == LastUltimateSkyTraceSignature)
+                return;
+            LastUltimateSkyTraceSignature = signature;
+            Logger.DebugWriteLine("[SkyStriker2026:UltimateSky] decision=" + decision +
+                " turn=" + Duel.Turn.ToString() + " player=" + Duel.Player.ToString() +
+                " phase=" + Duel.Phase.ToString() + " chain=" +
+                Duel.CurrentChain.Count.ToString() + " chainScore=" +
+                chainScore.ToString() + "/" +
+                UltimateSkyChainNegateThreshold.ToString() + " last=" + lastLabel +
+                " lp=" + Bot.LifePoints.ToString() + " ownMonsters=" +
+                Bot.GetMonsterCount().ToString() + " enemyMonsters=" +
+                Enemy.GetMonsterCount().ToString() + " fieldScores=[" + targets +
+                "] alternative=" + alternativeLabel);
         }
 
         private List<ClientCard> GetUltimateSkyFieldTargets()
