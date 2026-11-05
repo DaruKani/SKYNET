@@ -311,7 +311,11 @@ Main/Extra Monster Zones, own known hand/Deck/GY/Extra Deck resources, once-per-
 usage, Spell threshold, opponent public field counts and the remaining own Deck
 count. Pure transitions compare Engage/ROTA access, Raye-to-Zero, the two-Hornet
 Kagari/bridge/Zero route, Raye+Roze Main Zone clearance, Ultimate Sky chained to
-Linkage, ordinary Linkage fuel and Pot risk. The best modeled route supplies only
+Linkage, setting the lowest-opportunity-cost hand card as ordinary Linkage fuel,
+ordinary Linkage activation and Pot risk. A planned `set fuel -> Linkage -> Zero`
+route is therefore one turn plan rather than two unrelated card predicates; live
+interaction such as Shark Cannon on a public Raye is protected while a dead
+Lemnisgate or Metalfoes Fusion can be committed as fuel. The best modeled route supplies only
 its first recommendation; the normal executor still matches the actual legal
 offer and owns every target, material and option prompt. Movement, chain, phase
 and turn observations retire the cached recommendation and force a fresh plan.
@@ -400,6 +404,15 @@ pairs for two. The post-recycle `StringId 1` prompt now correctly accepts those
 returns instead of consulting the unrelated grave-Link condition. The same
 live-value rule controls whether Engage prioritizes Lemnisgate.
 
+The later 2026-11-05 mirror replay adds resource-exchange scoring on top of that
+pair arithmetic. Lemnisgate now compares the public value of every planned return
+with the opportunity cost of the exact Spells and monsters it would recycle. A
+spent opposing Kagari is penalized when returning it to the Extra Deck restores a
+mirror resource or enables a public Raye/Roze GY trigger; winning the pair count
+alone is not enough. The tracked Hornet grave-Link setup remains the explicit
+exception because that route values staging Lemnisgate in the GY rather than an
+immediate return.
+
 Spell/Trap destruction follows resolution semantics instead of treating every
 card on the Chain as a negate. A face-up Normal, Quick-Play or Ritual Spell, or a
 Normal/Counter Trap, has zero interruption value after successful activation
@@ -414,11 +427,14 @@ Space Typhoon and Twin Twisters.
 Mirror-match policy is enabled only after the opponent reveals a Sky Striker
 card on the public field, in a public zone, or on the Chain; it never inspects a
 hidden identity. In the mirror, Shark Cannon prioritizes denying Raye/Roze and
-revives them when they can become immediate Link material, Widow Anchor can take
+now branch-scores the resolution target: on the bot's Main Phase it revives a
+chain-targeted Raye when the three-Spell bonus, empty Main Monster Zone and an
+immediate tag/Link conversion are all present; otherwise it banishes. Widow Anchor can take
 an otherwise non-threatening opposing Ace for the same purpose, Multirole is the
 first face-up back-row removal target, and searches raise Shark Cannon, Widow
 Anchor and Multirole ahead of generic follow-up when their mirror conditions are
-present.
+present. It also holds an idle Widow Anchor against a live opposing Raye that can
+tag away from the target, while retaining live-chain and emergency responses.
 The source `Sky striker.ydk` remains unchanged; only the explicitly requested
 `_Skystriker_2026.ydk` companion is synchronized outside the repository.
 
@@ -513,10 +529,11 @@ output directory:
 ```
 
 They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari bridge,
-Ultimate Sky/Linkage recovery, deterministic access before Pot and Raye/Roze
+Ultimate Sky/Linkage recovery, set-fuel/Linkage/Zero route, deterministic access before Pot and Raye/Roze
 Main Zone clearance routes, plus Ultimate Sky's chain threat threshold and
 latched option choice. They also lock Zero's target/pre-emptive response policy
-and Lemnisgate's two-pairs-per-first-bounce arithmetic. They do not execute Lua
+and Lemnisgate's pair arithmetic and net resource threshold, Shark Cannon's
+revive-versus-banish branch, and mirror Raye Widow hold. They do not execute Lua
 or prove engine legality.
 
 This remains a hybrid executor: bounded search covers the modeled setup/resource

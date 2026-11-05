@@ -257,6 +257,104 @@ internal static class SkyStrikerPlannerChecks
             ": choice=" + actualChoice);
     }
 
+    private static void CheckLemnisgateNet(string name, int bounceValue,
+        int recycleCost, bool stageGraveLink, bool expectedActivate)
+    {
+        bool actualActivate = (bool)ExecutorType.GetMethod(
+            "ShouldActivateLemnisgateForNetValue", Flags).Invoke(null,
+            new object[] { bounceValue, recycleCost, stageGraveLink });
+        bool passed = actualActivate == expectedActivate;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "bounceValue", bounceValue },
+            { "recycleCost", recycleCost },
+            { "stageGraveLink", stageGraveLink },
+            { "expectedActivate", expectedActivate },
+            { "actualActivate", actualActivate }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": activate=" + actualActivate);
+    }
+
+    private static void CheckLemnisgateMirrorPenalty(string name,
+        bool mirrorObserved, bool aceLink, bool zero, bool disabled,
+        bool rayeOrRozeReady, int expectedPenalty)
+    {
+        int actualPenalty = (int)ExecutorType.GetMethod(
+            "GetLemnisgateMirrorReturnPenalty", Flags).Invoke(null,
+            new object[]
+            {
+                mirrorObserved,
+                aceLink,
+                zero,
+                disabled,
+                rayeOrRozeReady
+            });
+        bool passed = actualPenalty == expectedPenalty;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedPenalty", expectedPenalty },
+            { "actualPenalty", actualPenalty }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": penalty=" + actualPenalty);
+    }
+
+    private static void CheckSharkChainBranch(string name, bool botTurn,
+        bool mainPhase, bool emptyMainZone, bool threeSpells,
+        bool targetCanRevive, bool canConvert, bool expectedRevive)
+    {
+        bool actualRevive = (bool)ExecutorType.GetMethod(
+            "ShouldReviveSharkChainTarget", Flags).Invoke(null, new object[]
+            {
+                botTurn,
+                mainPhase,
+                emptyMainZone,
+                threeSpells,
+                targetCanRevive,
+                canConvert
+            });
+        bool passed = actualRevive == expectedRevive;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedRevive", expectedRevive },
+            { "actualRevive", actualRevive }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": revive=" + actualRevive);
+    }
+
+    private static void CheckWidowMirrorHold(string name, bool mirrorObserved,
+        bool idleChain, bool targetIsRaye, bool targetDisabled, bool emergency,
+        bool expectedHold)
+    {
+        bool actualHold = (bool)ExecutorType.GetMethod(
+            "ShouldHoldWidowForMirrorRaye", Flags).Invoke(null, new object[]
+            {
+                mirrorObserved,
+                idleChain,
+                targetIsRaye,
+                targetDisabled,
+                emergency
+            });
+        bool passed = actualHold == expectedHold;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedHold", expectedHold },
+            { "actualHold", actualHold }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": hold=" + actualHold);
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length != 2)
@@ -321,6 +419,20 @@ internal static class SkyStrikerPlannerChecks
             Check("Ultimate Sky converts dead Linkage into Zero", ultimateLinkage,
                 "ActivateUltimateLinkage", 0, "ResolveZeroSearch");
 
+            object setFuelLinkage = BaseState();
+            Set(setFuelLinkage, "HandLinkage", true);
+            Set(setFuelLinkage, "HandLinkageFuelId", 34433770);
+            Check("Planner sets expendable fuel before Linkage",
+                setFuelLinkage, "SetLinkageFuel", 34433770,
+                "ActivateLinkage", "ResolveZeroSearch");
+
+            object expensiveFuelLinkage = BaseState();
+            Set(expensiveFuelLinkage, "HandLinkage", true);
+            Set(expensiveFuelLinkage, "HandLinkageFuelId", 75105429);
+            Set(expensiveFuelLinkage, "HandLinkageFuelCost", 20000);
+            Check("Planner rejects Linkage when the only fuel loses more value",
+                expensiveFuelLinkage, "None", 0);
+
             object deterministicBeforePot = BaseState();
             Set(deterministicBeforePot, "HandEngage", true);
             Set(deterministicBeforePot, "HandPot", true);
@@ -371,11 +483,35 @@ internal static class SkyStrikerPlannerChecks
                 1, false, true, false);
             CheckLemnisgateOption("Lemnisgate option 2 follows the grave-Link plan",
                 2, false, true, true);
+            CheckLemnisgateNet("Lemnisgate rejects a negative resource exchange",
+                3000, 2600, false, false);
+            CheckLemnisgateNet("Lemnisgate accepts a material positive exchange",
+                5200, 2400, false, true);
+            CheckLemnisgateNet("Lemnisgate preserves the committed grave-Link setup",
+                0, 3000, true, true);
+            CheckLemnisgateMirrorPenalty(
+                "Lemnisgate does not return a disabled mirror Ace into a ready Raye",
+                true, true, false, true, true, 8800);
+            CheckLemnisgateMirrorPenalty(
+                "Lemnisgate keeps Zero available as a genuine threat target",
+                true, true, true, false, true, 0);
+
+            CheckSharkChainBranch("Shark Cannon steals resolving Raye for an immediate route",
+                true, true, true, true, true, true, true);
+            CheckSharkChainBranch("Shark Cannon only banishes without a conversion route",
+                true, true, true, true, true, false, false);
+            CheckSharkChainBranch("Shark Cannon does not invent a steal on the opponent turn",
+                false, true, true, true, true, true, false);
+
+            CheckWidowMirrorHold("Widow holds against an idle mirror Raye that can tag",
+                true, true, true, false, false, true);
+            CheckWidowMirrorHold("Widow may answer Raye inside a live chain",
+                true, false, true, false, false, false);
 
             bool passed = Results.All(result => (bool)result["passed"]);
             var report = new Dictionary<string, object>
             {
-                { "purpose", "Offline SkyStriker2026 bounded planner, Ultimate Sky, Zero quick-effect and Lemnisgate recycle policy regression; not engine legality or strength evidence" },
+                { "purpose", "Offline SkyStriker2026 bounded route planner plus Ultimate Sky, Zero, Lemnisgate net-value, Shark Cannon branch and mirror Widow policy regression; not engine legality or strength evidence" },
                 { "checks", Results },
                 { "passed", passed }
             };

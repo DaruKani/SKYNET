@@ -28,6 +28,7 @@ namespace WindBot.Game.AI.Decks
             LinkZero,
             LinkShizuku,
             ActivateUltimateLinkage,
+            SetLinkageFuel,
             ActivateLinkage,
             ResolveZeroSearch
         }
@@ -83,6 +84,8 @@ namespace WindBot.Game.AI.Decks
             public bool HandReinforcement;
             public bool HandHornet;
             public bool HandLinkage;
+            public int HandLinkageFuelId;
+            public int HandLinkageFuelCost;
             public bool HandUltimate;
             public bool HandWidow;
             public bool HandLemnisgate;
@@ -114,6 +117,7 @@ namespace WindBot.Game.AI.Decks
             public int DeckCount;
             public int Advantage;
             public int PotRisk;
+            public int ResourceCost;
             public int Step;
 
             public int MainCount
@@ -161,6 +165,7 @@ namespace WindBot.Game.AI.Decks
                     FieldFuel ? "1" : "0", HandRaye ? "1" : "0", HandRoze ? "1" : "0",
                     HandEngage ? "1" : "0", HandReinforcement ? "1" : "0",
                     HandHornet ? "1" : "0", HandLinkage ? "1" : "0",
+                    HandLinkageFuelId.ToString(), HandLinkageFuelCost.ToString(),
                     HandUltimate ? "1" : "0", HandWidow ? "1" : "0",
                     HandLemnisgate ? "1" : "0", HandMultirole ? "1" : "0",
                     HandPot ? "1" : "0", DeckRaye ? "1" : "0", DeckRoze ? "1" : "0",
@@ -174,7 +179,8 @@ namespace WindBot.Game.AI.Decks
                     ZeroUsed ? "1" : "0", KagariUsed ? "1" : "0",
                     PendingZeroSearch ? "1" : "0", HornetSetup ? "1" : "0",
                     EnemyMonsters.ToString(), EnemyField.ToString(), EnemyLife.ToString(),
-                    DeckCount.ToString(), Advantage.ToString(), PotRisk.ToString(), Step.ToString()
+                    DeckCount.ToString(), Advantage.ToString(), PotRisk.ToString(),
+                    ResourceCost.ToString(), Step.ToString()
                 });
             }
         }
@@ -326,6 +332,28 @@ namespace WindBot.Game.AI.Decks
                     after.PendingZeroSearch = true;
                     yield return Move(SkyStrategicActionKind.ActivateUltimateLinkage,
                         "Ultimate Sky -> chain Linkage -> Zero", after);
+                }
+
+                if (state.CanUseSkyStrikerSpell && state.HandLinkage &&
+                    !state.FieldFuel && state.HandLinkageFuelId != 0 &&
+                    state.ExtraKind == SkyStrategicExtraKind.None && state.ExtraZero &&
+                    !state.ZeroUsed)
+                {
+                    SkyStrategicState after = Next(state);
+                    int fuelId = after.HandLinkageFuelId;
+                    after.HandLinkageFuelId = 0;
+                    after.ResourceCost += after.HandLinkageFuelCost;
+                    after.HandLinkageFuelCost = 0;
+                    after.FieldFuel = true;
+                    if (fuelId == CardId.Lemnisgate)
+                        after.HandLemnisgate = false;
+                    else if (fuelId == CardId.WidowAnchor)
+                        after.HandWidow = false;
+                    else if (fuelId == CardId.UltimateSky)
+                        after.HandUltimate = false;
+                    yield return Move(SkyStrategicActionKind.SetLinkageFuel,
+                        "set " + GetCardLabel(fuelId) + " -> Linkage fuel", after,
+                        fuelId);
                 }
 
                 if (state.CanUseSkyStrikerSpell && state.HandLinkage && state.FieldFuel &&
@@ -670,6 +698,7 @@ namespace WindBot.Game.AI.Decks
                     score += 700;
                 score += state.Advantage * 620;
                 score -= state.PotRisk * 720;
+                score -= state.ResourceCost;
                 score -= state.Step * 65;
 
                 bool hasStarter = state.HandRaye || state.HandRoze || state.HandHornet ||
@@ -810,6 +839,8 @@ namespace WindBot.Game.AI.Decks
                 HandReinforcement = Bot.HasInHand(CardId.ReinforcementOfTheArmy),
                 HandHornet = Bot.HasInHand(CardId.HornetDrones),
                 HandLinkage = Bot.HasInHand(CardId.Linkage),
+                HandLinkageFuelId = GetBestLinkageFuelFromHand(),
+                HandLinkageFuelCost = GetBestLinkageFuelCostFromHand(),
                 HandUltimate = Bot.HasInHand(CardId.UltimateSky),
                 HandWidow = Bot.HasInHand(CardId.WidowAnchor),
                 HandLemnisgate = Bot.HasInHand(CardId.Lemnisgate),

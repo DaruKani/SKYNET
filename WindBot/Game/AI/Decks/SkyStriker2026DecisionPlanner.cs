@@ -116,6 +116,10 @@ namespace WindBot.Game.AI.Decks
             ClientCard last = Util.GetLastChainCard();
             bool answeringMonster = Duel.LastChainPlayer == 1 && last == target;
             bool stoppingBattle = target == Enemy.BattlingMonster && Bot.UnderAttack;
+            if (ShouldHoldWidowForMirrorRaye(SkyStrikerMirrorObserved,
+                Duel.CurrentChain.Count == 0, target.IsCode(CardId.Raye),
+                target.IsDisabled(), emergencyControl))
+                return null;
             int score = GetObservedThreatScore(target) - 650;
             if (answeringMonster)
                 score += 1200;
@@ -145,6 +149,13 @@ namespace WindBot.Game.AI.Decks
             };
             result.Targets.Add(target);
             return result;
+        }
+
+        private static bool ShouldHoldWidowForMirrorRaye(bool mirrorObserved,
+            bool idleChain, bool targetIsRaye, bool targetDisabled, bool emergency)
+        {
+            return mirrorObserved && idleChain && targetIsRaye && !targetDisabled &&
+                !emergency;
         }
 
         private TacticalDecision BuildForbiddenDropletDecision()

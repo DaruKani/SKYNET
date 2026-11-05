@@ -139,6 +139,7 @@ namespace WindBot.Game.AI.Decks
         private ClientCard FallenAndVirtuousDestroyTarget;
         private ClientCard FallenAndVirtuousReviveTarget;
         private ClientCard LinkageOtkSendTarget;
+        private int PlannedLinkageFuelId;
         private HornetZeroSetupStage HornetSetupStage;
         private LinkageOtkStage LinkageOtk;
         private bool RayeToZeroSetupPending;
@@ -209,6 +210,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Multirole, MultiroleIgnitionEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.Engage, EngageEffect);
+            AddExecutor(ExecutorType.SpellSet, SetPlannedLinkageFuel);
             AddExecutor(ExecutorType.Activate, CardId.Linkage, LinkageEffect);
             AddExecutor(ExecutorType.Activate, CardId.Lemnisgate, LemnisgateEffect);
             AddExecutor(ExecutorType.Activate, CardId.HornetDrones, HornetDronesEffect);
@@ -330,6 +332,7 @@ namespace WindBot.Game.AI.Decks
             FallenAndVirtuousReviveTarget = null;
             FallenAndVirtuousPreferDestroy = false;
             LinkageOtkSendTarget = null;
+            PlannedLinkageFuelId = 0;
             HornetSetupStage = HornetZeroSetupStage.None;
             LinkageOtk = LinkageOtkStage.None;
             RayeToZeroSetupPending = false;
@@ -681,6 +684,7 @@ namespace WindBot.Game.AI.Decks
                         .ThenBy(GetFieldResourceValue)
                         .ToList());
                     LinkageOtkSendTarget = null;
+                    PlannedLinkageFuelId = 0;
                     return Util.CheckSelectCount(ordered, cards, min, max);
                 }
                 if (hint == HintMsg.SpSummon)
@@ -1874,6 +1878,11 @@ namespace WindBot.Game.AI.Decks
                         return false;
                     if (Bot.HasInExtra(CardId.Zero))
                     {
+                        ClientCard plannedFuel = Bot.GetSpells().FirstOrDefault(card =>
+                            PlannedLinkageFuelId != 0 &&
+                            card.IsCode(PlannedLinkageFuelId));
+                        if (plannedFuel != null)
+                            LinkageOtkSendTarget = plannedFuel;
                         LinkageSetupToZeroPending = true;
                         return true;
                     }
@@ -1883,6 +1892,85 @@ namespace WindBot.Game.AI.Decks
             }
 
             return false;
+        }
+
+        private bool SetPlannedLinkageFuel()
+        {
+            int plannedFuel = GetStrategicSearchTarget(
+                SkyStrategicActionKind.SetLinkageFuel);
+            if (plannedFuel == 0 || Card == null || !Card.IsCode(plannedFuel) ||
+                !Bot.HasInHand(CardId.Linkage) || !EmptyMainMonsterZone() ||
+                Bot.GetSpellCountWithoutField() >= 5)
+                return false;
+
+            Logger.DebugWriteLine("[SkyStriker2026:RDA] set " + Card.Name +
+                " as committed Linkage fuel.");
+            PlannedLinkageFuelId = Card.Id;
+            return true;
+        }
+
+        private int GetBestLinkageFuelFromHand()
+        {
+            ClientCard fuel = GetBestLinkageFuelCardFromHand();
+            return fuel == null ? 0 : fuel.Id;
+        }
+
+        private int GetBestLinkageFuelCostFromHand()
+        {
+            ClientCard fuel = GetBestLinkageFuelCardFromHand();
+            return fuel == null ? 0 : GetLinkageFuelCost(fuel);
+        }
+
+        private ClientCard GetBestLinkageFuelCardFromHand()
+        {
+            return Bot.Hand.Where(IsLinkageFuelCandidate)
+                .OrderBy(GetLinkageFuelCost)
+                .FirstOrDefault();
+        }
+
+        private bool IsLinkageFuelCandidate(ClientCard card)
+        {
+            if (card == null || card.IsCode(CardId.Linkage, CardId.Engage,
+                CardId.Multirole, CardId.AreaZero, CardId.ReinforcementOfTheArmy,
+                CardId.PotOfDesires))
+                return false;
+            return card.IsCode(CardId.Lemnisgate, CardId.SharkCannon,
+                CardId.WidowAnchor, CardId.HornetDrones, CardId.UltimateSky,
+                CardId.TheFallenAndTheVirtuous, CardId.ForbiddenDroplet,
+                CardId.ForbiddenCrown, CardId.TwinTwisters,
+                CardId.MysticalSpaceTyphoon, CardId.MetalfoesFusion,
+                CardId.HerculesBase);
+        }
+
+        private int GetLinkageFuelCost(ClientCard card)
+        {
+            if (card.IsCode(CardId.Lemnisgate))
+                return HasProfitableLemnisgatePlan() ? 5200 : 700;
+            if (card.IsCode(CardId.MetalfoesFusion))
+                return 500;
+            if (card.IsCode(CardId.MysticalSpaceTyphoon, CardId.TwinTwisters))
+                return Enemy.GetSpells().Any(target => target.IsFacedown() ||
+                    IsPersistentSpellTrap(target)) ? 3700 : 900;
+            if (card.IsCode(CardId.SharkCannon))
+                return Enemy.GetGraveyardMonsters().Any(target =>
+                    target.IsCode(CardId.Raye, CardId.Roze) && target.IsCanRevive())
+                    ? 5100 : 1900;
+            if (card.IsCode(CardId.WidowAnchor))
+                return Bot.Hand.Count(target => target.IsCode(CardId.WidowAnchor)) > 1
+                    ? 2600 : 4700;
+            if (card.IsCode(CardId.HerculesBase))
+                return 1600;
+            if (card.IsCode(CardId.ForbiddenCrown))
+                return 2500;
+            if (card.IsCode(CardId.ForbiddenDroplet))
+                return 3400;
+            if (card.IsCode(CardId.HornetDrones))
+                return 4300;
+            if (card.IsCode(CardId.UltimateSky))
+                return 4400;
+            if (card.IsCode(CardId.TheFallenAndTheVirtuous))
+                return 3600;
+            return 3000;
         }
 
         private bool LemnisgateEffect()
@@ -1896,6 +1984,46 @@ namespace WindBot.Game.AI.Decks
             if (Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0))
                 return false;
 
+            int pairCount;
+            int usefulBounces;
+            int bounceValue;
+            int recycleCost;
+            bool stageGraveLink;
+            if (!TryBuildLemnisgatePlan(out pairCount, out usefulBounces,
+                out bounceValue, out recycleCost, out stageGraveLink))
+                return false;
+            LemnisgateRecyclePairCount = pairCount;
+
+            Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate: recycle pairs=" +
+                LemnisgateRecyclePairCount + ", useful bounces=" + usefulBounces +
+                ", bounce value=" + bounceValue + ", resource cost=" + recycleCost +
+                ", net=" + (bounceValue - recycleCost) +
+                ", stage grave Link=" + stageGraveLink);
+            LemnisgateRecycleSelectionCount = 0;
+            return true;
+        }
+
+        private bool HasProfitableLemnisgatePlan()
+        {
+            int pairCount;
+            int usefulBounces;
+            int bounceValue;
+            int recycleCost;
+            bool stageGraveLink;
+            return TryBuildLemnisgatePlan(out pairCount, out usefulBounces,
+                out bounceValue, out recycleCost, out stageGraveLink);
+        }
+
+        private bool TryBuildLemnisgatePlan(out int pairCount,
+            out int usefulBounces, out int bounceValue, out int recycleCost,
+            out bool stageGraveLink)
+        {
+            pairCount = 0;
+            usefulBounces = 0;
+            bounceValue = 0;
+            recycleCost = 0;
+            stageGraveLink = ShouldStageLemnisgateGraveLink();
+
             List<ClientCard> spells = Bot.Graveyard.Where(card =>
                 card.IsSpell() && IsSkyStrikerCard(card)).ToList();
             List<ClientCard> monsters = Bot.Graveyard.Where(card =>
@@ -1904,26 +2032,67 @@ namespace WindBot.Game.AI.Decks
             if (maximumPairs == 0)
                 return false;
 
-            int usefulBounces = GetUsefulLemnisgateBounceTargets().Count;
-            bool stageGraveLink = ShouldStageLemnisgateGraveLink();
-            LemnisgateRecyclePairCount = GetLemnisgateRecyclePairCount(
-                usefulBounces, maximumPairs, stageGraveLink);
-            if (LemnisgateRecyclePairCount == 0)
+            List<ClientCard> bounceTargets = GetUsefulLemnisgateBounceTargets();
+            usefulBounces = bounceTargets.Count;
+            pairCount = GetLemnisgateRecyclePairCount(usefulBounces,
+                maximumPairs, stageGraveLink);
+            if (pairCount == 0)
                 return false;
 
-            int projectedSpellCount = GetSpellCountInGrave() -
-                LemnisgateRecyclePairCount + 1;
+            int projectedSpellCount = GetSpellCountInGrave() - pairCount + 1;
             if (projectedSpellCount < 3 && usefulBounces == 0 && !stageGraveLink)
-            {
-                LemnisgateRecyclePairCount = 0;
                 return false;
+
+            int bounceCount = Math.Min(bounceTargets.Count, pairCount * 2 / 3);
+            bounceValue = bounceTargets.Take(bounceCount)
+                .Sum(GetLemnisgateBounceValue);
+            recycleCost = spells.OrderByDescending(GetLemnisgateRecycleValue)
+                .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost) +
+                monsters.OrderByDescending(GetLemnisgateRecycleValue)
+                    .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost);
+            return ShouldActivateLemnisgateForNetValue(bounceValue, recycleCost,
+                stageGraveLink);
+        }
+
+        private static bool ShouldActivateLemnisgateForNetValue(int bounceValue,
+            int recycleCost, bool stageGraveLink)
+        {
+            return stageGraveLink || bounceValue - recycleCost >= 1200;
+        }
+
+        private int GetLemnisgateRecycleOpportunityCost(ClientCard card)
+        {
+            if (card == null)
+                return 0;
+            if (card.IsMonster())
+            {
+                if (card.IsCode(CardId.Zero))
+                    return -1800;
+                if (card.IsCode(CardId.Kagari))
+                    return -1500;
+                if (IsSkyStrikerAceLink(card))
+                    return -900;
+                if (card.IsCode(CardId.Raye))
+                    return Bot.Graveyard.Count(target => target.IsCode(CardId.Raye)) > 1
+                        ? 1000 : 4200;
+                if (card.IsCode(CardId.Roze))
+                    return Bot.Graveyard.Count(target => target.IsCode(CardId.Roze)) > 1
+                        ? 800 : 2800;
+                return 900;
             }
 
-            Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate: recycle pairs=" +
-                LemnisgateRecyclePairCount + ", useful bounces=" + usefulBounces +
-                ", stage grave Link=" + stageGraveLink);
-            LemnisgateRecycleSelectionCount = 0;
-            return true;
+            bool kagariCanRecover = !KagariSummoned && Bot.HasInExtra(CardId.Kagari);
+            if (card.IsCode(CardId.Engage))
+                return kagariCanRecover ? 3800 : 700;
+            if (card.IsCode(CardId.Linkage))
+                return kagariCanRecover ? 3400 : 900;
+            if (card.IsCode(CardId.SharkCannon))
+                return 1500;
+            if (card.IsCode(CardId.WidowAnchor))
+                return 1200;
+            if (card.IsCode(CardId.Multirole))
+                return 1800;
+            return 700;
         }
 
         private static int GetLemnisgateRecyclePairCount(int usefulBounces,
@@ -2040,6 +2209,11 @@ namespace WindBot.Game.AI.Decks
                 if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz |
                     CardType.Link))
                     score += 1800;
+                score -= GetLemnisgateMirrorReturnPenalty(
+                    SkyStrikerMirrorObserved, IsSkyStrikerAceLink(card),
+                    card.IsCode(CardId.Zero), card.IsDisabled(),
+                    Enemy.GetGraveyardMonsters().Any(target =>
+                        target.IsCode(CardId.Raye, CardId.Roze)));
                 return score;
             }
             if (IsPersistentSpellTrap(card))
@@ -2048,6 +2222,14 @@ namespace WindBot.Game.AI.Decks
             // Returning a resolving Normal/Quick-Play Spell or Trap does not undo
             // its effect, so it is deliberately worth nothing here.
             return card.IsFacedown() ? 800 : 0;
+        }
+
+        private static int GetLemnisgateMirrorReturnPenalty(bool mirrorObserved,
+            bool aceLink, bool zero, bool disabled, bool rayeOrRozeReady)
+        {
+            if (!mirrorObserved || !aceLink || zero)
+                return 0;
+            return (disabled ? 7000 : 4800) + (rayeOrRozeReady ? 1800 : 0);
         }
 
         private bool ZeroSummon()
@@ -2622,6 +2804,9 @@ namespace WindBot.Game.AI.Decks
             if (target.IsCode(CardId.Raye, CardId.Kagari, CardId.Shizuku,
                 CardId.Hayate, CardId.Kaina))
             {
+                if (target.IsCode(CardId.Raye) && EmptyMainMonsterZone() &&
+                    !ZeroSummoned && Bot.HasInExtra(CardId.Zero))
+                    return true;
                 bool canSummonKagari = !target.IsCode(CardId.Kagari) && !KagariSummoned &&
                     Bot.HasInExtra(CardId.Kagari);
                 bool canSummonHayate = !target.IsCode(CardId.Hayate) && !HayateSummoned &&
@@ -2736,9 +2921,20 @@ namespace WindBot.Game.AI.Decks
                     chainTarget = lastChain.RelatedCard;
                 if (chainTarget != null)
                 {
-                    SharkCannonBanishOnly = true;
+                    bool canConvertImmediately = ShouldReviveWithSharkCannon(chainTarget);
+                    bool revive = ShouldReviveSharkChainTarget(Duel.Player == 0,
+                        Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2,
+                        EmptyMainMonsterZone(), HaveThreeSpellsInGrave(),
+                        chainTarget.IsCanRevive(), canConvertImmediately);
+                    SharkCannonBanishOnly = !revive;
                     SharkCannonTarget = chainTarget;
                     AI.SelectCard(chainTarget);
+                    if (revive)
+                        AI.SelectPosition(CardPosition.FaceUpAttack);
+                    Logger.DebugWriteLine("[SkyStriker2026] Shark Cannon chain target " +
+                        chainTarget.Name + ": " + (revive
+                            ? "revive for the current turn route"
+                            : "banish because no immediate conversion exists"));
                     return true;
                 }
             }
@@ -2799,6 +2995,14 @@ namespace WindBot.Game.AI.Decks
             SharkCannonTarget = target;
             AI.SelectCard(target);
             return true;
+        }
+
+        private static bool ShouldReviveSharkChainTarget(bool botTurn,
+            bool mainPhase, bool emptyMainZone, bool threeSpells,
+            bool targetCanRevive, bool canConvertImmediately)
+        {
+            return botTurn && mainPhase && emptyMainZone && threeSpells &&
+                targetCanRevive && canConvertImmediately;
         }
 
         private bool ShouldReviveWithSharkCannon(ClientCard target)
@@ -3940,16 +4144,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.HasInHandOrInSpellZone(CardId.Lemnisgate))
                 return false;
-            int spells = Bot.Graveyard.Count(card => card.IsSpell() &&
-                IsSkyStrikerCard(card));
-            int monsters = Bot.Graveyard.Count(card => card.IsMonster() &&
-                IsSkyStrikerAce(card));
-            if (spells == 0 || monsters == 0)
-                return false;
-            if (spells >= 2 && monsters >= 2 &&
-                GetUsefulLemnisgateBounceTargets().Count > 0)
-                return true;
-            return ShouldStageLemnisgateGraveLink();
+            return HasProfitableLemnisgatePlan();
         }
 
         private ClientCard GetEnemyMonsterTarget(bool problematicOnly)
