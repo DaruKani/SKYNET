@@ -164,8 +164,9 @@ origins, exact script hashes and before/after validation.
 
 `Deck=Witchcraft2026` is a separate test-registration executor; the existing
 `Deck=Witchcraft` implementation and deck remain unchanged. Its versioned
-`Decks/AI_Witchcraft2026.ydk` is an exact Main/Extra copy of the user-selected
-`D:/Games/MDPro4/Deck/Witchcraft_2026.ydk` (40 Main, 15 Extra, no Side). The
+`Decks/AI_Witchcraft2026.ydk` is an exact card-list copy of the user-selected
+`D:/Games/MDPro4/Deck/Witchcraft.ydk` imported on 2026-11-05 (40 Main, 15 Extra,
+7 Side; MDPro4 appearance/accessory metadata is not a WindBot runtime input). The
 runtime identities and Lua behavior were checked against
 `D:/Games/MDPro4/Data/locales/en-US/cards.cdb` and
 `D:/Games/MDPro4/Data/script.zip`; the zero-byte
@@ -175,12 +176,13 @@ The executor follows the RDA template's separation between observed duel state,
 bounded model transitions and actual offered-card callbacks. Its synchronous
 beam planner has one 45 ms budget, cancellation, depth/node/candidate caps and
 retires its prediction after observed moves or chain resolution. The tactical
-layer covers the exact list's Walpurgis/Marka/Maid Verre access, low-level
-Witchcrafter costs, Terracottan recovery and Extra Deck lock, Celebration and
-Confusion Fusion prompts, Rillie/Pupils/Vice-Madame, the
-Dark Magician of Destruction/Gaze/Dragoon package, Super Polymerization,
-Distortion, Droplet and listed hand traps. It never models Witchcrafter Potterie:
-that card is present in one supplied combo article but absent from this `.ydk`.
+layer covers the exact list's Terraforming/Rainbow Bridge Bifrost/Marka access to
+Walpurgis, Maid Verre, Potterie and the other low-level Witchcrafter costs,
+Terracottan recovery and Extra Deck lock, Unveiling, Celebration and Confusion
+Fusion prompts, Rillie/Pupils/Vice-Madame, the Dark Magician of
+Destruction/Gaze/Dragoon package, Distortion and the listed hand traps. The
+planner regression includes the observed failure case where Schmietta plus any
+Spell must start the low-Witchcrafter route instead of ending the turn.
 
 Run the focused model fixtures after a Debug build:
 

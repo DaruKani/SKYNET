@@ -23,42 +23,41 @@ namespace WindBot.Game.AI.Decks
             public const int Pittore = 95245544;
             public const int AshBlossom = 14558127;
             public const int MaxxC = 23434538;
+            public const int Potterie = 59851535;
             public const int Terracottan = 70686400;
             public const int MaidGenni = 7656689;
             public const int Genni = 64756282;
-            public const int DrollLockBird = 94145021;
+            public const int RainbowBridgeBifrost = 32236916;
+            public const int Terraforming = 73628505;
             public const int Walpurgis = 32353566;
             public const int Creation = 57916305;
             public const int Lacrima = 73664385;
+            public const int Unveiling = 70226289;
             public const int Bystreet = 83289866;
             public const int SpellPowerMastery = 38943357;
-            public const int SuperPolymerization = 48130397;
             public const int GazeOfTimaeus = 22283204;
             public const int ConfusionConfession = 35098357;
             public const int Celebration = 6958567;
-            public const int ForbiddenDroplet = 24299458;
             public const int Distortion = 69748261;
 
-            public const int HyperinvokedAeon = 33166263;
             public const int MadameRillie = 33475154;
             public const int RedEyesDarkDragoon = 37818794;
             public const int DarkMagicianOfDestruction = 59400890;
             public const int ViceMadame = 9603252;
-            public const int ShiningFlareWingman = 87758525;
             public const int Pupils = 69964858;
-            public const int FlameWingmanInfernalRage = 13243124;
-            public const int Garura = 11765832;
-            public const int ElderEntityNorden = 17412721;
-            public const int Mudragon = 54757758;
+            public const int CosmicQuasarDragon = 37442336;
+            public const int DespianLuluwalilith = 53971455;
+            public const int ElfnoteJunePride = 5559570;
             public const int CharmerQuartet = 27519978;
-            public const int FancyBall = 4993187;
+            public const int Selene = 45819647;
+            public const int SpLittleKnight = 29301451;
+            public const int IpMasquerena = 65741789;
             public const int CrossSheep = 50277355;
         }
 
         private const int WitchcrafterSetcode = 0x128;
         private bool _spellActivatedThisTurn;
         private bool _normalSummonUsed;
-        private bool _opponentAddedFromDeck;
         private bool _deckValidated;
         private int _pendingFusionTarget;
         private int _pendingSearchTarget;
@@ -71,23 +70,21 @@ namespace WindBot.Game.AI.Decks
                 AI.Game.Connection.Disconnected += OnDisconnected;
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
-            AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollEffect);
 
             AddExecutor(ExecutorType.Activate, CardId.Distortion, DistortionEffect);
             AddExecutor(ExecutorType.Activate, CardId.RedEyesDarkDragoon, DragoonEffect);
-            AddExecutor(ExecutorType.Activate, CardId.FancyBall, FancyBallEffect);
             AddExecutor(ExecutorType.Activate, CardId.Haine, HaineEffect);
             AddExecutor(ExecutorType.Activate, CardId.MadameVerre, MadameVerreEffect);
             AddExecutor(ExecutorType.Activate, CardId.ViceMadame, ViceMadameEffect);
-            AddExecutor(ExecutorType.Activate, CardId.HyperinvokedAeon, AeonEffect);
             AddExecutor(ExecutorType.Activate, CardId.CharmerQuartet, CharmerQuartetEffect);
-            AddExecutor(ExecutorType.Activate, CardId.SuperPolymerization, SuperPolymerizationEffect);
-            AddExecutor(ExecutorType.Activate, CardId.ForbiddenDroplet, ForbiddenDropletEffect);
 
+            AddExecutor(ExecutorType.Activate, CardId.Terraforming, FieldSpellAccessEffect);
+            AddExecutor(ExecutorType.Activate, CardId.RainbowBridgeBifrost, FieldSpellAccessEffect);
             AddExecutor(ExecutorType.Activate, CardId.SpellPowerMastery, SpellPowerMasteryEffect);
             AddExecutor(ExecutorType.Activate, CardId.Creation, CreationEffect);
             AddExecutor(ExecutorType.Activate, CardId.Marka, MarkaEffect);
             AddExecutor(ExecutorType.Activate, CardId.Walpurgis, WalpurgisEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Unveiling, UnveilingEffect);
             AddExecutor(ExecutorType.Activate, CardId.MaidVerre, MaidVerreEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.DarkMagicianOfDestruction, DarkMagicianOfDestructionSummon);
             AddExecutor(ExecutorType.Activate, CardId.DarkMagicianOfDestruction, DarkMagicianOfDestructionEffect);
@@ -96,10 +93,12 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Summon, CardId.Schmietta, LowWitchcrafterSummon);
             AddExecutor(ExecutorType.Summon, CardId.Pittore, LowWitchcrafterSummon);
             AddExecutor(ExecutorType.Summon, CardId.Genni, LowWitchcrafterSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Potterie, LowWitchcrafterSummon);
             AddExecutor(ExecutorType.Summon, CardId.Marka, LowWitchcrafterSummon);
             AddExecutor(ExecutorType.Activate, CardId.Schmietta, LowWitchcrafterEffect);
             AddExecutor(ExecutorType.Activate, CardId.Pittore, LowWitchcrafterEffect);
             AddExecutor(ExecutorType.Activate, CardId.Genni, LowWitchcrafterEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Potterie, LowWitchcrafterEffect);
             AddExecutor(ExecutorType.Activate, CardId.Marka, LowWitchcrafterEffect);
             AddExecutor(ExecutorType.Activate, CardId.Seed, SeedEffect);
             AddExecutor(ExecutorType.Activate, CardId.MaidGenni, MaidGenniEffect);
@@ -112,10 +111,11 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.SpSummon, CardId.CrossSheep, ExtraDeckSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.CharmerQuartet, ExtraDeckSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.FancyBall, ExtraDeckSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.Selene, ExtraDeckSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.SpLittleKnight, ExtraDeckSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.IpMasquerena, ExtraDeckSummon);
             AddExecutor(ExecutorType.Activate, WitchcrafterRecycle);
-            AddExecutor(ExecutorType.SpellSet, CardId.Distortion, SetInteraction);
-            AddExecutor(ExecutorType.SpellSet, CardId.ConfusionConfession, SetInteraction);
+            AddExecutor(ExecutorType.SpellSet, CardId.Distortion, SetDistortion);
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
         }
 
@@ -128,7 +128,6 @@ namespace WindBot.Game.AI.Decks
         {
             _spellActivatedThisTurn = false;
             _normalSummonUsed = false;
-            _opponentAddedFromDeck = false;
             _pendingFusionTarget = 0;
             _pendingSearchTarget = 0;
             _usedLowWitchcrafterEffects.Clear();
@@ -159,10 +158,6 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousController, int previousLocation,
             int currentController, int currentLocation)
         {
-            if (card != null && previousController == 1 && currentController == 1 &&
-                previousLocation == (int)CardLocation.Deck && currentLocation == (int)CardLocation.Hand &&
-                Duel.Phase != DuelPhase.Draw)
-                _opponentAddedFromDeck = true;
             if (card != null && (previousController == 0 || currentController == 0))
                 RetireStrategicPlan();
             base.OnMove(card, previousController, previousLocation, currentController, currentLocation);
@@ -182,7 +177,9 @@ namespace WindBot.Game.AI.Decks
             int[] required =
             {
                 CardId.Walpurgis, CardId.Marka, CardId.Schmietta, CardId.Creation,
-                CardId.Celebration, CardId.ConfusionConfession, CardId.Distortion
+                CardId.Potterie, CardId.RainbowBridgeBifrost, CardId.Terraforming,
+                CardId.Unveiling, CardId.Celebration, CardId.ConfusionConfession,
+                CardId.Distortion
             };
             if (required.Any(id => !Bot.HasInDeck(id) && !Bot.HasInHand(id) &&
                 !Bot.HasInGraveyard(id) && !Bot.HasInSpellZone(id)))
@@ -191,14 +188,6 @@ namespace WindBot.Game.AI.Decks
                 return false;
             }
             _deckValidated = true;
-            return true;
-        }
-
-        private bool DrollEffect()
-        {
-            if (!_opponentAddedFromDeck || Duel.Phase == DuelPhase.Draw)
-                return false;
-            _opponentAddedFromDeck = false;
             return true;
         }
 
@@ -218,18 +207,12 @@ namespace WindBot.Game.AI.Decks
             return Util.GetBestEnemyCard() != null;
         }
 
-        private bool FancyBallEffect()
-        {
-            return Duel.LastChainPlayer == 1 && Duel.CurrentChain.Any(info =>
-                info.Controller == 1 && info.IsMonster());
-        }
-
         private bool HaineEffect()
         {
             ClientCard target = Util.GetProblematicEnemyCard();
             if (target == null)
                 target = Util.GetBestEnemyCard();
-            if (target == null || !HasWitchcrafterSpellInHand())
+            if (target == null || !HasSpellInHand())
                 return false;
             AI.SelectCard(GetDiscardPriority());
             AI.SelectNextCard(target);
@@ -240,7 +223,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.LastChainPlayer == 1 && Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled()))
                 return true;
-            return Duel.Phase == DuelPhase.Battle && HasWitchcrafterSpellInHand();
+            return Duel.Phase == DuelPhase.Battle && HasSpellInHand();
         }
 
         private bool ViceMadameEffect()
@@ -254,28 +237,18 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        private bool AeonEffect()
-        {
-            return Enemy.GetMonsters().Any(card => card.IsFaceup());
-        }
-
         private bool CharmerQuartetEffect()
         {
             return Bot.Graveyard.Count(card => card.IsMonster()) >= 2;
         }
 
-        private bool SuperPolymerizationEffect()
+        private bool FieldSpellAccessEffect()
         {
-            if (Enemy.GetMonsterCount() < 2 || Bot.Hand.Count == 0)
+            if (!Bot.HasInDeck(CardId.Walpurgis) ||
+                !StrategicAllows(WitchcraftActionKind.ActivateFieldSpellAccess))
                 return false;
-            _pendingFusionTarget = ChooseSuperPolyTarget();
-            AI.SelectCard(GetDiscardPriority());
-            return _pendingFusionTarget != 0;
-        }
-
-        private bool ForbiddenDropletEffect()
-        {
-            return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
+            _pendingSearchTarget = CardId.Walpurgis;
+            return true;
         }
 
         private bool SpellPowerMasteryEffect()
@@ -322,14 +295,31 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
+        private bool UnveilingEffect()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return Bot.GetMonsters().Any(card => card.IsFaceup() &&
+                    card.HasSetcode(WitchcrafterSetcode));
+            if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1)
+                return false;
+            IList<ClientCard> targets = Bot.Hand.Where(card => card.IsCode(
+                CardId.Haine, CardId.MadameVerre, CardId.Edel, CardId.MaidVerre)).ToList();
+            if (targets.Count == 0)
+                return false;
+            AI.SelectCard(OrderCardsById(targets, new[]
+            {
+                CardId.Haine, CardId.MadameVerre, CardId.MaidVerre, CardId.Edel
+            }));
+            return true;
+        }
+
         private bool MaidVerreEffect()
         {
             if (Card.Location == CardLocation.Hand)
             {
                 if (!_spellActivatedThisTurn)
                     return false;
-                StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
-                return true;
+                return StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
             }
             _pendingSearchTarget = !Bot.HasInSpellZone(CardId.Walpurgis) && Bot.HasInDeck(CardId.Walpurgis)
                 ? CardId.Walpurgis : !Bot.HasInHand(CardId.Celebration) ? CardId.Celebration : CardId.Creation;
@@ -349,10 +339,13 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.MonsterZone)
             {
+                bool hasWalpurgis = Bot.HasInSpellZone(CardId.Walpurgis, true);
                 if (_usedLowWitchcrafterEffects.Contains(Card.Id) ||
-                    !(Bot.HasInSpellZone(CardId.Walpurgis, true) || HasWitchcrafterSpellInHand()) ||
+                    (!hasWalpurgis && !HasSpellInHand()) ||
                     !StrategicAllows(WitchcraftActionKind.ActivateLowWitchcrafter))
                     return false;
+                if (!hasWalpurgis)
+                    AI.SelectCard(GetDiscardPriority());
                 _usedLowWitchcrafterEffects.Add(Card.Id);
                 return true;
             }
@@ -363,6 +356,8 @@ namespace WindBot.Game.AI.Decks
             if (Card.IsCode(CardId.Genni))
                 return Bot.Graveyard.Any(card => card.IsCode(CardId.Celebration,
                     CardId.Creation, CardId.ConfusionConfession));
+            if (Card.IsCode(CardId.Potterie))
+                return Bot.Hand.Count == 0;
             return true;
         }
 
@@ -456,9 +451,10 @@ namespace WindBot.Game.AI.Decks
                 Card.HasSetcode(WitchcrafterSetcode) && Card.IsSpell();
         }
 
-        private bool SetInteraction()
+        private bool SetDistortion()
         {
-            return Util.IsTurn1OrMain2();
+            return Util.IsTurn1OrMain2() && Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5);
         }
 
         private int ChooseWitchcrafterFusion()
@@ -474,18 +470,16 @@ namespace WindBot.Game.AI.Decks
             return 0;
         }
 
-        private int ChooseSuperPolyTarget()
+        private bool HasSpellInHand()
         {
-            if (Bot.HasInExtra(CardId.Garura))
-                return CardId.Garura;
-            if (Bot.HasInExtra(CardId.Mudragon))
-                return CardId.Mudragon;
-            return 0;
+            return Bot.Hand.Any(card => card.IsSpell());
         }
 
-        private bool HasWitchcrafterSpellInHand()
+        private static bool IsLowWitchcrafter(int cardId)
         {
-            return Bot.Hand.Any(card => card.IsSpell() && card.HasSetcode(WitchcrafterSetcode));
+            return cardId == CardId.Schmietta || cardId == CardId.Pittore ||
+                cardId == CardId.Genni || cardId == CardId.Potterie ||
+                cardId == CardId.Marka;
         }
 
         private IList<ClientCard> GetDiscardPriority()
@@ -493,7 +487,8 @@ namespace WindBot.Game.AI.Decks
             int[] ids =
             {
                 CardId.Distortion, CardId.Celebration, CardId.Bystreet,
-                CardId.ConfusionConfession, CardId.Creation, CardId.Lacrima
+                CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
+                CardId.Lacrima, CardId.RainbowBridgeBifrost, CardId.Terraforming
             };
             return OrderCardsById(Bot.Hand, ids);
         }
@@ -506,6 +501,25 @@ namespace WindBot.Game.AI.Decks
                 int index = order.IndexOf(card.Id);
                 return index < 0 ? 100 : index;
             }).ThenBy(card => card.Attack).ToList();
+        }
+
+        private IList<ClientCard> OrderLowWitchcrafterCosts(IEnumerable<ClientCard> cards)
+        {
+            int[] ids =
+            {
+                CardId.Distortion, CardId.Celebration, CardId.Bystreet,
+                CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
+                CardId.Lacrima, CardId.RainbowBridgeBifrost, CardId.Terraforming
+            };
+            List<int> order = ids.ToList();
+            bool canUseDeckCost = Bot.HasInSpellZone(CardId.Walpurgis, true);
+            return cards.OrderBy(card => canUseDeckCost &&
+                card.Location == CardLocation.Deck ? 0 : 20)
+                .ThenBy(card =>
+                {
+                    int index = order.IndexOf(card.Id);
+                    return index < 0 ? 100 : index;
+                }).ThenBy(card => card.Attack).ToList();
         }
 
         private void OnDisconnected(Exception error)
@@ -530,7 +544,11 @@ namespace WindBot.Game.AI.Decks
             if (_pendingSearchTarget != 0 && (hint == HintMsg.AddToHand || hint == HintMsg.SpSummon))
             {
                 IList<ClientCard> result = Util.CheckSelectCount(OrderCardsById(cards,
-                    new[] { _pendingSearchTarget, CardId.Schmietta, CardId.MaidGenni, CardId.Haine }),
+                    new[]
+                    {
+                        _pendingSearchTarget, CardId.Schmietta, CardId.Potterie,
+                        CardId.MaidGenni, CardId.Haine
+                    }),
                     cards, min, max);
                 _pendingSearchTarget = 0;
                 return result;
@@ -544,27 +562,44 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
                     CardId.Distortion, CardId.Celebration, CardId.Bystreet,
-                    CardId.ConfusionConfession, CardId.Creation, CardId.Lacrima
+                    CardId.Unveiling, CardId.ConfusionConfession, CardId.Creation,
+                    CardId.Lacrima
                 }), cards, min, max);
 
-            if (source == CardId.ForbiddenDroplet &&
-                (hint == HintMsg.Discard || hint == HintMsg.ToGrave))
+            if (source == CardId.RainbowBridgeBifrost && hint == HintMsg.Remove)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
-                    CardId.Celebration, CardId.Bystreet, CardId.Distortion,
-                    CardId.ConfusionConfession, CardId.Creation
+                    CardId.ElfnoteJunePride, CardId.CosmicQuasarDragon,
+                    CardId.DespianLuluwalilith
+                }), cards, min, max);
+
+            if (IsLowWitchcrafter(source) && hint == HintMsg.Discard)
+                return Util.CheckSelectCount(OrderLowWitchcrafterCosts(cards),
+                    cards, min, max);
+
+            if (IsLowWitchcrafter(source) && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Haine, CardId.MadameVerre, CardId.Edel,
+                    CardId.MaidGenni, CardId.MaidVerre
                 }), cards, min, max);
 
             if (source == CardId.Lacrima && hint == HintMsg.ToGrave)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
                     CardId.MadameVerre, CardId.Celebration, CardId.Distortion,
-                    CardId.Bystreet, CardId.Schmietta
+                    CardId.Bystreet, CardId.Schmietta, CardId.Potterie
                 }), cards, min, max);
             if (source == CardId.Lacrima && hint == HintMsg.SpSummon)
                 return Util.CheckSelectCount(OrderCardsById(cards,
                     new[] { CardId.Haine, CardId.MadameVerre, CardId.Schmietta }),
                     cards, min, max);
+
+            if (source == CardId.Unveiling && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Haine, CardId.MadameVerre, CardId.MaidVerre, CardId.Edel
+                }), cards, min, max);
 
             if (source == CardId.Schmietta && hint == HintMsg.ToGrave)
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
@@ -576,6 +611,13 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(OrderCardsById(cards, new[]
                 {
                     CardId.Celebration, CardId.Creation, CardId.ConfusionConfession
+                }), cards, min, max);
+
+            if (source == CardId.Potterie && hint == HintMsg.AddToHand)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Walpurgis, CardId.Creation, CardId.Celebration,
+                    CardId.Unveiling, CardId.Distortion
                 }), cards, min, max);
 
             if (source == CardId.MaidGenni && hint == HintMsg.SpSummon)
@@ -599,7 +641,7 @@ namespace WindBot.Game.AI.Decks
             {
                 List<ClientCard> ordered = cards.Where(card => card.Controller == 0)
                     .OrderBy(card => card.IsCode(CardId.Seed, CardId.Marka,
-                        CardId.Pittore, CardId.Genni) ? 0 : 20)
+                        CardId.Potterie, CardId.Pittore, CardId.Genni) ? 0 : 20)
                     .Concat(OrderEnemyTargets(cards.Where(card => card.Controller == 1)))
                     .ToList();
                 return Util.CheckSelectCount(ordered, cards, min, max);
@@ -609,7 +651,10 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
             if (source == CardId.ViceMadame && hint == HintMsg.SpSummon)
                 return Util.CheckSelectCount(OrderCardsById(cards,
-                    new[] { CardId.Schmietta, CardId.MaidGenni, CardId.Seed }), cards, min, max);
+                    new[]
+                    {
+                        CardId.Schmietta, CardId.Potterie, CardId.MaidGenni, CardId.Seed
+                    }), cards, min, max);
             if (source == CardId.ViceMadame && hint == HintMsg.AddToHand)
                 return Util.CheckSelectCount(OrderCardsById(cards,
                     new[] { CardId.Distortion, CardId.Celebration, CardId.Creation }), cards, min, max);
@@ -624,9 +669,6 @@ namespace WindBot.Game.AI.Decks
             if (source == CardId.GazeOfTimaeus && hint == HintMsg.ToDeck)
                 return Util.CheckSelectCount(OrderCardsById(cards,
                     new[] { CardId.DarkMagicianOfDestruction }), cards, min, max);
-
-            if (source == CardId.ForbiddenDroplet && hint == HintMsg.OperateCard)
-                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
 
             if (source == CardId.MadameVerre && hint == HintMsg.Confirm)
             {
@@ -648,7 +690,8 @@ namespace WindBot.Game.AI.Decks
                     return -20;
                 if (card.Controller == 1)
                     return -10;
-                if (card.IsCode(CardId.Marka, CardId.Seed, CardId.Pittore, CardId.Genni))
+                if (card.IsCode(CardId.Marka, CardId.Seed, CardId.Potterie,
+                    CardId.Pittore, CardId.Genni))
                     return 0;
                 if (card.IsCode(CardId.MadameVerre, CardId.Haine, CardId.RedEyesDarkDragoon))
                     return 50;
@@ -660,7 +703,8 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectLinkMaterial(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> ordered = cards.OrderBy(card =>
-                card.IsCode(CardId.Marka, CardId.Seed, CardId.Pittore, CardId.Genni) ? 0 :
+                card.IsCode(CardId.Marka, CardId.Seed, CardId.Potterie,
+                    CardId.Pittore, CardId.Genni) ? 0 :
                 card.IsCode(CardId.MadameVerre, CardId.Haine, CardId.RedEyesDarkDragoon) ? 50 : 10)
                 .ThenBy(card => card.Attack).ToList();
             return Util.CheckSelectCount(ordered, cards, min, max);

@@ -74,9 +74,8 @@ internal static class Witchcraft2026PlannerChecks
         watch.Stop();
         string[] kinds = Kinds(plan);
         int[] targets = Targets(plan);
-        bool noPotterie = !targets.Contains(59851535);
         bool passed = kinds.Length > 0 && kinds[0] == first &&
-            required.All(kinds.Contains) && noPotterie && watch.ElapsedMilliseconds < 500;
+            required.All(kinds.Contains) && watch.ElapsedMilliseconds < 500;
         Results.Add(new Dictionary<string, object>
         {
             { "name", name },
@@ -84,7 +83,6 @@ internal static class Witchcraft2026PlannerChecks
             { "first", kinds.Length == 0 ? "None" : kinds[0] },
             { "route", kinds },
             { "targets", targets },
-            { "noPotterie", noPotterie },
             { "elapsedMs", watch.ElapsedMilliseconds },
             { "expanded", Get(plan, "Expanded") },
             { "timedOut", Get(plan, "TimedOut") }
@@ -134,6 +132,11 @@ internal static class Witchcraft2026PlannerChecks
         Check("Mastery opens Maid Verre access", mastery, "ActivateMastery",
             "SummonMaidVerre");
 
+        object fieldAccess = BaseState();
+        Set(fieldAccess, "HandFieldSpellAccess", true);
+        Check("Terraforming or Bifrost opens Walpurgis", fieldAccess,
+            "ActivateFieldSpellAccess", "ActivateWalpurgis");
+
         object creation = BaseState();
         Set(creation, "HandCreation", true);
         Check("Creation finds Marka then Walpurgis", creation, "ActivateCreation",
@@ -155,6 +158,16 @@ internal static class Witchcraft2026PlannerChecks
         Set(terracottan, "GraveMadameVerre", true);
         Check("Terracottan honors its Witchcrafter Extra lock", terracottan,
             "ActivateTerracottan", "ActivateCelebration");
+
+        object schmietta = BaseState();
+        Set(schmietta, "HandSchmietta", true);
+        Check("Schmietta plus any Spell does not pass", schmietta,
+            "NormalSchmietta", "ActivateLowWitchcrafter");
+
+        object potterie = BaseState();
+        Set(potterie, "HandOtherLow", true);
+        Check("Potterie plus any Spell starts the low Witchcrafter route", potterie,
+            "NormalLowWitchcrafter", "ActivateLowWitchcrafter");
 
         CheckCancellation();
 

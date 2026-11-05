@@ -12,6 +12,7 @@ namespace WindBot.Game.AI.Decks
         internal enum WitchcraftActionKind
         {
             None,
+            ActivateFieldSpellAccess,
             ActivateMastery,
             ActivateCreation,
             ActivateMarka,
@@ -44,6 +45,7 @@ namespace WindBot.Game.AI.Decks
             public bool NormalAvailable;
             public bool SpellActivated;
             public bool EnemyDrawPressure;
+            public bool HandFieldSpellAccess;
             public bool HandMastery;
             public bool HandCreation;
             public bool HandMarka;
@@ -85,7 +87,8 @@ namespace WindBot.Game.AI.Decks
                 return string.Join("|", new object[]
                 {
                     MainPhase, NormalAvailable, SpellActivated, EnemyDrawPressure,
-                    HandMastery, HandCreation, HandMarka, HandWalpurgis, HandMaidVerre,
+                    HandFieldSpellAccess, HandMastery, HandCreation, HandMarka,
+                    HandWalpurgis, HandMaidVerre,
                     HandSchmietta, HandOtherLow, HandTerracottan, HandCelebration,
                     HandConfusion, HandDistortion, FieldWalpurgis, FieldMaidVerre,
                     FieldLow, FieldLevelFiveWitchcrafter, GraveSchmietta,
@@ -218,6 +221,18 @@ namespace WindBot.Game.AI.Decks
             {
                 if (!state.MainPhase)
                     yield break;
+
+                if (state.HandFieldSpellAccess && !state.HandWalpurgis &&
+                    !state.FieldWalpurgis)
+                {
+                    WitchcraftStrategicState next = Next(state);
+                    next.HandFieldSpellAccess = false;
+                    next.HandWalpurgis = true;
+                    next.SpellActivated = true;
+                    next.HandSpellCount = Math.Max(0, next.HandSpellCount - 1);
+                    yield return Step(WitchcraftActionKind.ActivateFieldSpellAccess,
+                        CardId.Walpurgis, next);
+                }
 
                 if (state.HandMastery)
                 {
@@ -491,6 +506,9 @@ namespace WindBot.Game.AI.Decks
 
         private WitchcraftStrategicState CaptureStrategicState()
         {
+            IList<ClientCard> faceupLowWitchcrafters = Bot.GetMonsters()
+                .Where(card => card.IsFaceup() && IsLowWitchcrafter(card.Id))
+                .ToList();
             return new WitchcraftStrategicState
             {
                 MainPhase = Duel.Player == 0 &&
@@ -498,22 +516,25 @@ namespace WindBot.Game.AI.Decks
                 NormalAvailable = !_normalSummonUsed,
                 SpellActivated = _spellActivatedThisTurn,
                 EnemyDrawPressure = enemyResolvedEffectIdList.Contains(CardId.MaxxC),
+                HandFieldSpellAccess = Bot.Hand.Any(card => card.IsCode(
+                    CardId.RainbowBridgeBifrost, CardId.Terraforming)),
                 HandMastery = Bot.HasInHand(CardId.SpellPowerMastery),
                 HandCreation = Bot.HasInHand(CardId.Creation),
                 HandMarka = Bot.HasInHand(CardId.Marka),
                 HandWalpurgis = Bot.HasInHand(CardId.Walpurgis),
                 HandMaidVerre = Bot.HasInHand(CardId.MaidVerre),
                 HandSchmietta = Bot.HasInHand(CardId.Schmietta),
-                HandOtherLow = Bot.Hand.Any(card => card.IsCode(CardId.Pittore, CardId.Genni)),
+                HandOtherLow = Bot.Hand.Any(card => card.IsCode(
+                    CardId.Pittore, CardId.Genni, CardId.Potterie)),
                 HandTerracottan = Bot.HasInHand(CardId.Terracottan),
                 HandCelebration = Bot.HasInHand(CardId.Celebration),
                 HandConfusion = Bot.HasInHand(CardId.ConfusionConfession),
                 HandDistortion = Bot.HasInHand(CardId.Distortion),
                 FieldWalpurgis = Bot.HasInSpellZone(CardId.Walpurgis, true, true),
                 FieldMaidVerre = Bot.HasInMonstersZone(CardId.MaidVerre, true),
-                FieldLow = Bot.GetMonsters().Any(card => card.IsFaceup() &&
-                    card.IsCode(CardId.Schmietta, CardId.Pittore, CardId.Genni, CardId.Marka,
-                        CardId.Seed, CardId.MaidGenni, CardId.Terracottan)),
+                FieldLow = faceupLowWitchcrafters.Count > 0 || Bot.GetMonsters().Any(card =>
+                    card.IsFaceup() && card.IsCode(CardId.Seed, CardId.MaidGenni,
+                        CardId.Terracottan)),
                 FieldLevelFiveWitchcrafter = Bot.GetMonsters().Any(card => card.IsFaceup() &&
                     card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5),
                 GraveSchmietta = Bot.HasInGraveyard(CardId.Schmietta),
@@ -521,9 +542,9 @@ namespace WindBot.Game.AI.Decks
                 GraveCelebration = Bot.HasInGraveyard(CardId.Celebration),
                 GraveWitchcrafterSpell = Bot.Graveyard.Any(card =>
                     card.IsSpell() && card.HasSetcode(WitchcrafterSetcode)),
-                LowEffectUsed = Bot.GetMonsters().Where(card => card.IsFaceup() &&
-                    card.IsCode(CardId.Schmietta, CardId.Pittore, CardId.Genni, CardId.Marka))
-                    .All(card => _usedLowWitchcrafterEffects.Contains(card.Id)),
+                LowEffectUsed = faceupLowWitchcrafters.Count > 0 &&
+                    faceupLowWitchcrafters.All(card =>
+                        _usedLowWitchcrafterEffects.Contains(card.Id)),
                 ExtraViceMadame = Bot.HasInExtra(CardId.ViceMadame),
                 ExtraMadameRillie = Bot.HasInExtra(CardId.MadameRillie),
                 ExtraPupils = Bot.HasInExtra(CardId.Pupils),
