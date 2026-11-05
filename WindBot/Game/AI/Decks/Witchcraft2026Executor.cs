@@ -1,0 +1,707 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using WindBot;
+using WindBot.Game;
+using WindBot.Game.AI;
+using YGOSharp.OCGWrapper.Enums;
+
+namespace WindBot.Game.AI.Decks
+{
+    [Deck("Witchcraft2026", "AI_Witchcraft2026", "Test")]
+    public partial class Witchcraft2026Executor : DefaultExecutor
+    {
+        public class CardId
+        {
+            public const int MadameVerre = 21522601;
+            public const int Haine = 84523092;
+            public const int Marka = 6071005;
+            public const int Edel = 58139997;
+            public const int Schmietta = 21744288;
+            public const int Seed = 59106048;
+            public const int MaidVerre = 22623509;
+            public const int Pittore = 95245544;
+            public const int AshBlossom = 14558127;
+            public const int MaxxC = 23434538;
+            public const int Terracottan = 70686400;
+            public const int MaidGenni = 7656689;
+            public const int Genni = 64756282;
+            public const int DrollLockBird = 94145021;
+            public const int Walpurgis = 32353566;
+            public const int Creation = 57916305;
+            public const int Lacrima = 73664385;
+            public const int Bystreet = 83289866;
+            public const int SpellPowerMastery = 38943357;
+            public const int SuperPolymerization = 48130397;
+            public const int GazeOfTimaeus = 22283204;
+            public const int ConfusionConfession = 35098357;
+            public const int Celebration = 6958567;
+            public const int ForbiddenDroplet = 24299458;
+            public const int Distortion = 69748261;
+
+            public const int HyperinvokedAeon = 33166263;
+            public const int MadameRillie = 33475154;
+            public const int RedEyesDarkDragoon = 37818794;
+            public const int DarkMagicianOfDestruction = 59400890;
+            public const int ViceMadame = 9603252;
+            public const int ShiningFlareWingman = 87758525;
+            public const int Pupils = 69964858;
+            public const int FlameWingmanInfernalRage = 13243124;
+            public const int Garura = 11765832;
+            public const int ElderEntityNorden = 17412721;
+            public const int Mudragon = 54757758;
+            public const int CharmerQuartet = 27519978;
+            public const int FancyBall = 4993187;
+            public const int CrossSheep = 50277355;
+        }
+
+        private const int WitchcrafterSetcode = 0x128;
+        private bool _spellActivatedThisTurn;
+        private bool _normalSummonUsed;
+        private bool _opponentAddedFromDeck;
+        private bool _deckValidated;
+        private int _pendingFusionTarget;
+        private int _pendingSearchTarget;
+        private readonly HashSet<int> _usedLowWitchcrafterEffects = new HashSet<int>();
+
+        public Witchcraft2026Executor(GameAI ai, Duel duel)
+            : base(ai, duel)
+        {
+            if (AI.Game != null && AI.Game.Connection != null)
+                AI.Game.Connection.Disconnected += OnDisconnected;
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
+            AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
+            AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollEffect);
+
+            AddExecutor(ExecutorType.Activate, CardId.Distortion, DistortionEffect);
+            AddExecutor(ExecutorType.Activate, CardId.RedEyesDarkDragoon, DragoonEffect);
+            AddExecutor(ExecutorType.Activate, CardId.FancyBall, FancyBallEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Haine, HaineEffect);
+            AddExecutor(ExecutorType.Activate, CardId.MadameVerre, MadameVerreEffect);
+            AddExecutor(ExecutorType.Activate, CardId.ViceMadame, ViceMadameEffect);
+            AddExecutor(ExecutorType.Activate, CardId.HyperinvokedAeon, AeonEffect);
+            AddExecutor(ExecutorType.Activate, CardId.CharmerQuartet, CharmerQuartetEffect);
+            AddExecutor(ExecutorType.Activate, CardId.SuperPolymerization, SuperPolymerizationEffect);
+            AddExecutor(ExecutorType.Activate, CardId.ForbiddenDroplet, ForbiddenDropletEffect);
+
+            AddExecutor(ExecutorType.Activate, CardId.SpellPowerMastery, SpellPowerMasteryEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Creation, CreationEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Marka, MarkaEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Walpurgis, WalpurgisEffect);
+            AddExecutor(ExecutorType.Activate, CardId.MaidVerre, MaidVerreEffect);
+            AddExecutor(ExecutorType.SpSummon, CardId.DarkMagicianOfDestruction, DarkMagicianOfDestructionSummon);
+            AddExecutor(ExecutorType.Activate, CardId.DarkMagicianOfDestruction, DarkMagicianOfDestructionEffect);
+            AddExecutor(ExecutorType.Activate, CardId.GazeOfTimaeus, GazeOfTimaeusEffect);
+
+            AddExecutor(ExecutorType.Summon, CardId.Schmietta, LowWitchcrafterSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Pittore, LowWitchcrafterSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Genni, LowWitchcrafterSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Marka, LowWitchcrafterSummon);
+            AddExecutor(ExecutorType.Activate, CardId.Schmietta, LowWitchcrafterEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Pittore, LowWitchcrafterEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Genni, LowWitchcrafterEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Marka, LowWitchcrafterEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Seed, SeedEffect);
+            AddExecutor(ExecutorType.Activate, CardId.MaidGenni, MaidGenniEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Terracottan, TerracottanEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Edel, EdelEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Lacrima, LacrimaEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Celebration, CelebrationEffect);
+            AddExecutor(ExecutorType.Activate, CardId.ConfusionConfession, ConfusionEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Pupils, PupilsEffect);
+
+            AddExecutor(ExecutorType.SpSummon, CardId.CrossSheep, ExtraDeckSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.CharmerQuartet, ExtraDeckSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.FancyBall, ExtraDeckSummon);
+            AddExecutor(ExecutorType.Activate, WitchcrafterRecycle);
+            AddExecutor(ExecutorType.SpellSet, CardId.Distortion, SetInteraction);
+            AddExecutor(ExecutorType.SpellSet, CardId.ConfusionConfession, SetInteraction);
+            AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
+        }
+
+        public override bool OnSelectHand()
+        {
+            return true;
+        }
+
+        public override void OnNewTurn()
+        {
+            _spellActivatedThisTurn = false;
+            _normalSummonUsed = false;
+            _opponentAddedFromDeck = false;
+            _pendingFusionTarget = 0;
+            _pendingSearchTarget = 0;
+            _usedLowWitchcrafterEffects.Clear();
+            RetireStrategicPlan();
+            base.OnNewTurn();
+        }
+
+        public override void OnChainSolved(int chainIndex)
+        {
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null && !Duel.IsCurrentSolvingChainNegated())
+            {
+                if (solving.ActivatePlayer == 0 && solving.RelatedCard != null && solving.RelatedCard.IsSpell())
+                    _spellActivatedThisTurn = true;
+            }
+            RetireStrategicPlan();
+            base.OnChainSolved(chainIndex);
+        }
+
+        public override void OnChainEnd()
+        {
+            _pendingFusionTarget = 0;
+            _pendingSearchTarget = 0;
+            RetireStrategicPlan();
+            base.OnChainEnd();
+        }
+
+        public override void OnMove(ClientCard card, int previousController, int previousLocation,
+            int currentController, int currentLocation)
+        {
+            if (card != null && previousController == 1 && currentController == 1 &&
+                previousLocation == (int)CardLocation.Deck && currentLocation == (int)CardLocation.Hand &&
+                Duel.Phase != DuelPhase.Draw)
+                _opponentAddedFromDeck = true;
+            if (card != null && (previousController == 0 || currentController == 0))
+                RetireStrategicPlan();
+            base.OnMove(card, previousController, previousLocation, currentController, currentLocation);
+        }
+
+        public override void OnSummoning()
+        {
+            _normalSummonUsed = true;
+            RetireStrategicPlan();
+            base.OnSummoning();
+        }
+
+        private bool ValidateDeck()
+        {
+            if (_deckValidated)
+                return true;
+            int[] required =
+            {
+                CardId.Walpurgis, CardId.Marka, CardId.Schmietta, CardId.Creation,
+                CardId.Celebration, CardId.ConfusionConfession, CardId.Distortion
+            };
+            if (required.Any(id => !Bot.HasInDeck(id) && !Bot.HasInHand(id) &&
+                !Bot.HasInGraveyard(id) && !Bot.HasInSpellZone(id)))
+            {
+                Logger.DebugWriteLine("Witchcraft2026: loaded deck does not match AI_Witchcraft2026.");
+                return false;
+            }
+            _deckValidated = true;
+            return true;
+        }
+
+        private bool DrollEffect()
+        {
+            if (!_opponentAddedFromDeck || Duel.Phase == DuelPhase.Draw)
+                return false;
+            _opponentAddedFromDeck = false;
+            return true;
+        }
+
+        private bool DistortionEffect()
+        {
+            return Duel.LastChainPlayer == 1 && Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5);
+        }
+
+        private bool DragoonEffect()
+        {
+            if (Duel.LastChainPlayer == 1)
+            {
+                AI.SelectCard(GetDiscardPriority());
+                return true;
+            }
+            return Util.GetBestEnemyCard() != null;
+        }
+
+        private bool FancyBallEffect()
+        {
+            return Duel.LastChainPlayer == 1 && Duel.CurrentChain.Any(info =>
+                info.Controller == 1 && info.IsMonster());
+        }
+
+        private bool HaineEffect()
+        {
+            ClientCard target = Util.GetProblematicEnemyCard();
+            if (target == null)
+                target = Util.GetBestEnemyCard();
+            if (target == null || !HasWitchcrafterSpellInHand())
+                return false;
+            AI.SelectCard(GetDiscardPriority());
+            AI.SelectNextCard(target);
+            return true;
+        }
+
+        private bool MadameVerreEffect()
+        {
+            if (Duel.LastChainPlayer == 1 && Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled()))
+                return true;
+            return Duel.Phase == DuelPhase.Battle && HasWitchcrafterSpellInHand();
+        }
+
+        private bool ViceMadameEffect()
+        {
+            if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 0))
+                return Util.GetBestEnemyCard() != null;
+            if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 1))
+                return Bot.HasInDeck(CardId.Schmietta) || Bot.HasInDeck(CardId.MaidGenni);
+            if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 2))
+                return Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode) && card.IsSpell());
+            return true;
+        }
+
+        private bool AeonEffect()
+        {
+            return Enemy.GetMonsters().Any(card => card.IsFaceup());
+        }
+
+        private bool CharmerQuartetEffect()
+        {
+            return Bot.Graveyard.Count(card => card.IsMonster()) >= 2;
+        }
+
+        private bool SuperPolymerizationEffect()
+        {
+            if (Enemy.GetMonsterCount() < 2 || Bot.Hand.Count == 0)
+                return false;
+            _pendingFusionTarget = ChooseSuperPolyTarget();
+            AI.SelectCard(GetDiscardPriority());
+            return _pendingFusionTarget != 0;
+        }
+
+        private bool ForbiddenDropletEffect()
+        {
+            return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
+        }
+
+        private bool SpellPowerMasteryEffect()
+        {
+            if (!StrategicAllows(WitchcraftActionKind.ActivateMastery))
+                return false;
+            _pendingSearchTarget = Bot.HasInHand(CardId.MaidVerre) ? CardId.MaidGenni : CardId.MaidVerre;
+            return true;
+        }
+
+        private bool CreationEffect()
+        {
+            if (!StrategicAllows(WitchcraftActionKind.ActivateCreation))
+                return false;
+            _pendingSearchTarget = !Bot.HasInHand(CardId.Marka) && !Bot.HasInSpellZone(CardId.Walpurgis)
+                ? CardId.Marka : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+            return true;
+        }
+
+        private bool MarkaEffect()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return true;
+            if (!StrategicAllows(WitchcraftActionKind.ActivateMarka))
+                return false;
+            _pendingSearchTarget = Bot.HasInSpellZone(CardId.Walpurgis, true)
+                ? CardId.Bystreet : CardId.Walpurgis;
+            return true;
+        }
+
+        private bool WalpurgisEffect()
+        {
+            if (Card.Location == CardLocation.SpellZone)
+            {
+                _pendingSearchTarget = !Bot.HasInHand(CardId.MaidVerre) &&
+                    Bot.HasInDeck(CardId.MaidVerre) ? CardId.MaidVerre :
+                    !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+                return true;
+            }
+            if (!StrategicAllows(WitchcraftActionKind.ActivateWalpurgis))
+                return false;
+            _pendingSearchTarget = !Bot.HasInHand(CardId.MaidVerre) && Bot.HasInDeck(CardId.MaidVerre)
+                ? CardId.MaidVerre : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+            return true;
+        }
+
+        private bool MaidVerreEffect()
+        {
+            if (Card.Location == CardLocation.Hand)
+            {
+                if (!_spellActivatedThisTurn)
+                    return false;
+                StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
+                return true;
+            }
+            _pendingSearchTarget = !Bot.HasInSpellZone(CardId.Walpurgis) && Bot.HasInDeck(CardId.Walpurgis)
+                ? CardId.Walpurgis : !Bot.HasInHand(CardId.Celebration) ? CardId.Celebration : CardId.Creation;
+            return true;
+        }
+
+        private bool LowWitchcrafterSummon()
+        {
+            if (_normalSummonUsed)
+                return false;
+            WitchcraftActionKind kind = Card.IsCode(CardId.Schmietta)
+                ? WitchcraftActionKind.NormalSchmietta : WitchcraftActionKind.NormalLowWitchcrafter;
+            return StrategicAllows(kind);
+        }
+
+        private bool LowWitchcrafterEffect()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+            {
+                if (_usedLowWitchcrafterEffects.Contains(Card.Id) ||
+                    !(Bot.HasInSpellZone(CardId.Walpurgis, true) || HasWitchcrafterSpellInHand()) ||
+                    !StrategicAllows(WitchcraftActionKind.ActivateLowWitchcrafter))
+                    return false;
+                _usedLowWitchcrafterEffects.Add(Card.Id);
+                return true;
+            }
+            if (Card.Location != CardLocation.Grave)
+                return false;
+            if (Card.IsCode(CardId.Pittore))
+                return Bot.Hand.Count >= 2;
+            if (Card.IsCode(CardId.Genni))
+                return Bot.Graveyard.Any(card => card.IsCode(CardId.Celebration,
+                    CardId.Creation, CardId.ConfusionConfession));
+            return true;
+        }
+
+        private bool SeedEffect()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return Bot.Hand.Count >= 3 && Bot.Hand.Any(card => card.IsSpell());
+            return true;
+        }
+
+        private bool MaidGenniEffect()
+        {
+            return Card.Location == CardLocation.Hand || Card.Location == CardLocation.MonsterZone;
+        }
+
+        private bool TerracottanEffect()
+        {
+            if (Card.Location == CardLocation.Hand)
+                return Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode));
+            if (Card.Location == CardLocation.MonsterZone)
+            {
+                _pendingFusionTarget = ChooseWitchcrafterFusion();
+                return _pendingFusionTarget != 0;
+            }
+            return false;
+        }
+
+        private bool EdelEffect()
+        {
+            return Card.Location == CardLocation.Hand || Bot.Graveyard.Any(card =>
+                card.IsCode(CardId.RedEyesDarkDragoon, CardId.MadameVerre, CardId.Haine));
+        }
+
+        private bool LacrimaEffect()
+        {
+            return Card.Location == CardLocation.Hand || Card.Location == CardLocation.SpellZone;
+        }
+
+        private bool CelebrationEffect()
+        {
+            bool canFuse = Bot.Graveyard.Concat(Bot.Banished).Count(card =>
+                card.IsMonster() && card.HasRace(CardRace.SpellCaster)) >= 2;
+            if (canFuse)
+            {
+                _pendingFusionTarget = ChooseWitchcrafterFusion();
+                return true;
+            }
+            return Util.GetBestEnemyCard() != null && Bot.GetMonsters().Any(card =>
+                card.HasSetcode(WitchcrafterSetcode));
+        }
+
+        private bool ConfusionEffect()
+        {
+            _pendingFusionTarget = ChooseWitchcrafterFusion();
+            return _pendingFusionTarget != 0;
+        }
+
+        private bool PupilsEffect()
+        {
+            return true;
+        }
+
+        private bool DarkMagicianOfDestructionSummon()
+        {
+            return _spellActivatedThisTurn && Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && card.IsCode(CardId.Marka));
+        }
+
+        private bool DarkMagicianOfDestructionEffect()
+        {
+            _pendingSearchTarget = CardId.GazeOfTimaeus;
+            return true;
+        }
+
+        private bool GazeOfTimaeusEffect()
+        {
+            _pendingFusionTarget = CardId.RedEyesDarkDragoon;
+            return Bot.HasInExtra(CardId.RedEyesDarkDragoon) &&
+                (Bot.HasInGraveyard(CardId.DarkMagicianOfDestruction) ||
+                Bot.HasInMonstersZone(CardId.DarkMagicianOfDestruction));
+        }
+
+        private bool ExtraDeckSummon()
+        {
+            return Duel.Player == 0 && Duel.Phase == DuelPhase.Main1;
+        }
+
+        private bool WitchcrafterRecycle()
+        {
+            return Card != null && Card.Controller == 0 && Card.Location == CardLocation.Grave &&
+                Card.HasSetcode(WitchcrafterSetcode) && Card.IsSpell();
+        }
+
+        private bool SetInteraction()
+        {
+            return Util.IsTurn1OrMain2();
+        }
+
+        private int ChooseWitchcrafterFusion()
+        {
+            if (Bot.HasInExtra(CardId.MadameRillie) &&
+                Bot.GetMonsters().Concat(Bot.Graveyard).Concat(Bot.Banished)
+                    .Any(card => card.IsCode(CardId.MadameVerre)))
+                return CardId.MadameRillie;
+            if (Bot.HasInExtra(CardId.ViceMadame))
+                return CardId.ViceMadame;
+            if (Bot.HasInExtra(CardId.Pupils))
+                return CardId.Pupils;
+            return 0;
+        }
+
+        private int ChooseSuperPolyTarget()
+        {
+            if (Bot.HasInExtra(CardId.Garura))
+                return CardId.Garura;
+            if (Bot.HasInExtra(CardId.Mudragon))
+                return CardId.Mudragon;
+            return 0;
+        }
+
+        private bool HasWitchcrafterSpellInHand()
+        {
+            return Bot.Hand.Any(card => card.IsSpell() && card.HasSetcode(WitchcrafterSetcode));
+        }
+
+        private IList<ClientCard> GetDiscardPriority()
+        {
+            int[] ids =
+            {
+                CardId.Distortion, CardId.Celebration, CardId.Bystreet,
+                CardId.ConfusionConfession, CardId.Creation, CardId.Lacrima
+            };
+            return OrderCardsById(Bot.Hand, ids);
+        }
+
+        private static IList<ClientCard> OrderCardsById(IEnumerable<ClientCard> cards, IEnumerable<int> ids)
+        {
+            List<int> order = ids.ToList();
+            return cards.OrderBy(card =>
+            {
+                int index = order.IndexOf(card.Id);
+                return index < 0 ? 100 : index;
+            }).ThenBy(card => card.Attack).ToList();
+        }
+
+        private void OnDisconnected(Exception error)
+        {
+            RetireStrategicPlan();
+        }
+
+        private IList<ClientCard> OrderEnemyTargets(IEnumerable<ClientCard> cards)
+        {
+            return cards.OrderByDescending(card => card.IsFloodgate())
+                .ThenByDescending(card => card.Attack).ToList();
+        }
+
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max,
+            int hint, bool cancelable)
+        {
+            ClientCard activating = Duel.GetCurrentChainCard();
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            int source = solving != null && solving.ActivatePlayer == 0 && solving.RelatedCard != null
+                ? solving.RelatedCard.Id : activating != null && activating.Controller == 0 ? activating.Id : 0;
+
+            if (_pendingSearchTarget != 0 && (hint == HintMsg.AddToHand || hint == HintMsg.SpSummon))
+            {
+                IList<ClientCard> result = Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { _pendingSearchTarget, CardId.Schmietta, CardId.MaidGenni, CardId.Haine }),
+                    cards, min, max);
+                _pendingSearchTarget = 0;
+                return result;
+            }
+
+            if (_pendingFusionTarget != 0 && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[] { _pendingFusionTarget }),
+                    cards, min, max);
+
+            if (source == CardId.Walpurgis && (hint == HintMsg.Discard || hint == HintMsg.ToGrave))
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Distortion, CardId.Celebration, CardId.Bystreet,
+                    CardId.ConfusionConfession, CardId.Creation, CardId.Lacrima
+                }), cards, min, max);
+
+            if (source == CardId.ForbiddenDroplet &&
+                (hint == HintMsg.Discard || hint == HintMsg.ToGrave))
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Celebration, CardId.Bystreet, CardId.Distortion,
+                    CardId.ConfusionConfession, CardId.Creation
+                }), cards, min, max);
+
+            if (source == CardId.Lacrima && hint == HintMsg.ToGrave)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.MadameVerre, CardId.Celebration, CardId.Distortion,
+                    CardId.Bystreet, CardId.Schmietta
+                }), cards, min, max);
+            if (source == CardId.Lacrima && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.Haine, CardId.MadameVerre, CardId.Schmietta }),
+                    cards, min, max);
+
+            if (source == CardId.Schmietta && hint == HintMsg.ToGrave)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.MadameVerre, CardId.Celebration, CardId.Distortion, CardId.Bystreet
+                }), cards, min, max);
+
+            if (source == CardId.Genni && hint == HintMsg.Remove)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Celebration, CardId.Creation, CardId.ConfusionConfession
+                }), cards, min, max);
+
+            if (source == CardId.MaidGenni && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, Duel.Player == 1
+                    ? new[] { CardId.Seed, CardId.Haine, CardId.MadameVerre }
+                    : new[] { CardId.Schmietta, CardId.Genni, CardId.Marka }), cards, min, max);
+
+            if (source == CardId.Terracottan && hint == HintMsg.AddToHand)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Celebration, CardId.Distortion, CardId.ConfusionConfession, CardId.Creation
+                }), cards, min, max);
+
+            if (source == CardId.MadameRillie && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[]
+                {
+                    CardId.Haine, CardId.Edel, CardId.MaidGenni, CardId.MadameVerre
+                }), cards, min, max);
+
+            if (source == CardId.Celebration && hint == HintMsg.Destroy)
+            {
+                List<ClientCard> ordered = cards.Where(card => card.Controller == 0)
+                    .OrderBy(card => card.IsCode(CardId.Seed, CardId.Marka,
+                        CardId.Pittore, CardId.Genni) ? 0 : 20)
+                    .Concat(OrderEnemyTargets(cards.Where(card => card.Controller == 1)))
+                    .ToList();
+                return Util.CheckSelectCount(ordered, cards, min, max);
+            }
+
+            if (source == CardId.ViceMadame && hint == HintMsg.Destroy)
+                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+            if (source == CardId.ViceMadame && hint == HintMsg.SpSummon)
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.Schmietta, CardId.MaidGenni, CardId.Seed }), cards, min, max);
+            if (source == CardId.ViceMadame && hint == HintMsg.AddToHand)
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.Distortion, CardId.Celebration, CardId.Creation }), cards, min, max);
+
+            if (source == CardId.DarkMagicianOfDestruction && hint == HintMsg.AddToHand)
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.GazeOfTimaeus }), cards, min, max);
+            if (source == CardId.DarkMagicianOfDestruction &&
+                hint == HintMsg.Remove)
+                return Util.CheckSelectCount(OrderCardsById(cards, new[] { CardId.Marka }), cards, min, max);
+
+            if (source == CardId.GazeOfTimaeus && hint == HintMsg.ToDeck)
+                return Util.CheckSelectCount(OrderCardsById(cards,
+                    new[] { CardId.DarkMagicianOfDestruction }), cards, min, max);
+
+            if (source == CardId.ForbiddenDroplet && hint == HintMsg.OperateCard)
+                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+
+            if (source == CardId.MadameVerre && hint == HintMsg.Confirm)
+            {
+                List<ClientCard> spells = cards.Where(card => card.IsSpell()).Take(max).ToList();
+                return Util.CheckSelectCount(spells, cards, min, max);
+            }
+
+            if (hint == HintMsg.Destroy || hint == HintMsg.Disable || hint == HintMsg.ReturnToHand)
+                return Util.CheckSelectCount(OrderEnemyTargets(cards), cards, min, max);
+
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
+        }
+
+        public override IList<ClientCard> OnSelectFusionMaterial(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = cards.OrderBy(card =>
+            {
+                if (_pendingFusionTarget == CardId.MadameRillie && card.IsCode(CardId.MadameVerre))
+                    return -20;
+                if (card.Controller == 1)
+                    return -10;
+                if (card.IsCode(CardId.Marka, CardId.Seed, CardId.Pittore, CardId.Genni))
+                    return 0;
+                if (card.IsCode(CardId.MadameVerre, CardId.Haine, CardId.RedEyesDarkDragoon))
+                    return 50;
+                return 10;
+            }).ThenBy(card => card.Attack).ToList();
+            return Util.CheckSelectCount(ordered, cards, min, max);
+        }
+
+        public override IList<ClientCard> OnSelectLinkMaterial(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = cards.OrderBy(card =>
+                card.IsCode(CardId.Marka, CardId.Seed, CardId.Pittore, CardId.Genni) ? 0 :
+                card.IsCode(CardId.MadameVerre, CardId.Haine, CardId.RedEyesDarkDragoon) ? 50 : 10)
+                .ThenBy(card => card.Attack).ToList();
+            return Util.CheckSelectCount(ordered, cards, min, max);
+        }
+
+        public override int OnSelectOption(IList<int> options)
+        {
+            int lacrimaSend = options.IndexOf(Util.GetStringId(CardId.Lacrima, 1));
+            int lacrimaSummon = options.IndexOf(Util.GetStringId(CardId.Lacrima, 2));
+            if (lacrimaSend >= 0 || lacrimaSummon >= 0)
+                return Duel.Player == 1 && lacrimaSummon >= 0 ? lacrimaSummon :
+                    lacrimaSend >= 0 ? lacrimaSend : lacrimaSummon;
+
+            int celebrationDestroy = options.IndexOf(Util.GetStringId(CardId.Celebration, 2));
+            int celebrationFusion = options.IndexOf(Util.GetStringId(CardId.Celebration, 3));
+            if (celebrationDestroy >= 0 || celebrationFusion >= 0)
+                return _pendingFusionTarget != 0 && celebrationFusion >= 0
+                    ? celebrationFusion : celebrationDestroy >= 0 ? celebrationDestroy : celebrationFusion;
+
+            int pupilsSearch = options.IndexOf(Util.GetStringId(CardId.Pupils, 2));
+            int pupilsCopy = options.IndexOf(Util.GetStringId(CardId.Pupils, 3));
+            if (pupilsSearch >= 0 || pupilsCopy >= 0)
+                return Bot.Hand.Any(card => card.IsCode(CardId.Celebration)) && pupilsCopy >= 0
+                    ? pupilsCopy : pupilsSearch >= 0 ? pupilsSearch : pupilsCopy;
+
+            return base.OnSelectOption(options);
+        }
+
+        public override bool OnSelectYesNo(int desc)
+        {
+            if (desc == Util.GetStringId(CardId.SpellPowerMastery, 0))
+                return true;
+            return base.OnSelectYesNo(desc);
+        }
+
+        public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
+        {
+            if (Duel.Turn <= 1 && cardId != CardId.RedEyesDarkDragoon && cardId != CardId.Haine &&
+                positions.Contains(CardPosition.FaceUpDefence))
+                return CardPosition.FaceUpDefence;
+            return base.OnSelectPosition(cardId, positions);
+        }
+    }
+}

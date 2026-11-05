@@ -160,6 +160,57 @@ and state behavior; real Lua-backed duels and Arena results are separate evidenc
 The [personal-executor receipt](personal-executor-provenance.json) retains source
 origins, exact script hashes and before/after validation.
 
+## Witchcraft 2026 executor
+
+`Deck=Witchcraft2026` is a separate test-registration executor; the existing
+`Deck=Witchcraft` implementation and deck remain unchanged. Its versioned
+`Decks/AI_Witchcraft2026.ydk` is an exact Main/Extra copy of the user-selected
+`D:/Games/MDPro4/Deck/Witchcraft_2026.ydk` (40 Main, 15 Extra, no Side). The
+runtime identities and Lua behavior were checked against
+`D:/Games/MDPro4/Data/locales/en-US/cards.cdb` and
+`D:/Games/MDPro4/Data/script.zip`; the zero-byte
+`D:/Games/MDPro4/Data/cards.cdb` is not a valid input.
+
+The executor follows the RDA template's separation between observed duel state,
+bounded model transitions and actual offered-card callbacks. Its synchronous
+beam planner has one 45 ms budget, cancellation, depth/node/candidate caps and
+retires its prediction after observed moves or chain resolution. The tactical
+layer covers the exact list's Walpurgis/Marka/Maid Verre access, low-level
+Witchcrafter costs, Terracottan recovery and Extra Deck lock, Celebration and
+Confusion Fusion prompts, Rillie/Pupils/Vice-Madame, the
+Dark Magician of Destruction/Gaze/Dragoon package, Super Polymerization,
+Distortion, Droplet and listed hand traps. It never models Witchcrafter Potterie:
+that card is present in one supplied combo article but absent from this `.ydk`.
+
+Run the focused model fixtures after a Debug build:
+
+```powershell
+.\WindBot\Tools\Invoke-Witchcraft2026PlannerChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -OutputDirectory Artifacts/witchcraft-2026-planner-my-change
+```
+
+For a native duel, provide the matching database and a compatible host explicitly:
+
+```powershell
+Push-Location .\WindBot\bin\Debug
+try {
+    .\WindBot.exe Name=Witchcraft2026 Deck=Witchcraft2026 `
+        Dialog=MadameVerre.EN `
+        "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
+        Host=127.0.0.1 Port=7911
+}
+finally { Pop-Location }
+```
+
+`BotWrapper/bot.conf` exposes **Witchcraft 2026 (Planner)** so Arena can select
+the candidate and a frozen baseline independently. Arena cannot inject the combo
+hands used by the planner fixtures. The fixtures prove only deterministic model
+routes and cancellation; builds prove compilation; native completion and frozen
+Arena match results must be recorded separately. This first executor is broad
+enough to pilot the exact deck but does not claim exhaustive prompt coverage or
+competitive strength.
+
 ## Sky Striker 2026 executor
 
 The original `Deck=SkyStriker` executor and `Decks/AI_SkyStriker.ydk` remain
