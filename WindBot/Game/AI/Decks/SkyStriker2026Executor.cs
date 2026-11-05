@@ -948,9 +948,13 @@ namespace WindBot.Game.AI.Decks
             if (desc == Util.GetStringId(CardId.Roze, 2))
                 return Enemy.GetMonsters().Any(card => card.IsFaceup() && !card.IsDisabled());
             if (desc == Util.GetStringId(CardId.Lemnisgate, 1))
-                return ShouldUseLemnisgateGraveLink();
+                return ShouldSelectLemnisgateOptionalEffect(1,
+                    GetUsefulLemnisgateBounceTargets().Count > 0,
+                    ShouldUseLemnisgateGraveLink());
             if (desc == Util.GetStringId(CardId.Lemnisgate, 2))
-                return GetUsefulLemnisgateBounceTargets().Count > 0;
+                return ShouldSelectLemnisgateOptionalEffect(2,
+                    GetUsefulLemnisgateBounceTargets().Count > 0,
+                    ShouldUseLemnisgateGraveLink());
             if (desc == Util.GetStringId(CardId.Engage, 0))
                 return true;
             if (desc == Util.GetStringId(CardId.AreaZero, 2))
@@ -1631,6 +1635,9 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (ActivateDescription != Util.GetStringId(CardId.Zero, 1))
                 return false;
+            bool canResolveExit = CanResolveZeroQuickEffect();
+            if (!canResolveExit)
+                return false;
             if (Duel.Player == 0 && Duel.Phase > DuelPhase.Main1 &&
                 Duel.Phase < DuelPhase.Main2 && Card.Attacked)
             {
@@ -1638,26 +1645,26 @@ namespace WindBot.Game.AI.Decks
                     LinkageOtk = LinkageOtkStage.RayeRozeReady;
                 return true;
             }
-            if (Duel.Player != 1)
-                return false;
 
-            bool escapingRemoval = DefaultOnBecomeTarget();
-            bool preventingLethal = GetRemainingEnemyBattleAttack() >= Bot.LifePoints;
+            bool escapingRemoval = Duel.LastChainPlayer == 1 &&
+                DefaultOnBecomeTarget();
+            bool preemptiveRemoval = IsPreemptiveZeroRemovalThreat();
+            bool preventingLethal = Duel.Player == 1 &&
+                GetRemainingEnemyBattleAttack() >= Bot.LifePoints;
             ClientCard destroyTarget = GetBestZeroDestroyTarget();
             int destroyScore = GetZeroDestroyScore(destroyTarget);
             bool canClearNextTurn = CanPlanZeroExitClearance();
-            bool losingZeroInBattle = canClearNextTurn && Bot.UnderAttack &&
+            bool losingZeroInBattle = Duel.Player == 1 && Bot.UnderAttack &&
                 Bot.BattlingMonster != null && Bot.BattlingMonster.IsCode(CardId.Zero) &&
                 Enemy.BattlingMonster != null &&
                 Enemy.BattlingMonster.GetDefensePower() >=
                     Bot.BattlingMonster.GetDefensePower();
-            int minimumDestroyScore = HasSetSkyStrikerInteraction() ? 7000 : 5200;
+            int minimumDestroyScore = HasSetSkyStrikerInteraction() ? 4800 : 3600;
             if (canClearNextTurn)
-                minimumDestroyScore -= 1500;
-            bool valuableInterruption = canClearNextTurn &&
-                destroyScore >= minimumDestroyScore;
-            bool activate = escapingRemoval || preventingLethal || losingZeroInBattle ||
-                valuableInterruption;
+                minimumDestroyScore -= 600;
+            bool activate = ShouldActivateZeroQuickEffect(canResolveExit,
+                escapingRemoval, preemptiveRemoval, preventingLethal,
+                losingZeroInBattle, destroyScore, minimumDestroyScore);
             if (activate)
             {
                 ZeroDestroyTarget = destroyTarget;
@@ -1665,14 +1672,43 @@ namespace WindBot.Game.AI.Decks
                     ZeroExitClearancePending = true;
             }
             Logger.DebugWriteLine("[SkyStriker2026] Zero quick escape=" +
-                escapingRemoval.ToString() + " lethal=" + preventingLethal.ToString() +
-                " battle=" + losingZeroInBattle.ToString() + " clear-next=" +
-                canClearNextTurn.ToString() +
+                escapingRemoval.ToString() + " preemptive=" +
+                preemptiveRemoval.ToString() + " lethal=" +
+                preventingLethal.ToString() + " battle=" +
+                losingZeroInBattle.ToString() + " clear-next=" +
+                canClearNextTurn.ToString() + " turn-player=" +
+                Duel.Player.ToString() +
                 " destroy=" + (destroyTarget == null ? "none" :
                     destroyTarget.Name ?? destroyTarget.Id.ToString()) +
                 " score=" + destroyScore.ToString() + " threshold=" +
                 minimumDestroyScore.ToString() + " activate=" + activate.ToString());
             return activate;
+        }
+
+        private bool CanResolveZeroQuickEffect()
+        {
+            int remainingMainMonsters = Bot.GetMonstersInMainZone()
+                .Count(card => card != Card);
+            return remainingMainMonsters <= 3 &&
+                (Bot.HasInDeck(CardId.Raye) || Bot.HasInGraveyard(CardId.Raye)) &&
+                (Bot.HasInDeck(CardId.Roze) || Bot.HasInGraveyard(CardId.Roze));
+        }
+
+        private bool IsPreemptiveZeroRemovalThreat()
+        {
+            ChainInfo last = Duel.CurrentChainInfo.LastOrDefault();
+            return last != null && last.ActivatePlayer == 1 &&
+                last.IsActivateCode(CardId.Zero) &&
+                last.ActivateDescription == Util.GetStringId(CardId.Zero, 1);
+        }
+
+        private static bool ShouldActivateZeroQuickEffect(bool canResolveExit,
+            bool escapingRemoval, bool preemptiveRemoval, bool preventingLethal,
+            bool losingZeroInBattle, int destroyScore, int minimumDestroyScore)
+        {
+            return canResolveExit && (escapingRemoval || preemptiveRemoval ||
+                preventingLethal || losingZeroInBattle ||
+                destroyScore >= minimumDestroyScore);
         }
 
         private bool CanPlanZeroExitClearance()
@@ -1698,10 +1734,10 @@ namespace WindBot.Game.AI.Decks
             {
                 int monsterScore = GetObservedThreatScore(target);
                 if (SkyStrikerMirrorObserved && target.IsCode(CardId.Zero))
-                    monsterScore += 2600;
+                    monsterScore += 4800;
                 if (SkyStrikerMirrorObserved && IsSkyStrikerAceLink(target) &&
                     Enemy.GetGraveyardMonsters().Any(card => card.IsCode(CardId.Raye)))
-                    monsterScore -= 2200;
+                    monsterScore -= 1600;
                 if (Bot.UnderAttack && Enemy.BattlingMonster == target &&
                     Bot.BattlingMonster != null &&
                     Bot.BattlingMonster.IsCode(CardId.Zero))
@@ -1870,17 +1906,9 @@ namespace WindBot.Game.AI.Decks
 
             int usefulBounces = GetUsefulLemnisgateBounceTargets().Count;
             bool stageGraveLink = ShouldStageLemnisgateGraveLink();
-            bool recoverExtraDeckAce = monsters.Any(IsSkyStrikerAceLink) &&
-                (Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End ||
-                Bot.ExtraDeck.Count(IsSkyStrikerAceLink) <= 3);
-
-            if (usefulBounces >= 2 && maximumPairs >= 3)
-                LemnisgateRecyclePairCount = 3;
-            else if (usefulBounces >= 1 && maximumPairs >= 2)
-                LemnisgateRecyclePairCount = 2;
-            else if (stageGraveLink || recoverExtraDeckAce)
-                LemnisgateRecyclePairCount = 1;
-            else
+            LemnisgateRecyclePairCount = GetLemnisgateRecyclePairCount(
+                usefulBounces, maximumPairs, stageGraveLink);
+            if (LemnisgateRecyclePairCount == 0)
                 return false;
 
             int projectedSpellCount = GetSpellCountInGrave() -
@@ -1896,6 +1924,28 @@ namespace WindBot.Game.AI.Decks
                 ", stage grave Link=" + stageGraveLink);
             LemnisgateRecycleSelectionCount = 0;
             return true;
+        }
+
+        private static int GetLemnisgateRecyclePairCount(int usefulBounces,
+            int maximumPairs, bool stageGraveLink)
+        {
+            if (maximumPairs <= 0)
+                return 0;
+            if (usefulBounces >= 2 && maximumPairs >= 3)
+                return 3;
+            if (usefulBounces >= 1 && maximumPairs >= 2)
+                return 2;
+            return stageGraveLink ? 1 : 0;
+        }
+
+        private static bool ShouldSelectLemnisgateOptionalEffect(int option,
+            bool hasUsefulBounce, bool hasUsefulGraveLink)
+        {
+            // The supplied script uses StringId 1 for the post-recycle return.
+            // Keep StringId 2 for the optional delayed GY Link prompt used by
+            // compatible clients.
+            return option == 1 ? hasUsefulBounce :
+                option == 2 && hasUsefulGraveLink;
         }
 
         private bool ShouldStageLemnisgateGraveLink()
@@ -3899,8 +3949,7 @@ namespace WindBot.Game.AI.Decks
             if (spells >= 2 && monsters >= 2 &&
                 GetUsefulLemnisgateBounceTargets().Count > 0)
                 return true;
-            return ShouldStageLemnisgateGraveLink() ||
-                Bot.Graveyard.Any(IsSkyStrikerAceLink);
+            return ShouldStageLemnisgateGraveLink();
         }
 
         private ClientCard GetEnemyMonsterTarget(bool problematicOnly)

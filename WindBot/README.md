@@ -380,12 +380,25 @@ Monster Zone during the opponent's turn.
 Zero's Quick Effect is not fired merely because the opponent has any card on the
 field. Outside the Linkage OTK attack sequence it now requires a removal dodge,
 lethal defense, a losing battle, or a high-value target whose destruction repays
-the temporary loss of Zero. A mirror Raye in the opponent's Graveyard is a cost
-penalty rather than an absolute ban: the executor still takes a valuable battle
-or board interruption, then uses the recorded Raye/Roze-to-Zero clearance plan
-on its next turn. Normal Spells that have already spent their effects are worth
-zero. The optional destruction prompt is tied to the target scored at activation
-instead of selecting an arbitrary face-up card after Raye and Roze are summoned.
+the temporary loss of Zero. The response is legal on either player's turn. In a
+mirror it answers the opposing Zero's Quick Effect at activation, before that
+effect reaches its resolution-only destruction choice; waiting until Zero becomes
+the selected card would be too late to Chain. A next-turn Raye/Roze clearance
+route lowers the value threshold but is not a prerequisite for escaping removal
+or destroying a major threat. A mirror Raye in the opponent's Graveyard remains
+a cost penalty rather than an absolute ban. Normal Spells that have already spent
+their effects are worth zero. The optional destruction prompt is tied to the
+target scored at activation instead of selecting an arbitrary face-up card after
+Raye and Roze are summoned.
+
+The 2026-11-05 replay also closes Lemnisgate's remaining no-bounce leak. Restoring
+a spent Link Ace to the Extra Deck is not, by itself, permission to activate it:
+one recycled Spell/Ace pair produces zero returns under the card script. A
+one-pair activation is now reserved for the explicitly tracked Hornet grave-Link
+staging route; ordinary use requires two pairs for one worthwhile return or three
+pairs for two. The post-recycle `StringId 1` prompt now correctly accepts those
+returns instead of consulting the unrelated grave-Link condition. The same
+live-value rule controls whether Engage prioritizes Lemnisgate.
 
 Spell/Trap destruction follows resolution semantics instead of treating every
 card on the Chain as a negate. A face-up Normal, Quick-Play or Ritual Spell, or a
@@ -502,7 +515,9 @@ output directory:
 They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari bridge,
 Ultimate Sky/Linkage recovery, deterministic access before Pot and Raye/Roze
 Main Zone clearance routes, plus Ultimate Sky's chain threat threshold and
-latched option choice. They do not execute Lua or prove engine legality.
+latched option choice. They also lock Zero's target/pre-emptive response policy
+and Lemnisgate's two-pairs-per-first-bounce arithmetic. They do not execute Lua
+or prove engine legality.
 
 This remains a hybrid executor: bounded search covers the modeled setup/resource
 routes, tracked stages own script-specific sequences, and competing interaction

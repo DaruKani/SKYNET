@@ -183,6 +183,80 @@ internal static class SkyStrikerPlannerChecks
             "Ultimate Sky option keeps the accepted chain-negate mode");
     }
 
+    private static void CheckZeroQuickPolicy(string name, bool canResolveExit,
+        bool escapingRemoval, bool preemptiveRemoval, bool preventingLethal,
+        bool losingZeroInBattle, int destroyScore, int minimumDestroyScore,
+        bool expectedActivate)
+    {
+        bool actualActivate = (bool)ExecutorType.GetMethod(
+            "ShouldActivateZeroQuickEffect", Flags).Invoke(null, new object[]
+            {
+                canResolveExit,
+                escapingRemoval,
+                preemptiveRemoval,
+                preventingLethal,
+                losingZeroInBattle,
+                destroyScore,
+                minimumDestroyScore
+            });
+        bool passed = actualActivate == expectedActivate;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedActivate", expectedActivate },
+            { "actualActivate", actualActivate },
+            { "destroyScore", destroyScore },
+            { "minimumDestroyScore", minimumDestroyScore }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": activate=" + actualActivate);
+    }
+
+    private static void CheckLemnisgatePolicy(string name, int usefulBounces,
+        int maximumPairs, bool stageGraveLink, int expectedPairs)
+    {
+        int actualPairs = (int)ExecutorType.GetMethod(
+            "GetLemnisgateRecyclePairCount", Flags).Invoke(null, new object[]
+            {
+                usefulBounces,
+                maximumPairs,
+                stageGraveLink
+            });
+        bool passed = actualPairs == expectedPairs;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedPairs", expectedPairs },
+            { "actualPairs", actualPairs },
+            { "usefulBounces", usefulBounces },
+            { "maximumPairs", maximumPairs },
+            { "stageGraveLink", stageGraveLink }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": pairs=" + actualPairs);
+    }
+
+    private static void CheckLemnisgateOption(string name, int option,
+        bool usefulBounce, bool usefulGraveLink, bool expectedChoice)
+    {
+        bool actualChoice = (bool)ExecutorType.GetMethod(
+            "ShouldSelectLemnisgateOptionalEffect", Flags).Invoke(null,
+            new object[] { option, usefulBounce, usefulGraveLink });
+        bool passed = actualChoice == expectedChoice;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "option", option },
+            { "expectedChoice", expectedChoice },
+            { "actualChoice", actualChoice }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": choice=" + actualChoice);
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length != 2)
@@ -272,10 +346,36 @@ internal static class SkyStrikerPlannerChecks
                 99999998, 4200, false, 0, true);
             CheckUltimateSkyOptionLatch();
 
+            CheckZeroQuickPolicy("Zero escapes a target without requiring next-turn clearance",
+                true, true, false, false, false, 0, 4800, true);
+            CheckZeroQuickPolicy("Zero pre-empts the mirror Zero resolution window",
+                true, false, true, false, false, 0, 4800, true);
+            CheckZeroQuickPolicy("Zero destroys a valuable threat without a clearance gate",
+                true, false, false, false, false, 5100, 4800, true);
+            CheckZeroQuickPolicy("Zero holds against a low-value idle field",
+                true, false, false, false, false, 1100, 3600, false);
+            CheckZeroQuickPolicy("Zero cannot spend itself without both summon resources",
+                false, true, true, true, true, 9000, 3600, false);
+
+            CheckLemnisgatePolicy("Lemnisgate refuses a one-pair no-bounce recycle",
+                0, 1, false, 0);
+            CheckLemnisgatePolicy("Lemnisgate keeps the tracked grave-Link staging exception",
+                0, 1, true, 1);
+            CheckLemnisgatePolicy("Lemnisgate spends two pairs for one useful bounce",
+                1, 2, false, 2);
+            CheckLemnisgatePolicy("Lemnisgate spends three pairs for two useful bounces",
+                2, 3, false, 3);
+            CheckLemnisgateOption("Lemnisgate option 1 accepts a useful return",
+                1, true, false, true);
+            CheckLemnisgateOption("Lemnisgate option 1 refuses a targetless return",
+                1, false, true, false);
+            CheckLemnisgateOption("Lemnisgate option 2 follows the grave-Link plan",
+                2, false, true, true);
+
             bool passed = Results.All(result => (bool)result["passed"]);
             var report = new Dictionary<string, object>
             {
-                { "purpose", "Offline SkyStriker2026 bounded planner and Ultimate Sky policy regression; not engine legality or strength evidence" },
+                { "purpose", "Offline SkyStriker2026 bounded planner, Ultimate Sky, Zero quick-effect and Lemnisgate recycle policy regression; not engine legality or strength evidence" },
                 { "checks", Results },
                 { "passed", passed }
             };
