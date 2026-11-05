@@ -156,6 +156,7 @@ namespace WindBot.Game.AI.Decks
         private readonly List<ClientCard> ForbiddenDropletTargets = new List<ClientCard>();
         private readonly List<ClientCard> UltimateSkyTargets = new List<ClientCard>();
         private readonly List<ClientCard> CurrentChainHandledCards = new List<ClientCard>();
+        private readonly List<ClientCard> TurnNegatedCards = new List<ClientCard>();
         private readonly List<ClientCard> MultiroleSetCards = new List<ClientCard>();
         private readonly List<ClientCard> ControlledEnemyCards = new List<ClientCard>();
 
@@ -164,7 +165,7 @@ namespace WindBot.Game.AI.Decks
         {
             AddExecutor(ExecutorType.GoToBattlePhase, EvenlyMatchedToBattle);
 
-            AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossom, AshBlossomEffect);
             AddExecutor(ExecutorType.Activate, CardId.GhostBelle, DefaultGhostBelleAndHauntedMansion);
             AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollLockBirdEffect);
             AddExecutor(ExecutorType.Activate, CardId.MulcharmyFuwalos, DefaultMaxxC);
@@ -352,6 +353,7 @@ namespace WindBot.Game.AI.Decks
             ControlledEnemyCards.RemoveAll(card => card == null || card.Controller != 0 ||
                 card.Location != CardLocation.MonsterZone);
             CurrentChainHandledCards.Clear();
+            TurnNegatedCards.Clear();
             base.OnNewTurn();
         }
 
@@ -372,6 +374,14 @@ namespace WindBot.Game.AI.Decks
         public override void OnChainEnd()
         {
             RetireSkyStrategicPlan();
+            TurnNegatedCards.RemoveAll(card => card == null ||
+                card.Location != CardLocation.MonsterZone);
+            foreach (ClientCard negated in Enemy.GetMonsters().Where(card =>
+                card.IsFaceup() && card.IsDisabled()))
+            {
+                if (!TurnNegatedCards.Contains(negated))
+                    TurnNegatedCards.Add(negated);
+            }
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
@@ -551,6 +561,10 @@ namespace WindBot.Game.AI.Decks
                     card.IsCode(CardId.Hayate, CardId.Kaina, CardId.Shizuku))
                     HornetSetupStage = HornetZeroSetupStage.NeedZero;
             }
+            if (card != null &&
+                (currentLocation & (int)CardLocation.MonsterZone) != 0 &&
+                (previousLocation & (int)CardLocation.MonsterZone) == 0)
+                TurnNegatedCards.Remove(card);
             base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
 
@@ -1098,6 +1112,30 @@ namespace WindBot.Game.AI.Decks
             Logger.DebugWriteLine("[SkyStriker2026] Droll: use the observed " +
                 "Main Deck-to-hand response window.");
             return true;
+        }
+
+        private bool AshBlossomEffect()
+        {
+            ClientCard last = Util.GetLastChainCard();
+            bool disabledFaceupFieldMonster = last != null && last.IsMonster() &&
+                last.Location == CardLocation.MonsterZone && last.IsFaceup() &&
+                last.IsDisabled();
+            bool effectGuaranteedNegated = last != null &&
+                (TurnNegatedCards.Contains(last) || IsCurrentChainHandled(last));
+            if (ShouldHoldAshAgainstGuaranteedNegation(
+                disabledFaceupFieldMonster || effectGuaranteedNegated))
+            {
+                Logger.DebugWriteLine("[SkyStriker2026] Ash: hold because the " +
+                    "current field effect is already guaranteed negated.");
+                return false;
+            }
+            return DefaultAshBlossomAndJoyousSpring();
+        }
+
+        private static bool ShouldHoldAshAgainstGuaranteedNegation(
+            bool effectGuaranteedNegated)
+        {
+            return effectGuaranteedNegated;
         }
 
         private bool LightningStormEffect()
@@ -1988,17 +2026,15 @@ namespace WindBot.Game.AI.Decks
             int usefulBounces;
             int bounceValue;
             int recycleCost;
-            bool stageGraveLink;
             if (!TryBuildLemnisgatePlan(out pairCount, out usefulBounces,
-                out bounceValue, out recycleCost, out stageGraveLink))
+                out bounceValue, out recycleCost))
                 return false;
             LemnisgateRecyclePairCount = pairCount;
 
             Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate: recycle pairs=" +
                 LemnisgateRecyclePairCount + ", useful bounces=" + usefulBounces +
                 ", bounce value=" + bounceValue + ", resource cost=" + recycleCost +
-                ", net=" + (bounceValue - recycleCost) +
-                ", stage grave Link=" + stageGraveLink);
+                ", net=" + (bounceValue - recycleCost));
             LemnisgateRecycleSelectionCount = 0;
             return true;
         }
@@ -2009,20 +2045,23 @@ namespace WindBot.Game.AI.Decks
             int usefulBounces;
             int bounceValue;
             int recycleCost;
-            bool stageGraveLink;
             return TryBuildLemnisgatePlan(out pairCount, out usefulBounces,
-                out bounceValue, out recycleCost, out stageGraveLink);
+                out bounceValue, out recycleCost);
         }
 
         private bool TryBuildLemnisgatePlan(out int pairCount,
-            out int usefulBounces, out int bounceValue, out int recycleCost,
-            out bool stageGraveLink)
+            out int usefulBounces, out int bounceValue, out int recycleCost)
         {
             pairCount = 0;
             usefulBounces = 0;
             bounceValue = 0;
             recycleCost = 0;
-            stageGraveLink = ShouldStageLemnisgateGraveLink();
+
+            // Never burn a recycle pair merely to place Lemnisgate in the GY.
+            // The grave-Link setup must send it through Amatsu or another real
+            // route; the field effect needs an actual public tempo return.
+            if (!HasLemnisgateTempoWindow(Enemy.GetFieldCount()))
+                return false;
 
             List<ClientCard> spells = Bot.Graveyard.Where(card =>
                 card.IsSpell() && IsSkyStrikerCard(card)).ToList();
@@ -2035,29 +2074,34 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> bounceTargets = GetUsefulLemnisgateBounceTargets();
             usefulBounces = bounceTargets.Count;
             pairCount = GetLemnisgateRecyclePairCount(usefulBounces,
-                maximumPairs, stageGraveLink);
+                maximumPairs);
             if (pairCount == 0)
                 return false;
 
             int projectedSpellCount = GetSpellCountInGrave() - pairCount + 1;
-            if (projectedSpellCount < 3 && usefulBounces == 0 && !stageGraveLink)
+            if (projectedSpellCount < 3 && usefulBounces == 0)
                 return false;
 
-            int bounceCount = Math.Min(bounceTargets.Count, pairCount * 2 / 3);
+            int bounceCount = Math.Min(bounceTargets.Count,
+                GetLemnisgateReturnCount(pairCount));
             bounceValue = bounceTargets.Take(bounceCount)
                 .Sum(GetLemnisgateBounceValue);
             recycleCost = spells.OrderByDescending(GetLemnisgateRecycleValue)
                 .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost) +
                 monsters.OrderByDescending(GetLemnisgateRecycleValue)
                     .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost);
-            return ShouldActivateLemnisgateForNetValue(bounceValue, recycleCost,
-                stageGraveLink);
+            return ShouldActivateLemnisgateForNetValue(bounceValue, recycleCost);
+        }
+
+        private static bool HasLemnisgateTempoWindow(int enemyFieldCount)
+        {
+            return enemyFieldCount > 0;
         }
 
         private static bool ShouldActivateLemnisgateForNetValue(int bounceValue,
-            int recycleCost, bool stageGraveLink)
+            int recycleCost)
         {
-            return stageGraveLink || bounceValue - recycleCost >= 1200;
+            return bounceValue >= 2500 && bounceValue - recycleCost >= 1200;
         }
 
         private int GetLemnisgateRecycleOpportunityCost(ClientCard card)
@@ -2096,7 +2140,7 @@ namespace WindBot.Game.AI.Decks
         }
 
         private static int GetLemnisgateRecyclePairCount(int usefulBounces,
-            int maximumPairs, bool stageGraveLink)
+            int maximumPairs)
         {
             if (maximumPairs <= 0)
                 return 0;
@@ -2104,7 +2148,12 @@ namespace WindBot.Game.AI.Decks
                 return 3;
             if (usefulBounces >= 1 && maximumPairs >= 2)
                 return 2;
-            return stageGraveLink ? 1 : 0;
+            return 0;
+        }
+
+        private static int GetLemnisgateReturnCount(int recyclePairs)
+        {
+            return Math.Max(0, recyclePairs * 2 / 3);
         }
 
         private static bool ShouldSelectLemnisgateOptionalEffect(int option,
@@ -2115,21 +2164,6 @@ namespace WindBot.Game.AI.Decks
             // compatible clients.
             return option == 1 ? hasUsefulBounce :
                 option == 2 && hasUsefulGraveLink;
-        }
-
-        private bool ShouldStageLemnisgateGraveLink()
-        {
-            if (Duel.Player != 0 || Duel.Phase != DuelPhase.Main1)
-                return false;
-
-            // Staging Lemnisgate in the GY is a committed setup, not a generic
-            // reason to recycle one pair. The known profitable setup is the
-            // tracked Hornet route: the second Token and bridge are ready for
-            // Zero while Drones plus Kagari form the exact recycle pair.
-            return HornetSetupStage == HornetZeroSetupStage.NeedZero &&
-                Bot.HasInExtra(CardId.Zero) &&
-                Bot.HasInGraveyard(CardId.HornetDrones) &&
-                Bot.HasInGraveyard(CardId.Kagari);
         }
 
         private bool ShouldUseLemnisgateGraveLink()
@@ -2143,48 +2177,73 @@ namespace WindBot.Game.AI.Decks
                 HornetSetupStage != HornetZeroSetupStage.NeedZero)
                 return false;
 
-            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
-            if (battle)
-            {
-                if (Duel.Player == 0)
-                    return materials.Any(card => card.Attacked &&
-                        (IsSkyStrikerAce(card) || ControlledEnemyCards.Contains(card)));
-                return Enemy.GetMonsters().Any(card => card.IsFaceup() && card.IsAttack() &&
-                    !card.Attacked) && Bot.HasInExtra(new[] { CardId.Kaina, CardId.Amatsu });
-            }
+            int planValue = GetLemnisgateGraveLinkPlanValue(materials);
+            int materialCount = HornetSetupStage == HornetZeroSetupStage.NeedZero
+                ? 2 : 1;
+            if (materials.Count < materialCount)
+                return false;
+            int materialCost = materials.OrderBy(GetLinkMaterialValue)
+                .Take(materialCount).Sum(GetLinkMaterialValue) + 700;
+            bool use = ShouldUseLemnisgateGraveLinkForValue(planValue, materialCost);
+            Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate GY Link: value=" +
+                planValue + ", material cost=" + materialCost + ", use=" + use);
+            return use;
+        }
 
+        private int GetLemnisgateGraveLinkPlanValue(List<ClientCard> materials)
+        {
+            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
+            if (battle && Duel.Player == 0)
+                return materials.Any(card => card.Attacked &&
+                    (IsSkyStrikerAce(card) || ControlledEnemyCards.Contains(card)))
+                    ? 5600 : 0;
+
+            ClientCard liveThreat = Enemy.GetMonsters().Where(card => card.IsFaceup() &&
+                card.IsAttack() && !card.Attacked)
+                .OrderByDescending(GetObservedThreatScore).FirstOrDefault();
             if (Duel.Player == 1)
             {
-                bool dangerousMonster = Enemy.GetMonsters().Any(card => card.IsFaceup() &&
-                    (card.Attack >= 2000 || GetObservedThreatScore(card) >= 4000));
-                return dangerousMonster && Bot.HasInExtra(new[]
-                {
-                    CardId.Amatsu,
-                    CardId.Kaina
-                });
+                if (liveThreat == null ||
+                    !Bot.HasInExtra(new[] { CardId.Kaina, CardId.Amatsu }))
+                    return 0;
+                return Math.Max(0, GetObservedThreatScore(liveThreat)) +
+                    Math.Min(3000, Math.Max(0, liveThreat.Attack));
             }
 
             if (HornetSetupStage == HornetZeroSetupStage.NeedZero &&
                 materials.Count >= 2 && Bot.HasInExtra(CardId.Zero))
-                return true;
+                return 7600;
 
-            if (Duel.Phase == DuelPhase.Main1)
+            if (Duel.Phase == DuelPhase.Main1 && !KagariSummoned &&
+                Bot.HasInExtra(CardId.Kagari))
             {
-                bool kagariPayoff = !KagariSummoned && Bot.HasInExtra(CardId.Kagari) &&
-                    Bot.Graveyard.Any(card => card.IsCode(CardId.Engage, CardId.Linkage,
-                        CardId.WidowAnchor, CardId.HornetDrones));
-                return kagariPayoff || materials.Count >= 2 && !ZeroSummoned &&
-                    Bot.HasInExtra(CardId.Zero);
+                if (Bot.HasInGraveyard(CardId.Engage))
+                    return 5600;
+                if (Bot.HasInGraveyard(CardId.Linkage))
+                    return 4700;
+                if (Bot.HasInGraveyard(CardId.WidowAnchor))
+                    return 4100;
+                if (Bot.HasInGraveyard(CardId.HornetDrones))
+                    return 3500;
             }
 
-            return (Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End) &&
-                !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku);
+            if ((Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End) &&
+                !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku) &&
+                materials.Any(card => card.Attacked ||
+                    ControlledEnemyCards.Contains(card) || card.IsCode(CardId.Token)))
+                return 4700;
+            return 0;
+        }
+
+        private static bool ShouldUseLemnisgateGraveLinkForValue(int planValue,
+            int materialCost)
+        {
+            return planValue >= 3500 && planValue - materialCost >= 1600;
         }
 
         private List<ClientCard> GetUsefulLemnisgateBounceTargets()
         {
             return Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                .Concat(Bot.GetMonsters()).Concat(Bot.GetSpells())
                 .Where(card => GetLemnisgateBounceValue(card) >= 2500)
                 .OrderByDescending(GetLemnisgateBounceValue)
                 .ToList();
@@ -2350,6 +2409,9 @@ namespace WindBot.Game.AI.Decks
 
             if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
             {
+                if (ShouldPreferKainaBridge(true, Bot.HasInExtra(CardId.Kaina),
+                    KainaSummoned))
+                    return false;
                 ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
                     card.IsFaceup() && card.IsCode(CardId.Kagari));
                 if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
@@ -3331,6 +3393,9 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
             {
+                if (ShouldPreferKainaBridge(true, Bot.HasInExtra(CardId.Kaina),
+                    KainaSummoned))
+                    return false;
                 ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
                     card.IsFaceup() && card.IsCode(CardId.Kagari));
                 if (kagari == null || Util.GetBotAvailZonesFromExtraDeck(new[] { kagari }) == 0)
@@ -3402,6 +3467,12 @@ namespace WindBot.Game.AI.Decks
             AI.SelectMaterials(new[] { material });
             SelectSkyStrikerLinkPlace();
             return true;
+        }
+
+        private static bool ShouldPreferKainaBridge(bool needsBridge,
+            bool kainaAvailable, bool kainaAlreadyUsed)
+        {
+            return needsBridge && kainaAvailable && !kainaAlreadyUsed;
         }
 
         private bool KainaEffect()

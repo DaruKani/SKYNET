@@ -114,6 +114,31 @@ internal static class SkyStrikerPlannerChecks
             " (" + watch.ElapsedMilliseconds + " ms)");
     }
 
+    private static void CheckForbiddenFirstTarget(string name, object state,
+        string expectedKind, int forbiddenTarget)
+    {
+        var watch = Stopwatch.StartNew();
+        object plan = Plan(state);
+        watch.Stop();
+        string actualKind = FirstKind(plan);
+        int actualTarget = FirstTarget(plan);
+        bool passed = actualKind == expectedKind && actualTarget != forbiddenTarget;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedKind", expectedKind },
+            { "actualKind", actualKind },
+            { "forbiddenTarget", forbiddenTarget },
+            { "actualTarget", actualTarget },
+            { "elapsedMs", watch.ElapsedMilliseconds },
+            { "expanded", Get(plan, "Expanded") },
+            { "timedOut", Get(plan, "TimedOut") }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": " +
+            actualKind + (actualTarget == 0 ? string.Empty : " -> " + actualTarget));
+    }
+
     private static void CheckCancellation()
     {
         using (var cancellation = new CancellationTokenSource())
@@ -214,14 +239,13 @@ internal static class SkyStrikerPlannerChecks
     }
 
     private static void CheckLemnisgatePolicy(string name, int usefulBounces,
-        int maximumPairs, bool stageGraveLink, int expectedPairs)
+        int maximumPairs, int expectedPairs)
     {
         int actualPairs = (int)ExecutorType.GetMethod(
             "GetLemnisgateRecyclePairCount", Flags).Invoke(null, new object[]
             {
                 usefulBounces,
-                maximumPairs,
-                stageGraveLink
+                maximumPairs
             });
         bool passed = actualPairs == expectedPairs;
         Results.Add(new Dictionary<string, object>
@@ -231,8 +255,7 @@ internal static class SkyStrikerPlannerChecks
             { "expectedPairs", expectedPairs },
             { "actualPairs", actualPairs },
             { "usefulBounces", usefulBounces },
-            { "maximumPairs", maximumPairs },
-            { "stageGraveLink", stageGraveLink }
+            { "maximumPairs", maximumPairs }
         });
         Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
             ": pairs=" + actualPairs);
@@ -258,11 +281,11 @@ internal static class SkyStrikerPlannerChecks
     }
 
     private static void CheckLemnisgateNet(string name, int bounceValue,
-        int recycleCost, bool stageGraveLink, bool expectedActivate)
+        int recycleCost, bool expectedActivate)
     {
         bool actualActivate = (bool)ExecutorType.GetMethod(
             "ShouldActivateLemnisgateForNetValue", Flags).Invoke(null,
-            new object[] { bounceValue, recycleCost, stageGraveLink });
+            new object[] { bounceValue, recycleCost });
         bool passed = actualActivate == expectedActivate;
         Results.Add(new Dictionary<string, object>
         {
@@ -270,12 +293,105 @@ internal static class SkyStrikerPlannerChecks
             { "passed", passed },
             { "bounceValue", bounceValue },
             { "recycleCost", recycleCost },
-            { "stageGraveLink", stageGraveLink },
             { "expectedActivate", expectedActivate },
             { "actualActivate", actualActivate }
         });
         Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
             ": activate=" + actualActivate);
+    }
+
+    private static void CheckLemnisgateTempoWindow(string name,
+        int enemyFieldCount, bool expectedWindow)
+    {
+        bool actualWindow = (bool)ExecutorType.GetMethod(
+            "HasLemnisgateTempoWindow", Flags).Invoke(null,
+            new object[] { enemyFieldCount });
+        bool passed = actualWindow == expectedWindow;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "enemyFieldCount", enemyFieldCount },
+            { "expectedWindow", expectedWindow },
+            { "actualWindow", actualWindow }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": window=" + actualWindow);
+    }
+
+    private static void CheckLemnisgateReturnCount(string name,
+        int recyclePairs, int expectedReturns)
+    {
+        int actualReturns = (int)ExecutorType.GetMethod(
+            "GetLemnisgateReturnCount", Flags).Invoke(null,
+            new object[] { recyclePairs });
+        bool passed = actualReturns == expectedReturns;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "recyclePairs", recyclePairs },
+            { "expectedReturns", expectedReturns },
+            { "actualReturns", actualReturns }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": returns=" + actualReturns);
+    }
+
+    private static void CheckLemnisgateGraveLinkValue(string name,
+        int planValue, int materialCost, bool expectedUse)
+    {
+        bool actualUse = (bool)ExecutorType.GetMethod(
+            "ShouldUseLemnisgateGraveLinkForValue", Flags).Invoke(null,
+            new object[] { planValue, materialCost });
+        bool passed = actualUse == expectedUse;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "planValue", planValue },
+            { "materialCost", materialCost },
+            { "expectedUse", expectedUse },
+            { "actualUse", actualUse }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": use=" + actualUse);
+    }
+
+    private static void CheckAshHold(string name,
+        bool effectGuaranteedNegated, bool expectedHold)
+    {
+        bool actualHold = (bool)ExecutorType.GetMethod(
+            "ShouldHoldAshAgainstGuaranteedNegation", Flags).Invoke(null,
+            new object[] { effectGuaranteedNegated });
+        bool passed = actualHold == expectedHold;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedHold", expectedHold },
+            { "actualHold", actualHold }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": hold=" + actualHold);
+    }
+
+    private static void CheckKainaBridge(string name, bool needsBridge,
+        bool kainaAvailable, bool kainaAlreadyUsed, bool expectedPrefer)
+    {
+        bool actualPrefer = (bool)ExecutorType.GetMethod(
+            "ShouldPreferKainaBridge", Flags).Invoke(null,
+            new object[] { needsBridge, kainaAvailable, kainaAlreadyUsed });
+        bool passed = actualPrefer == expectedPrefer;
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", name },
+            { "passed", passed },
+            { "expectedPrefer", expectedPrefer },
+            { "actualPrefer", actualPrefer }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name +
+            ": prefer=" + actualPrefer);
     }
 
     private static void CheckLemnisgateMirrorPenalty(string name,
@@ -396,8 +512,20 @@ internal static class SkyStrikerPlannerChecks
             Set(lemnisgateEngage, "HandWidow", true);
             Set(lemnisgateEngage, "GraveSpells", 2);
             Set(lemnisgateEngage, "GraveAceMonsters", 1);
+            Set(lemnisgateEngage, "EnemyField", 1);
+            Set(lemnisgateEngage, "LemnisgateLive", true);
             Check("Engage values a live Lemnisgate package", lemnisgateEngage,
                 "ActivateEngage", 34433770, "RayeTagZero");
+
+            object emptyFieldLemnisgate = BaseState();
+            Set(emptyFieldLemnisgate, "HandEngage", true);
+            Set(emptyFieldLemnisgate, "HandRaye", true);
+            Set(emptyFieldLemnisgate, "HandWidow", true);
+            Set(emptyFieldLemnisgate, "GraveSpells", 2);
+            Set(emptyFieldLemnisgate, "GraveAceMonsters", 1);
+            CheckForbiddenFirstTarget(
+                "Engage does not search Lemnisgate into an empty opposing field",
+                emptyFieldLemnisgate, "ActivateEngage", 34433770);
 
             object hornetOnly = BaseState();
             Set(hornetOnly, "HandHornet", true);
@@ -470,13 +598,13 @@ internal static class SkyStrikerPlannerChecks
                 false, true, true, true, true, 9000, 3600, false);
 
             CheckLemnisgatePolicy("Lemnisgate refuses a one-pair no-bounce recycle",
-                0, 1, false, 0);
-            CheckLemnisgatePolicy("Lemnisgate keeps the tracked grave-Link staging exception",
-                0, 1, true, 1);
+                0, 1, 0);
+            CheckLemnisgatePolicy("Lemnisgate cannot stage itself by wasting one pair",
+                0, 1, 0);
             CheckLemnisgatePolicy("Lemnisgate spends two pairs for one useful bounce",
-                1, 2, false, 2);
+                1, 2, 2);
             CheckLemnisgatePolicy("Lemnisgate spends three pairs for two useful bounces",
-                2, 3, false, 3);
+                2, 3, 3);
             CheckLemnisgateOption("Lemnisgate option 1 accepts a useful return",
                 1, true, false, true);
             CheckLemnisgateOption("Lemnisgate option 1 refuses a targetless return",
@@ -484,11 +612,25 @@ internal static class SkyStrikerPlannerChecks
             CheckLemnisgateOption("Lemnisgate option 2 follows the grave-Link plan",
                 2, false, true, true);
             CheckLemnisgateNet("Lemnisgate rejects a negative resource exchange",
-                3000, 2600, false, false);
+                3000, 2600, false);
             CheckLemnisgateNet("Lemnisgate accepts a material positive exchange",
-                5200, 2400, false, true);
-            CheckLemnisgateNet("Lemnisgate preserves the committed grave-Link setup",
-                0, 3000, true, true);
+                5200, 2400, true);
+            CheckLemnisgateNet("Lemnisgate rejects targetless grave-Link staging",
+                0, -3000, false);
+            CheckLemnisgateTempoWindow(
+                "Lemnisgate cannot activate into an empty opposing field", 0, false);
+            CheckLemnisgateTempoWindow(
+                "Lemnisgate may evaluate a public opposing field", 1, true);
+            CheckLemnisgateReturnCount(
+                "Lemnisgate one recycle pair cannot return a card", 1, 0);
+            CheckLemnisgateReturnCount(
+                "Lemnisgate two recycle pairs earn one return", 2, 1);
+            CheckLemnisgateReturnCount(
+                "Lemnisgate three recycle pairs earn two returns", 3, 2);
+            CheckLemnisgateGraveLinkValue(
+                "Lemnisgate GY Link accepts a positive conversion", 5600, 2100, true);
+            CheckLemnisgateGraveLinkValue(
+                "Lemnisgate GY Link rejects a thin material trade", 3500, 2500, false);
             CheckLemnisgateMirrorPenalty(
                 "Lemnisgate does not return a disabled mirror Ace into a ready Raye",
                 true, true, false, true, true, 8800);
@@ -508,10 +650,17 @@ internal static class SkyStrikerPlannerChecks
             CheckWidowMirrorHold("Widow may answer Raye inside a live chain",
                 true, false, true, false, false, false);
 
+            CheckAshHold("Ash holds when the field effect is guaranteed negated",
+                true, true);
+            CheckAshHold("Ash remains available when a monster paid itself as cost",
+                false, false);
+            CheckKainaBridge("Hornet bridge prefers Kaina over Amatsu",
+                true, true, false, true);
+
             bool passed = Results.All(result => (bool)result["passed"]);
             var report = new Dictionary<string, object>
             {
-                { "purpose", "Offline SkyStriker2026 bounded route planner plus Ultimate Sky, Zero, Lemnisgate net-value, Shark Cannon branch and mirror Widow policy regression; not engine legality or strength evidence" },
+                { "purpose", "Offline SkyStriker2026 bounded route planner plus Ultimate Sky, Zero, Lemnisgate field/GY value, Shark Cannon, mirror Widow, Ash preservation and Kaina bridge policy regression; not engine legality or strength evidence" },
                 { "checks", Results },
                 { "passed", passed }
             };

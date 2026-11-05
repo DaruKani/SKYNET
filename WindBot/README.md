@@ -287,10 +287,9 @@ unknown cards exist in the bot's hand or Deck.
 The 2026-11-04 23:44 replay adds two further regression guards. An established
 turn-one Zero/Ace board keeps Roze in hand instead of Normal Summoning it solely
 to turn Roze into Kagari for an early Engage recovery. Lemnisgate no longer treats
-an arbitrary Ace or Linkage in hand as sufficient reason to recycle a single pair;
-the no-bounce GY-staging exception is limited to the tracked second-Hornet route
-where Drones plus Kagari are the exact pair and Zero is ready. It also refuses to
-chain the recycle effect over the bot's own unresolved effect. MDPro4 presents the
+an arbitrary Ace or Linkage in hand as sufficient reason to recycle a single pair.
+It also refuses to chain the recycle effect over the bot's own unresolved effect.
+MDPro4 presents the
 recycle choice through repeated one-card `SelectUnselect` prompts, so the executor
 now advances that selection incrementally instead of indexing a nonexistent full
 monster/Spell candidate pair.
@@ -352,6 +351,13 @@ last Chain player still being the opponent after that Chain has finished, so an
 Engage, Zero or Linkage search opens the correct response window without reading
 the identity of a hidden card.
 
+Ash Blossom distinguishes an already-negated on-field effect from a monster that
+left the field while paying its activation cost. It holds when the current
+face-up field monster is still disabled or a tracked negate already covers that
+chain link. It does not assume that an effect remains negated after its monster
+has moved to another zone as cost; the normal Ash eligibility check still applies
+there.
+
 The bot runtime copy replaces the supplied Extra Deck's `The Dragon that Devours
 the Dogma` slot with `Albion the Branded Dragon` for the intended Fallen & the
 Virtuous resource line. It always sends Albion first while another Fallen & the
@@ -404,9 +410,9 @@ Raye and Roze are summoned.
 The 2026-11-05 replay also closes Lemnisgate's remaining no-bounce leak. Restoring
 a spent Link Ace to the Extra Deck is not, by itself, permission to activate it:
 one recycled Spell/Ace pair produces zero returns under the card script. A
-one-pair activation is now reserved for the explicitly tracked Hornet grave-Link
-staging route; ordinary use requires two pairs for one worthwhile return or three
-pairs for two. The post-recycle `StringId 1` prompt now correctly accepts those
+one-pair activation is never used merely to stage Lemnisgate in the GY; ordinary
+use requires two pairs for one worthwhile return or three pairs for two. The
+post-recycle `StringId 1` prompt now correctly accepts those
 returns instead of consulting the unrelated grave-Link condition. The same
 live-value rule controls whether Engage prioritizes Lemnisgate.
 
@@ -415,9 +421,14 @@ pair arithmetic. Lemnisgate now compares the public value of every planned retur
 with the opportunity cost of the exact Spells and monsters it would recycle. A
 spent opposing Kagari is penalized when returning it to the Extra Deck restores a
 mirror resource or enables a public Raye/Roze GY trigger; winning the pair count
-alone is not enough. The tracked Hornet grave-Link setup remains the explicit
-exception because that route values staging Lemnisgate in the GY rather than an
-immediate return.
+alone is not enough. The 21:51 replay removes the former Hornet staging exception
+entirely: the field effect is rejected when the opposing field is empty and also
+requires a worthwhile opposing return. Two recycle pairs earn one return and
+three pairs earn two; this floor-of-selected-cards-divided-by-three arithmetic is
+checked before activation. Lemnisgate must reach the GY through Amatsu or another
+real cost when the plan only wants its grave-Link effect. Its GY Link effect now
+scores the actual extension, defensive interruption or recovery against the
+cheapest legal material plus the spent GY card, rejecting thin conversions.
 
 Spell/Trap destruction follows resolution semantics instead of treating every
 card on the Chain as a negate. A face-up Normal, Quick-Play or Ritual Spell, or a
@@ -447,9 +458,9 @@ The source `Sky striker.ydk` remains unchanged; only the explicitly requested
 The opening setup now treats Engage and Reinforcement of the Army as access to
 Raye or Hornet Drones. A lone Raye can tag directly into Zero. The legal Drones
 route is Token into Kagari (Kagari, not Shizuku, recovers Drones), a second Token,
-Kagari into Amatsu with Hayate/Shizuku as fallbacks, then the bridge Link plus the
-Token into Zero. If Lemnisgate is available, that route first recycles the spent
-Drones/Kagari pair so Lemnisgate remains in the GY beside Zero. Outside the OTK
+Kagari into Kaina with Amatsu/Hayate/Shizuku as fallbacks, then the bridge Link
+plus the Token into Zero. The route no longer activates Lemnisgate merely to
+recycle Drones/Kagari and stage itself in the GY. Outside the OTK
 route, Zero always accepts its search and prioritizes Engage. When both Deck and
 GY copies are offered, it takes Engage from the GY only if at least three other
 Spells will remain there; otherwise it takes a Deck copy and preserves the GY
@@ -534,12 +545,14 @@ output directory:
   -OutputDirectory Artifacts/skystriker-planner-checks/my-change
 ```
 
-They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari bridge,
-Ultimate Sky/Linkage recovery, set-fuel/Linkage/Zero route, deterministic access before Pot and Raye/Roze
+They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari/Kaina bridge,
+Ultimate Sky/Linkage recovery, set-fuel/Linkage/Zero route, deterministic access
+before Pot and Raye/Roze
 Main Zone clearance routes, plus Ultimate Sky's chain threat threshold and
 latched option choice. They also lock Zero's target/pre-emptive response policy
-and Lemnisgate's pair arithmetic and net resource threshold, Shark Cannon's
-revive-versus-banish branch, and mirror Raye Widow hold. They do not execute Lua
+and Lemnisgate's return arithmetic, field/GY net resource thresholds, Shark
+Cannon's revive-versus-banish branch, mirror Raye Widow hold, and Ash preservation
+against an already-covered chain link. They do not execute Lua
 or prove engine legality.
 
 This remains a hybrid executor: bounded search covers the modeled setup/resource

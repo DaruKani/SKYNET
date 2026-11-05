@@ -91,6 +91,7 @@ namespace WindBot.Game.AI.Decks
             public bool HandLemnisgate;
             public bool HandMultirole;
             public bool HandPot;
+            public bool LemnisgateLive;
             public bool DeckRaye;
             public bool DeckRoze;
             public bool DeckEngage;
@@ -168,7 +169,8 @@ namespace WindBot.Game.AI.Decks
                     HandLinkageFuelId.ToString(), HandLinkageFuelCost.ToString(),
                     HandUltimate ? "1" : "0", HandWidow ? "1" : "0",
                     HandLemnisgate ? "1" : "0", HandMultirole ? "1" : "0",
-                    HandPot ? "1" : "0", DeckRaye ? "1" : "0", DeckRoze ? "1" : "0",
+                    HandPot ? "1" : "0", LemnisgateLive ? "1" : "0",
+                    DeckRaye ? "1" : "0", DeckRoze ? "1" : "0",
                     DeckEngage ? "1" : "0", DeckHornet ? "1" : "0",
                     DeckLinkage ? "1" : "0", DeckWidow ? "1" : "0",
                     DeckLemnisgate ? "1" : "0", DeckMultirole ? "1" : "0",
@@ -525,7 +527,8 @@ namespace WindBot.Game.AI.Decks
                     if (state.DeckWidow && !state.HandWidow)
                         targets.Add(CardId.WidowAnchor);
                     if (state.DeckLemnisgate && !state.HandLemnisgate &&
-                        state.GraveSpells > 0 && state.GraveAceMonsters > 0)
+                        state.GraveSpells > 0 && state.GraveAceMonsters > 0 &&
+                        state.LemnisgateLive)
                         targets.Add(CardId.Lemnisgate);
                 }
                 foreach (int target in targets.Distinct())
@@ -550,7 +553,8 @@ namespace WindBot.Game.AI.Decks
                 if (starter && !state.HandWidow && state.DeckWidow)
                     yield return CardId.WidowAnchor;
                 if (state.DeckLemnisgate && !state.HandLemnisgate &&
-                    state.GraveSpells > 0 && state.GraveAceMonsters > 0)
+                    state.GraveSpells > 0 && state.GraveAceMonsters > 0 &&
+                    state.LemnisgateLive)
                     yield return CardId.Lemnisgate;
                 if (!state.HandMultirole && state.DeckMultirole)
                     yield return CardId.Multirole;
@@ -686,7 +690,7 @@ namespace WindBot.Game.AI.Decks
                 if (state.HandLinkage)
                     score += state.Turn1 ? 850 : 1250;
                 if (state.HandLemnisgate && state.GraveSpells > 0 &&
-                    state.GraveAceMonsters > 0)
+                    state.GraveAceMonsters > 0 && state.LemnisgateLive)
                     score += 900;
                 if (state.HandMultirole)
                     score += 650;
@@ -846,6 +850,7 @@ namespace WindBot.Game.AI.Decks
                 HandLemnisgate = Bot.HasInHand(CardId.Lemnisgate),
                 HandMultirole = Bot.HasInHand(CardId.Multirole),
                 HandPot = Bot.HasInHand(CardId.PotOfDesires),
+                LemnisgateLive = HasProfitableLemnisgatePlan(),
                 DeckRaye = Bot.HasInDeck(CardId.Raye),
                 DeckRoze = Bot.HasInDeck(CardId.Roze),
                 DeckEngage = Bot.HasInDeck(CardId.Engage),
