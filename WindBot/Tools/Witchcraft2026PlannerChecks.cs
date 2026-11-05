@@ -70,25 +70,72 @@ internal static class Witchcraft2026PlannerChecks
         params string[] required)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        object plan = Plan(state, CancellationToken.None);
+        object current = state;
+        List<string> kinds = new List<string>();
+        List<int> targets = new List<int>();
+        int expanded = 0;
+        bool timedOut = false;
+        bool singleActionPlans = true;
+        for (int action = 0; action < 16; action++)
+        {
+            object plan = Plan(current, CancellationToken.None);
+            IList steps = Steps(plan);
+            singleActionPlans = singleActionPlans && steps.Count <= 1;
+            expanded += (int)Get(plan, "Expanded");
+            timedOut = timedOut || (bool)Get(plan, "TimedOut");
+            if (steps.Count == 0)
+                break;
+            object step = steps[0];
+            object strategicAction = Get(step, "Action");
+            kinds.Add(Get(strategicAction, "Kind").ToString());
+            targets.Add((int)Get(strategicAction, "SearchTarget"));
+            current = Get(step, "After");
+        }
         watch.Stop();
-        string[] kinds = Kinds(plan);
-        int[] targets = Targets(plan);
-        bool passed = kinds.Length > 0 && kinds[0] == first &&
-            required.All(kinds.Contains) && watch.ElapsedMilliseconds < 500;
+        bool passed = kinds.Count > 0 && kinds[0] == first &&
+            required.All(kinds.Contains) && singleActionPlans &&
+            watch.ElapsedMilliseconds < 500;
         Results.Add(new Dictionary<string, object>
         {
             { "name", name },
             { "passed", passed },
-            { "first", kinds.Length == 0 ? "None" : kinds[0] },
-            { "route", kinds },
-            { "targets", targets },
+            { "first", kinds.Count == 0 ? "None" : kinds[0] },
+            { "route", kinds.ToArray() },
+            { "targets", targets.ToArray() },
+            { "singleActionPlans", singleActionPlans },
             { "elapsedMs", watch.ElapsedMilliseconds },
-            { "expanded", Get(plan, "Expanded") },
-            { "timedOut", Get(plan, "TimedOut") }
+            { "expanded", expanded },
+            { "timedOut", timedOut }
         });
         Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": " +
-            (kinds.Length == 0 ? "None" : string.Join(" -> ", kinds)));
+            (kinds.Count == 0 ? "None" : string.Join(" -> ", kinds)));
+    }
+
+    private static void CheckInterruptionReplans()
+    {
+        object opening = BaseState();
+        Set(opening, "HandSchmietta", true);
+        object firstPlan = Plan(opening, CancellationToken.None);
+        string[] firstKinds = Kinds(firstPlan);
+
+        object interrupted = BaseState();
+        Set(interrupted, "NormalAvailable", false);
+        Set(interrupted, "HandSchmietta", false);
+        Set(interrupted, "FieldLow", false);
+        object replanned = Plan(interrupted, CancellationToken.None);
+        string[] replannedKinds = Kinds(replanned);
+        bool passed = Steps(firstPlan).Count == 1 && firstKinds.Length == 1 &&
+            firstKinds[0] == "NormalSchmietta" && Steps(replanned).Count <= 1 &&
+            !replannedKinds.Contains("ActivateLowWitchcrafter");
+        Results.Add(new Dictionary<string, object>
+        {
+            { "name", "interruption replans from observed state" },
+            { "passed", passed },
+            { "before", firstKinds },
+            { "after", replannedKinds }
+        });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") +
+            "interruption replans from observed state");
     }
 
     private static void CheckCancellation()
@@ -169,6 +216,7 @@ internal static class Witchcraft2026PlannerChecks
         Check("Potterie plus any Spell starts the low Witchcrafter route", potterie,
             "NormalLowWitchcrafter", "ActivateLowWitchcrafter");
 
+        CheckInterruptionReplans();
         CheckCancellation();
 
         bool passedAll = Results.All(result => (bool)result["passed"]);

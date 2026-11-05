@@ -130,6 +130,7 @@ namespace WindBot.Game.AI.Decks
             _normalSummonUsed = false;
             _pendingFusionTarget = 0;
             _pendingSearchTarget = 0;
+            _strategicActionTarget = 0;
             _usedLowWitchcrafterEffects.Clear();
             RetireStrategicPlan();
             base.OnNewTurn();
@@ -247,7 +248,7 @@ namespace WindBot.Game.AI.Decks
             if (!Bot.HasInDeck(CardId.Walpurgis) ||
                 !StrategicAllows(WitchcraftActionKind.ActivateFieldSpellAccess))
                 return false;
-            _pendingSearchTarget = CardId.Walpurgis;
+            _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Walpurgis);
             return true;
         }
 
@@ -255,7 +256,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (!StrategicAllows(WitchcraftActionKind.ActivateMastery))
                 return false;
-            _pendingSearchTarget = Bot.HasInHand(CardId.MaidVerre) ? CardId.MaidGenni : CardId.MaidVerre;
+            int fallback = Bot.HasInHand(CardId.MaidVerre)
+                ? CardId.MaidGenni : CardId.MaidVerre;
+            _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
             return true;
         }
 
@@ -263,8 +266,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (!StrategicAllows(WitchcraftActionKind.ActivateCreation))
                 return false;
-            _pendingSearchTarget = !Bot.HasInHand(CardId.Marka) && !Bot.HasInSpellZone(CardId.Walpurgis)
+            int fallback = !Bot.HasInHand(CardId.Marka) && !Bot.HasInSpellZone(CardId.Walpurgis)
                 ? CardId.Marka : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+            _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
             return true;
         }
 
@@ -274,8 +278,9 @@ namespace WindBot.Game.AI.Decks
                 return true;
             if (!StrategicAllows(WitchcraftActionKind.ActivateMarka))
                 return false;
-            _pendingSearchTarget = Bot.HasInSpellZone(CardId.Walpurgis, true)
+            int fallback = Bot.HasInSpellZone(CardId.Walpurgis, true)
                 ? CardId.Bystreet : CardId.Walpurgis;
+            _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
             return true;
         }
 
@@ -290,8 +295,9 @@ namespace WindBot.Game.AI.Decks
             }
             if (!StrategicAllows(WitchcraftActionKind.ActivateWalpurgis))
                 return false;
-            _pendingSearchTarget = !Bot.HasInHand(CardId.MaidVerre) && Bot.HasInDeck(CardId.MaidVerre)
+            int fallback = !Bot.HasInHand(CardId.MaidVerre) && Bot.HasInDeck(CardId.MaidVerre)
                 ? CardId.MaidVerre : !Bot.HasInHand(CardId.Schmietta) ? CardId.Schmietta : CardId.Terracottan;
+            _pendingSearchTarget = ConsumeStrategicActionTarget(fallback);
             return true;
         }
 
@@ -319,7 +325,9 @@ namespace WindBot.Game.AI.Decks
             {
                 if (!_spellActivatedThisTurn)
                     return false;
-                return StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
+                bool allowed = StrategicAllows(WitchcraftActionKind.SummonMaidVerre);
+                ConsumeStrategicActionTarget(0);
+                return allowed;
             }
             _pendingSearchTarget = !Bot.HasInSpellZone(CardId.Walpurgis) && Bot.HasInDeck(CardId.Walpurgis)
                 ? CardId.Walpurgis : !Bot.HasInHand(CardId.Celebration) ? CardId.Celebration : CardId.Creation;
@@ -344,6 +352,7 @@ namespace WindBot.Game.AI.Decks
                     (!hasWalpurgis && !HasSpellInHand()) ||
                     !StrategicAllows(WitchcraftActionKind.ActivateLowWitchcrafter))
                     return false;
+                _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Haine);
                 if (!hasWalpurgis)
                     AI.SelectCard(GetDiscardPriority());
                 _usedLowWitchcrafterEffects.Add(Card.Id);
@@ -376,7 +385,13 @@ namespace WindBot.Game.AI.Decks
         private bool TerracottanEffect()
         {
             if (Card.Location == CardLocation.Hand)
-                return Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode));
+            {
+                if (!Bot.Graveyard.Any(card => card.HasSetcode(WitchcrafterSetcode)) ||
+                    !StrategicAllows(WitchcraftActionKind.ActivateTerracottan))
+                    return false;
+                _pendingSearchTarget = ConsumeStrategicActionTarget(CardId.Celebration);
+                return true;
+            }
             if (Card.Location == CardLocation.MonsterZone)
             {
                 _pendingFusionTarget = ChooseWitchcrafterFusion();
@@ -400,9 +415,10 @@ namespace WindBot.Game.AI.Decks
         {
             bool canFuse = Bot.Graveyard.Concat(Bot.Banished).Count(card =>
                 card.IsMonster() && card.HasRace(CardRace.SpellCaster)) >= 2;
-            if (canFuse)
+            if (canFuse && StrategicAllows(WitchcraftActionKind.ActivateCelebration))
             {
-                _pendingFusionTarget = ChooseWitchcrafterFusion();
+                _pendingFusionTarget = ConsumeStrategicActionTarget(
+                    ChooseWitchcrafterFusion());
                 return true;
             }
             return Util.GetBestEnemyCard() != null && Bot.GetMonsters().Any(card =>
@@ -411,7 +427,10 @@ namespace WindBot.Game.AI.Decks
 
         private bool ConfusionEffect()
         {
-            _pendingFusionTarget = ChooseWitchcrafterFusion();
+            if (!StrategicAllows(WitchcraftActionKind.ActivateConfusion))
+                return false;
+            _pendingFusionTarget = ConsumeStrategicActionTarget(
+                ChooseWitchcrafterFusion());
             return _pendingFusionTarget != 0;
         }
 
@@ -453,8 +472,12 @@ namespace WindBot.Game.AI.Decks
 
         private bool SetDistortion()
         {
-            return Util.IsTurn1OrMain2() && Bot.GetMonsters().Any(card =>
-                card.IsFaceup() && card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5);
+            if (!Util.IsTurn1OrMain2() || !Bot.GetMonsters().Any(card =>
+                card.IsFaceup() && card.HasSetcode(WitchcrafterSetcode) && card.Level >= 5))
+                return false;
+            bool allowed = StrategicAllows(WitchcraftActionKind.SetDistortion);
+            ConsumeStrategicActionTarget(0);
+            return allowed;
         }
 
         private int ChooseWitchcrafterFusion()

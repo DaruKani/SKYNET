@@ -213,7 +213,10 @@ namespace WindBot.Game.AI.Decks
                         .ToList();
                 }
 
-                return new WitchcraftStrategicPlan(root, best.Steps, expanded, timedOut);
+                IList<WitchcraftStrategicStep> nextAction = best.Steps.Count == 0
+                    ? new List<WitchcraftStrategicStep>()
+                    : new List<WitchcraftStrategicStep> { best.Steps[0] };
+                return new WitchcraftStrategicPlan(root, nextAction, expanded, timedOut);
             }
 
             private static IEnumerable<WitchcraftStrategicStep> Expand(
@@ -465,37 +468,49 @@ namespace WindBot.Game.AI.Decks
         }
 
         private WitchcraftStrategicPlan _strategicPlan;
-        private int _strategicIndex;
         private CancellationTokenSource _strategicRequest;
+        private int _strategicActionTarget;
 
         private bool StrategicAllows(WitchcraftActionKind kind)
         {
             if (!ValidateDeck())
                 return false;
             WitchcraftStrategicState observed = CaptureStrategicState();
-            if (_strategicPlan == null || _strategicIndex >= _strategicPlan.Steps.Count ||
-                !SameStrategicState(ExpectedStrategicState(), observed))
+            if (_strategicPlan == null ||
+                !SameStrategicState(_strategicPlan.Root, observed))
             {
                 RetireStrategicPlan();
                 _strategicRequest = new CancellationTokenSource();
                 _strategicPlan = WitchcraftStrategicPlanner.Plan(observed,
                     _strategicRequest.Token);
-                _strategicIndex = 0;
+                if (_strategicPlan.Steps.Count > 0)
+                {
+                    WitchcraftStrategicAction action = _strategicPlan.Steps[0].Action;
+                    Logger.DebugWriteLine("Witchcraft2026 next action: " + action.Kind +
+                        " target=" + action.SearchTarget + " expanded=" +
+                        _strategicPlan.Expanded + " timedOut=" + _strategicPlan.TimedOut);
+                }
+                else
+                {
+                    Logger.DebugWriteLine("Witchcraft2026 next action: none expanded=" +
+                        _strategicPlan.Expanded + " timedOut=" + _strategicPlan.TimedOut);
+                }
             }
-            if (_strategicPlan == null || _strategicIndex >= _strategicPlan.Steps.Count)
+            if (_strategicPlan == null || _strategicPlan.Steps.Count == 0)
                 return false;
-            if (_strategicPlan.Steps[_strategicIndex].Action.Kind != kind)
+            WitchcraftStrategicStep next = _strategicPlan.Steps[0];
+            if (next.Action.Kind != kind)
                 return false;
-            _strategicIndex++;
+            _strategicActionTarget = next.Action.SearchTarget;
+            RetireStrategicPlan();
             return true;
         }
 
-        private WitchcraftStrategicState ExpectedStrategicState()
+        private int ConsumeStrategicActionTarget(int fallback)
         {
-            if (_strategicPlan == null)
-                return null;
-            return _strategicIndex == 0 ? _strategicPlan.Root :
-                _strategicPlan.Steps[_strategicIndex - 1].After;
+            int target = _strategicActionTarget;
+            _strategicActionTarget = 0;
+            return target != 0 ? target : fallback;
         }
 
         private static bool SameStrategicState(WitchcraftStrategicState expected,
@@ -565,7 +580,6 @@ namespace WindBot.Game.AI.Decks
                 _strategicRequest = null;
             }
             _strategicPlan = null;
-            _strategicIndex = 0;
         }
     }
 }

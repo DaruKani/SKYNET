@@ -175,9 +175,13 @@ runtime identities and Lua behavior were checked against
 The executor follows the RDA template's separation between observed duel state,
 bounded model transitions and actual offered-card callbacks. Its synchronous
 beam planner has one 45 ms budget, cancellation, depth/node/candidate caps and
-retires its prediction after observed moves or chain resolution. The tactical
-layer covers the exact list's Terraforming/Rainbow Bridge Bifrost/Marka access to
-Walpurgis, Maid Verre, Potterie and the other low-level Witchcrafter costs,
+uses receding-horizon execution: search may look ahead through a complete route,
+but only the first Action and its immediate prompt target are committed. The
+next legal offer is planned again from authoritative observed state, so an
+interruption, negation or missing follow-up cannot force a stale combo step. The
+tactical layer covers the exact list's Terraforming/Rainbow Bridge
+Bifrost/Marka access to Walpurgis, Maid Verre, Potterie and the other low-level
+Witchcrafter costs,
 Terracottan recovery and Extra Deck lock, Unveiling, Celebration and Confusion
 Fusion prompts, Rillie/Pupils/Vice-Madame, the Dark Magician of
 Destruction/Gaze/Dragoon package, Distortion and the listed hand traps. The
