@@ -244,6 +244,19 @@ ban: when Zero's defensive exit summons Raye and Roze, the executor records a
 next-turn clearance step and Link Summons a fresh Zero with both monsters before
 trying to spend another Sky Striker Spell.
 
+The setup layer now uses a bounded RDA-style route search instead of deciding
+each starter in isolation. An immutable observed snapshot covers the current
+Main/Extra Monster Zones, own known hand/Deck/GY/Extra Deck resources, once-per-turn
+usage, Spell threshold, opponent public field counts and the remaining own Deck
+count. Pure transitions compare Engage/ROTA access, Raye-to-Zero, the two-Hornet
+Kagari/bridge/Zero route, Raye+Roze Main Zone clearance, Ultimate Sky chained to
+Linkage, ordinary Linkage fuel and Pot risk. The best modeled route supplies only
+its first recommendation; the normal executor still matches the actual legal
+offer and owns every target, material and option prompt. Movement, chain, phase
+and turn observations retire the cached recommendation and force a fresh plan.
+Search is synchronous and capped at 35 ms, depth 8, beam width 72, 2,500 expanded
+states and 6,000 generated candidates.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two
@@ -408,12 +421,26 @@ try {
 finally { Pop-Location }
 ```
 
-This is a hybrid executor: supported setup/OTK routes use tracked stages, while
-competing interaction uses a pure observed-state scoring layer before the normal
-executor commits an offered action. It is not an exhaustive Lua simulator or a
-proof of lethal, does not predict unknown opposing cards, and cards outside the
-modeled packages still use ordinary WindBot handlers. Debug/Release compilation
-and deck-list checks do not substitute for a script-backed duel; record real duel
+Run the offline fixed-state planner checks from the workspace root with a fresh
+output directory:
+
+```powershell
+.\WindBot\Tools\Invoke-SkyStrikerPlannerChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -OutputDirectory Artifacts/skystriker-planner-checks/my-change
+```
+
+They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari bridge,
+Ultimate Sky/Linkage recovery, deterministic access before Pot and Raye/Roze
+Main Zone clearance routes. They do not execute Lua or prove engine legality.
+
+This remains a hybrid executor: bounded search covers the modeled setup/resource
+routes, tracked stages own script-specific sequences, and competing interaction
+uses a pure observed-state scoring layer before the normal executor commits an
+offered action. It is not an exhaustive Lua simulator or a proof of lethal, does
+not predict unknown opposing cards, and cards outside the modeled packages still
+use ordinary WindBot handlers. Debug/Release compilation, planner checks and
+deck-list checks do not substitute for a script-backed duel; record real duel
 outcomes separately before treating the executor as competitively tuned.
 
 ## Voiceless Voice routes and recovery

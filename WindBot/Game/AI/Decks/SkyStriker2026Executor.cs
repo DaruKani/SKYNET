@@ -292,6 +292,8 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnNewTurn()
         {
+            RetireSkyStrategicPlan();
+            StrategicSearchTargetPending = 0;
             KagariSummoned = false;
             ShizukuSummoned = false;
             HayateSummoned = false;
@@ -360,6 +362,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            RetireSkyStrategicPlan();
             AmatsuRedirectPending = false;
             ForbiddenCrownTarget = null;
             TripleTacticsTalentTarget = null;
@@ -407,6 +410,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnNewPhase()
         {
+            RetireSkyStrategicPlan();
             if (LinkageOtk != LinkageOtkStage.None &&
                 (Duel.Phase <= DuelPhase.Main1 || Duel.Phase >= DuelPhase.Main2))
                 LinkageOtk = LinkageOtkStage.None;
@@ -423,6 +427,7 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousControler, int previousLocation,
             int currentControler, int currentLocation)
         {
+            RetireSkyStrategicPlan();
             if (previousControler == 1 && currentControler == 1 &&
                 (previousLocation & (int)CardLocation.Deck) != 0 &&
                 (currentLocation & (int)CardLocation.Hand) != 0 &&
@@ -1049,6 +1054,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool ReinforcementOfTheArmyEffect()
         {
+            if (!StrategicAllows(SkyStrategicActionKind.ActivateReinforcement))
+                return false;
             AI.SelectCard(Bot.HasInHandOrHasInMonstersZone(CardId.Raye)
                 ? new[] { CardId.Roze, CardId.Raye }
                 : new[] { CardId.Raye, CardId.Roze });
@@ -1129,7 +1136,8 @@ namespace WindBot.Game.AI.Decks
                 Enemy.GetMonsters().Any(card => card.IsFaceup()) &&
                 Bot.LifePoints > 800 &&
                 Bot.HasInHand(CardId.Linkage) && Bot.HasInExtra(CardId.Zero) &&
-                !HasBetterZeroStarterThanLinkage();
+                !HasBetterZeroStarterThanLinkage() &&
+                StrategicAllows(SkyStrategicActionKind.ActivateUltimateLinkage);
         }
 
         private bool IsLiveUltimateSkyChainNegate()
@@ -1494,6 +1502,8 @@ namespace WindBot.Game.AI.Decks
                 ActivateDescription == -1 && ZeroSearchPending;
             if (searchEffect)
             {
+                StrategicSearchTargetPending = GetStrategicSearchTarget(
+                    SkyStrategicActionKind.ResolveZeroSearch);
                 ZeroSearchPending = false;
                 bool activateSearch = LinkageOtk != LinkageOtkStage.ZeroReady &&
                     !DefaultCheckWhetherCardIsNegated(Card);
@@ -1706,6 +1716,8 @@ namespace WindBot.Game.AI.Decks
             {
                 if (Bot.GetMonsterCount() == 0)
                 {
+                    if (!StrategicAllows(SkyStrategicActionKind.ActivateLinkage))
+                        return false;
                     if (HasBetterZeroStarterThanLinkage())
                         return false;
                     if (Bot.HasInExtra(CardId.Zero))
@@ -1880,6 +1892,9 @@ namespace WindBot.Game.AI.Decks
             if (HornetSetupStage == HornetZeroSetupStage.NeedBridgeLink)
                 return false;
 
+            if (!StrategicAllows(SkyStrategicActionKind.LinkZero))
+                return false;
+
             List<ClientCard> candidates = Bot.GetMonsters()
                 .Where(card => card.IsFaceup() && IsSkyStrikerAce(card) && !card.IsCode(CardId.Zero))
                 .OrderBy(GetLinkMaterialValue)
@@ -1921,7 +1936,9 @@ namespace WindBot.Game.AI.Decks
 
         private bool ZekeSummon()
         {
-            if (ZekeSummoned || !Enemy.GetMonsters().Any(card => card.IsFaceup()))
+            if (ZekeSummoned || HornetSetupStage != HornetZeroSetupStage.None ||
+                StrategicReservesModeledLink() ||
+                !Enemy.GetMonsters().Any(card => card.IsFaceup()))
                 return false;
             List<ClientCard> materials = GetModernLinkTwoMaterials(card => true, true);
             if (materials == null || !materials.Any(IsSkyStrikerAceLink))
@@ -1933,7 +1950,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool AzaleaSummon()
         {
-            if (AzaleaSummoned)
+            if (AzaleaSummoned || HornetSetupStage != HornetZeroSetupStage.None ||
+                StrategicReservesModeledLink())
                 return false;
             List<ClientCard> materials = GetModernLinkTwoMaterials(card =>
                 card.HasAttribute(CardAttribute.Light | CardAttribute.Dark), false);
@@ -1966,7 +1984,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool CamelliaSummon()
         {
-            if (CamelliaSummoned || GetSpellCountInGrave() > 3)
+            if (CamelliaSummoned || HornetSetupStage != HornetZeroSetupStage.None ||
+                StrategicReservesModeledLink() || GetSpellCountInGrave() > 3)
                 return false;
             List<ClientCard> materials = GetModernLinkTwoMaterials(card => card.HasType(CardType.Effect), false);
             if (materials == null)
@@ -1991,6 +2010,9 @@ namespace WindBot.Game.AI.Decks
                 SelectSkyStrikerLinkPlace();
                 return true;
             }
+
+            if (StrategicReservesModeledLink())
+                return false;
 
             ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
                 IsSkyStrikerAceLink(card) && !card.IsCode(CardId.Amatsu), false);
@@ -2133,6 +2155,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (NormalSummoned || Bot.HasInHand(CardId.Raye))
                 return false;
+            if (!StrategicAllows(SkyStrategicActionKind.NormalRoze))
+                return false;
 
             // If an Ace already occupies the Extra Monster Zone, Roze's next
             // Link would be forced into the Main Monster Zone and switch off the
@@ -2184,6 +2208,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.Deck.Count <= 15 || ShouldReserveKagariForLinkageOtk() ||
                 ShouldPrepareWidowLinkageOtk())
+                return false;
+
+            if (!StrategicAllows(SkyStrategicActionKind.ActivatePot))
                 return false;
 
             // Resolve deterministic access before risking ten unknown cards. Pot is
@@ -2330,7 +2357,18 @@ namespace WindBot.Game.AI.Decks
 
         private bool EngageEffect()
         {
-            AI.SelectCard(GetSkyStrikerSearchPriority(false));
+            if (!StrategicAllows(SkyStrategicActionKind.ActivateEngage))
+                return false;
+            int plannedTarget = GetStrategicSearchTarget(
+                SkyStrategicActionKind.ActivateEngage);
+            if (plannedTarget != 0)
+            {
+                List<int> planned = new List<int> { plannedTarget };
+                planned.AddRange(GetSkyStrikerSearchPriority(false));
+                AI.SelectCard(planned.Distinct().ToArray());
+            }
+            else
+                AI.SelectCard(GetSkyStrikerSearchPriority(false));
             return true;
         }
 
@@ -2357,6 +2395,9 @@ namespace WindBot.Game.AI.Decks
 
             if (Bot.GetMonstersExtraZoneCount() == 0)
             {
+                if (HornetSetupStage == HornetZeroSetupStage.None &&
+                    !StrategicAllows(SkyStrategicActionKind.ActivateHornet))
+                    return false;
                 if (ShouldStartHornetZeroSetup())
                     HornetSetupStage = HornetZeroSetupStage.AwaitFirstToken;
                 return true;
@@ -2715,6 +2756,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool RayeSummon()
         {
+            if (!StrategicAllows(SkyStrategicActionKind.NormalRaye))
+                return false;
             if (HasPlannedSkyStrikerSpell() &&
                 (Bot.GetMonstersExtraZoneCount() > 0 ||
                 Bot.GetMonstersInMainZone().Count > 0))
@@ -2847,6 +2890,9 @@ namespace WindBot.Game.AI.Decks
             }
 
             if (ShouldReserveKagariForLinkageOtk())
+                return false;
+
+            if (!StrategicAllows(SkyStrategicActionKind.LinkKagari))
                 return false;
 
             if (!Bot.HasInGraveyard(new[]
@@ -3565,6 +3611,8 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (Duel.Turn == 1 && Bot.HasInMonstersZone(CardId.Zero))
                 return false;
+            if (!StrategicAllows(SkyStrategicActionKind.LinkShizuku))
+                return false;
             ClientCard material = GetSafeSkyStrikerLinkOneMaterial(card =>
                 IsSkyStrikerAce(card) && !card.HasAttribute(CardAttribute.Water), false);
             if (material == null)
@@ -3988,13 +4036,19 @@ namespace WindBot.Game.AI.Decks
         private IList<ClientCard> SelectZeroSearch(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> ordered = new List<ClientCard>();
+            if (StrategicSearchTargetPending != 0)
+            {
+                ordered.AddRange(cards.Where(card =>
+                    card.IsCode(StrategicSearchTargetPending)));
+                StrategicSearchTargetPending = 0;
+            }
             int otherSpellsInGrave = Bot.Graveyard.Count(card =>
                 card.IsSpell() && !card.IsCode(CardId.Engage));
             CardLocation preferredEngageLocation = otherSpellsInGrave >= 3
                 ? CardLocation.Grave : CardLocation.Deck;
 
             ordered.AddRange(cards.Where(card => card.IsCode(CardId.Engage) &&
-                card.Location == preferredEngageLocation));
+                card.Location == preferredEngageLocation && !ordered.Contains(card)));
             ordered.AddRange(cards.Where(card => card.IsCode(CardId.Engage) &&
                 !ordered.Contains(card)));
             ordered.AddRange(OrderCardsById(cards, GetSkyStrikerSearchPriority(true), false)
@@ -4013,11 +4067,16 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShouldUseRayeForZeroSetup()
         {
-            return Card.Location == CardLocation.MonsterZone && Duel.Player == 0 &&
+            bool legalSetup = Card.Location == CardLocation.MonsterZone && Duel.Player == 0 &&
                 Duel.Phase == DuelPhase.Main1 && Duel.CurrentChain.Count == 0 &&
                 LinkageOtk == LinkageOtkStage.None && !ZeroSummoned &&
                 Bot.HasInExtra(CardId.Zero) && Bot.GetMonsterCount() == 1 &&
                 (Duel.Turn == 1 || Enemy.GetMonsterCount() == 0);
+            if (!legalSetup)
+                return false;
+            SkyStrategicAction recommendation = GetStrategicRecommendation();
+            return recommendation == null ||
+                recommendation.Kind == SkyStrategicActionKind.RayeTagZero;
         }
 
         private bool ShouldDeferZeroForBattleDamage(IList<ClientCard> materials)
