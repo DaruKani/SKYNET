@@ -6,6 +6,8 @@ param(
     [Parameter(Mandatory = $true)][string]$DataRoot,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [string]$Deck = (Join-Path $PSScriptRoot '../Decks/AI_Witchcraft2026.ydk'),
+    [ValidateSet('Guide', 'FieldAccess', 'FieldlessLacrima', 'FieldlessMaid')][string]$Scenario = 'Guide',
+    [switch]$AllowVerifiedLethal,
     [string[]]$Opening = @('21522601', '6071005', '58139997', '57916305', '22623509')
 )
 $ErrorActionPreference = 'Stop'
@@ -33,7 +35,8 @@ foreach ($id in $opening) {
 }
 # Keep the possible sixth draw from accidentally supplying Madame Verre to
 # the no-Madame fixture. This is another permutation, not a card-list change.
-if ($main.Remove('32236916')) { $main.Insert(0, '32236916') }
+$sixth = if ($Scenario -like 'Fieldless*') { '14558127' } else { '32236916' }
+if ($main.Remove($sixth)) { $main.Insert(0, $sixth) }
 $fixture = Join-Path $outputPath 'reported-hand.ydk'
 [IO.File]::WriteAllLines($fixture, @('#fixed opening; original card multiset', '#main') +
     $opening + $main.ToArray() + $tail.ToArray(), [Text.UTF8Encoding]::new($false))
@@ -44,10 +47,41 @@ $duels = Join-Path $outputPath 'native'
     --games 2 --timeout 90 --output-dir $duels
 if ($LASTEXITCODE -ne 0) { throw 'Native completion failed; retain logs for diagnosis.' }
 $checks = @()
+$earlyLethal = @()
 for ($number = 1; $number -le 2; $number++) {
     $seat = ($number - 1) % 2
     $log = Join-Path $duels ('duel-{0:D2}/client-{1}.log' -f $number, $seat)
     $text = Get-Content -LiteralPath $log -Raw
+    if ($Scenario -ne 'Guide') {
+        $start = $text.IndexOf('Witchcraft2026 action:', [StringComparison]::Ordinal)
+        $end = if ($start -ge 0) { $text.IndexOf('(Go to End)', $start, [StringComparison]::Ordinal) } else { -1 }
+        if ($end -lt 0 -and $start -ge 0) { $end = $text.IndexOf('Duel finished', $start, [StringComparison]::Ordinal) }
+        $turn = if ($start -ge 0 -and $end -gt $start) { $text.Substring($start, $end - $start) } else { '' }
+        $checks += [ordered]@{ duel = $number; assertion = 'first own main completed'; passed = ($turn.Length -gt 0) }
+        if ($Scenario -eq 'FieldAccess') {
+            $access = $turn.IndexOf('Rainbow Bridge Bifrost from Hand move to SpellZone')
+            $normal = $turn.IndexOf('from Hand move to MonsterZone')
+            $checks += [ordered]@{ duel = $number; assertion = 'Bifrost resolves before normal commitment';
+                passed = ($access -ge 0 -and $normal -gt $access) }
+        } elseif ($Scenario -eq 'FieldlessLacrima') {
+            foreach ($event in @('Verre Magic - Lacrima of Light from Hand move to SpellZone',
+                'Witchcrafter Genni from Deck move to Grave', 'Witchcrafter Genni from Grave move to Removed',
+                'Verre Magic - Lacrima of Light from Grave move to Removed',
+                'Witchcrafter Marka from Deck move to MonsterZone',
+                'Red-Eyes Dark Dragoon from Extra move to MonsterZone')) {
+                $checks += [ordered]@{ duel = $number; assertion = $event; passed = $turn.Contains($event) }
+            }
+        } else {
+            foreach ($event in @('Genni, the Maid of Endymion from Hand move to MonsterZone',
+                'Witchcrafter Pittore from MonsterZone move to Removed',
+                'Verre, the Maid of Endymion from Deck move to MonsterZone',
+                'Witchcrafter Walpurgis from Deck move to Hand')) {
+                $checks += [ordered]@{ duel = $number; assertion = $event; passed = $turn.Contains($event) }
+            }
+        }
+        $checks += [ordered]@{ duel = $number; assertion = 'no material mismatch'; passed = (-not $text.Contains('material mismatch')) }
+        continue
+    }
     # Check actual engine movements, not the planner's forecast or the win marker.
     $events = @(
         "Witchcrafter Genni from Hand move to MonsterZone",
@@ -92,8 +126,25 @@ for ($number = 1; $number -le 2; $number++) {
         passed = ($firstAction -ge 0 -and ($firstEnd -lt 0 -or $cursor -lt $firstEnd)) }
     $checks += [ordered]@{ duel = $number; assertion = 'no material mismatch';
         passed = (-not $text.Contains('material mismatch')) }
+    # Preserve every strict assertion. A separately requested acceptance mode can
+    # recognize a shorter verified win after the guide prefix, never any generic win.
+    $tailNames = @('Witchcrafter Vice-Madame from Extra move to MonsterZone',
+        'Witchcrafter Edel from MonsterZone move to Grave', 'Witchcrafter Distortion from Grave move to Hand',
+        'Red-Eyes Dark Dragoon from Grave move to MonsterZone', 'Witchcrafter Distortion from Hand move to SpellZone')
+    $duelFailures = @($checks | Where-Object { $_.duel -eq $number -and -not $_.passed })
+    $lethalAt = $text.IndexOf('Witchcraft2026 lethal: potential=', [StringComparison]::Ordinal)
+    if ($AllowVerifiedLethal -and $duelFailures.Count -gt 0 -and
+        @($duelFailures | Where-Object { $_.assertion -notin $tailNames }).Count -eq 0 -and
+        $lethalAt -gt $rilliona -and ($firstEnd -lt 0 -or $lethalAt -lt $firstEnd)) {
+        $finish = $text.Substring($lethalAt)
+        if ($finish.Contains('result: Win') -and $finish.Contains('direct attack!!') -and
+            -not $finish.Contains('Witchcraft2026 action:') -and -not $finish.Contains('(Go to Main2)')) {
+            $earlyLethal += $number
+        }
+    }
 }
 $receipt = [ordered]@{
+    scenario = $Scenario
     purpose = 'Native fixed-opening combo regression against passive Default; not Arena or competitive strength'
     sourceDeck = $deckPath
     sourceDeckSha256 = (Get-FileHash -LiteralPath $deckPath -Algorithm SHA256).Hash
@@ -101,8 +152,12 @@ $receipt = [ordered]@{
     multisetUnchanged = $true
     nativeProvenance = (Join-Path $duels 'result.json')
     assertions = $checks
+    verifiedEarlyLethalDuels = $earlyLethal
 }
 $receipt | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $outputPath 'route-checks.json') -Encoding UTF8
 $failed = @($checks | Where-Object { -not $_.passed })
 Write-Output ("Route assertions: {0}/{1} passed." -f ($checks.Count - $failed.Count), $checks.Count)
-if ($failed.Count -gt 0) { throw 'Native route assertions failed; inspect route-checks.json and raw logs.' }
+if ($earlyLethal.Count -gt 0) { Write-Output "Separate shorter-win acceptance: duels $($earlyLethal -join ', '). Strict failures remain in receipt." }
+if (@($failed | Where-Object { $_.duel -notin $earlyLethal }).Count -gt 0) {
+    throw 'Native route assertions failed; inspect route-checks.json and raw logs.'
+}

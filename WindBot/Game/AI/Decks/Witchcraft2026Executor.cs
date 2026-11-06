@@ -79,12 +79,16 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Haine, HaineEffect);
             AddExecutor(ExecutorType.Activate, CardId.MadameVerre, VerreEffect);
             AddExecutor(ExecutorType.Activate, CardId.ViceMadame, ViceResponse);
-            AddExecutor(ExecutorType.Activate, CardId.MaidGenni, MaidResponse);
+            AddExecutor(ExecutorType.Activate, CardId.Lacrima, QuickResourceAction);
+            AddExecutor(ExecutorType.Activate, CardId.MaidGenni, QuickResourceAction);
+            foreach (int id in LowIds)
+                AddExecutor(ExecutorType.Activate, id, QuickResourceAction);
             AddExecutor(ExecutorType.Activate, CardId.Seed, SeedResponse);
+            AddExecutor(ExecutorType.GoToBattlePhase, TryBattleForLethal);
             // All planned effects share one comparison, independent of registration order.
             foreach (int id in KnownIds)
                 AddExecutor(ExecutorType.Activate, id, PlannedAction);
-            foreach (int id in LowIds)
+            foreach (int id in NormalIds)
                 AddExecutor(ExecutorType.Summon, id, PlannedAction);
             AddExecutor(ExecutorType.SpSummon, CardId.DarkMagicianOfDestruction, PlannedAction);
             AddExecutor(ExecutorType.SpellSet, CardId.Distortion, PlannedAction);
@@ -108,6 +112,8 @@ namespace WindBot.Game.AI.Decks
             _accepted = null;
             _awaitingChain = false;
             _chainOffers = null;
+            _viceRemoval = null;
+            _lastTacticalDiagnostic = null;
             Invalidate();
             base.OnNewTurn();
         }
@@ -136,10 +142,11 @@ namespace WindBot.Game.AI.Decks
         public override void OnChaining(int player, ClientCard card)
         {
             if (card != null && card.IsSpell()) _spellActivity = true;
-            if (player == 0 && _accepted != null && card != null &&
+            if (player == 0 && _awaitingChain && _accepted != null && card != null &&
                 card.Id == _accepted.Source)
             {
-                _prompts[card.Id] = _accepted;
+                // GameBehavior appends ChainInfo immediately after this callback.
+                _prompts[Duel.CurrentChain.Count + 1] = _accepted;
                 _awaitingChain = false;
             }
             Invalidate();
@@ -163,6 +170,8 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            _viceRemoval = null;
+            _lastTacticalDiagnostic = null;
             _prompts.Clear();
             _accepted = null;
             _awaitingChain = false;
@@ -198,6 +207,9 @@ namespace WindBot.Game.AI.Decks
             {
                 Normal = !_normalUsed, SpellActivity = _spellActivity,
                 ExtraLock = _extraLock, Maxx = _maxx,
+                OpponentTurn = Duel.Player == 1, EnemyChain = Duel.LastChainPlayer == 1,
+                IncomingAttack = Enemy.GetMonsters().Where(c => c.IsFaceup()).Sum(c => Math.Max(0, c.Attack)),
+                LifePoints = Bot.LifePoints,
                 Used = new HashSet<string>(_used)
             };
             foreach (int id in KnownIds)
@@ -289,7 +301,7 @@ namespace WindBot.Game.AI.Decks
                 _chainOffers = null;
                 Invalidate();
             }
-            if (Duel.Player != 0 || (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2))
+            if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2)
                 return false;
             WState observed = Observe();
             string key = observed.Key() + (AI.SelectingEffectYn || _chainOffers != null ?
@@ -305,25 +317,35 @@ namespace WindBot.Game.AI.Decks
             if (_plan.Steps.Count == 0) return false;
             WAction action = _plan.Steps[0].Action;
             if (ActionType(action) != Type || !Matches(action, Card, ActivateDescription)) return false;
-            _accepted = action;
-            _awaitingChain = Type == ExecutorType.Activate;
-            _prompts[action.Source] = action;
-            _used.Add(action.Usage);
+            AcceptAction(action);
             Logger.DebugWriteLine("Witchcraft2026 action: " + action + " route=" + action.Route +
                 " forecast=" + string.Join(" > ", _plan.Steps.Select(step => step.Action.Kind.ToString())));
             Invalidate();
             return true;
         }
 
+        private void AcceptAction(WAction action)
+        {
+            _accepted = action;
+            _awaitingChain = Type == ExecutorType.Activate;
+            _used.Add(action.Usage);
+            if (action.Kind == WKind.GenniCopy || action.Kind == WKind.GenniLacrima)
+            {
+                _used.Add(CardId.Genni + ":" + WKind.GenniCopy);
+                _used.Add(CardId.Genni + ":" + WKind.GenniLacrima);
+            }
+        }
+
         private bool DistortionEffect()
         {
-            return Card.Location == CardLocation.SpellZone && Duel.LastChainPlayer == 1 &&
+            return Card.Location == CardLocation.SpellZone && ValuableNegate("Distortion", 5) &&
                 Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasSetcode(WitchcrafterSetcode) && c.Level >= 5);
         }
 
         private bool DragoonEffect()
         {
-            if (Duel.LastChainPlayer == 1 && Bot.Hand.Count > 0)
+            if (ActivateDescription == UtilString(CardId.RedEyesDarkDragoon, 1) &&
+                Bot.Hand.Count > 0 && ValuableNegate("Dragoon", 10))
             {
                 AI.SelectCard(DiscardOrder(Bot.Hand));
                 return true;
@@ -333,10 +355,13 @@ namespace WindBot.Game.AI.Decks
 
         private bool HaineEffect()
         {
-            ClientCard target = Util.GetProblematicEnemyCard() ?? Util.GetBestEnemyCard();
+            ClientCard target = RemovalTarget(true);
             if (target == null || !Bot.Hand.Any(c => c.IsSpell())) return false;
-            AI.SelectCard(DiscardOrder(Bot.Hand.Where(c => c.IsSpell())));
-            AI.SelectNextCard(target);
+            if (!TacticalDecision("Haine", RemovalValue(target, true), 6,
+                "discard plus once-per-turn; destruction is not negation", target)) return false;
+            AcceptAction(new WAction { Kind = WKind.Tactical, Source = CardId.Haine,
+                Location = WZone.Board, Description = 0, Target = target.Id,
+                Cost = DiscardOrder(Bot.Hand.Where(c => c.IsSpell()))[0].Id, CostZone = WZone.Hand });
             return true;
         }
 
@@ -356,7 +381,13 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.Player == 0) return false; // Own-turn choices belong to the planner.
             if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 0))
-                return Util.GetBestEnemyCard() != null;
+            {
+                ClientCard target = RemovalTarget(false);
+                if (target == null || !TacticalDecision("Vice-destroy", RemovalValue(target, false), 4,
+                    "coordinate with reverse-chain removals; choose again at resolution", target)) return false;
+                _viceRemoval = target;
+                return true;
+            }
             if (ActivateDescription == Util.GetStringId(CardId.ViceMadame, 1))
             {
                 AI.SelectCard(CardId.Seed, CardId.Schmietta);
@@ -370,17 +401,14 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        private bool MaidResponse()
-        {
-            if (Duel.Player != 1 || Card.Location != CardLocation.MonsterZone) return false;
-            AI.SelectCard(CardId.Seed, CardId.Haine, CardId.MadameVerre);
-            return true;
-        }
-
         private bool SeedResponse()
         {
-            if (Card.Location != CardLocation.MonsterZone || Util.GetBestEnemyCard() == null) return false;
-            AI.SelectCard(Util.GetBestEnemyCard());
+            ClientCard target = Enemy.GetMonsters().Concat(Enemy.GetSpells()).Where(c => c.IsFaceup() &&
+                !c.IsShouldNotBeTarget() && !c.IsShouldNotBeMonsterTarget() && !ChainForecast().Removed.Contains(c))
+                .OrderByDescending(c => c.IsFloodgate()).ThenByDescending(c => c.Attack).FirstOrDefault();
+            if (Card.Location != CardLocation.MonsterZone || target == null) return false;
+            AcceptAction(new WAction { Kind = WKind.Tactical, Source = CardId.Seed,
+                Location = WZone.Board, Description = 0, Target = target.Id });
             return true;
         }
 
@@ -403,14 +431,14 @@ namespace WindBot.Game.AI.Decks
             if (solving != null)
             {
                 WAction action;
-                return solving.ActivatePlayer == 0 && _prompts.TryGetValue(solving.ActivateId, out action)
+                return solving.ActivatePlayer == 0 && _prompts.TryGetValue(Duel.SolvingChainIndex, out action)
                     ? action : null;
             }
             ClientCard current = Duel.GetCurrentChainCard();
             if (current != null)
             {
                 WAction action;
-                return current.Controller == 0 && _prompts.TryGetValue(current.Id, out action) ? action : null;
+                return current.Controller == 0 && _prompts.TryGetValue(Duel.CurrentChain.Count, out action) ? action : null;
             }
             return _accepted; // Summon procedure material selection has no chain.
         }
@@ -426,9 +454,16 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max,
             int hint, bool cancelable)
         {
+            ChainInfo resolving = Duel.GetCurrentSolvingChainInfo();
+            if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
+                resolving.ActivateId == CardId.ViceMadame)
+                return cards.OrderByDescending(c => RemovalValue(c, false))
+                    .ThenByDescending(c => c.Controller == 1).Take(Math.Min(max, Math.Max(1, min))).ToList();
             WAction action = PromptAction();
             if (action != null)
             {
+                if (action.Kind == WKind.Tactical && (hint == HintMsg.Destroy || hint == HintMsg.ReturnToHand))
+                    return Pick(cards, new[] { action.Target }, min, max);
                 if ((hint == HintMsg.Discard || hint == HintMsg.ToGrave) && action.Cost != 0)
                 {
                     ClientCard cost = cards.FirstOrDefault(c => c.Id == action.Cost && Zone(c.Location) == action.CostZone);
@@ -437,10 +472,14 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.SpSummon && action.Kind == WKind.RillieRecruit)
                     return Pick(cards, action.Recruits, min, max, action.Recruits.Length);
                 if (hint == HintMsg.AddToHand || hint == HintMsg.SpSummon ||
-                    (hint == HintMsg.ToGrave && action.Kind == WKind.Send))
+                    (hint == HintMsg.ToGrave && (action.Kind == WKind.Send || action.Kind == WKind.LacrimaSend)))
                     if (action.Target != 0) return Pick(cards, new[] { action.Target }, min, max);
                 if (hint == HintMsg.Remove && action.Kind == WKind.GenniCopy)
                     return Pick(cards, new[] { CardId.Creation, CardId.Genni }, min, max);
+                if (hint == HintMsg.Remove && action.Kind == WKind.GenniLacrima)
+                    return Pick(cards, new[] { CardId.Lacrima }, min, max);
+                if (hint == HintMsg.Remove && action.Kind == WKind.MaidExchange)
+                    return Pick(cards, action.Materials, min, max);
                 if (hint == HintMsg.Remove && action.Kind == WKind.DarkSummon)
                     return Pick(cards, action.Materials, min, max);
                 if (hint == HintMsg.Remove && action.Source == CardId.RainbowBridgeBifrost)
@@ -479,6 +518,12 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<int> options)
         {
             WAction action = PromptAction();
+            if (action != null && (action.Kind == WKind.LacrimaSend ||
+                action.Kind == WKind.LacrimaRecruit || action.Kind == WKind.GenniLacrima))
+            {
+                int option = options.IndexOf(UtilString(CardId.Lacrima, action.Kind == WKind.LacrimaSend ? 1 : 2));
+                if (option >= 0) return option;
+            }
             if (action != null && action.Kind == WKind.Fusion)
             {
                 foreach (int id in new[] { CardId.Pupils, CardId.Celebration })

@@ -44,7 +44,11 @@ internal static class Witchcraft2026PlannerChecks
     private static IList Steps(object plan) { return (IList)Get(plan, "Steps"); }
     private static Func<T, bool> OnlyNormal<T>() { return a => Kind(a) == "Normal"; }
     private static object Property(object o, string n) { return o.GetType().GetProperty(n, F).GetValue(o, null); }
-    private static void Property(object o, string n, object v) { o.GetType().GetProperty(n, F).SetValue(o, v, null); }
+    private static void Property(object o, string n, object v)
+    {
+        PropertyInfo p = o.GetType().GetProperty(n, F);
+        if (p != null) p.SetValue(o, v, null); else Set(o, n, v);
+    }
 
     private static void CallbackChecks(Type executor, string database)
     {
@@ -85,6 +89,25 @@ internal static class Witchcraft2026PlannerChecks
         Check("actual Rilliona callback selects three distinct offered bodies",
             picked.Count == 3 && picked.Cast<object>().Select(c => (int)Property(c, "Id"))
                 .OrderBy(i => i).SequenceEqual(new[] { 84523092, 58139997, 7656689 }.OrderBy(i => i)));
+        object exchangeState = Empty(); Add(exchangeState, 7656689, "Board");
+        Add(exchangeState, 95245544, "Board"); Add(exchangeState, 22623509, "Deck");
+        object exchange = Actions(exchangeState).Cast<object>().First(a => Kind(a) == "MaidExchange" &&
+            ((int[])Get(a, "Materials"))[0] == 95245544);
+        Set(ex, "_accepted", exchange);
+        candidates = list(); candidates.Add(card(84523092, "MonsterZone"));
+        candidates.Add(card(7656689, "MonsterZone")); candidates.Add(card(95245544, "MonsterZone"));
+        int removeHint = (int)asm.GetType("WindBot.Game.AI.HintMsg").GetField("Remove", F).GetValue(null);
+        picked = (IList)executor.GetMethod("OnSelectCard").Invoke(ex,
+            new object[] { candidates, 1, 1, removeHint, false });
+        Check("Maid removal prompt obeys planned expendable body, not Haine fallback",
+            picked.Count == 1 && (int)Property(picked[0], "Id") == 95245544);
+        object copyState = Empty(); Add(copyState, 64756282, "Grave"); Add(copyState, 73664385, "Grave");
+        Add(copyState, 6071005, "Deck");
+        object copy = Actions(copyState).Cast<object>().First(a => Kind(a) == "GenniLacrima");
+        Set(ex, "_accepted", copy);
+        int option = (int)executor.GetMethod("OnSelectOption").Invoke(ex,
+            new object[] { new List<int> { 73664385 * 16 + 1, 73664385 * 16 + 2 } });
+        Check("copied Lacrima chooses recruit rather than send mode", option == 1);
         Property(duel, "LastSummonPlayer", 1);
         executor.GetMethod("OnSummoning").Invoke(ex, null);
         Check("opponent summon does not spend own normal", !(bool)Get(ex, "_normalUsed"));
@@ -101,6 +124,84 @@ internal static class Witchcraft2026PlannerChecks
         int place = (int)executor.GetMethod("OnSelectPlace").Invoke(ex,
             new object[] { 69964858, 0, Enum.Parse(location, "MonsterZone"), 0x60 });
         Check("Pupils placement returns offered EMZ mask", place == 0x20);
+        // Actual ChainInfo snapshots and target object identities; no hidden identities.
+        Type chainType = asm.GetType("WindBot.Game.ChainInfo");
+        IList links = (IList)Property(duel, "CurrentChainInfo");
+        Func<object, int, int, object> link = (c, player, desc) =>
+            Activator.CreateInstance(chainType, new[] { c, (object)player, desc });
+        object enemy = card(98338152, "SpellZone"); Property(enemy, "Controller", 1);
+        Property(enemy, "Type", 65538);
+        object haine = card(84523092, "MonsterZone"); Property(haine, "Type", 33);
+        object hlink = link(haine, 0, 84523092 * 16);
+        ((IList)Property(hlink, "Targets")).Add(enemy); links.Add(hlink);
+        Func<object> forecast = () => executor.GetMethod("ChainForecast", F).Invoke(ex, null);
+        Func<object, string, object, bool> contains = (o, field, v) =>
+            (bool)Get(o, field).GetType().GetMethod("Contains").Invoke(Get(o, field), new[] { v });
+        Check("pending Haine removal is not another useful Vice target",
+            contains(forecast(), "Removed", enemy) &&
+            (double)executor.GetMethod("RemovalValue", F).Invoke(ex, new[] { enemy, (object)false }) == 0);
+        object dragoon = card(37818794, "MonsterZone");
+        links.Add(link(dragoon, 1, 37818794 * 16 + 1));
+        Check("duplicate target can be useful when prior removal is negated",
+            !contains(forecast(), "Removed", enemy) &&
+            (double)executor.GetMethod("RemovalValue", F).Invoke(ex, new[] { enemy, (object)false }) > 0);
+        links.Clear(); links.Add(hlink); Property(enemy, "Location", Enum.Parse(location, "Grave"));
+        Check("target that left field invalidates pending destruction", !contains(forecast(), "Removed", enemy));
+        Property(enemy, "Location", Enum.Parse(location, "SpellZone"));
+        links.Clear();
+        object anchor = link(enemy, 1, -1); ((IList)Property(anchor, "Targets")).Add(haine);
+        links.Add(anchor); links.Add(hlink);
+        Check("destroying Anchor does not negate its monster disable", contains(forecast(), "Disabled", haine));
+        Check("destroying activated quick-play has zero marginal value",
+            (double)executor.GetMethod("RemovalValue", F).Invoke(ex, new[] { enemy, (object)true }) == 0);
+        links.Clear();
+        object fields = Property(duel, "Fields");
+        object bot = ((Array)fields).GetValue(0), opponent = ((Array)fields).GetValue(1);
+        Array monsters = (Array)Property(bot, "MonsterZone");
+        monsters.SetValue(dragoon, 0); Property(dragoon, "Attack", 3000); Property(dragoon, "Type", 97);
+        object vice = card(9603252, "MonsterZone"); Property(vice, "Type", 97); monsters.SetValue(vice, 1);
+        object fieldCard = card(32353566, "SpellZone");
+        links.Add(link(fieldCard, 0, 32353566 * 16));
+        object ash = card(14558127, "Hand"); links.Add(link(ash, 1, -1));
+        Property(duel, "LastChainPlayer", 1);
+        Check("optional search on established board does not spend Dragoon",
+            !(bool)executor.GetMethod("ValuableNegate", F).Invoke(ex, new object[] { "Dragoon", 10.0 }));
+        links.Clear(); object zero = card(76072561, "Grave");
+        links.Add(link(zero, 1, 76072561 * 16 + 1));
+        Check("known Zero recruitment plus removal warrants reserved negate",
+            (bool)executor.GetMethod("ValuableNegate", F).Invoke(ex, new object[] { "Dragoon", 10.0 }));
+        links.Clear(); Property(duel, "Player", 0);
+        Property(duel, "Phase", Enum.Parse(asm.GetType("YGOSharp.OCGWrapper.Enums.DuelPhase"), "Main1"));
+        Property(Property(duel, "MainPhase"), "CanBattlePhase", true);
+        Property(opponent, "LifePoints", 1900);
+        Check("empty-field lethal enters Battle instead of another combo",
+            (bool)executor.GetMethod("TryBattleForLethal", F).Invoke(ex, null));
+        Property(dragoon, "Attacked", true);
+        Check("already attacked monster cannot supply lethal",
+            !(bool)executor.GetMethod("TryBattleForLethal", F).Invoke(ex, null));
+        Property(dragoon, "Attacked", false); Property(opponent, "LifePoints", 8000);
+        Check("nonlethal board keeps planning", !(bool)executor.GetMethod("TryBattleForLethal", F).Invoke(ex, null));
+        Property(opponent, "LifePoints", 1900);
+        ((Array)Property(opponent, "MonsterZone")).SetValue(card(76072561, "MonsterZone"), 0);
+        Check("known opposing blocker invalidates empty-field forecast",
+            !(bool)executor.GetMethod("TryBattleForLethal", F).Invoke(ex, null));
+        links.Clear(); IList chainCards = (IList)Property(duel, "CurrentChain"); chainCards.Clear();
+        object firstPrompt = Activator.CreateInstance(A, true), secondPrompt = Activator.CreateInstance(A, true);
+        Set(firstPrompt, "Source", 9603252); Set(firstPrompt, "Target", 57916305);
+        Set(secondPrompt, "Source", 9603252); Set(secondPrompt, "Target", 6958567);
+        foreach (object prompt in new[] { firstPrompt, secondPrompt })
+        {
+            Set(ex, "_accepted", prompt); Set(ex, "_awaitingChain", true);
+            executor.GetMethod("OnChaining").Invoke(ex, new object[] { 0, vice });
+            chainCards.Add(vice); links.Add(link(vice, 0, 9603252 * 16 + 2));
+        }
+        Property(duel, "SolvingChainIndex", 1);
+        bool firstBound = ReferenceEquals(executor.GetMethod("PromptAction", F).Invoke(ex, null), firstPrompt);
+        Property(duel, "SolvingChainIndex", 2);
+        Check("same-card chain links retain separate prompt ownership", firstBound &&
+            ReferenceEquals(executor.GetMethod("PromptAction", F).Invoke(ex, null), secondPrompt));
+        executor.GetMethod("OnChainEnd").Invoke(ex, null);
+        Check("chain end retires all link-owned prompts", ((IDictionary)Get(ex, "_prompts")).Count == 0);
     }
     private static void Check(string name, bool passed, object detail = null)
     {
@@ -152,6 +253,38 @@ internal static class Witchcraft2026PlannerChecks
         {
             Directory.SetCurrentDirectory(Path.GetDirectoryName(assembly));
             CallbackChecks(executor, args[2]);
+            object reported = Opening(59106048, 95245544, 58139997, 73664385, 32236916);
+            object openingPlan = Plan(reported);
+            Check("150713 resolve field access before committing normal",
+                Steps(openingPlan).Count > 0 && Kind(Get(Steps(openingPlan)[0], "Action")) != "Normal",
+                Steps(openingPlan).Cast<object>().Select(s => Get(s, "Action").ToString()).ToArray());
+            Move(reported, 32236916, "Hand", "Grave");
+            ((HashSet<string>)Get(reported, "Used")).Add("32236916:FieldAccess");
+            object noField = Run(reported, "failed Bifrost without field");
+            Check("failed search has a productive continuation", Count(noField, 59106048, "Hand") < 1 ||
+                Count(noField, 95245544, "Hand") < 1 || Count(noField, 32353566, "Backrow") > 0);
+            object stuck = Opening(59106048, 58139997, 7656689);
+            Move(stuck, 21522601, "Deck", "Board");
+            Check("reported stranded Maid Genni has hand summon", Actions(stuck).Cast<object>().Any(a =>
+                Kind(a) == "MaidSummon" && (int)Get(a, "Source") == 7656689));
+            object recovered = Run(stuck, "field destroyed with Maid Genni in hand");
+            Check("fieldless Maid line restores access or interaction",
+                Count(recovered, 32353566, "Backrow") > 0 || Count(recovered, 9603252, "Board") > 0);
+            object preserve = Empty(); Add(preserve, 7656689, "Board"); Add(preserve, 84523092, "Board");
+            Add(preserve, 57916305, "Hand"); Add(preserve, 64756282, "Deck"); Set(preserve, "OpponentTurn", true);
+            Check("do not banish live Haine merely for low recruit", Steps(Plan(preserve)).Count == 0);
+            object enemyTurn = Empty(); Add(enemyTurn, 64756282, "Board"); Add(enemyTurn, 32353566, "Backrow");
+            Add(enemyTurn, 57916305, "Deck"); Add(enemyTurn, 21522601, "Deck"); Set(enemyTurn, "OpponentTurn", true);
+            Check("opponent turn cannot invent Walpurgis deck-discard cost",
+                !Actions(enemyTurn).Cast<object>().Any(a => Kind(a) == "Recruit"));
+            object pressure = Empty(); Add(pressure, 64756282, "Board"); Add(pressure, 73664385, "Hand");
+            Add(pressure, 21522601, "Deck"); Set(pressure, "Maxx", true); Set(pressure, "Normal", false);
+            Check("Maxx C optional low-value summon is passed", Steps(Plan(pressure)).Count == 0);
+            Set(pressure, "IncomingAttack", 8000);
+            // A weak existing body is not sufficient: test a live defense upgrade rather than body count.
+            Set(pressure, "LifePoints", 1000);
+            Check("Maxx C allows one defensive summon under public lethal pressure",
+                Steps(Plan(pressure)).Count > 0 && Kind(Get(Steps(Plan(pressure))[0], "Action")) == "Recruit");
             object start = Opening(32353566, 21522601, 6071005, 57916305, 22623509);
             object full = Run(start, "guide opening");
             Check("guide endpoint has Pupils, Rilliona, Vice, revived Dragoon and Distortion",

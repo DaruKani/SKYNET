@@ -202,10 +202,58 @@ requests an available Extra Monster Zone. Resolution uses chain activation
 snapshots, and opponent summons cannot spend the bot's normal summon. Logs
 record alternative endpoint scores, selected costs/materials and the forecast.
 
-Limits: this is not comprehensive card coverage. It does not implement a generic
-Link/Synchro continuation, the complete Lacrima/copy-spell engine, every floodgate,
-unknown opposing responses, or side-deck strategy. Tactical interaction remains
-separate from own-turn route search. More matchups still require native testing.
+The decision-quality follow-up adds fieldless Lacrima -> Genni copying Lacrima ->
+Marka/Dragoon or Maid Verre access, Maid Genni's hand summon and explicit
+banish/recruit choices, additional low-monster recruits, and Terracottan's monster
+recovery. A missing one-of in the guide no longer terminates the ladder. Independent
+field access precedes a normal summon when those two planned actions commute;
+both reordered actions are checked again. This is not a blanket ban on normal
+summoning: fieldless Lacrima can require a Witchcrafter on board first.
+
+`Witchcraft2026Tactics.cs` separates immediate responses from long combo forecasts.
+Its bounded reverse-chain prediction covers the verified removal/negation links,
+already-paid costs in the observed state, disappearing targets and Widow Anchor's
+surviving-target requirement. Destroying an activated quick-play spell is not
+treated as negating it. Vice chooses again from actual candidates at resolution;
+duplicate removal can still be useful if the earlier removal is negated. Unknown
+effects are logged as unknown, not assigned invented resolution semantics.
+Dragoon compares threat value with discard and reserved-interruption cost; optional
+searches on an established board can be allowed to lose to Ash. Known face-up Zero
+adds a reserve opportunity cost; its activated two-recruit/removal effect receives
+higher priority. This does not predict what an opponent would have done in an
+alternate history. Quick low-monster/Maid/Lacrima responses compare resource-valid
+one-step outcomes against Pass, and cannot use Walpurgis's Deck cost on the opponent's
+turn or count next-own-End-Phase spell returns as immediately available fuel.
+
+Maxx "C" still charges each forecast summon, but an observed lethal-damage threat
+can justify a defensive upgrade; the survival bonus is awarded once to a functional
+boss/durable stop, not to each extra body. These are documented heuristics, not
+calibrated win probabilities or a complete opponent battle simulation. The search
+depth, beam, node and deadline budgets are unchanged.
+
+For an empty opposing field, Main Phase lethal uses current attack-position,
+unspent attackers and a legal Battle Phase transition. It does not assume removal
+of blockers or safety through unknown backrow. Battle decisions recheck the engine's
+actual attackable/direct-attack offers and take the largest direct attack first
+when that produces the shortest lethal sequence. Hidden hand responses remain
+unknown. Blocked-board lethal search, lingering attack restrictions not represented
+in Main Phase observations, generic Link/Synchro continuations, all copied spells,
+every floodgate and side decking remain unimplemented. Chain tests below are
+synthetic callback/state tests, not native replays of the two human duels.
+
+Confirmed reference-log causes: `150713` had no modeled Lacrima or Maid Genni hand
+line and only three recruit targets; its fixed Maxx penalty could suppress the
+remaining branch. `153253` used a one-selection Maid handler for a two-selection
+effect, permitting Haine to be banished; Haine spent a spell on an already resolving
+Anchor and Vice then removed that same spell before Haine resolved. Vice's removal
+is non-targeting, despite the movement log's generic selection wording. Dragoon's
+old handler accepted every enemy chain; there was no lethal gate before strategic
+fusion/search. The new diagnostics record Pass, marginal gain/cost, chain snapshots,
+reverse-resolution assumptions, selected resources and bounded candidate summaries.
+Accepted prompt choices are bound to the actual chain-link index, not merely the
+card name; two effects from the same Vice in one chain cannot overwrite each
+other's resolution context. Haine and Seed use callback-owned selections instead
+of leaving a target queue behind a generic selection override.
 
 Run focused model/callback fixtures after a Debug build:
 
@@ -243,13 +291,44 @@ Madame/Marka/Edel/Creation/Maid Verre opening. Exercise the no-Madame branch wit
 The opponent is passive Default; wins are not competitive evidence. Launch slot
 is not play order, and the native core RNG seed is unavailable.
 
-Validation on 2026-11-06 includes 23 model/callback checks, Debug/Release builds,
+Initial rewrite validation on 2026-11-06 included 23 model/callback checks, Debug/Release builds,
 44/44 native route assertions per opening (four duels total), and a separate
 two-duel Ash-interruption probe. The preserved baseline passes only 14/44 route
 assertions with the reported opening despite completing both duels. Winning the
 passive fixture does not prove that a combo was played correctly.
 Receipts are recorded in ignored workspace `Artifacts/`.
-The two changed executor/model files also compile independently with C# 6.
+The decision-quality follow-up passes 48 focused checks, Debug/Release builds,
+the launcher's `--build-only` path, and independent C# 6 compilation of all three
+Witchcraft source files. Final receipts are `Artifacts/witchcraft-decision-accepted-*`.
+Six passive native duels pass FieldAccess 6/6, FieldlessLacrima 16/16 and
+FieldlessMaid 12/12 assertions. The preserved pre-change runtime passes only
+4/16 Lacrima and 4/12 Maid assertions (completion/no-mismatch only), despite wins.
+The guide pair records 39/44 strict milestones: one duel completes all 22; the
+other completes the prefix then takes a verified lethal before the last five
+setup actions. Those five strict failures remain visible in the receipt.
+`-AllowVerifiedLethal` separately accepts only this shorter-win case after the
+complete guide prefix, with actual attacks and a win before any further Main Phase
+or strategic action. Without that explicit switch the strict checker still fails.
+Earlier failed receipts are retained; none are replaced by the final runs.
+Two additional native Ash-interruption duels complete with a frozen 40-Ash test
+opponent (no-deck-check fixture only): Bifrost is negated and Lacrima responds to
+the exposed Ash activation before the bot continues. This tests a real response
+window, not the original mixed Maxx-C/field-destruction duel or matchup strength.
+
+To reproduce, use the native command above with a fresh output directory and:
+
+- `-Scenario FieldAccess -Opening @('59106048','95245544','58139997','73664385','32236916')`
+- `-Scenario FieldlessLacrima -Opening @('59106048','95245544','58139997','73664385','14558127')`
+- `-Scenario FieldlessMaid -Opening @('59106048','95245544','58139997','7656689','14558127')`
+- `-AllowVerifiedLethal` for the default guide/shorter-win acceptance comparison.
+
+Priorities still outstanding, in impact order: broader native hostile-chain and
+Maxx-C recovery fixtures; a richer public-threat/usable-interruption evaluator;
+blocked-board lethal and more card-effect coverage; frozen Arena matchup comparison.
+No new Arena strength result or universal chain intelligence is claimed. Neither
+successful passive duels nor focused assertions establish competitive strength.
+
+All three changed executor/model/tactics files compile independently with C# 6.
 A whole-solution C# 6 override still fails in pre-existing AIUtil/Albaz/Ryzeal
 syntax; ordinary Debug/Release builds use the project's existing language setup.
 Native hashes are recorded in each `native/result.json` (or `result.json`
