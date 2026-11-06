@@ -367,6 +367,30 @@ and turn observations retire the cached recommendation and force a fresh plan.
 Search is synchronous and capped at 35 ms, depth 8, beam width 72, 2,500 expanded
 states and 6,000 generated candidates.
 
+The 2026-11-06 planning update filters the first step against the current server
+offers and includes that offer mask in cache identity. An unavailable search or
+summon therefore triggers another route instead of reserving an impossible first
+action. Intermediate search states can remain in the frontier, but a selected
+endpoint cannot still have a pending Zero search or leave Main Zones occupied
+while modeled Sky Striker Spells remain. When an evaluated action has no better
+completed route, the executor preserves the planner's hold decision rather than
+automatically accepting that action through fallback.
+
+Endpoint scoring adds discounted next-turn starter/recovery access and prioritizes
+an already prepared, empty-opponent-field Linkage battle line when its modeled
+damage reaches the observed LP. That projection requires an available attacker,
+Kagari, Zero, Raye and Roze access, unused summon resources and empty Main Zones.
+It does not simulate opposing responses or guarantee lethal. Follow-up value is
+an estimate from retained resources, not an opponent-turn simulation. Debug route
+logs now show the expected final Link, Main Zone count, follow-up value and battle
+damage; explicit hold decisions are logged too.
+
+Resource transitions no longer count vanished Tokens as GY monsters or spend the
+same hand fuel twice. Zero's model and actual selection callback both retain the
+three-other-Spell threshold when choosing Deck versus GY Engage. Bridge availability
+also respects this turn's recorded summons; tactical/card-specific handlers still
+own emergency responses and all actual resolution prompts.
+
 Triple Tactics Talent, Ultimate Sky and Kaina are handled explicitly even when a
 future list chooses to include Talent. Talent prefers taking a high-value monster
 only when it creates lethal or removes a major threat, otherwise it draws two
@@ -582,7 +606,8 @@ output directory:
 ```powershell
 .\WindBot\Tools\Invoke-SkyStrikerPlannerChecks.ps1 `
   -BotExecutable WindBot/bin/Debug/WindBot.exe `
-  -OutputDirectory Artifacts/skystriker-planner-checks/my-change
+  -OutputDirectory Artifacts/skystriker-planner-checks/my-change `
+  -CardDatabase D:/Games/MDPro4/Data/locales/en-US/cards.cdb
 ```
 
 They verify the modeled Engage starter, Raye-to-Zero, Hornet/Kagari/Kaina bridge,
@@ -592,8 +617,13 @@ Main Zone clearance routes, plus Ultimate Sky's chain threat threshold and
 latched option choice. They also lock Zero's target/pre-emptive response policy
 and Lemnisgate's return arithmetic, field/GY net resource thresholds, Shark
 Cannon's revive-versus-banish branch, mirror Raye Widow hold, and Ash preservation
-against an already-covered chain link. They do not execute Lua
-or prove engine legality.
+against an already-covered chain link. The expanded checks cover unavailable
+offers, stranded Main Zones, fuel conservation, Token disposal, prepared battle
+resources and next-turn access. The optional explicit `-CardDatabase` also runs
+the real Zero selection callback on synthetic offered cards, including successive
+Deck/GY preference changes, and the Hornet handler's hold/replan behavior when
+observed Extra Deck resources change. Without it those callback checks are skipped. These
+checks do not execute Lua or prove engine legality or competitive improvement.
 
 This remains a hybrid executor: bounded search covers the modeled setup/resource
 routes, tracked stages own script-specific sequences, and competing interaction

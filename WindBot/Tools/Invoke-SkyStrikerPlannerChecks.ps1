@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$BotExecutable,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [string]$CardDatabase,
     [string]$Compiler = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 )
 
@@ -22,7 +23,16 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Sky Striker planner harness compilation failed.'
 }
 $report = Join-Path $outputPath 'report.json'
-& $harness $botPath $report
+if ($CardDatabase) {
+    $databasePath = (Resolve-Path -LiteralPath $CardDatabase).Path
+    $nativeDirectory = Join-Path $outputPath 'x64'
+    New-Item -ItemType Directory -Path $nativeDirectory | Out-Null
+    Copy-Item -LiteralPath (Join-Path (Split-Path $botPath) 'x64/sqlite3.dll') `
+        -Destination (Join-Path $nativeDirectory 'sqlite3.dll')
+    & $harness $botPath $report $databasePath
+} else {
+    & $harness $botPath $report
+}
 if ($LASTEXITCODE -ne 0) {
     throw "Sky Striker planner checks failed (exit $LASTEXITCODE); inspect $outputPath"
 }

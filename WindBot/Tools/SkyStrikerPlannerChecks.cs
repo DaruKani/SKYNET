@@ -63,6 +63,207 @@ internal static class SkyStrikerPlannerChecks
             new[] { state, (object)CancellationToken.None });
     }
 
+    private static void SetExtra(object state, string kind)
+    {
+        Set(state, "ExtraKind", Enum.Parse(StateType.GetField("ExtraKind", Flags).FieldType, kind));
+    }
+
+    private static int ActionMask(string kind)
+    {
+        Type actionType = ExecutorType.GetNestedType("SkyStrategicActionKind", Flags);
+        return 1 << Convert.ToInt32(Enum.Parse(actionType, kind));
+    }
+
+    private static void Record(string name, bool passed)
+    {
+        Results.Add(new Dictionary<string, object> { { "name", name }, { "passed", passed } });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name);
+    }
+
+    private static object Transition(object state, string kind)
+    {
+        var moves = (IEnumerable)PlannerType.GetMethod("Expand", Flags).Invoke(null,
+            new[] { state, (object)CancellationToken.None });
+        object move = moves.Cast<object>().First(item =>
+            Get(Get(item, "Action"), "Kind").ToString() == kind);
+        return Get(move, "After");
+    }
+
+    private static void CheckPlanningHorizon(Assembly assembly)
+    {
+        object blockedEngage = BaseState();
+        Set(blockedEngage, "HandEngage", true);
+        Set(blockedEngage, "HandRaye", true);
+        Set(blockedEngage, "RootActionMask", ActionMask("NormalRaye"));
+        Check("Unavailable Engage replans through the offered normal summon",
+            blockedEngage, "NormalRaye", 0, "RayeTagZero", "ResolveZeroSearch");
+        Set(blockedEngage, "RootActionMask", 0);
+        Check("No offered modeled action cannot reserve a fictional route",
+            blockedEngage, "None", 0);
+
+        // Exercise the live offer adapter using real protocol-model classes.
+        Type mainType = assembly.GetType("WindBot.Game.MainPhase", true);
+        Type cardType = assembly.GetType("WindBot.Game.ClientCard", true);
+        object main = Activator.CreateInstance(mainType);
+        object raye = System.Runtime.Serialization.FormatterServices.GetUninitializedObject(cardType);
+        cardType.GetProperty("Id", Flags).SetValue(raye, 26077387, null);
+        ((IList)mainType.GetProperty("SummonableCards").GetValue(main, null)).Add(raye);
+        int offered = (int)ExecutorType.GetMethod("BuildStrategicRootOffers", Flags)
+            .Invoke(null, new object[] { main, 0 });
+        Record("Live offer adapter exposes Raye without inventing Engage or Extra summons",
+            offered == ActionMask("NormalRaye"));
+
+        object stranded = BaseState();
+        SetExtra(stranded, "Kagari");
+        Set(stranded, "HandHornet", true);
+        Set(stranded, "HandWidow", true);
+        Set(stranded, "ExtraBridge", false);
+        Set(stranded, "RootActionMask", ActionMask("ActivateHornet"));
+        Check("Do not spend Hornet into an unclearable Main Zone",
+            stranded, "None", 0);
+        object holdPlan = Plan(stranded);
+        Record("Holding retains a rejected-action mask for executor dispatch",
+            ((int)Get(holdPlan, "ConsideredRootActions") & ActionMask("ActivateHornet")) != 0);
+
+        object zero = BaseState();
+        SetExtra(zero, "Zero");
+        Set(zero, "PendingZeroSearch", true);
+        Set(zero, "GraveEngage", true);
+        Set(zero, "GraveEngageCopies", 1);
+        Set(zero, "GraveSpells", 3);
+        object searched = Transition(zero, "ResolveZeroSearch");
+        Record("Zero takes Deck Engage to retain three grave spells",
+            (int)Get(searched, "GraveSpells") == 3 && (bool)Get(searched, "GraveEngage") &&
+            !(bool)Get(searched, "DeckEngage"));
+        Set(zero, "GraveSpells", 4);
+        searched = Transition(zero, "ResolveZeroSearch");
+        Record("Zero recovers grave Engage once three other spells remain",
+            (int)Get(searched, "GraveSpells") == 3 && !(bool)Get(searched, "GraveEngage") &&
+            (bool)Get(searched, "DeckEngage"));
+        Set(zero, "GraveEngageCopies", 2);
+        searched = Transition(zero, "ResolveZeroSearch");
+        Record("Multiple grave Engages do not masquerade as other spells",
+            (int)Get(searched, "GraveSpells") == 4 && !(bool)Get(searched, "DeckEngage"));
+
+        object token = BaseState();
+        Set(token, "MainToken", 1);
+        object linked = Transition(token, "LinkKagari");
+        Record("Token Link material cannot supply a grave monster",
+            (int)Get(linked, "GraveAceMonsters") == 0);
+
+        object fuel = BaseState();
+        Set(fuel, "HandHornet", true);
+        Set(fuel, "HandLinkageFuelId", 52340444);
+        object activated = Transition(fuel, "ActivateHornet");
+        Record("Spent Hornet cannot also be set as the same Linkage fuel",
+            (int)Get(activated, "HandLinkageFuelId") == 0);
+        Set(fuel, "HandLinkage", true);
+        object set = Transition(fuel, "SetLinkageFuel");
+        Record("Hornet committed as fuel is no longer available as a token starter",
+            !(bool)Get(set, "HandHornet") && (bool)Get(set, "FieldFuel"));
+
+        object battle = BaseState();
+        Set(battle, "Turn1", false);
+        SetExtra(battle, "Bridge");
+        Set(battle, "BattleStarterAttack", 1500);
+        Set(battle, "HandEngage", true);
+        Set(battle, "HandWidow", true);
+        Set(battle, "LemnisgateLive", true);
+        Set(battle, "GraveSpells", 3);
+        Set(battle, "GraveAceMonsters", 2);
+        Check("Prepared 8000 line searches Linkage before more setup", battle,
+            "ActivateEngage", 9726840);
+        Set(battle, "HandLinkage", true);
+        int damage = (int)PlannerType.GetMethod("GetPreparedBattleDamage", Flags)
+            .Invoke(null, new[] { battle });
+        Set(battle, "DeckRoze", false);
+        int missingRoze = (int)PlannerType.GetMethod("GetPreparedBattleDamage", Flags)
+            .Invoke(null, new[] { battle });
+        Record("OTK projection needs both Raye and Roze access", damage == 8000 && missingRoze == 0);
+        Set(battle, "DeckRoze", true);
+        Set(battle, "MainOther", 1);
+        Record("Blocked Main Zone invalidates the prepared Linkage battle line",
+            (int)PlannerType.GetMethod("GetPreparedBattleDamage", Flags)
+                .Invoke(null, new[] { battle }) == 0);
+
+        object followUp = BaseState();
+        Set(followUp, "HandHornet", true);
+        int available = (int)PlannerType.GetMethod("GetFollowUpValue", Flags)
+            .Invoke(null, new[] { followUp });
+        Set(followUp, "ExtraZero", false);
+        Set(followUp, "ExtraKagari", false);
+        Set(followUp, "ExtraBridge", false);
+        Set(followUp, "ExtraShizuku", false);
+        Record("Next-turn starter value requires an available Extra Deck route",
+            available > 0 && (int)PlannerType.GetMethod("GetFollowUpValue", Flags)
+                .Invoke(null, new[] { followUp }) == 0);
+    }
+
+    private static object FixtureCard(Assembly assembly, int id, string location)
+    {
+        Type cardType = assembly.GetType("WindBot.Game.ClientCard", true);
+        Type locationType = cardType.GetProperty("Location").PropertyType;
+        object card = Activator.CreateInstance(cardType,
+            new object[] { 0, Enum.Parse(locationType, location), 0, 1 });
+        cardType.GetProperty("Id", Flags).SetValue(card, id, null);
+        cardType.GetProperty("Type", Flags).SetValue(card, 2, null); // synthetic Spell metadata
+        return card;
+    }
+
+    private static void CheckZeroSearchCallback(Assembly assembly)
+    {
+        object duel = Activator.CreateInstance(assembly.GetType("WindBot.Game.Duel", true));
+        Array fields = (Array)duel.GetType().GetProperty("Fields").GetValue(duel, null);
+        for (int i = 0; i < fields.Length; i++)
+            fields.GetValue(i).GetType().GetMethod("Init").Invoke(fields.GetValue(i),
+                new object[] { 0, 0, i });
+        object executor = Activator.CreateInstance(ExecutorType, new object[] { null, duel });
+        object deckEngage = FixtureCard(assembly, 63166095, "Deck");
+        object graveEngage = FixtureCard(assembly, 63166095, "Grave");
+        IList offered = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(deckEngage.GetType()));
+        // Deliberately put grave first: the old planner override bypassed location ordering.
+        offered.Add(graveEngage);
+        offered.Add(deckEngage);
+        object bot = fields.GetValue(0);
+        object knownOwnDeck = Activator.CreateInstance(typeof(List<>).MakeGenericType(
+            assembly.GetType("YGOSharp.OCGWrapper.NamedCard", true)));
+        bot.GetType().GetMethod("SetInitialDeck").Invoke(bot, new[] { knownOwnDeck });
+        IList grave = (IList)bot.GetType().GetProperty("Graveyard").GetValue(bot, null);
+        grave.Add(graveEngage);
+        grave.Add(FixtureCard(assembly, 98338152, "Grave"));
+        grave.Add(FixtureCard(assembly, 52340444, "Grave"));
+        FieldInfo pending = ExecutorType.GetField("StrategicSearchTargetPending", Flags);
+        MethodInfo select = ExecutorType.GetMethod("SelectZeroSearch", Flags);
+        pending.SetValue(executor, 63166095);
+        IList selected = (IList)select.Invoke(executor, new object[] { offered, 1, 1 });
+        Record("Zero selection callback honors Deck preference despite a planned Engage ID",
+            selected.Count == 1 && selected[0] == deckEngage && (int)pending.GetValue(executor) == 0);
+        grave.Add(FixtureCard(assembly, 9726840, "Grave"));
+        pending.SetValue(executor, 63166095);
+        selected = (IList)select.Invoke(executor, new object[] { offered, 1, 1 });
+        Record("Next Zero callback re-evaluates grave threshold and clears its pending target",
+            selected.Count == 1 && selected[0] == graveEngage && (int)pending.GetValue(executor) == 0);
+
+        duel.GetType().GetProperty("Turn").SetValue(duel, 1, null);
+        PropertyInfo phase = duel.GetType().GetProperty("Phase");
+        phase.SetValue(duel, Enum.Parse(phase.PropertyType, "Main1"), null);
+        object hornet = FixtureCard(assembly, 52340444, "Hand");
+        IList hand = (IList)bot.GetType().GetProperty("Hand").GetValue(bot, null);
+        hand.Add(hornet);
+        hand.Add(FixtureCard(assembly, 98338152, "Hand"));
+        object main = duel.GetType().GetProperty("MainPhase").GetValue(duel, null);
+        ((IList)main.GetType().GetProperty("ActivableCards").GetValue(main, null)).Add(hornet);
+        MethodInfo hornetHandler = ExecutorType.GetMethod("HornetDronesEffect", Flags);
+        Record("Actual Hornet handler respects planner hold without any Extra Deck exit",
+            !(bool)hornetHandler.Invoke(executor, null));
+
+        object shizuku = FixtureCard(assembly, 90673288, "Extra");
+        shizuku.GetType().GetProperty("Type", Flags).SetValue(shizuku, 0x4000021, null);
+        ((IList)bot.GetType().GetProperty("ExtraDeck").GetValue(bot, null)).Add(shizuku);
+        Record("Observed resource change retires hold and permits a completed Hornet route",
+            (bool)hornetHandler.Invoke(executor, null));
+    }
+
     private static string FirstKind(object plan)
     {
         IList steps = (IList)Get(plan, "Steps");
@@ -473,9 +674,9 @@ internal static class SkyStrikerPlannerChecks
 
     private static int Main(string[] args)
     {
-        if (args.Length != 2)
+        if (args.Length != 2 && args.Length != 3)
         {
-            Console.Error.WriteLine("Usage: SkyStrikerPlannerChecks.exe WindBot.exe report.json");
+            Console.Error.WriteLine("Usage: SkyStrikerPlannerChecks.exe WindBot.exe report.json [cards.cdb]");
             return 2;
         }
 
@@ -489,6 +690,15 @@ internal static class SkyStrikerPlannerChecks
 
             // Warm the planner separately from bounded behavior assertions.
             Plan(BaseState());
+            CheckPlanningHorizon(assembly);
+            if (args.Length == 3)
+            {
+                Environment.SetEnvironmentVariable("PATH", Path.GetDirectoryName(Path.GetFullPath(args[0])) +
+                    Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+                assembly.GetType("YGOSharp.OCGWrapper.NamedCardsManager", true)
+                    .GetMethod("Init").Invoke(null, new object[] { Path.GetFullPath(args[2]) });
+                CheckZeroSearchCallback(assembly);
+            }
 
             object engageOnly = BaseState();
             Set(engageOnly, "HandEngage", true);
@@ -662,6 +872,7 @@ internal static class SkyStrikerPlannerChecks
             {
                 { "purpose", "Offline SkyStriker2026 bounded route planner plus Ultimate Sky, Zero, Lemnisgate field/GY value, Shark Cannon, mirror Widow, Ash preservation and Kaina bridge policy regression; not engine legality or strength evidence" },
                 { "checks", Results },
+                { "callbackDatabase", args.Length == 3 ? Path.GetFullPath(args[2]) : null },
                 { "passed", passed }
             };
             File.WriteAllText(Path.GetFullPath(args[1]),

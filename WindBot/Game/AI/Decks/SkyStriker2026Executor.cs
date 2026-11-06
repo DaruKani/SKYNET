@@ -4467,12 +4467,15 @@ namespace WindBot.Game.AI.Decks
         private IList<ClientCard> SelectZeroSearch(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> ordered = new List<ClientCard>();
-            if (StrategicSearchTargetPending != 0)
+            // Engage's location must preserve the three-spell threshold even
+            // when the planner supplied its ID. Do not preempt that ordering.
+            if (StrategicSearchTargetPending != 0 &&
+                StrategicSearchTargetPending != CardId.Engage)
             {
                 ordered.AddRange(cards.Where(card =>
                     card.IsCode(StrategicSearchTargetPending)));
-                StrategicSearchTargetPending = 0;
             }
+            StrategicSearchTargetPending = 0;
             int otherSpellsInGrave = Bot.Graveyard.Count(card =>
                 card.IsSpell() && !card.IsCode(CardId.Engage));
             CardLocation preferredEngageLocation = otherSpellsInGrave >= 3

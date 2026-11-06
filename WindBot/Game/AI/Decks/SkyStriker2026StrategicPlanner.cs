@@ -64,11 +64,14 @@ namespace WindBot.Game.AI.Decks
             public double Score;
             public int Expanded;
             public bool TimedOut;
+            public int ConsideredRootActions;
         }
 
         private sealed class SkyStrategicState : IEquatable<SkyStrategicState>
         {
             public bool MainPhase;
+            // Only the first step is filtered by the server's current offers.
+            public int RootActionMask = -1;
             public bool Main1;
             public bool Turn1;
             public bool NormalAvailable;
@@ -101,9 +104,13 @@ namespace WindBot.Game.AI.Decks
             public bool DeckLemnisgate;
             public bool DeckMultirole;
             public bool GraveEngage;
+            public int GraveEngageCopies;
             public bool GraveHornet;
             public int GraveSpells;
             public int GraveAceMonsters;
+            public bool GraveRaye;
+            public bool GraveRoze;
+            public int BattleStarterAttack;
             public bool ExtraZero;
             public bool ExtraKagari;
             public bool ExtraBridge;
@@ -160,7 +167,8 @@ namespace WindBot.Game.AI.Decks
             {
                 return string.Join("|", new[]
                 {
-                    MainPhase ? "1" : "0", Main1 ? "1" : "0", Turn1 ? "1" : "0",
+                    MainPhase ? "1" : "0", RootActionMask.ToString(),
+                    Main1 ? "1" : "0", Turn1 ? "1" : "0",
                     NormalAvailable ? "1" : "0", MainRaye.ToString(), MainRoze.ToString(),
                     MainToken.ToString(), MainOther.ToString(), ((int)ExtraKind).ToString(),
                     FieldFuel ? "1" : "0", HandRaye ? "1" : "0", HandRoze ? "1" : "0",
@@ -174,8 +182,11 @@ namespace WindBot.Game.AI.Decks
                     DeckEngage ? "1" : "0", DeckHornet ? "1" : "0",
                     DeckLinkage ? "1" : "0", DeckWidow ? "1" : "0",
                     DeckLemnisgate ? "1" : "0", DeckMultirole ? "1" : "0",
-                    GraveEngage ? "1" : "0", GraveHornet ? "1" : "0",
+                    GraveEngage ? "1" : "0", GraveEngageCopies.ToString(),
+                    GraveHornet ? "1" : "0",
                     GraveSpells.ToString(), GraveAceMonsters.ToString(),
+                    GraveRaye ? "1" : "0", GraveRoze ? "1" : "0",
+                    BattleStarterAttack.ToString(),
                     ExtraZero ? "1" : "0", ExtraKagari ? "1" : "0",
                     ExtraBridge ? "1" : "0", ExtraShizuku ? "1" : "0",
                     ZeroUsed ? "1" : "0", KagariUsed ? "1" : "0",
@@ -209,7 +220,7 @@ namespace WindBot.Game.AI.Decks
                 var result = new SkyStrategicPlan
                 {
                     Root = root,
-                    Score = Evaluate(root)
+                    Score = EvaluateTerminal(root)
                 };
                 if (root == null || !root.MainPhase)
                     return result;
@@ -219,7 +230,8 @@ namespace WindBot.Game.AI.Decks
                 {
                     new SkyStrategicNode { State = root, Score = Evaluate(root) }
                 };
-                SkyStrategicNode best = frontier[0];
+                SkyStrategicNode best = null;
+                double bestScore = EvaluateTerminal(root);
                 int expanded = 0;
                 int generated = 0;
 
@@ -237,6 +249,11 @@ namespace WindBot.Game.AI.Decks
                         {
                             if (Expired(watch, cancellation) || generated++ >= MaximumCandidates)
                                 break;
+                            if (depth == 0 && !root.PendingZeroSearch &&
+                                (root.RootActionMask & (1 << (int)transition.Action.Kind)) == 0)
+                                continue;
+                            if (depth == 0)
+                                result.ConsideredRootActions |= 1 << (int)transition.Action.Kind;
                             var next = new SkyStrategicNode
                             {
                                 State = transition.After,
@@ -245,8 +262,12 @@ namespace WindBot.Game.AI.Decks
                             next.Steps.AddRange(node.Steps);
                             next.Steps.Add(transition);
                             candidates.Add(next);
-                            if (next.Score > best.Score)
+                            double terminalScore = EvaluateTerminal(next.State);
+                            if (terminalScore > bestScore)
+                            {
                                 best = next;
+                                bestScore = terminalScore;
+                            }
                         }
                     }
                     if (Expired(watch, cancellation) || expanded >= MaximumExpanded ||
@@ -262,11 +283,11 @@ namespace WindBot.Game.AI.Decks
 
                 result.Expanded = expanded;
                 result.TimedOut = Expired(watch, cancellation);
-                if (!cancellation.IsCancellationRequested && best.Steps.Count > 0 &&
-                    best.Score > Evaluate(root) + 100)
+                if (!cancellation.IsCancellationRequested && best != null &&
+                    bestScore > EvaluateTerminal(root) + 100)
                 {
                     result.Steps.AddRange(best.Steps);
-                    result.Score = best.Score;
+                    result.Score = bestScore;
                 }
                 return result;
             }
@@ -296,6 +317,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     SkyStrategicState after = Next(state);
                     after.HandReinforcement = false;
+                    ConsumeHandFuel(after, CardId.ReinforcementOfTheArmy);
                     after.HandRaye = true;
                     after.DeckRaye = false;
                     after.GraveSpells++;
@@ -310,7 +332,9 @@ namespace WindBot.Game.AI.Decks
                         SkyStrategicState after = Next(state);
                         int spellsBefore = after.GraveSpells;
                         after.HandEngage = false;
+                        ConsumeHandFuel(after, CardId.Engage);
                         after.GraveEngage = true;
+                        after.GraveEngageCopies++;
                         after.GraveSpells++;
                         if (spellsBefore >= 3)
                             after.Advantage++;
@@ -326,6 +350,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     SkyStrategicState after = Next(state);
                     after.HandUltimate = false;
+                    ConsumeHandFuel(after, CardId.UltimateSky);
                     after.HandLinkage = false;
                     after.GraveSpells += 2;
                     after.ExtraKind = SkyStrategicExtraKind.Zero;
@@ -353,6 +378,16 @@ namespace WindBot.Game.AI.Decks
                         after.HandWidow = false;
                     else if (fuelId == CardId.UltimateSky)
                         after.HandUltimate = false;
+                    else if (fuelId == CardId.Engage)
+                        after.HandEngage = false;
+                    else if (fuelId == CardId.HornetDrones)
+                        after.HandHornet = false;
+                    else if (fuelId == CardId.ReinforcementOfTheArmy)
+                        after.HandReinforcement = false;
+                    else if (fuelId == CardId.PotOfDesires)
+                        after.HandPot = false;
+                    else if (fuelId == CardId.Multirole)
+                        after.HandMultirole = false;
                     yield return Move(SkyStrategicActionKind.SetLinkageFuel,
                         "set " + GetCardLabel(fuelId) + " -> Linkage fuel", after,
                         fuelId);
@@ -397,12 +432,14 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 if (state.Main1 && state.CanUseSkyStrikerSpell && state.HandHornet &&
+                    (state.HornetSetup || state.Turn1 || state.EnemyMonsters == 0) &&
                     (state.ExtraKind == SkyStrategicExtraKind.None ||
                     state.ExtraKind == SkyStrategicExtraKind.Kagari ||
                     state.ExtraKind == SkyStrategicExtraKind.Bridge))
                 {
                     SkyStrategicState after = Next(state);
                     after.HandHornet = false;
+                    ConsumeHandFuel(after, CardId.HornetDrones);
                     after.GraveHornet = true;
                     after.GraveSpells++;
                     after.MainToken++;
@@ -414,12 +451,14 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 if (state.Main1 && state.MainCount == 1 && state.MainRaye == 1 &&
+                    (state.Turn1 || state.EnemyMonsters == 0) &&
                     state.ExtraKind == SkyStrategicExtraKind.None && state.ExtraZero &&
                     !state.ZeroUsed)
                 {
                     SkyStrategicState after = Next(state);
                     after.MainRaye = 0;
                     after.GraveAceMonsters++;
+                    after.GraveRaye = true;
                     after.ExtraKind = SkyStrategicExtraKind.Zero;
                     after.ExtraZero = false;
                     after.ZeroUsed = true;
@@ -433,11 +472,12 @@ namespace WindBot.Game.AI.Decks
                     !state.KagariUsed)
                 {
                     SkyStrategicState after = Next(state);
+                    BuryMainMaterials(after);
                     after.MainRaye = 0;
                     after.MainRoze = 0;
                     after.MainToken = 0;
-                    after.GraveAceMonsters++;
                     after.ExtraKind = SkyStrategicExtraKind.Kagari;
+                    after.BattleStarterAttack = 0;
                     after.ExtraKagari = false;
                     after.KagariUsed = true;
                     if (after.HornetSetup && after.GraveHornet)
@@ -448,7 +488,7 @@ namespace WindBot.Game.AI.Decks
                     }
                     else if (after.GraveEngage)
                     {
-                        after.GraveEngage = false;
+                        RemoveGraveEngage(after);
                         after.HandEngage = true;
                         after.GraveSpells = Math.Max(0, after.GraveSpells - 1);
                     }
@@ -461,6 +501,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     SkyStrategicState after = Next(state);
                     after.ExtraKind = SkyStrategicExtraKind.Bridge;
+                    after.BattleStarterAttack = 0;
                     after.ExtraBridge = false;
                     after.GraveAceMonsters++;
                     yield return Move(SkyStrategicActionKind.LinkBridge,
@@ -474,12 +515,15 @@ namespace WindBot.Game.AI.Decks
                 if ((bridgeZero || pairZero) && state.ExtraZero && !state.ZeroUsed)
                 {
                     SkyStrategicState after = Next(state);
+                    BuryMainMaterials(after);
                     after.MainRaye = 0;
                     after.MainRoze = 0;
                     after.MainToken = 0;
                     after.MainOther = 0;
-                    after.GraveAceMonsters += 2;
+                    if (bridgeZero)
+                        after.GraveAceMonsters++;
                     after.ExtraKind = SkyStrategicExtraKind.Zero;
+                    after.BattleStarterAttack = 0;
                     after.ExtraZero = false;
                     after.ZeroUsed = true;
                     after.PendingZeroSearch = true;
@@ -487,15 +531,18 @@ namespace WindBot.Game.AI.Decks
                         "clear both Main Zones -> Zero", after);
                 }
 
-                if (state.MainCount == 1 && state.MainOther == 0 &&
+                if ((state.Turn1 || !state.Main1) &&
+                    state.MainCount == 1 && state.MainOther == 0 &&
                     state.ExtraKind == SkyStrategicExtraKind.None && state.ExtraShizuku)
                 {
                     SkyStrategicState after = Next(state);
+                    BuryMainMaterials(after);
                     after.MainRaye = 0;
                     after.MainRoze = 0;
                     after.MainToken = 0;
-                    after.GraveAceMonsters++;
                     after.ExtraKind = SkyStrategicExtraKind.Shizuku;
+                    // Summoned in attack position by the existing Link handler.
+                    after.BattleStarterAttack = 1500;
                     after.ExtraShizuku = false;
                     yield return Move(SkyStrategicActionKind.LinkShizuku,
                         "Link Shizuku end board", after);
@@ -505,6 +552,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     SkyStrategicState after = Next(state);
                     after.HandPot = false;
+                    ConsumeHandFuel(after, CardId.PotOfDesires);
                     after.GraveSpells++;
                     after.DeckCount -= 10;
                     after.Advantage++;
@@ -538,6 +586,13 @@ namespace WindBot.Game.AI.Decks
                     AddSearchTarget(after, target, true);
                     yield return Move(SkyStrategicActionKind.ResolveZeroSearch,
                         "Zero search -> " + GetCardLabel(target), after, target);
+                }
+                if (targets.Count == 0)
+                {
+                    SkyStrategicState after = Next(state);
+                    after.PendingZeroSearch = false;
+                    yield return Move(SkyStrategicActionKind.ResolveZeroSearch,
+                        "Zero: no modeled search target", after);
                 }
             }
 
@@ -584,9 +639,11 @@ namespace WindBot.Game.AI.Decks
                 else if (target == CardId.Engage)
                 {
                     state.HandEngage = true;
-                    if (allowGrave && state.GraveEngage)
+                    if (allowGrave && state.GraveEngage &&
+                        (!state.DeckEngage || state.GraveSpells -
+                        Math.Max(1, state.GraveEngageCopies) >= 3))
                     {
-                        state.GraveEngage = false;
+                        RemoveGraveEngage(state);
                         state.GraveSpells = Math.Max(0, state.GraveSpells - 1);
                     }
                     else
@@ -624,6 +681,76 @@ namespace WindBot.Game.AI.Decks
                 SkyStrategicState next = state.Clone();
                 next.Step++;
                 return next;
+            }
+
+            private static void ConsumeHandFuel(SkyStrategicState state, int id)
+            {
+                // The fuel candidate is a real card, not a second copy of the
+                // same hand resource after its modeled activation.
+                if (state.HandLinkageFuelId != id)
+                    return;
+                state.HandLinkageFuelId = 0;
+                state.HandLinkageFuelCost = 0;
+            }
+
+            private static void RemoveGraveEngage(SkyStrategicState state)
+            {
+                state.GraveEngageCopies = Math.Max(0, state.GraveEngageCopies - 1);
+                state.GraveEngage = state.GraveEngageCopies > 0;
+            }
+
+            private static void BuryMainMaterials(SkyStrategicState state)
+            {
+                state.GraveRaye |= state.MainRaye > 0;
+                state.GraveRoze |= state.MainRoze > 0;
+                // A token disappears; it cannot fund Lemnisgate or a revival.
+                state.GraveAceMonsters += state.MainRaye + state.MainRoze;
+            }
+
+            private static double EvaluateTerminal(SkyStrategicState state)
+            {
+                if (state == null || state.PendingZeroSearch ||
+                    !state.EmptyMainZone && HasModeledSkyStrikerSpell(state))
+                    return double.MinValue;
+                return Evaluate(state) + GetFollowUpValue(state);
+            }
+
+            public static int GetFollowUpValue(SkyStrategicState state)
+            {
+                // Discounted next-turn access, not a simulated enemy turn. Do
+                // not invent draws, searches or survival of our current board.
+                int access = 0;
+                bool linkAvailable = state.ExtraZero || state.ExtraKagari ||
+                    state.ExtraBridge || state.ExtraShizuku;
+                if (linkAvailable)
+                {
+                    if (state.HandRaye || state.HandRoze)
+                        access = 650;
+                    if (state.HandHornet)
+                        access = Math.Max(access, 700);
+                    if (state.HandReinforcement && state.DeckRaye)
+                        access = Math.Max(access, 650);
+                    if (state.HandEngage && (state.DeckRaye || state.DeckHornet))
+                        access = Math.Max(access, 900);
+                }
+                if (state.GraveEngage && state.ExtraKagari && access > 0)
+                    access += 400;
+                return access;
+            }
+
+            public static int GetPreparedBattleDamage(SkyStrategicState state)
+            {
+                if (state.Turn1 || !state.Main1 || !state.EmptyMainZone ||
+                    state.EnemyField != 0 || !state.HandLinkage ||
+                    state.BattleStarterAttack < 1500 ||
+                    state.ExtraKind == SkyStrategicExtraKind.None ||
+                    state.ExtraKind == SkyStrategicExtraKind.Zero ||
+                    state.ExtraKind == SkyStrategicExtraKind.Kagari ||
+                    !state.ExtraKagari || !state.ExtraZero || state.KagariUsed ||
+                    state.ZeroUsed || !(state.DeckRaye || state.GraveRaye) ||
+                    !(state.DeckRoze || state.GraveRoze))
+                    return 0;
+                return state.BattleStarterAttack + 6500;
             }
 
             private static SkyStrategicTransition Move(SkyStrategicActionKind kind,
@@ -704,6 +831,8 @@ namespace WindBot.Game.AI.Decks
                 score -= state.PotRisk * 720;
                 score -= state.ResourceCost;
                 score -= state.Step * 65;
+                if (GetPreparedBattleDamage(state) >= Math.Max(1, state.EnemyLife))
+                    score += 20000;
 
                 bool hasStarter = state.HandRaye || state.HandRoze || state.HandHornet ||
                     state.MainCount > 0 || state.ExtraKind != SkyStrategicExtraKind.None;
@@ -762,12 +891,22 @@ namespace WindBot.Game.AI.Decks
                 StrategicPlanState = observed;
                 if (StrategicPlan.Steps.Count > 0)
                 {
+                    SkyStrategicState end = StrategicPlan.Steps.Last().After;
                     Logger.DebugWriteLine("[SkyStriker2026:RDA] score=" +
                         StrategicPlan.Score.ToString("0") + " expanded=" +
                         StrategicPlan.Expanded.ToString() + " timeout=" +
-                        StrategicPlan.TimedOut.ToString() + " route=" +
+                        StrategicPlan.TimedOut.ToString() + " end=" + end.ExtraKind +
+                        " main=" + end.MainCount + " followUp=" +
+                        SkyStrategicPlanner.GetFollowUpValue(end) + " battleDamage=" +
+                        SkyStrategicPlanner.GetPreparedBattleDamage(end) + " route=" +
                         string.Join(" > ", StrategicPlan.Steps.Select(step =>
                             step.Action.Text).ToArray()));
+                }
+                else if (StrategicPlan.ConsideredRootActions != 0 && !StrategicPlan.TimedOut)
+                {
+                    Logger.DebugWriteLine("[SkyStriker2026:RDA] hold: no completed route " +
+                        "improves the current position; considered=" +
+                        StrategicPlan.ConsideredRootActions);
                 }
             }
             return StrategicPlan == null || StrategicPlan.Steps.Count == 0
@@ -776,8 +915,16 @@ namespace WindBot.Game.AI.Decks
 
         private bool StrategicAllows(SkyStrategicActionKind kind)
         {
+            if (Duel.Player != 0 || Duel.CurrentChain.Count > 0 ||
+                (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2))
+                return true;
             SkyStrategicAction action = GetStrategicRecommendation();
-            return action == null || action.Kind == kind;
+            if (action != null)
+                return action.Kind == kind;
+            // No recommendation can mean "holding is better", not merely
+            // "this package was not modeled". Preserve the former decision.
+            return StrategicPlan == null || StrategicPlan.TimedOut ||
+                (StrategicPlan.ConsideredRootActions & (1 << (int)kind)) == 0;
         }
 
         private bool StrategicReservesModeledLink()
@@ -827,6 +974,7 @@ namespace WindBot.Game.AI.Decks
             return new SkyStrategicState
             {
                 MainPhase = Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2,
+                RootActionMask = CaptureStrategicRootOffers(),
                 Main1 = Duel.Phase == DuelPhase.Main1,
                 Turn1 = Duel.Turn == 1,
                 NormalAvailable = !NormalSummoned,
@@ -860,14 +1008,23 @@ namespace WindBot.Game.AI.Decks
                 DeckLemnisgate = Bot.HasInDeck(CardId.Lemnisgate),
                 DeckMultirole = Bot.HasInDeck(CardId.Multirole),
                 GraveEngage = Bot.HasInGraveyard(CardId.Engage),
+                GraveEngageCopies = Bot.Graveyard.Count(card => card.IsCode(CardId.Engage)),
                 GraveHornet = Bot.HasInGraveyard(CardId.HornetDrones),
                 GraveSpells = Bot.GetGraveyardSpells().Count,
                 GraveAceMonsters = Bot.GetGraveyardMonsters().Count(IsSkyStrikerAce),
+                GraveRaye = Bot.HasInGraveyard(CardId.Raye),
+                GraveRoze = Bot.HasInGraveyard(CardId.Roze),
+                BattleStarterAttack = extra.Where(card => card.IsFaceup() &&
+                    IsSkyStrikerAceLink(card) && !card.Attacked && !card.IsDisabled() &&
+                    !card.IsCode(CardId.Kagari, CardId.Zero))
+                    .Select(card => Math.Max(0, card.GetAttackPower())).DefaultIfEmpty(0).Max(),
                 ExtraZero = Bot.HasInExtra(CardId.Zero),
                 ExtraKagari = Bot.HasInExtra(CardId.Kagari),
-                ExtraBridge = Bot.HasInExtra(new[] { CardId.Hayate, CardId.Kaina,
-                    CardId.Shizuku, CardId.Amatsu }),
-                ExtraShizuku = Bot.HasInExtra(CardId.Shizuku),
+                ExtraBridge = !HayateSummoned && Bot.HasInExtra(CardId.Hayate) ||
+                    !KainaSummoned && Bot.HasInExtra(CardId.Kaina) ||
+                    !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku) ||
+                    !AmatsuSummoned && Bot.HasInExtra(CardId.Amatsu),
+                ExtraShizuku = !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku),
                 ZeroUsed = ZeroSummoned,
                 KagariUsed = KagariSummoned,
                 PendingZeroSearch = ZeroSearchPending,
@@ -877,6 +1034,50 @@ namespace WindBot.Game.AI.Decks
                 EnemyLife = Enemy.LifePoints,
                 DeckCount = Bot.Deck.Count
             };
+        }
+
+        private int CaptureStrategicRootOffers()
+        {
+            return BuildStrategicRootOffers(Duel.MainPhase, GetBestLinkageFuelFromHand());
+        }
+
+        private static int BuildStrategicRootOffers(MainPhase main, int fuel)
+        {
+            if (main == null)
+                return 0;
+            int mask = 0;
+            foreach (ClientCard card in main.ActivableCards)
+            {
+                SkyStrategicActionKind kind = SkyStrategicActionKind.None;
+                if (card.IsCode(CardId.Engage)) kind = SkyStrategicActionKind.ActivateEngage;
+                else if (card.IsCode(CardId.ReinforcementOfTheArmy)) kind = SkyStrategicActionKind.ActivateReinforcement;
+                else if (card.IsCode(CardId.HornetDrones)) kind = SkyStrategicActionKind.ActivateHornet;
+                else if (card.IsCode(CardId.PotOfDesires)) kind = SkyStrategicActionKind.ActivatePot;
+                else if (card.IsCode(CardId.Linkage)) kind = SkyStrategicActionKind.ActivateLinkage;
+                else if (card.IsCode(CardId.UltimateSky)) kind = SkyStrategicActionKind.ActivateUltimateLinkage;
+                else if (card.IsCode(CardId.Raye) && card.Location == CardLocation.MonsterZone)
+                    kind = SkyStrategicActionKind.RayeTagZero;
+                if (kind != SkyStrategicActionKind.None)
+                    mask |= 1 << (int)kind;
+            }
+            foreach (ClientCard card in main.SummonableCards)
+            {
+                if (card.IsCode(CardId.Raye)) mask |= 1 << (int)SkyStrategicActionKind.NormalRaye;
+                if (card.IsCode(CardId.Roze)) mask |= 1 << (int)SkyStrategicActionKind.NormalRoze;
+            }
+            foreach (ClientCard card in main.SpecialSummonableCards)
+            {
+                if (card.Location != CardLocation.Extra)
+                    continue;
+                if (card.IsCode(CardId.Zero)) mask |= 1 << (int)SkyStrategicActionKind.LinkZero;
+                if (card.IsCode(CardId.Kagari)) mask |= 1 << (int)SkyStrategicActionKind.LinkKagari;
+                if (card.IsCode(CardId.Shizuku)) mask |= 1 << (int)SkyStrategicActionKind.LinkShizuku;
+                if (card.IsCode(CardId.Hayate, CardId.Kaina, CardId.Amatsu, CardId.Shizuku))
+                    mask |= 1 << (int)SkyStrategicActionKind.LinkBridge;
+            }
+            if (fuel != 0 && main.SpellSetableCards.Any(card => card.IsCode(fuel)))
+                mask |= 1 << (int)SkyStrategicActionKind.SetLinkageFuel;
+            return mask;
         }
     }
 }
