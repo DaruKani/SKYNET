@@ -10,352 +10,205 @@ using System.Web.Script.Serialization;
 
 internal static class Witchcraft2026PlannerChecks
 {
-    private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic |
-        BindingFlags.Static | BindingFlags.Instance;
-    private static Type StateType;
-    private static Type PlannerType;
-    private static Type ExecutorType;
-    private static readonly List<Dictionary<string, object>> Results =
-        new List<Dictionary<string, object>>();
-
-    private static void Set(object target, string name, object value)
+    private const BindingFlags F = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+    private static Type S, P, Z, A;
+    private static string DeckPath;
+    private static readonly List<object> Results = new List<object>();
+    private static object Get(object o, string n) { return o.GetType().GetField(n, F).GetValue(o); }
+    private static void Set(object o, string n, object v) { o.GetType().GetField(n, F).SetValue(o, v); }
+    private static object Zone(string n) { return Enum.Parse(Z, n); }
+    private static void Add(object s, int id, string z, int n = 1) { S.GetMethod("Add", F).Invoke(s, new[] { (object)id, Zone(z), n }); }
+    private static int Count(object s, int id, string z) { return (int)S.GetMethod("Count", F).Invoke(s, new[] { (object)id, Zone(z) }); }
+    private static void Move(object s, int id, string from, string to) { S.GetMethod("Move", F).Invoke(s, new[] { (object)id, Zone(from), Zone(to) }); }
+    private static object Empty() { return Activator.CreateInstance(S, true); }
+    private static object Opening(params int[] hand)
     {
-        StateType.GetField(name, Flags).SetValue(target, value);
+        object s = Empty();
+        string zone = "Deck";
+        foreach (string raw in File.ReadAllLines(DeckPath))
+        {
+            string line = raw.Trim();
+            if (line == "#extra") { zone = "Extra"; continue; }
+            if (line == "!side") break;
+            int id;
+            if (int.TryParse(line, out id)) Add(s, id, zone);
+        }
+        foreach (int id in hand) Move(s, id, "Deck", "Hand");
+        return s;
     }
+    private static IList Actions(object s) { return ((IEnumerable)P.GetMethod("Actions", F).Invoke(null, new[] { s })).Cast<object>().ToList(); }
+    private static object Apply(object s, object a) { return P.GetMethod("Apply", F).Invoke(null, new[] { s, a }); }
+    private static object Plan(object s, object filter = null, CancellationToken token = default(CancellationToken))
+    { return P.GetMethod("Plan", F).Invoke(null, new[] { s, filter, (object)token }); }
+    private static string Kind(object a) { return Get(a, "Kind").ToString(); }
+    private static IList Steps(object plan) { return (IList)Get(plan, "Steps"); }
+    private static Func<T, bool> OnlyNormal<T>() { return a => Kind(a) == "Normal"; }
+    private static object Property(object o, string n) { return o.GetType().GetProperty(n, F).GetValue(o, null); }
+    private static void Property(object o, string n, object v) { o.GetType().GetProperty(n, F).SetValue(o, v, null); }
 
-    private static object Get(object target, string name)
+    private static void CallbackChecks(Type executor, string database)
     {
-        FieldInfo field = target.GetType().GetField(name, Flags);
-        return field.GetValue(target);
+        Assembly asm = executor.Assembly;
+        asm.GetType("YGOSharp.OCGWrapper.NamedCardsManager").GetMethod("Init").Invoke(null, new object[] { database });
+        Type cardType = asm.GetType("WindBot.Game.ClientCard");
+        Type location = asm.GetType("YGOSharp.OCGWrapper.Enums.CardLocation");
+        Func<int, string, object> card = (id, zone) => Activator.CreateInstance(cardType,
+            new object[] { id, Enum.Parse(location, zone), 0, 1 });
+        Func<IList> list = () => (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(cardType));
+        object duel = Activator.CreateInstance(asm.GetType("WindBot.Game.Duel"));
+        foreach (object field in (Array)Property(duel, "Fields"))
+            field.GetType().GetMethod("Init").Invoke(field, new object[] { 0, 0, 0 });
+        object info = Activator.CreateInstance(asm.GetType("WindBot.WindBotInfo"));
+        Property(info, "Chat", false);
+        object game = Activator.CreateInstance(asm.GetType("WindBot.Game.GameClient"), new[] { info });
+        object ai = Activator.CreateInstance(asm.GetType("WindBot.Game.GameAI"), new[] { game, duel });
+        object ex = Activator.CreateInstance(executor, new[] { ai, duel });
+        object summonTrigger = Activator.CreateInstance(A, true);
+        Set(summonTrigger, "Kind", Enum.Parse(executor.GetNestedType("WKind", F), "GazeSearch"));
+        Set(summonTrigger, "Source", 59400890); Set(summonTrigger, "Location", Zone("Board"));
+        Set(summonTrigger, "Description", 0);
+        object dm = card(59400890, "MonsterZone");
+        Check("generic optional trigger description accepted",
+            (bool)executor.GetMethod("Matches", F).Invoke(null, new[] { summonTrigger, dm, (object)(-1) }));
+        Check("wrong effect description rejected",
+            !(bool)executor.GetMethod("Matches", F).Invoke(null, new[] { summonTrigger, dm, (object)123 }));
+
+        object state = Empty(); Add(state, 33475154, "Board"); Set(state, "Pending", 33475154);
+        foreach (int id in new[] { 84523092, 58139997, 7656689 }) Add(state, id, "Deck");
+        object recruit = Actions(state).Cast<object>().First();
+        Set(ex, "_accepted", recruit); Set(ex, "_awaitingChain", true);
+        IList candidates = list();
+        foreach (int id in new[] { 64756282, 84523092, 58139997, 7656689 }) candidates.Add(card(id, "Deck"));
+        int summonHint = (int)asm.GetType("WindBot.Game.AI.HintMsg").GetField("SpSummon", F).GetValue(null);
+        IList picked = (IList)executor.GetMethod("OnSelectCard").Invoke(ex,
+            new object[] { candidates, 1, 3, summonHint, false });
+        Check("actual Rilliona callback selects three distinct offered bodies",
+            picked.Count == 3 && picked.Cast<object>().Select(c => (int)Property(c, "Id"))
+                .OrderBy(i => i).SequenceEqual(new[] { 84523092, 58139997, 7656689 }.OrderBy(i => i)));
+        Property(duel, "LastSummonPlayer", 1);
+        executor.GetMethod("OnSummoning").Invoke(ex, null);
+        Check("opponent summon does not spend own normal", !(bool)Get(ex, "_normalUsed"));
+        Property(duel, "LastSummonPlayer", 0);
+        executor.GetMethod("OnSummoning").Invoke(ex, null);
+        Check("own summon spends own normal", (bool)Get(ex, "_normalUsed"));
+        Set(ex, "_extraLock", true); Set(ex, "_maxx", true);
+        ((HashSet<string>)Get(ex, "_used")).Add("test");
+        executor.GetMethod("OnNewTurn").Invoke(ex, null);
+        Check("new turn clears usages, lock, Maxx C and prompt ownership",
+            !(bool)Get(ex, "_extraLock") && !(bool)Get(ex, "_normalUsed") &&
+            !(bool)Get(ex, "_maxx") && Get(ex, "_accepted") == null &&
+            ((HashSet<string>)Get(ex, "_used")).Count == 0);
+        int place = (int)executor.GetMethod("OnSelectPlace").Invoke(ex,
+            new object[] { 69964858, 0, Enum.Parse(location, "MonsterZone"), 0x60 });
+        Check("Pupils placement returns offered EMZ mask", place == 0x20);
     }
-
-    private static object BaseState()
+    private static void Check(string name, bool passed, object detail = null)
     {
-        object state = Activator.CreateInstance(StateType, true);
-        Set(state, "MainPhase", true);
-        Set(state, "NormalAvailable", true);
-        Set(state, "ExtraViceMadame", true);
-        Set(state, "ExtraMadameRillie", true);
-        Set(state, "ExtraPupils", true);
-        Set(state, "HandDistortion", true);
-        Set(state, "HandSpellCount", 1);
+        Results.Add(new { name, passed, detail });
+        Console.WriteLine((passed ? "PASS " : "FAIL ") + name);
+    }
+    private static object Run(object state, string name)
+    {
+        List<string> route = new List<string>();
+        long maxMs = 0;
+        for (int i = 0; i < 36; i++)
+        {
+            Stopwatch watch = Stopwatch.StartNew();
+            object plan = Plan(state);
+            maxMs = Math.Max(maxMs, watch.ElapsedMilliseconds);
+            IList steps = Steps(plan);
+            if (steps.Count == 0) break;
+            object first = steps[0];
+            object action = Get(first, "Action");
+            route.Add(action.ToString());
+            object after = Get(first, "After");
+            int beforeCount = ((IDictionary)Get(state, "Cards")).Values.Cast<int>().Sum();
+            int afterCount = ((IDictionary)Get(after, "Cards")).Values.Cast<int>().Sum();
+            if (beforeCount != afterCount) throw new InvalidOperationException("Transition created/lost a card: " + action);
+            // Re-observation resets forecast-only counters on each real decision.
+            Set(after, "Steps", 0);
+            Set(after, "FutureSummons", 0);
+            state = after;
+        }
+        Check(name + ": bounded and no loop", route.Count < 36 && maxMs < 1000,
+            new { route, maxMs, board = P.GetMethod("BoardSummary", F).Invoke(null, new[] { state }) });
         return state;
     }
-
-    private static object Plan(object state, CancellationToken cancellation)
-    {
-        return PlannerType.GetMethod("Plan", Flags).Invoke(null,
-            new[] { state, (object)cancellation });
-    }
-
-    private static IList Steps(object plan)
-    {
-        return (IList)Get(plan, "Steps");
-    }
-
-    private static string[] Kinds(object plan)
-    {
-        return Steps(plan).Cast<object>()
-            .Select(step => Get(Get(step, "Action"), "Kind").ToString())
-            .ToArray();
-    }
-
-    private static int[] Targets(object plan)
-    {
-        return Steps(plan).Cast<object>()
-            .Select(step => (int)Get(Get(step, "Action"), "SearchTarget"))
-            .ToArray();
-    }
-
-    private static void Check(string name, object state, string first,
-        params string[] required)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        object current = state;
-        List<string> kinds = new List<string>();
-        List<int> targets = new List<int>();
-        int expanded = 0;
-        bool timedOut = false;
-        bool singleActionPlans = true;
-        for (int action = 0; action < 16; action++)
-        {
-            object plan = Plan(current, CancellationToken.None);
-            IList steps = Steps(plan);
-            singleActionPlans = singleActionPlans && steps.Count <= 1;
-            expanded += (int)Get(plan, "Expanded");
-            timedOut = timedOut || (bool)Get(plan, "TimedOut");
-            if (steps.Count == 0)
-                break;
-            object step = steps[0];
-            object strategicAction = Get(step, "Action");
-            kinds.Add(Get(strategicAction, "Kind").ToString());
-            targets.Add((int)Get(strategicAction, "SearchTarget"));
-            current = Get(step, "After");
-        }
-        watch.Stop();
-        bool passed = kinds.Count > 0 && kinds[0] == first &&
-            required.All(kinds.Contains) && singleActionPlans &&
-            watch.ElapsedMilliseconds < 500;
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", name },
-            { "passed", passed },
-            { "first", kinds.Count == 0 ? "None" : kinds[0] },
-            { "route", kinds.ToArray() },
-            { "targets", targets.ToArray() },
-            { "singleActionPlans", singleActionPlans },
-            { "elapsedMs", watch.ElapsedMilliseconds },
-            { "expanded", expanded },
-            { "timedOut", timedOut }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": " +
-            (kinds.Count == 0 ? "None" : string.Join(" -> ", kinds)));
-    }
-
-    private static void CheckInterruptionReplans()
-    {
-        object opening = BaseState();
-        Set(opening, "HandSchmietta", true);
-        object firstPlan = Plan(opening, CancellationToken.None);
-        string[] firstKinds = Kinds(firstPlan);
-
-        object interrupted = BaseState();
-        Set(interrupted, "NormalAvailable", false);
-        Set(interrupted, "HandSchmietta", false);
-        Set(interrupted, "FieldLow", false);
-        object replanned = Plan(interrupted, CancellationToken.None);
-        string[] replannedKinds = Kinds(replanned);
-        bool passed = Steps(firstPlan).Count == 1 && firstKinds.Length == 1 &&
-            firstKinds[0] == "NormalSchmietta" && Steps(replanned).Count <= 1 &&
-            !replannedKinds.Contains("ActivateLowWitchcrafter");
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "interruption replans from observed state" },
-            { "passed", passed },
-            { "before", firstKinds },
-            { "after", replannedKinds }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "interruption replans from observed state");
-    }
-
-    private static void CheckWalpurgisGuideTargets()
-    {
-        object current = BaseState();
-        Set(current, "HandWalpurgis", true);
-        List<string> kinds = new List<string>();
-        List<int> targets = new List<int>();
-        for (int action = 0; action < 8; action++)
-        {
-            object plan = Plan(current, CancellationToken.None);
-            IList steps = Steps(plan);
-            if (steps.Count == 0)
-                break;
-            object step = steps[0];
-            object strategicAction = Get(step, "Action");
-            kinds.Add(Get(strategicAction, "Kind").ToString());
-            targets.Add((int)Get(strategicAction, "SearchTarget"));
-            current = Get(step, "After");
-        }
-        int[] expectedTargets =
-        {
-            64756282, 64756282, 21744288, 95245544, 59851535, 6071005
-        };
-        bool passed = targets.Take(expectedTargets.Length).SequenceEqual(expectedTargets) &&
-            kinds.Count == expectedTargets.Length &&
-            kinds.Skip(2).All(kind => kind == "ActivateLowWitchcrafter");
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "Walpurgis follows the published low-Witchcrafter ladder" },
-            { "passed", passed },
-            { "route", kinds.ToArray() },
-            { "targets", targets.ToArray() },
-            { "expectedTargets", expectedTargets }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "Walpurgis follows Genni -> Schmietta -> Pittore -> Potterie -> Marka");
-    }
-
-    private static void CheckCancellation()
-    {
-        using (CancellationTokenSource cancellation = new CancellationTokenSource())
-        {
-            cancellation.Cancel();
-            Stopwatch watch = Stopwatch.StartNew();
-            object plan = Plan(BaseState(), cancellation.Token);
-            watch.Stop();
-            bool passed = Steps(plan).Count == 0 && watch.ElapsedMilliseconds < 500;
-            Results.Add(new Dictionary<string, object>
-            {
-                { "name", "cancelled search returns no actions" },
-                { "passed", passed },
-                { "elapsedMs", watch.ElapsedMilliseconds }
-            });
-            Console.WriteLine((passed ? "PASS " : "FAIL ") +
-                "cancelled search returns no actions");
-        }
-    }
-
-    private static void CheckBifrostCostGate()
-    {
-        MethodInfo gate = ExecutorType.GetMethod("HasBifrostCost", Flags);
-        bool fresh = (bool)gate.Invoke(null, new object[]
-        {
-            new[] { 37442336, 53971455, 5559570 }
-        });
-        bool exhausted = (bool)gate.Invoke(null, new object[]
-        {
-            new[] { 37442336, 53971455 }
-        });
-        bool passed = fresh && !exhausted;
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "Bifrost is rejected after its one legal cost package is spent" },
-            { "passed", passed },
-            { "freshExtraDeck", fresh },
-            { "spentExtraDeck", exhausted }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "Bifrost cost gate rejects the spent Extra Deck");
-    }
-
-    private static void CheckGuideNormalPreference()
-    {
-        MethodInfo choose = ExecutorType.GetMethod("ChooseGuideLowId", Flags);
-        int selected = (int)choose.Invoke(null, new object[]
-        {
-            new[] { 95245544, 7656689, 64756282 }
-        });
-        bool passed = selected == 64756282;
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "searched Genni wins over an opening Pittore" },
-            { "passed", passed },
-            { "selected", selected },
-            { "expected", 64756282 }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "searched Genni wins over opening Pittore");
-    }
-
-    private static void CheckGuideDiscardPreference()
-    {
-        MethodInfo choose = ExecutorType.GetMethod("ChooseWalpurgisDiscardId", Flags);
-        int selected = (int)choose.Invoke(null, new object[]
-        {
-            new[] { 21522601, 58139997, 22623509, 21744288, 64756282 }, true
-        });
-        bool passed = selected == 21522601;
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "Walpurgis puts opening Madame Verre in the grave and preserves Genni" },
-            { "passed", passed },
-            { "selected", selected },
-            { "expected", 21522601 }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "Walpurgis preserves searched Genni and discards opening Madame Verre");
-    }
-
-    private static void CheckGuideNormalPrecedesCreation()
-    {
-        object state = BaseState();
-        Set(state, "FieldWalpurgis", true);
-        Set(state, "GuideDepth", 1);
-        Set(state, "HandCreation", true);
-        Set(state, "HandMaidVerre", true);
-        Set(state, "SpellActivated", true);
-        Set(state, "HandOtherLow", true);
-        Set(state, "HandLowId", 64756282);
-        object plan = Plan(state, CancellationToken.None);
-        string[] kinds = Kinds(plan);
-        int[] targets = Targets(plan);
-        bool passed = kinds.Length == 1 && kinds[0] == "NormalLowWitchcrafter" &&
-            targets.Length == 1 && targets[0] == 64756282;
-        Results.Add(new Dictionary<string, object>
-        {
-            { "name", "Genni normal summon precedes Creation and Maid Verre after Walpurgis" },
-            { "passed", passed },
-            { "route", kinds },
-            { "targets", targets }
-        });
-        Console.WriteLine((passed ? "PASS " : "FAIL ") +
-            "Genni normal summon precedes Creation and Maid Verre after Walpurgis");
-    }
-
     private static int Main(string[] args)
     {
-        if (args.Length != 2)
+        string assembly = Path.GetFullPath(args[0]);
+        AppDomain.CurrentDomain.AssemblyResolve += (o, e) =>
         {
-            Console.Error.WriteLine("Usage: Witchcraft2026PlannerChecks.exe WindBot.exe report.json");
-            return 2;
-        }
-
-        Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
-        Type executor = assembly.GetType(
-            "WindBot.Game.AI.Decks.Witchcraft2026Executor", true);
-        ExecutorType = executor;
-        StateType = executor.GetNestedType("WitchcraftStrategicState", Flags);
-        PlannerType = executor.GetNestedType("WitchcraftStrategicPlanner", Flags);
-
-        Plan(BaseState(), CancellationToken.None);
-
-        object mastery = BaseState();
-        Set(mastery, "HandMastery", true);
-        Check("Mastery opens Maid Verre access", mastery, "ActivateMastery",
-            "SummonMaidVerre");
-
-        object fieldAccess = BaseState();
-        Set(fieldAccess, "HandFieldSpellAccess", true);
-        Check("Terraforming or Bifrost opens Walpurgis", fieldAccess,
-            "ActivateFieldSpellAccess", "ActivateWalpurgis");
-
-        object creation = BaseState();
-        Set(creation, "HandCreation", true);
-        Check("Creation finds Marka then Walpurgis", creation, "ActivateCreation",
-            "ActivateMarka", "ActivateWalpurgis");
-
-        object marka = BaseState();
-        Set(marka, "HandMarka", true);
-        Check("Marka opens Walpurgis", marka, "ActivateMarka",
-            "ActivateWalpurgis");
-
-        CheckWalpurgisGuideTargets();
-
-        object terracottan = BaseState();
-        Set(terracottan, "HandTerracottan", true);
-        Set(terracottan, "GraveWitchcrafterSpell", true);
-        Set(terracottan, "GraveMadameVerre", true);
-        Check("Terracottan honors its Witchcrafter Extra lock", terracottan,
-            "ActivateTerracottan", "ActivateCelebration");
-
-        object schmietta = BaseState();
-        Set(schmietta, "HandSchmietta", true);
-        Check("Schmietta plus any Spell does not pass", schmietta,
-            "NormalSchmietta", "ActivateLowWitchcrafter");
-
-        object potterie = BaseState();
-        Set(potterie, "HandOtherLow", true);
-        Set(potterie, "HandLowId", 59851535);
-        Check("Potterie plus any Spell starts the low Witchcrafter route", potterie,
-            "NormalLowWitchcrafter", "ActivateLowWitchcrafter");
-
-        CheckInterruptionReplans();
-        CheckBifrostCostGate();
-        CheckGuideNormalPreference();
-        CheckGuideDiscardPreference();
-        CheckGuideNormalPrecedesCreation();
-        CheckCancellation();
-
-        bool passedAll = Results.All(result => (bool)result["passed"]);
-        Dictionary<string, object> report = new Dictionary<string, object>
-        {
-            { "kind", "offline-planner-fixture" },
-            { "passed", passedAll },
-            { "checks", Results },
-            { "note", "These checks do not start ocgcore or establish competitive strength." }
+            string path = Path.Combine(Path.GetDirectoryName(assembly), new AssemblyName(e.Name).Name + ".dll");
+            return File.Exists(path) ? Assembly.LoadFrom(path) : null;
         };
-        File.WriteAllText(args[1], new JavaScriptSerializer().Serialize(report));
-        return passedAll ? 0 : 1;
+        Type executor = Assembly.LoadFrom(assembly).GetType("WindBot.Game.AI.Decks.Witchcraft2026Executor", true);
+        S = executor.GetNestedType("WState", F);
+        P = executor.GetNestedType("WPlanner", F);
+        Z = executor.GetNestedType("WZone", F);
+        A = executor.GetNestedType("WAction", F);
+        DeckPath = Path.Combine(Path.GetDirectoryName(assembly), "Decks", "AI_Witchcraft2026.ydk");
+        try
+        {
+            Directory.SetCurrentDirectory(Path.GetDirectoryName(assembly));
+            CallbackChecks(executor, args[2]);
+            object start = Opening(32353566, 21522601, 6071005, 57916305, 22623509);
+            object full = Run(start, "guide opening");
+            Check("guide endpoint has Pupils, Rilliona, Vice, revived Dragoon and Distortion",
+                Count(full, 69964858, "Board") > 0 && Count(full, 33475154, "Board") > 0 &&
+                Count(full, 9603252, "Board") > 0 && Count(full, 37818794, "Board") > 0 &&
+                Count(full, 69748261, "Backrow") > 0);
+            object oldHand = Opening(21522601, 6071005, 58139997, 57916305, 22623509);
+            object regression = Run(oldHand, "reported 230832 opening");
+            Check("reported hand reaches Rilliona and revived Dragoon",
+                Count(regression, 33475154, "Board") > 0 && Count(regression, 37818794, "Board") > 0);
+            object missing = Opening(32353566, 21522601, 6071005, 57916305, 22623509);
+            Add(missing, 33475154, "Extra", -1);
+            object repair = Run(missing, "missing Rilliona");
+            Check("missing Rilliona never fabricated", Count(repair, 33475154, "Board") == 0);
+            object disabled = Opening(32353566, 21522601, 6071005, 57916305, 22623509);
+            Move(disabled, 32353566, "Hand", "Backrow");
+            ((HashSet<int>)Get(disabled, "Disabled")).Add(32353566);
+            Add(disabled, 64756282, "Board");
+            Check("disabled Walpurgis supplies no deck discard",
+                !Actions(disabled).Cast<object>().Any(a => Kind(a) == "Recruit" && Get(a, "CostZone").ToString() == "Deck"));
+            object locked = Empty();
+            Add(locked, 6071005, "Board"); Add(locked, 59400890, "Extra");
+            Set(locked, "SpellActivity", true); Set(locked, "ExtraLock", true);
+            Check("Terracottan lock forbids Dark Magician bridge", !Actions(locked).Cast<object>().Any(a => Kind(a) == "DarkSummon"));
+            object noMaterials = Empty(); Add(noMaterials, 6958567, "Hand"); Add(noMaterials, 9603252, "Extra");
+            Check("no materials means no fusion", !Actions(noMaterials).Cast<object>().Any(a => Kind(a) == "Fusion"));
+            object spentBifrost = Empty(); Add(spentBifrost, 32236916, "Hand"); Add(spentBifrost, 32353566, "Deck");
+            Check("Bifrost requires actual three Extra costs", !Actions(spentBifrost).Cast<object>().Any(a => Kind(a) == "FieldAccess"));
+            object summoned = Empty(); Add(summoned, 33475154, "Board");
+            foreach (int id in new[] { 84523092, 58139997, 7656689 }) Add(summoned, id, "Deck");
+            Set(summoned, "Pending", 33475154);
+            object recruit = Actions(summoned).Cast<object>().First(a => Kind(a) == "RillieRecruit");
+            object recruited = Apply(summoned, recruit);
+            Check("Rilliona recruits three only through its separate trigger",
+                Count(recruited, 84523092, "Board") == 1 && Count(recruited, 58139997, "Board") == 1 &&
+                Count(recruited, 7656689, "Board") == 1 && (int)Get(recruited, "FutureSummons") == 1);
+            object maxx = Opening(32353566, 21522601, 6071005, 57916305, 22623509);
+            Set(maxx, "Maxx", true);
+            object stop = Run(maxx, "Maxx C");
+            Check("Maxx C does not force the full guide", Count(stop, 33475154, "Board") == 0);
+            var cts = new CancellationTokenSource(); cts.Cancel();
+            Check("cancelled planner commits no action", Steps(Plan(start, null, cts.Token)).Count == 0);
+            object filter = typeof(Witchcraft2026PlannerChecks).GetMethod("OnlyNormal", F).MakeGenericMethod(A).Invoke(null, null);
+            object normalOnly = Opening(64756282, 32353566, 21522601, 6071005, 57916305);
+            IList filtered = Steps(Plan(normalOnly, filter));
+            Check("root action restricted to actual offers", filtered.Count > 0 && Kind(Get(filtered[0], "Action")) == "Normal");
+            object oneVice = Empty(); Add(oneVice, 9603252, "Board");
+            object twoVice = S.GetMethod("Copy", F).Invoke(oneVice, null); Add(twoVice, 9603252, "Board");
+            double firstValue = (double)P.GetMethod("Evaluate", F).Invoke(null, new[] { oneVice });
+            double secondValue = (double)P.GetMethod("Evaluate", F).Invoke(null, new[] { twoVice });
+            Check("duplicate Vice does not duplicate hard-once interaction value", secondValue - firstValue <= 3.01);
+        }
+        catch (Exception e)
+        {
+            Check("harness exception", false, e.ToString());
+        }
+        File.WriteAllText(args[1], new JavaScriptSerializer().Serialize(Results));
+        return Results.Any(r => !(bool)r.GetType().GetProperty("passed").GetValue(r, null)) ? 1 : 0;
     }
 }

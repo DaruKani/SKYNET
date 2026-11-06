@@ -172,80 +172,100 @@ runtime identities and Lua behavior were checked against
 `D:/Games/MDPro4/Data/script.zip`; the zero-byte
 `D:/Games/MDPro4/Data/cards.cdb` is not a valid input.
 
-The executor follows the RDA template's separation between observed duel state,
-bounded model transitions and actual offered-card callbacks. Its synchronous
-beam planner has one 45 ms budget, cancellation, depth/node/candidate caps and
-uses receding-horizon execution: search may look ahead through a complete route,
-but only the first Action and its immediate prompt target are committed. The
-next legal offer is planned again from authoritative observed state, so an
-interruption, negation or missing follow-up cannot force a stale combo step. The
-tactical layer covers the exact list's Terraforming/Rainbow Bridge
-Bifrost/Marka access to Walpurgis, Maid Verre, Potterie and the other low-level
-Witchcrafter costs,
-Terracottan recovery and Extra Deck lock, Unveiling, Celebration and Confusion
-Fusion prompts, Rillie/Pupils/Vice-Madame, the Dark Magician of
-Destruction/Gaze/Dragoon package, Distortion and the listed hand traps. The
-planner regression includes the observed failure case where a spent Bifrost
-must not remain the only proposed action. It also asserts the exact guide ladder
-instead of inventing a completed board in the model: Walpurgis searches Genni,
-then Genni -> Schmietta -> Pittore -> Potterie -> Marka sends Creation,
-Celebration, Distortion and Confusion from the Deck in that order. The
-normal-summon handler binds that planned Action to Genni's card identity, so an
-opening Pittore cannot consume the generic low-Witchcrafter Action first.
-While that guide route is active, Creation and Maid Verre are held instead of
-cutting ahead of Walpurgis or the low-Witchcrafter ladder. Walpurgis also uses a
-guide-specific discard order: an opening Madame Verre is sent to the Graveyard
-for the later Pupils/Celebration Fusion while the searched Genni and the future
-Gaze of Timaeus are explicitly preserved. If Madame Verre is already there,
-Schmietta does not spend itself redundantly after Pupils and remains available
-as a documented Madame Rilliona material.
-Accepted Spell actions also update the same-turn Spell activity used by Dark
-Magician of Destruction instead of relying on an unrelated follow-up Spell.
-Native callbacks continue the observed route through Dark Magician of Destruction,
-Gaze/Dragoon, Genni copying Creation for Terracottan, Pupils, Madame Rilliona,
-Vice-Madame, Edel reviving Dragoon and the recovered Distortion set. Graveyard
-effects are held until their required combo stage, and the decision log records
-each accepted guide action separately.
+The 2026-11-06 rewrite uses the RDA separation of observed state, resource-checked
+model transitions and actual offers. Complete guide rollouts are evaluated
+before beam pruning, then compared with alternative routes and stopping.
+Only the first action is committed, including its source/effect, target, cost,
+materials and zones. Every next offer is replanned from authoritative state.
 
-Run the focused model fixtures after a Debug build:
+The search shares a 180 ms deadline with cancellation, depth 30, beam width 64,
+5,000 expanded nodes and 256 candidates per expansion. Scoring considers
+functional interaction, usable spell/discard resources including modeled End
+Phase returns, and Maxx "C" draws. Duplicate hard-once-per-name bosses do not
+count as duplicate interaction. This is bounded heuristic lookahead, not a
+global-optimum guarantee or an opponent simulator.
+
+The supported guide goes through Walpurgis; Genni -> Schmietta -> Pittore ->
+Potterie -> Marka with explicit Deck costs; Dark Magician of Destruction/Gaze/
+Dragoon before Terracottan's lock; Genni copying Creation; Terracottan recovering
+Celebration and fusing Pupils; Schmietta sending Madame Verre when needed;
+Pupils copying Celebration for Rilliona; Rilliona's separate three-body trigger;
+Celebration into Vice; Edel reviving Dragoon with Vice recovering Distortion.
+Alternatives include direct Haine/Verre control, Maid Verre access and other
+resource-valid Witchcrafter fusions. No search, material or recruit is free in
+the model: transitions move counted identities between actual zones.
+
+Generic optional summon-trigger prompts are distinguished from named effects.
+Own-turn fast-effect windows do not spend Celebration before Terra's next
+ignition action. Rilliona selects three planned recruits when offered; Pupils
+requests an available Extra Monster Zone. Resolution uses chain activation
+snapshots, and opponent summons cannot spend the bot's normal summon. Logs
+record alternative endpoint scores, selected costs/materials and the forecast.
+
+Limits: this is not comprehensive card coverage. It does not implement a generic
+Link/Synchro continuation, the complete Lacrima/copy-spell engine, every floodgate,
+unknown opposing responses, or side-deck strategy. Tactical interaction remains
+separate from own-turn route search. More matchups still require native testing.
+
+Run focused model/callback fixtures after a Debug build:
 
 ```powershell
 .\WindBot\Tools\Invoke-Witchcraft2026PlannerChecks.ps1 `
   -BotExecutable WindBot/bin/Debug/WindBot.exe `
-  -OutputDirectory Artifacts/witchcraft-2026-planner-my-change
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/witchcraft-planner-my-change
 ```
 
-For the same build-and-connect workflow as the Sky Striker launcher, double-click
-`Tools/Run-Witchcraft2026.bat` or pass explicit connection settings:
+The Sky-Striker-style launcher is unchanged: open a compatible room and run
+`Tools/Run-Witchcraft2026.bat`. It builds Debug and writes a timestamped
+decision log beside the launcher. Use `--build-only` to compile without joining.
 
 ```bat
 WindBot\Tools\Run-Witchcraft2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb" ""
 ```
 
-Use `Run-Witchcraft2026.bat --build-only` to compile without joining a room. A
-timestamped decision log is written beside the launcher.
-
-For a native duel, provide the matching database and a compatible host explicitly:
+Run the native route checker with Python 3.11+ and explicit host/data inputs:
 
 ```powershell
-Push-Location .\WindBot\bin\Debug
-try {
-    .\WindBot.exe Name=Witchcraft2026 Deck=Witchcraft2026 `
-        Dialog=MadameVerre.EN `
-        "DbPath=D:\Games\MDPro4\Data\locales\en-US\cards.cdb" `
-        Host=127.0.0.1 Port=7911
-}
-finally { Pop-Location }
+.\WindBot\Tools\Invoke-Witchcraft2026NativeChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Python C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  -ServerLibrary D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll `
+  -DataRoot D:/Games/MDPro4/Data `
+  -OutputDirectory Artifacts/witchcraft-native-my-change
 ```
 
-`BotWrapper/bot.conf` exposes **Witchcraft 2026 (Planner)** so Arena can select
-the candidate and a frozen baseline independently. Arena cannot inject the combo
-hands used by the planner fixtures. The fixtures prove only deterministic model
-routes, Bifrost cost gating and cancellation; builds prove compilation. Native
-completion and frozen Arena match results must be recorded separately, so this
-executor does not claim that the full route survives every engine prompt or
-interruption until a new native duel log shows it. It also does not claim
-exhaustive prompt coverage or competitive strength.
+This permutes the selected deck without changing its multiset, runs two isolated
+no-shuffle/no-deck-check duels in different client launch slots, and checks actual
+card movements through the first own Main Phase. Default is the reported
+Madame/Marka/Edel/Creation/Maid Verre opening. Exercise the no-Madame branch with
+`-Opening @('32353566','14558127','14558127','23434538','6071005')`.
+The opponent is passive Default; wins are not competitive evidence. Launch slot
+is not play order, and the native core RNG seed is unavailable.
+
+Validation on 2026-11-06 includes 23 model/callback checks, Debug/Release builds,
+44/44 native route assertions per opening (four duels total), and a separate
+two-duel Ash-interruption probe. The preserved baseline passes only 14/44 route
+assertions with the reported opening despite completing both duels. Winning the
+passive fixture does not prove that a combo was played correctly.
+Receipts are recorded in ignored workspace `Artifacts/`.
+The two changed executor/model files also compile independently with C# 6.
+A whole-solution C# 6 override still fails in pre-existing AIUtil/Albaz/Ryzeal
+syntax; ordinary Debug/Release builds use the project's existing language setup.
+Native hashes are recorded in each `native/result.json` (or `result.json`
+for the interruption probe); route assertions are in `route-checks.json`.
+Selected CDB SHA-256:
+`1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8`.
+Script archive SHA-256:
+`7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb`.
+
+Arena's 142 automated tests, frontend build and six process-owner tests pass.
+These are integration checks, not a frozen strength comparison. No Arena SQLite
+configuration or dedicated SRVPro endpoint was available in this checkout, so no
+Arena win-rate experiment is claimed. `BotWrapper/bot.conf` still exposes
+**Witchcraft 2026 (Planner)** for a future configured comparison against frozen
+baseline `a0360a76` (preserved executable SHA-256
+`fcbc4d56648e1d68971ee56ddeb596f9915094d4aa3c4d47b2ce24a245bc3799`).
 
 ## Sky Striker 2026 executor
 

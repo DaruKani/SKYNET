@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$BotExecutable,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [Parameter(Mandatory = $true)][string]$Database,
     [string]$Compiler = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 )
 
@@ -14,6 +15,12 @@ if (Test-Path -LiteralPath $outputPath) {
     throw 'Use a new output directory; existing receipts are never overwritten.'
 }
 New-Item -ItemType Directory -Path $outputPath | Out-Null
+$databasePath = (Resolve-Path -LiteralPath $Database).Path
+foreach ($architecture in @('x64', 'x86')) {
+    $native = Join-Path (Split-Path -Parent $botPath) ($architecture + '/sqlite3.dll')
+    New-Item -ItemType Directory -Path (Join-Path $outputPath $architecture) | Out-Null
+    Copy-Item -LiteralPath $native -Destination (Join-Path $outputPath ($architecture + '/sqlite3.dll'))
+}
 $harness = Join-Path $outputPath 'Witchcraft2026PlannerChecks.exe'
 & $compilerPath /nologo /target:exe /platform:x64 /r:System.Core.dll `
     /r:System.Web.Extensions.dll "/out:$harness" `
@@ -22,7 +29,7 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Witchcraft 2026 planner harness compilation failed.'
 }
 $report = Join-Path $outputPath 'report.json'
-& $harness $botPath $report
+& $harness $botPath $report $databasePath
 if ($LASTEXITCODE -ne 0) {
     throw "Witchcraft 2026 planner checks failed (exit $LASTEXITCODE); inspect $outputPath"
 }
