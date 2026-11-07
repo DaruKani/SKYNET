@@ -713,23 +713,72 @@ use ordinary WindBot handlers. Debug/Release compilation, planner checks and
 deck-list checks do not substitute for a script-backed duel; record real duel
 outcomes separately before treating the executor as competitively tuned.
 
-Acceptance run on 2026-11-07: Debug/Release built and 69 focused checks passed,
-but **native playing behavior did not pass acceptance**. Ten same-version mirror
-duels completed without timeout, protocol retry, runtime error or forced cleanup.
-The designated client went first five times and second five times, inferred from
-public turn-two draw events. Five saved deck-permutation pairs were used with
-engine no-shuffle/no-deck-check settings; the core RNG seed is unknown. This is
-not an Arena ranking or baseline strength comparison.
+The first acceptance run on 2026-11-07 passed 69 focused checks but failed native
+behavior; its unchanged evidence remains in
+`Artifacts/skystriker-acceptance-20261107/acceptance-report.md`. The follow-up fixes
+the Normal Roze/Raye and committed Linkage-fuel handler conflicts. An unresolved
+own Linkage now reserves its summon/fuel without prohibiting later Battle Phase
+chains. Pot's existing risk guard feeds the planner; resolved search/draw locks
+also constrain projected actions, while Zero may still recover a grave Spell.
 
-The frozen logs expose a planner/handler conflict: a Normal Roze recommendation
-is refused while Raye is held, while the recommendation also blocks Normal Raye,
-leaving an empty board. A committed Linkage-fuel route can similarly stall on a
-conflicting starter guard. Another opening chains two Linkages to Upstart and
-replaces its newly summoned Zero with Amatsu. These failures remain unfixed in
-the tested version. Profitable Lemnisgate use and the complete prepared Linkage
-OTK were not exercised and must not be marked passed. Local evidence, frozen
-inputs, reproduction commands and line references are in
-`Artifacts/skystriker-acceptance-20261107/acceptance-report.md` at workspace root.
+The planner can now reach the prepared lethal position from a normal summon via
+Hayate, reserving Kagari and Zero. Raye preserves that reservation in the
+post-summon fast-effect window, when the next Main Phase offers are not yet
+available. Lemnisgate's incremental `SelectSameCount` callback completes balanced
+pairs, so a two-pair plan does not accidentally pay three. Its GY effect is held
+when the same normal Link can be performed for free in our Main Phase.
+
+Run the complete regression workflow from the workspace root (no open MDPro4
+room is needed):
+
+```powershell
+.\WindBot\Tools\Test-SkyStriker2026.ps1 `
+  -Python 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' `
+  -OutputDirectory Artifacts/skystriker-check-my-change
+```
+
+Or double-click `Tools/Test-SkyStriker2026.bat`. This is separate from the
+`Run-SkyStriker2026.bat` room-join launcher. The test wrapper builds Debug/Release,
+runs the focused suite with the selected database, and runs five controlled native
+scenarios plus ten mirror duels. It requires Python 3.11+, .NET Framework 4.8
+MSBuild and the explicitly selected MDPro4 data/server. Override `-DataRoot`,
+`-Server`, `-MSBuild` and `-Python` if installed elsewhere. `-MirrorGames 0` skips
+mirrors but is not the complete workflow. Existing output folders are rejected.
+
+For native checks only after a Debug build:
+
+```powershell
+python WindBot/Tools/skystriker_native_checks.py `
+  --bot-exe WindBot/bin/Debug/WindBot.exe `
+  --data-root D:/Games/MDPro4/Data `
+  --server D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll `
+  --deck WindBot/Decks/AI_SkyStriker2026.ydk `
+  --output-dir Artifacts/skystriker-native-my-change --mirror-games 10
+```
+
+The five scenarios assert turn-two Linkage OTK, one-copy setup preserving Zero,
+replanning after Droll, Hornet/Kaina/Zero with no targetless Lemnisgate, and normal
+recovery after a wipe without wasting Lemnisgate's GY effect. Mirror audits inspect
+both clients for unresolved duplicate Linkage, idle recommended-root deadlocks,
+Lemnisgate planned/actual return counts and runtime/selection errors. They are
+log-level regression checks, not a full legality or strategy oracle. Runtime,
+database, scripts, server, decks, hashes and logs are retained under the output.
+Only isolated owned duel processes are started; installed game files are unchanged.
+
+These are no-shuffle/no-deck-check fixtures. The tested Main/Extra card multiset is
+preserved, but controlled opponents deliberately use synthetic decks. The core RNG
+seed is unknown, and same-version mirror wins are not a strength comparison. The
+92 focused checks include actual handler/callback tests on synthetic observed
+states, including positive Lemnisgate GY/Kaina defense and already-negated Ash;
+those two positive/negative windows are not yet certified by native fixtures.
+Passing this workflow means the selected regressions passed, not that every card,
+matchup, interruption or future-turn plan is perfect.
+
+Follow-up acceptance on 2026-11-07: Debug/Release built; 92/92 focused checks,
+14/14 shared RDA checks, all five controlled native scenarios and all ten audited
+mirrors passed. Native OTK and four-/six-card Lemnisgate returns were observed.
+Final receipts, frozen inputs, failed intermediate runs and coverage limits are
+under `Artifacts/skystriker-fix-20261107/acceptance-report.md` at workspace root.
 
 ## Voiceless Voice routes and recovery
 

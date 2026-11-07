@@ -51,6 +51,7 @@ internal static class SkyStrikerPlannerChecks
         Set(state, "ExtraZero", true);
         Set(state, "ExtraKagari", true);
         Set(state, "ExtraBridge", true);
+        Set(state, "ExtraHayate", true);
         Set(state, "ExtraShizuku", true);
         Set(state, "EnemyLife", 8000);
         Set(state, "DeckCount", 35);
@@ -91,6 +92,43 @@ internal static class SkyStrikerPlannerChecks
 
     private static void CheckPlanningHorizon(Assembly assembly)
     {
+        object otk = BaseState();
+        Set(otk, "Turn1", false);
+        Set(otk, "HandRaye", true);
+        Set(otk, "HandLinkage", true);
+        Check("Raye plus Linkage plans the battle starter before spending Zero",
+            otk, "NormalRaye", 0, "LinkBattleStarter");
+        Record("Normal summon route projects the full 8000 battle line",
+            (int)PlannerType.GetMethod("GetPreparedBattleDamage", Flags).Invoke(null,
+                new[] { Get(((IList)Get(Plan(otk), "Steps")).Cast<object>().Last(), "After") }) >= 8000);
+
+        object risk = BaseState();
+        Set(risk, "HandPot", true);
+        Set(risk, "HandRoze", true);
+        Set(risk, "PotPermitted", false);
+        Set(risk, "RootActionMask", ActionMask("ActivatePot") | ActionMask("NormalRoze"));
+        Check("Rejected Pot risk cannot deadlock the offered Roze setup", risk, "NormalRoze", 0);
+        object locked = BaseState();
+        Set(locked, "CanSearch", false);
+        Set(locked, "CanDraw", false);
+        Set(locked, "HandEngage", true);
+        Set(locked, "HandPot", true);
+        Set(locked, "HandReinforcement", true);
+        Set(locked, "HandRaye", true);
+        Check("Resolved Droll replans through Raye without fictional search or draw",
+            locked, "NormalRaye", 0);
+        Record("Droll route contains no deck search or Pot",
+            !RouteKinds(Plan(locked)).Any(kind => kind == "ActivateEngage" ||
+                kind == "ActivateReinforcement" || kind == "ActivatePot"));
+        SetExtra(locked, "Zero");
+        Set(locked, "PendingZeroSearch", true);
+        Set(locked, "GraveEngage", true);
+        Set(locked, "GraveEngageCopies", 1);
+        Set(locked, "GraveSpells", 1);
+        object recovered = Transition(locked, "ResolveZeroSearch");
+        Record("Droll still permits Zero to recover grave Engage instead of Deck Engage",
+            !(bool)Get(recovered, "GraveEngage") && (bool)Get(recovered, "DeckEngage"));
+
         object blockedEngage = BaseState();
         Set(blockedEngage, "HandEngage", true);
         Set(blockedEngage, "HandRaye", true);
@@ -262,6 +300,186 @@ internal static class SkyStrikerPlannerChecks
         ((IList)bot.GetType().GetProperty("ExtraDeck").GetValue(bot, null)).Add(shizuku);
         Record("Observed resource change retires hold and permits a completed Hornet route",
             (bool)hornetHandler.Invoke(executor, null));
+
+        CheckLivePlannerDispatch(assembly);
+    }
+
+    private static void CheckLivePlannerDispatch(Assembly assembly)
+    {
+        object duel = Activator.CreateInstance(assembly.GetType("WindBot.Game.Duel", true));
+        Array fields = (Array)Get(duel, "Fields");
+        for (int i = 0; i < fields.Length; i++)
+            fields.GetValue(i).GetType().GetMethod("Init").Invoke(fields.GetValue(i),
+                new object[] { 0, 0, i });
+        object bot = fields.GetValue(0);
+        object knownDeck = Activator.CreateInstance(typeof(List<>).MakeGenericType(
+            assembly.GetType("YGOSharp.OCGWrapper.NamedCard", true)));
+        bot.GetType().GetMethod("SetInitialDeck").Invoke(bot, new[] { knownDeck });
+        duel.GetType().GetProperty("Turn").SetValue(duel, 1, null);
+        PropertyInfo phase = duel.GetType().GetProperty("Phase");
+        phase.SetValue(duel, Enum.Parse(phase.PropertyType, "Main1"), null);
+        object executor = Activator.CreateInstance(ExecutorType, new object[] { null, duel });
+        IList hand = (IList)Get(bot, "Hand");
+        object raye = FixtureCard(assembly, 26077387, "Hand");
+        object roze = FixtureCard(assembly, 37351133, "Hand");
+        hand.Add(raye);
+        hand.Add(roze);
+        IList extra = (IList)Get(bot, "ExtraDeck");
+        object kagari = FixtureCard(assembly, 63288573, "Extra");
+        kagari.GetType().GetProperty("Type", Flags).SetValue(kagari, 0x4000021, null);
+        extra.Add(kagari);
+        ((IList)Get(bot, "Graveyard")).Add(FixtureCard(assembly, 63166095, "Grave"));
+        object main = Get(duel, "MainPhase");
+        IList summons = (IList)Get(main, "SummonableCards");
+        summons.Add(roze);
+        Record("Live Roze handler executes its offered route even with Raye in hand",
+            (bool)ExecutorType.GetMethod("RozeSummon", Flags).Invoke(executor, null));
+        Record("Live Raye handler does not compete with the recommended Roze route",
+            !(bool)ExecutorType.GetMethod("RayeSummon", Flags).Invoke(executor, null));
+
+        summons.Clear();
+        object linkage = FixtureCard(assembly, 9726840, "Hand");
+        hand.Add(linkage);
+        ((IList)Get(main, "ActivableCards")).Add(linkage);
+        object zero = FixtureCard(assembly, 76072561, "Extra");
+        zero.GetType().GetProperty("Type", Flags).SetValue(zero, 0x4000021, null);
+        extra.Add(zero);
+        ((Array)Get(bot, "SpellZone")).SetValue(FixtureCard(assembly, 34433770, "SpellZone"), 0);
+        MethodInfo setCard = ExecutorType.GetMethod("SetCard", Flags);
+        object activate = Enum.Parse(setCard.GetParameters()[0].ParameterType, "Activate");
+        setCard.Invoke(executor, new[] { activate, linkage, (object)0, (object)(-1) });
+        MethodInfo handler = ExecutorType.GetMethod("LinkageEffect", Flags);
+        Record("Live Linkage handler completes its fuel route despite a retained Raye",
+            (bool)handler.Invoke(executor, null));
+
+        IList chain = (IList)Get(duel, "CurrentChain");
+        IList info = (IList)Get(duel, "CurrentChainInfo");
+        object snapshot = Activator.CreateInstance(assembly.GetType("WindBot.Game.ChainInfo", true),
+            new[] { linkage, (object)0, (object)0 });
+        chain.Add(linkage);
+        info.Add(snapshot);
+        phase.SetValue(duel, Enum.Parse(phase.PropertyType, "Battle"), null);
+        Record("Live Linkage rejects a second own copy while the first is unresolved",
+            !(bool)handler.Invoke(executor, null));
+        // Protocol owns these lists; the fixture simulates the next chain window.
+        chain.Clear();
+        info.Clear();
+        ExecutorType.GetMethod("OnChainEnd", Flags).Invoke(executor, null);
+        Record("Linkage reservation does not prohibit a subsequent Battle Phase chain",
+            (bool)handler.Invoke(executor, null));
+        chain.Add(linkage);
+        info.Add(Activator.CreateInstance(assembly.GetType("WindBot.Game.ChainInfo", true),
+            new[] { linkage, (object)1, (object)0 }));
+        Record("Opponent Linkage is not treated as our unresolved summon reservation",
+            (bool)handler.Invoke(executor, null));
+
+        // Match utility.lua SelectSameCount: only equal Spell/monster counts
+        // offer finish; the callback receives only still-unselected candidates.
+        IList pool = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(raye.GetType()));
+        foreach (int id in new[] { 98338152, 98338152, 9726840 })
+            pool.Add(FixtureCard(assembly, id, "Grave"));
+        foreach (int id in new[] { 63288573, 90673288, 76072561 })
+        {
+            object monster = FixtureCard(assembly, id, "Grave");
+            monster.GetType().GetProperty("Type", Flags).SetValue(monster, 0x4000021, null);
+            pool.Add(monster);
+        }
+        ExecutorType.GetField("LemnisgateRecyclePairCount", Flags).SetValue(executor, 2);
+        MethodInfo recycle = ExecutorType.GetMethod("SelectLemnisgateRecycleCards", Flags);
+        int spells = 0, monsters = 0;
+        for (int click = 0; click < 6; click++)
+        {
+            int minimum = spells == monsters && spells > 0 ? 0 : 1;
+            IList picked = (IList)recycle.Invoke(executor, new object[] { pool, minimum, 1 });
+            if (picked.Count == 0) break;
+            object card = picked[0];
+            if (((int)Get(card, "Type") & 2) != 0) spells++;
+            else monsters++;
+            pool.Remove(card);
+        }
+        Record("Lemnisgate incremental prompt stops after exactly two balanced pairs",
+            spells == 2 && monsters == 2 && pool.Count == 2);
+
+        chain.Clear();
+        info.Clear();
+        phase.SetValue(duel, Enum.Parse(phase.PropertyType, "Main1"), null);
+        IList grave = (IList)Get(bot, "Graveyard");
+        grave.Clear();
+        foreach (int id in new[] { 98338152, 9726840, 63288573, 90673288 })
+            grave.Add(DatabaseFixtureCard(assembly, id, "Grave"));
+        object lemn = DatabaseFixtureCard(assembly, 34433770, "Hand");
+        setCard.Invoke(executor, new[] { activate, lemn, (object)0, (object)(-1) });
+        MethodInfo lemnHandler = ExecutorType.GetMethod("LemnisgateEffect", Flags);
+        Record("Actual Lemnisgate handler holds with two recycle pairs but no opponent cards",
+            !(bool)lemnHandler.Invoke(executor, null));
+        object enemy = fields.GetValue(1);
+        object drain = DatabaseFixtureCard(assembly, 82732705, "SpellZone");
+        drain.GetType().GetProperty("Controller").SetValue(drain, 1, null);
+        ((Array)Get(enemy, "SpellZone")).SetValue(drain, 0);
+        Record("Actual Lemnisgate handler accepts two pairs against a public floodgate",
+            (bool)lemnHandler.Invoke(executor, null) &&
+            (int)ExecutorType.GetField("LemnisgateRecyclePairCount", Flags).GetValue(executor) == 2);
+        IList bounces = (IList)Activator.CreateInstance(pool.GetType());
+        bounces.Add(lemn);
+        bounces.Add(drain);
+        IList returned = (IList)ExecutorType.GetMethod("SelectLemnisgateBounceTargets", Flags)
+            .Invoke(executor, new object[] { bounces, 1, 1 });
+        Record("Actual Lemnisgate return callback chooses the opponent floodgate, not itself",
+            returned.Count == 1 && returned[0] == drain);
+        ((Array)Get(enemy, "SpellZone")).SetValue(null, 0);
+        object token = DatabaseFixtureCard(assembly, 52340445, "MonsterZone");
+        ((Array)Get(bot, "MonsterZone")).SetValue(token, 0);
+        grave.Add(DatabaseFixtureCard(assembly, 63166095, "Grave"));
+        lemn = DatabaseFixtureCard(assembly, 34433770, "Grave");
+        setCard.Invoke(executor, new[] { activate, lemn, (object)0, (object)(-1) });
+        Record("Actual Lemnisgate GY handler preserves itself when a normal Main Phase Link is free",
+            !(bool)lemnHandler.Invoke(executor, null));
+        int[] priority = (int[])ExecutorType.GetMethod("GetLemnisgateExtraDeckPriority", Flags)
+            .Invoke(executor, null);
+        Record("Profitable GY Link selects the valued Kagari route first", priority[0] == 63288573);
+        grave.Clear();
+        Record("Actual Lemnisgate GY handler holds the same token without recovery payoff",
+            !(bool)lemnHandler.Invoke(executor, null));
+
+        duel.GetType().GetProperty("Player").SetValue(duel, 1, null);
+        phase.SetValue(duel, Enum.Parse(phase.PropertyType, "Battle"), null);
+        extra.Add(DatabaseFixtureCard(assembly, 12421694, "Extra"));
+        object attacker = DatabaseFixtureCard(assembly, 89631139, "MonsterZone");
+        attacker.GetType().GetProperty("Controller").SetValue(attacker, 1, null);
+        ((Array)Get(enemy, "MonsterZone")).SetValue(attacker, 0);
+        Record("Actual Lemnisgate GY handler accepts a token conversion against an incoming 3000 attack",
+            (bool)lemnHandler.Invoke(executor, null));
+        priority = (int[])ExecutorType.GetMethod("GetLemnisgateExtraDeckPriority", Flags)
+            .Invoke(executor, null);
+        Record("Opponent Battle Phase grave Link prioritizes Kaina's attack stop", priority[0] == 12421694);
+        ((Array)Get(enemy, "MonsterZone")).SetValue(null, 0);
+        Record("Same grave Link is held after the opposing threat disappears",
+            !(bool)lemnHandler.Invoke(executor, null));
+
+        object negated = DatabaseFixtureCard(assembly, 63288573, "MonsterZone");
+        negated.GetType().GetProperty("Controller").SetValue(negated, 1, null);
+        negated.GetType().GetProperty("Disabled", Flags).SetValue(negated, 1, null);
+        chain.Add(negated);
+        info.Add(Activator.CreateInstance(assembly.GetType("WindBot.Game.ChainInfo", true),
+            new[] { negated, (object)1, (object)0 }));
+        Record("Actual Ash handler holds against a disabled on-field Kagari effect",
+            !(bool)ExecutorType.GetMethod("AshBlossomEffect", Flags).Invoke(executor, null));
+    }
+
+    private static object DatabaseFixtureCard(Assembly assembly, int id, string location)
+    {
+        Type cardType = assembly.GetType("WindBot.Game.ClientCard", true);
+        Type locationType = cardType.GetProperty("Location").PropertyType;
+        object card = Activator.CreateInstance(cardType,
+            new object[] { id, Enum.Parse(locationType, location), 0, 1 });
+        object data = Get(card, "Data");
+        // ClientCard receives dynamic stats from engine QUERY packets, not its
+        // constructor. Populate the public, unmodified printed stats here.
+        foreach (string name in new[] { "Type", "Attack", "Defense", "Attribute", "Race", "Level" })
+            cardType.GetProperty(name, Flags).SetValue(card, Get(data, name), null);
+        if (((int)Get(card, "Type") & 0x4000000) != 0)
+            cardType.GetProperty("LinkCount", Flags).SetValue(card, Get(data, "Level"), null);
+        return card;
     }
 
     private static string FirstKind(object plan)

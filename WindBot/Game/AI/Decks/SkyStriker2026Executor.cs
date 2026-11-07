@@ -1848,6 +1848,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool LinkageEffect()
         {
+            // A second unresolved copy cannot reuse the first copy's fuel or
+            // empty Extra Monster Zone. Battle replacements are separate chains.
+            if (Duel.CurrentChainInfo.Any(chain => chain.ActivatePlayer == 0 &&
+                chain.IsActivateCode(CardId.Linkage)))
+                return false;
             if (!EmptyMainMonsterZone() ||
                 !Bot.GetMonsters().Concat(Bot.GetSpells()).Any(card => card != Card) ||
                 !Bot.ExtraDeck.Any(IsSkyStrikerAceLink))
@@ -1912,7 +1917,8 @@ namespace WindBot.Game.AI.Decks
                 {
                     if (!StrategicAllows(SkyStrategicActionKind.ActivateLinkage))
                         return false;
-                    if (HasBetterZeroStarterThanLinkage())
+                    if (!IsStrategicallyRecommended(SkyStrategicActionKind.ActivateLinkage) &&
+                        HasBetterZeroStarterThanLinkage())
                         return false;
                     if (Bot.HasInExtra(CardId.Zero))
                     {
@@ -2168,6 +2174,12 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShouldUseLemnisgateGraveLink()
         {
+            // After a summon on our own Main Phase, the same Link can be
+            // performed normally as soon as the trigger window closes. Paying
+            // the once-only grave resource adds no speed or material advantage.
+            if (Duel.Player == 0 && Duel.CurrentChain.Count == 0 &&
+                (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2))
+                return false;
             List<ClientCard> materials = Bot.GetMonsters().Where(card =>
                 card.IsFaceup()).ToList();
             if (materials.Count == 0 || GetLemnisgateExtraDeckPriority().Length == 0)
@@ -2563,9 +2575,15 @@ namespace WindBot.Game.AI.Decks
 
         private bool RozeSummon()
         {
-            if (NormalSummoned || Bot.HasInHand(CardId.Raye))
+            if (NormalSummoned)
                 return false;
             if (!StrategicAllows(SkyStrategicActionKind.NormalRoze))
+                return false;
+            // A complete Roze route can deliberately retain Raye for next turn.
+            // The old hand-only preference vetoed the planner's chosen summon
+            // while that same plan also vetoed Raye, leaving an empty board.
+            if (Bot.HasInHand(CardId.Raye) &&
+                !IsStrategicallyRecommended(SkyStrategicActionKind.NormalRoze))
                 return false;
 
             // If an Ace already occupies the Extra Monster Zone, Roze's next
@@ -2616,11 +2634,15 @@ namespace WindBot.Game.AI.Decks
 
         private bool PotOfDesiresEffect()
         {
-            if (Bot.Deck.Count <= 15 || ShouldReserveKagariForLinkageOtk() ||
-                ShouldPrepareWidowLinkageOtk())
-                return false;
+            return IsPotRecoveryWorthRisk() &&
+                StrategicAllows(SkyStrategicActionKind.ActivatePot);
+        }
 
-            if (!StrategicAllows(SkyStrategicActionKind.ActivatePot))
+        private bool IsPotRecoveryWorthRisk()
+        {
+            if (!DefaultCheckWhetherBotCanDraw() || Bot.Deck.Count <= 15 ||
+                ShouldReserveKagariForLinkageOtk() ||
+                ShouldPrepareWidowLinkageOtk())
                 return false;
 
             // Resolve deterministic access before risking ten unknown cards. Pot is
@@ -4501,6 +4523,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShouldUseRayeForZeroSetup()
         {
+            // The post-summon fast-effect window precedes the next MainPhase
+            // offers. Do not interpret that temporary lack of a recommendation
+            // as permission to spend the Zero reserved for the battle route.
+            if (GetLinkageOtkBridgeMaterial() != null)
+                return false;
             bool legalSetup = Card.Location == CardLocation.MonsterZone && Duel.Player == 0 &&
                 Duel.Phase == DuelPhase.Main1 && Duel.CurrentChain.Count == 0 &&
                 LinkageOtk == LinkageOtkStage.None && !ZeroSummoned &&
@@ -4801,7 +4828,12 @@ namespace WindBot.Game.AI.Decks
                     return new List<ClientCard>();
                 }
 
-                ClientCard next = cards.OrderByDescending(GetLemnisgateRecycleValue)
+                // SelectSameCount only permits finishing with equal counts.
+                // Taking all high-ranked Spells first can force a third pair
+                // even when the plan paid for two. Complete one pair at a time.
+                bool selectSpell = LemnisgateRecycleSelectionCount % 2 == 0;
+                ClientCard next = cards.Where(card => selectSpell ? card.IsSpell() : card.IsMonster())
+                    .OrderByDescending(GetLemnisgateRecycleValue)
                     .FirstOrDefault();
                 if (next == null)
                 {
