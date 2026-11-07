@@ -713,6 +713,24 @@ use ordinary WindBot handlers. Debug/Release compilation, planner checks and
 deck-list checks do not substitute for a script-backed duel; record real duel
 outcomes separately before treating the executor as competitively tuned.
 
+Acceptance run on 2026-11-07: Debug/Release built and 69 focused checks passed,
+but **native playing behavior did not pass acceptance**. Ten same-version mirror
+duels completed without timeout, protocol retry, runtime error or forced cleanup.
+The designated client went first five times and second five times, inferred from
+public turn-two draw events. Five saved deck-permutation pairs were used with
+engine no-shuffle/no-deck-check settings; the core RNG seed is unknown. This is
+not an Arena ranking or baseline strength comparison.
+
+The frozen logs expose a planner/handler conflict: a Normal Roze recommendation
+is refused while Raye is held, while the recommendation also blocks Normal Raye,
+leaving an empty board. A committed Linkage-fuel route can similarly stall on a
+conflicting starter guard. Another opening chains two Linkages to Upstart and
+replaces its newly summoned Zero with Amatsu. These failures remain unfixed in
+the tested version. Profitable Lemnisgate use and the complete prepared Linkage
+OTK were not exercised and must not be marked passed. Local evidence, frozen
+inputs, reproduction commands and line references are in
+`Artifacts/skystriker-acceptance-20261107/acceptance-report.md` at workspace root.
+
 ## Voiceless Voice routes and recovery
 
 `Deck=Voiceless` loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck includes
