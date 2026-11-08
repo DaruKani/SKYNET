@@ -25,12 +25,17 @@ namespace WindBot.Game.AI.Decks
             ClientCard viceRemoval, IEnumerable<ClientCard> publicMonsters = null)
         {
             WChainForecast f = new WChainForecast();
+            OpponentAwareness semantics = new OpponentAwareness();
             foreach (int index in negated) f.Negated.Add(index - 1);
             for (int i = links.Count - 1; i >= 0; i--)
             {
                 ChainInfo link = links[i];
                 ClientCard source = link.RelatedCard;
                 if (f.Negated.Contains(i)) { f.Trace.Add(i + ":negated"); continue; }
+                OpponentEffect known = semantics.Identify(link);
+                if (known != null && known.RequiresFaceup && source != null &&
+                    (f.Removed.Contains(source) || !source.IsFaceup() || source.Location != link.ActivateLocation))
+                { f.Trace.Add(i + ":reviewed source-presence dependency fails"); continue; }
                 if (link.ActivateLocation == CardLocation.MonsterZone && source != null &&
                     (f.Disabled.Contains(source) || (source.Location == CardLocation.MonsterZone && source.IsDisabled())))
                 { f.Trace.Add(i + ":disabled"); continue; }
@@ -89,13 +94,15 @@ namespace WindBot.Game.AI.Decks
                             f.Disabled.Add(target);
                     f.Trace.Add(i + ":Anchor checks surviving monster, not spell presence");
                 }
-                else f.Trace.Add(i + ":unknown/other outcome " + link.ActivateId);
+                else f.Trace.Add(i + ":" + (known == null ? "unknown/other outcome " + link.ActivateId :
+                    known.Name + (known.RequiresFaceup ? "/requires face-up source" : "/removal alone does not negate")));
             }
             return f;
         }
 
         private WChainForecast ChainForecast()
         {
+            _opponent.Observe(Duel.CurrentChainInfo);
             if (Duel.SolvingChainIndex > 0)
                 return ForecastChain(Duel.CurrentChainInfo.Take(Duel.SolvingChainIndex - 1).ToList(),
                     Duel.NegatedChainIndexList, null, Bot.GetMonsters().Concat(Enemy.GetMonsters()));
@@ -129,7 +136,46 @@ namespace WindBot.Game.AI.Decks
             if (Duel.CurrentChainInfo.Any(c => ReferenceEquals(c.RelatedCard, target)) &&
                 target.IsSpell() && !target.HasType(CardType.Continuous) &&
                 !target.HasType(CardType.Field) && !target.HasType(CardType.Equip)) return 0;
-            return target.IsFloodgate() ? 28 : target.IsMonster() ? 10 + Math.Max(0, target.Attack) / 500.0 : 8;
+            OpponentThreat threat = OpponentAssessment(target, forecast);
+            // Floodgate restriction profiles are separately verified by Outcomes.
+            double restriction = target.IsCode(SummonLimiter, SpellSummonLimiter) && !target.IsDisabled() &&
+                !forecast.Disabled.Contains(target) ? 20 : 0;
+            return Math.Max(0, threat.Removal + restriction);
+        }
+
+        private OpponentThreat OpponentAssessment(ClientCard target, WChainForecast forecast)
+        {
+            IList<ChainInfo> links = Duel.SolvingChainIndex > 0 ?
+                Duel.CurrentChainInfo.Take(Duel.SolvingChainIndex - 1).ToList() : Duel.CurrentChainInfo;
+            return _opponent.Assess(target, links, forecast.Negated,
+                forecast.Disabled.Contains(target), Duel.Player == target.Controller);
+        }
+
+        private double InterruptionCost(double baseCost)
+        {
+            int spells = Bot.Hand.Count(c => c.IsSpell());
+            // Last Spell also funds the remaining Verre/Haine defense. This is an
+            // opportunity cost, not knowledge of an unseen future activation.
+            return baseCost + (spells <= 1 ? 4 : 0);
+        }
+
+        private bool WorthVerre()
+        {
+            WChainForecast forecast = ChainForecast();
+            double gain = 0;
+            List<string> reasons = new List<string>();
+            foreach (ClientCard monster in Enemy.GetMonsters().Where(c => c.IsFaceup() && !c.IsDisabled() &&
+                !forecast.Removed.Contains(c) && !forecast.Disabled.Contains(c)))
+            {
+                OpponentThreat threat = OpponentAssessment(monster, forecast);
+                double live = threat.NegateNow;
+                if (!threat.Supported && Duel.CurrentChainInfo.Select((c, i) => new { c, i }).Any(x =>
+                    ReferenceEquals(x.c.RelatedCard, monster) && !forecast.Negated.Contains(x.i))) live = 12;
+                gain += live + threat.Future * .25; // temporary disable, not permanent removal
+                reasons.Add(monster.Id + ":" + threat.Explain());
+            }
+            return TacticalDecision("Verre", gain, InterruptionCost(7),
+                "only surviving face-up monsters; spell link is not negated; reserve OPT vs " + string.Join(" | ", reasons.Take(5)));
         }
 
         private static bool KnownDestructionProtected(ClientCard card)
@@ -147,9 +193,20 @@ namespace WindBot.Game.AI.Decks
 
         private ClientCard RemovalTarget(bool targeting)
         {
-            return Enemy.GetMonsters().Concat(Enemy.GetSpells()).Where(c => RemovalValue(c, targeting) > 0)
-                .OrderByDescending(c => RemovalValue(c, targeting)).FirstOrDefault();
+            var candidates = Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Select(c => new { Card = c, Value = RemovalValue(c, targeting) })
+                .OrderByDescending(c => c.Value).ToList();
+            ClientCard selected = candidates.Where(c => c.Value > 0).Select(c => c.Card).FirstOrDefault();
+            WChainForecast forecast = ChainForecast();
+            string diagnostic = "Witchcraft2026 opponent targets: " + string.Join(" | ", candidates.Take(8).Select(c =>
+                c.Card.Id + " value=" + c.Value.ToString("0.0") + " " + OpponentAssessment(c.Card, forecast).Explain())) +
+                " selected=" + (selected == null ? 0 : selected.Id) + " method=largest-legal-marginal-removal; pending removals/protection excluded";
+            if (_lastOpponentDiagnostic != diagnostic) Logger.DebugWriteLine(diagnostic);
+            _lastOpponentDiagnostic = diagnostic;
+            return selected;
         }
+
+        private string _lastOpponentDiagnostic;
 
         private bool ValuableNegate(string name, double cost)
         {
@@ -157,7 +214,11 @@ namespace WindBot.Game.AI.Decks
             ChainInfo threat = Duel.CurrentChainInfo.Last();
             WChainForecast forecast = ChainForecast();
             double gain = 12; // unknown live effect: one interaction, never assumed a board wipe
+            OpponentEffect semantics = _opponent.Identify(threat);
+            if (semantics != null) gain = semantics.Utility;
             if (forecast.Negated.Contains(Duel.CurrentChainInfo.Count - 1)) gain = 0;
+            else if (threat.ActivateLocation == CardLocation.MonsterZone && threat.RelatedCard != null &&
+                (threat.RelatedCard.IsDisabled() || forecast.Disabled.Contains(threat.RelatedCard))) gain = 0;
             else if (threat.ActivateId == 98338152 && threat.Targets.Count > 0 &&
                 threat.Targets.All(t => forecast.Removed.Contains(t) || t.Location != CardLocation.MonsterZone)) gain = 0;
             else if (threat.ActivateId == CardId.AshBlossom)
@@ -174,7 +235,8 @@ namespace WindBot.Game.AI.Decks
                 gain = 30; // verified Zero: two recruits plus removal, after tribute already paid
             else if (threat.Targets.Any(t => t.Controller == 0 && !forecast.Removed.Contains(t)))
                 gain = 24;
-            double reserve = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() && c.Id == 76072561) ? 6 : 0;
+            double reserve = Enemy.GetMonsters().Where(c => c.IsFaceup() && !c.IsDisabled() &&
+                !forecast.Removed.Contains(c)).Select(c => OpponentAssessment(c, forecast).Future * .25).DefaultIfEmpty(0).Max();
             // Destroying the known hand activation by EFFECT sends it to GY and
             // enables a new Fusion trigger. Its materials/Extra are hidden: do not
             // claim Winda is guaranteed. With no identified urgent protected target,
@@ -183,7 +245,9 @@ namespace WindBot.Game.AI.Decks
             if (HasGraveFusionFollowup(threat.RelatedCard) && !_graveFusionSpent.Contains(threat.ActivateId) && gain <= 12)
                 return TacticalDecision(name, 0, cost + reserve,
                     "negate+destroy -> GY by effect -> possible Fusion trigger; hidden materials unknown; reserve for actual follow-up");
-            return TacticalDecision(name, gain, cost + reserve, "live threat vs paid resource and reserved interruption");
+            return TacticalDecision(name, gain, cost + reserve, "live effect=" +
+                (semantics == null ? "unsupported/uncertain" : semantics.Name) +
+                "; committed activation != source removal; future reserve=" + reserve.ToString("0.0"));
         }
 
         private bool QuickResourceAction()

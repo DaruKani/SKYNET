@@ -101,7 +101,7 @@ class CardData(C.Structure):
         (n, C.c_uint32) for n in ('lscale', 'rscale', 'link_marker')]
 
 
-def main():
+def main(lua=LUA, expected_checks=16, responder=None):
     p = argparse.ArgumentParser()
     p.add_argument('--core', type=Path, required=True)
     p.add_argument('--database', type=Path, required=True)
@@ -134,7 +134,7 @@ def main():
     def read_script(raw, length):
         name = raw.decode().removeprefix('./').removeprefix('script/')
         if name not in buffers:
-            if name == 'witchcraft_probe.lua': content = LUA.encode()
+            if name == 'witchcraft_probe.lua': content = lua.encode()
             elif name in entries: content = archive.read(entries[name])
             else: return None
             buffers[name] = C.create_string_buffer(content)
@@ -175,6 +175,15 @@ def main():
             if 'PROBE_COMPLETE' in messages or result & 0x20000000: break
             if result & 0x10000000:
                 packet = bytes(buf[:size])
+                if not packet:
+                    continue  # core can yield between confirmation and chain-end without a response prompt
+                if responder is not None:
+                    messages.append('FIXTURE_PROMPT:' + packet.hex())
+                    response = responder(packet)
+                    if isinstance(response, int):
+                        core.set_responsei(duel, response); continue
+                    if isinstance(response, bytes):
+                        core.set_responseb(duel, C.create_string_buffer(response)); continue
                 # Only placement/position for the probe's explicit summons. Never
                 # guess strategic effect, material or target responses.
                 if size == 7 and packet[0] == 18 and packet[2] == 1:
@@ -191,12 +200,13 @@ def main():
     finally:
         core.end_duel(duel)
     receipt = {'purpose': 'Installed-core scripted mechanics, not executor gameplay',
+               'fixture_sha256': hashlib.sha256(lua.encode()).hexdigest(),
                'loaded': loaded, 'checks': checks, 'messages': messages,
                'inputs': {k: {'path': str(v.resolve()), 'sha256': hashlib.sha256(v.read_bytes()).hexdigest()}
                           for k, v in [('core', args.core), ('database', args.database), ('scripts', args.scripts)]}}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(receipt, indent=2), encoding='utf-8')
-    return 0 if len(checks) == 16 and all(c['passed'] for c in checks) and 'PROBE_COMPLETE' in messages else 1
+    return 0 if len(checks) == expected_checks and all(c['passed'] for c in checks) and 'PROBE_COMPLETE' in messages else 1
 
 
 if __name__ == '__main__':

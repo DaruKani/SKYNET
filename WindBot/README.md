@@ -328,6 +328,123 @@ blocked-board lethal and more card-effect coverage; frozen Arena matchup compari
 No new Arena strength result or universal chain intelligence is claimed. Neither
 successful passive duels nor focused assertions establish competitive strength.
 
+### Opponent-aware foundation (2026-11-08)
+
+This is a working, bounded foundation, **not universal card understanding**. It
+implements the latest adopted opponent-awareness prompt using the five supplied
+`20261108` logs. It does not change the deck or the `.bat` entry point.
+
+| Evidence / actual alternatives | Previous cause | Implemented comparison / remaining uncertainty |
+| --- | --- | --- |
+| `113011`, 11:32:58–11:33:50: Hollie Sue or Case for K9 | Removal mostly used ATK (`10 + ATK/500`) versus a flat Spell value; Verre fired whenever the opponent chained with a live monster. | Case has an activation-only search, not a repeatable search. Destroying it prevents that search **but** permits a separate destroyed-card Quick-Play Set trigger. Hollie has conditional control/recruit modes with hidden reveal costs. Both alternatives now report their actual factors; no fixed Case-over-Hollie oracle is asserted. The original log also shows Seed subsequently bouncing Case. |
+| `113011`, 11:34:06–11:34:21: Izuna resolving, Jokul field search unused | Haine preferred Izuna's slightly higher ATK; no separate hand/field usage history. | Izuna's committed send survives destruction. Removing Jokul denies its unused ignition search. Fixture scores: Jokul 9.3 vs Izuna 3.4; when Jokul is also spent, ranking reverses. Native chains independently verify Izuna's send and the surviving Jokul search. |
+| `113011`, 11:32:58: Verre versus Case activation | The handler did not compare effect coverage or reservation cost at all. | Case itself is outside Verre's coverage. With only conditional Hollie effects, hold (1.6 versus cost 7); on an actual Hollie control activation, respond (18 versus 7). Revealing the costs establishes that live activation, without inventing future hand contents. Hollie's previous-turn use is correctly reset, not carried into this turn. |
+| `113011`, 11:40:27–11:41:20: rebuilding into C104 and Jacks | Uninterrupted combo endpoints were scored without visible response availability. | C104 needs the publicly observed Number 104 material; Jacks needs material and a hand/GY monster activation. Supported routes report an uninterrupted branch and a single-response sensitivity floor. A used/disabled/removed response is excluded on re-observation. This is not full opponent search and does not guarantee that the proposed recovery survives. |
+| `111215`, 11:17:36–11:18:09: Schmietta, Mastery, Gaze, Distortion, Verre | Mastery was discarded for recruiting, then Impulse stopped the recruit and Ash stopped the GY send. No independent-access insurance distinguished the Spell costs. | Equal-endpoint recruiting now prefers retaining unused Mastery with remaining Maid targets over stranded Gaze. The denied branch pays tribute/discard, creates no recruited monster, and exposes surviving Mastery as a new legal model route. Impulse was facedown and Ash hidden before use: neither is assumed known. No claim that this beats both interruptions. |
+
+Implementation ownership:
+
+- `Game/AI/OpponentAwareness.cs` is the opt-in shared semantics/usage/threat service;
+  `WindBot.csproj` explicitly includes it. Only Witchcraft uses it in this update.
+  Reviewed profiles cover Jokul, Izuna, Hollie Sue, Case, C104 and Jacks. They record
+  effect identity/location, shared or separate usage groups, timing, supported
+  outcomes, source-presence dependence, material conditions and uncertain costs.
+  Shared outcome weights replace card-name ranking. Unknown cards retain a bounded
+  uncertainty allowance, not zero threat or a claimed certain catastrophe.
+- `Witchcraft2026Executor.cs` observes chain snapshots after their producer appends
+  them, records solved/negated events, resets turn/instance state and gates Verre.
+  `Witchcraft2026Outcomes.cs` also resets instance state when set facedown.
+  Activation, resolution notification and negated/disabled notification are distinct.
+  The current protocol's combined negation list does **not** distinguish activation
+  negation from effect negation: activation-only oath availability is marked
+  uncertain. A resolution notification is not proof that every operation succeeded.
+  Ambiguous descriptions remain unidentified; copied effects are not guessed.
+- `Witchcraft2026Tactics.cs` shares the service for Haine/Vice removal, Verre coverage
+  and negate reservation, retaining the existing verified protection/chain forecast.
+  Destruction is not negation. At Vice resolution, re-rank only actual offered
+  targets. Diagnostics include remaining/committed effects, benefits, costs,
+  uncertainty and the chosen alternative; no post-hoc fabricated rationale.
+- `Witchcraft2026Resilience.cs` and `Witchcraft2026StrategicPlanner.cs` add copied
+  public-response snapshots, known paid-cost failure states, independent access
+  insurance and a one-response sensitivity floor. The 45% blend is an explicit
+  risk heuristic, **not a probability**. It does not consume the same hypothetical
+  negate once per edge or write predicted results to Duel. Existing 180 ms/depth/
+  beam/node/cancellation limits are unchanged. Logs show the vulnerable edge,
+  response class, floor and commitment cost next to the uninterrupted route.
+
+New checks and exact commands (use fresh output names):
+
+```powershell
+./WindBot/Tools/Invoke-WitchcraftOpponentChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/witchcraft-opponent-my-check
+
+& C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  WindBot/Tools/witchcraft_opponent_native.py `
+  --core D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ocgcore.dll `
+  --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  --scripts D:/Games/MDPro4/Data/script.zip `
+  --output Artifacts/witchcraft-opponent-my-core.json
+```
+
+`WitchcraftOpponentChecks.cs` exercises the shared service, actual executor
+handlers/selection/lifecycle and planner costs. Counterexamples cover spent Jokul,
+new turns/instances, shared Hollie modes, missing C104 material, already-negated
+links, unknown descriptions, duplicate observations and unknown effects. Synthetic
+search/draw profiles on an unrelated card demonstrate reversible rankings using
+the same logic. Real Izuna has no repeatable unused field ignition after its
+on-summon send; that requested counterexample is not fabricated.
+
+`witchcraft_opponent_native.py` uses the installed native effects for Case, Izuna
+and Jokul, with a fixture-only targeting destruction response above them. Seven
+assertions verify actual reversed chains: Case search fails, its floating Set
+works, Izuna's send works despite destruction, then Jokul searches. This is an
+isolated engine fixture, not WindBot defeating K9. `witchcraft_outcome_native.py`
+retains its original 16-assertion default and adds an explicit fixture/responder
+seam. Unexpected prompts fail rather than receive guessed responses. Initial
+fixture runs exposed missing placement/no-tribute option handling and a core
+confirmation yield; their incomplete receipts are retained.
+
+Evidence (separate kinds, not a strength claim):
+
+- New focused results: `Artifacts/witchcraft-opponent-accepted-focused/report.json`,
+  41/41, including actual lifecycle and ambiguity handling.
+- Existing Witchcraft: `witchcraft-opponent-accepted-existing/report.json`, 90/90.
+  RDA: `witchcraft-opponent-accepted-rda/report.json`, 14/14. Sky Striker:
+  `witchcraft-opponent-accepted-sky/report.json`, 92/92. There were pre-existing uncommitted
+  Sky Striker edits; they were neither changed nor included in this update.
+- Native effect chains: `witchcraft-opponent-core-05.json`, 7/7. Existing core
+  mechanics: `witchcraft-opponent-core-regression.json`, 16/16. Receipts hash the
+  core, CDB, script archive and fixture. The configured scripts remain SHA-256
+  `7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb`.
+- Native full-bot guide: latest `witchcraft-opponent-accepted-guide`, two completed
+  passive Default duels, **39/44 strict** milestones: the first took separately
+  verified early lethal; all five strict failures remain in that receipt. Earlier
+  `witchcraft-opponent-final-guide` reached **44/44**, and the initial
+  `witchcraft-opponent-guide-01` reached **39/44**. No test threshold was weakened. The host
+  RNG is not controlled by the policy seed; neither result proves playing strength.
+- Debug and Release builds pass (five pre-existing warnings). All five Witchcraft
+  source files plus the shared service independently compile with `/langversion:6`;
+  that subset check emits expected duplicate-type warnings against the runtime
+  reference. The new focused harness also compiles as C# 6.
+- The pre-build runtime is preserved in `witchcraft-opponent-baseline-a300a992`;
+  executable SHA-256 `60c905be5548c97ccf1fe3e65a56dff6626f45de623484e24bbc0020ab4193b9`.
+  This is the actual pre-existing working runtime, not a claimed clean-commit build.
+  Arena has no configured SQLite/dedicated SRVPro here; loopback console refused
+  connection. No Arena experiment or settings mutation was performed.
+
+Limits / next strategic work: full adversarial route branching and controlled K9
+replays, more independently verified effect profiles (including the Orcust and
+other engines in `110635`, `105411`, `102215`), complete source-dependency and
+floating/replacement coverage, publicly confirmed facedown interruptions, Case's
+conditional team ATK aura, and response costs/targets beyond the supported subset.
+The C104 sensitivity floor does not simulate its optional random hand loss/LP
+halving; Jacks conservatively tests loss of an existing unprotected modeled body,
+not a guaranteed future target. Hidden-cost Hollie responses remain conditional.
+The remaining logs were triaged, not claimed fully repaired. Build success,
+synthetic scores and passive wins do not prove competitive playing strength.
+
 ### Floodgate/outcome repair (2026-11-07)
 
 The `Witchcraft2026-20261107-194227.log` failure was not simply a weak deck list.

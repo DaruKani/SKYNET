@@ -59,6 +59,7 @@ namespace WindBot.Game.AI.Decks
         private bool _spellActivity, _normalUsed, _extraLock, _maxx;
         private bool _awaitingChain;
         private readonly HashSet<string> _used = new HashSet<string>();
+        private readonly OpponentAwareness _opponent = new OpponentAwareness();
         private readonly Dictionary<int, WAction> _prompts = new Dictionary<int, WAction>();
         private IList<ClientCard> _chainOffers;
         private MainPhase _main;
@@ -106,6 +107,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnNewTurn()
         {
+            _opponent.NewTurn();
             _spellActivity = _normalUsed = _extraLock = _maxx = false;
             _used.Clear();
             _prompts.Clear();
@@ -114,6 +116,7 @@ namespace WindBot.Game.AI.Decks
             _chainOffers = null;
             _viceRemoval = null;
             _lastTacticalDiagnostic = null;
+            _lastOpponentDiagnostic = null;
             _limitCounts.Clear();
             _summonLimitSources.Clear();
             _predictions.Clear();
@@ -146,6 +149,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChaining(int player, ClientCard card)
         {
+            _opponent.Observe(Duel.CurrentChainInfo); // current link is appended after this hook
             if (player == 1 && card != null && card.Id == GraveFusionTrigger && card.Location == CardLocation.Grave)
                 _graveFusionSpent.Add(card.Id);
             if (card != null && card.IsSpell()) _spellActivity = true;
@@ -162,6 +166,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainSolved(int chainIndex)
         {
+            _opponent.Solved(Duel.CurrentChainInfo, chainIndex, Duel.NegatedChainIndexList.Contains(chainIndex));
             ChainInfo info = Duel.GetCurrentSolvingChainInfo();
             if (info != null && !Duel.IsCurrentSolvingChainNegated())
             {
@@ -177,7 +182,9 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            _opponent.Observe(Duel.CurrentChainInfo);
             ReconcilePredictions();
+            _opponent.EndChain();
             _viceRemoval = null;
             _lastTacticalDiagnostic = null;
             _prompts.Clear();
@@ -192,6 +199,9 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousController, int previousLocation,
             int currentController, int currentLocation)
         {
+            _opponent.Observe(Duel.CurrentChainInfo);
+            if (previousLocation != currentLocation)
+                _opponent.ResetInstance(card);
             if (previousLocation == (int)CardLocation.MonsterZone &&
                 currentLocation != (int)CardLocation.MonsterZone)
             {
@@ -219,6 +229,7 @@ namespace WindBot.Game.AI.Decks
 
         private WState Observe()
         {
+            _opponent.Observe(Duel.CurrentChainInfo);
             WState s = new WState
             {
                 Normal = !_normalUsed, SpellActivity = _spellActivity,
@@ -228,6 +239,7 @@ namespace WindBot.Game.AI.Decks
                 LifePoints = Bot.LifePoints,
                 Used = new HashSet<string>(_used)
             };
+            s.OpposingResponses = _opponent.VisibleResponses(Enemy.GetMonsters());
             foreach (int id in KnownIds)
             {
                 int count = Bot.GetCardCountInDeck(id);
@@ -391,7 +403,7 @@ namespace WindBot.Game.AI.Decks
         {
             ClientCard target = RemovalTarget(true);
             if (target == null || !Bot.Hand.Any(c => c.IsSpell())) return false;
-            if (!TacticalDecision("Haine", RemovalValue(target, true), 6,
+            if (!TacticalDecision("Haine", RemovalValue(target, true), InterruptionCost(6),
                 "discard plus once-per-turn; destruction is not negation", target)) return false;
             AcceptAction(new WAction { Kind = WKind.Tactical, Source = CardId.Haine,
                 Location = WZone.Board, Description = 0, Target = target.Id,
@@ -403,7 +415,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (ActivateDescription == Util.GetStringId(CardId.MadameVerre, 1) &&
                 Duel.LastChainPlayer == 1 && Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()) &&
-                Bot.Hand.Any(c => c.IsSpell()))
+                Bot.Hand.Any(c => c.IsSpell()) && WorthVerre())
             {
                 AI.SelectCard(DiscardOrder(Bot.Hand.Where(c => c.IsSpell())));
                 _used.Add(CardId.MadameVerre + ":" + WKind.NegateBoard);
@@ -495,8 +507,15 @@ namespace WindBot.Game.AI.Decks
                 return SelectDestructionPair(cards, min, max, cancelable);
             if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
                 resolving.ActivateId == CardId.ViceMadame)
-                return cards.OrderByDescending(c => RemovalValue(c, false))
+            {
+                IList<ClientCard> result = cards.OrderByDescending(c => RemovalValue(c, false))
                     .ThenByDescending(c => c.Controller == 1).Take(Math.Min(max, Math.Max(1, min))).ToList();
+                WChainForecast forecast = ChainForecast();
+                Logger.DebugWriteLine("Witchcraft2026 opponent resolution-choice: " + string.Join(" | ", cards.Take(8).Select(c =>
+                    c.Id + " value=" + RemovalValue(c, false).ToString("0.0") + " " + OpponentAssessment(c, forecast).Explain())) +
+                    " selected=" + string.Join(",", result.Select(c => c.Id)) + "; offered targets only");
+                return result;
+            }
             WAction action = PromptAction();
             if (action != null)
             {

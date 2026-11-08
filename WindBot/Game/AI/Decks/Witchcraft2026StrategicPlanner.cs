@@ -65,6 +65,10 @@ namespace WindBot.Game.AI.Decks
             public int ExtraOccupant;
             public int FutureSummons;
             public int Steps;
+            public OpponentResponse OpposingResponses;
+            public double? DenialFloor;
+            public double CommitmentCost;
+            public string Vulnerability;
             public WState Copy()
             {
                 WState copy = (WState)MemberwiseClone();
@@ -115,7 +119,8 @@ namespace WindBot.Game.AI.Decks
                     ExtraOccupant + "|" + UnknownHand + "|" + OtherMonsters + "|" +
                     OpponentTurn + "|" + EnemyChain + "|" + IncomingAttack + "|" + LifePoints +
                     "|" + RestrictionSummary(this) + "|" + Turn + "|" +
-                    string.Join(",", Temporary.OrderBy(p => p.Key).Select(p => p.Key + "@" + p.Value));
+                    string.Join(",", Temporary.OrderBy(p => p.Key).Select(p => p.Key + "@" + p.Value)) +
+                    "|" + OpposingResponses + "|" + DenialFloor + "|" + CommitmentCost;
             }
         }
 
@@ -686,6 +691,7 @@ namespace WindBot.Game.AI.Decks
                         s.Move(a.Target, WZone.Deck, WZone.Hand); break;
                     case WKind.NegateBoard:
                         s.Move(a.Cost, WZone.Hand, WZone.Grave);
+                        s.OpposingResponses = OpponentResponse.None;
                         foreach (WRestriction restriction in s.Restrictions.Where(r => r.Player == 1))
                             restriction.Active = false;
                         break;
@@ -783,6 +789,7 @@ namespace WindBot.Game.AI.Decks
                     s.Used.Add(CardId.Genni + ":" + WKind.GenniLacrima);
                 }
                 s.EnemyChain = false; // a speculative next action cannot reuse this response window
+                AssessRouteExposure(state, a, s);
                 return s;
             }
 
@@ -812,13 +819,22 @@ namespace WindBot.Game.AI.Decks
 
             public static double Evaluate(WState s)
             {
+                double value = UninterruptedValue(s);
+                // One adversarial denial anywhere in the supported route, not one
+                // imaginary negate per edge. The 45% sensitivity blend is NOT odds.
+                if (s.DenialFloor.HasValue) value -= .45 * Math.Max(0, value - s.DenialFloor.Value);
+                return value - s.CommitmentCost;
+            }
+
+            internal static double UninterruptedValue(WState s)
+            {
                 // One defended turn plus the following recovery board, not a permanent
                 // boss valuation for a card whose installed script schedules its exit.
                 if (s.Temporary.Count > 0)
                 {
                     WState present = s.Copy(); present.Temporary.Clear();
                     WState future = ProjectDelayed(s, s.Turn + 1); future.Temporary.Clear();
-                    return (Evaluate(present) + Evaluate(future)) / 2;
+                    return (UninterruptedValue(present) + UninterruptedValue(future)) / 2;
                 }
                 int spells = s.In(WZone.Hand).Where(IsModelSpell).Sum(id => s.Count(id, WZone.Hand));
                 bool witchBoard = s.In(WZone.Board).Any(IsWitchMaterial);
@@ -872,7 +888,9 @@ namespace WindBot.Game.AI.Decks
             public static string BoardSummary(WState s)
             {
                 return string.Join(",", s.In(WZone.Board)) + ";hand=" +
-                    s.Size(WZone.Hand) + ";draws=" + s.FutureSummons;
+                    s.Size(WZone.Hand) + ";draws=" + s.FutureSummons +
+                    ";visible-response=" + s.OpposingResponses + ";denial-floor=" + s.DenialFloor +
+                    ";vulnerable=" + s.Vulnerability + ";commitment=" + s.CommitmentCost.ToString("0.0");
             }
         }
     }
