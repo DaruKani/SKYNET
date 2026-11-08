@@ -74,8 +74,8 @@ namespace WindBot.Game.AI.Decks
             if (!answeringMonster && !stoppingLethal && !persistentThreat)
                 return null;
 
-            int score = GetObservedThreatScore(target);
-            if (answeringMonster)
+            int score = GetNegationOutcomeValue(target);
+            if (answeringMonster && !AssessLiveEffect(Duel.CurrentChainInfo.LastOrDefault()).Known)
                 score += 1700;
             if (stoppingLethal)
                 score += 8000;
@@ -120,8 +120,8 @@ namespace WindBot.Game.AI.Decks
                 Duel.CurrentChain.Count == 0, target.IsCode(CardId.Raye),
                 target.IsDisabled(), emergencyControl))
                 return null;
-            int score = GetObservedThreatScore(target) - 650;
-            if (answeringMonster)
+            int score = GetNegationOutcomeValue(target) - 650;
+            if (answeringMonster && !AssessLiveEffect(Duel.CurrentChainInfo.LastOrDefault()).Known)
                 score += 1200;
             if (takeControl)
                 score += 2400;
@@ -185,15 +185,16 @@ namespace WindBot.Game.AI.Decks
                 Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2 &&
                 Duel.LastChainPlayer == 1 && last != null && Duel.CurrentChain.Contains(last) &&
                 targets.Contains(last);
-            int score = targets.Sum(GetObservedThreatScore) - 1100;
+            EffectImpact liveImpact = AssessLiveEffect(Duel.CurrentChainInfo.LastOrDefault());
+            int score = targets.Sum(GetNegationOutcomeValue) - 1100;
             score -= costs.Take(targets.Count).Sum(GetDropletCostValue) / 3;
             if (targets.Count > 1)
                 score += 1400 * (targets.Count - 1);
             if (preventsLethal)
                 score += 8000;
-            if (Duel.LastChainPlayer == 1 && last != null && targets.Contains(last))
+            if (!liveImpact.Known && Duel.LastChainPlayer == 1 && last != null && targets.Contains(last))
                 score += 1000;
-            if (stopsLiveBattleEffect)
+            if (stopsLiveBattleEffect && !liveImpact.Known)
                 score += 1800;
             if (score < 3000)
                 return null;
@@ -225,7 +226,7 @@ namespace WindBot.Game.AI.Decks
             if (Duel.CurrentChain.Count > 0)
             {
                 if (Duel.LastChainPlayer == 1 && last != null && candidates.Contains(last) &&
-                    GetObservedThreatScore(last) >= 2400)
+                    GetNegationOutcomeValue(last) >= 2400)
                     return last;
                 return null;
             }
@@ -264,9 +265,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card != null && Card.IsCode(id))
                 return true;
-            return Duel.Player == 0
-                ? Bot.HasInHandOrInSpellZone(id)
-                : Bot.HasInSpellZone(id);
+            if (ReactionStateKey == GetDecisionObservationKey())
+                return ReactionOffers.Any(c => c.IsCode(id));
+            return Duel.Player == 0 && Duel.CurrentChain.Count == 0 &&
+                (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) &&
+                Duel.MainPhase.ActivableCards.Any(c => c.IsCode(id));
         }
 
         private int GetTacticalTiePriority(TacticalActionKind kind)

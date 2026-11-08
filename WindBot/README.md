@@ -942,8 +942,9 @@ room is needed):
 
 Or double-click `Tools/Test-SkyStriker2026.bat`. This is separate from the
 `Run-SkyStriker2026.bat` room-join launcher. The test wrapper builds Debug/Release,
-runs the focused suite with the selected database, and runs five controlled native
-scenarios plus ten mirror duels. It requires Python 3.11+, .NET Framework 4.8
+runs the focused suite and recovery dispatcher checks with the selected database,
+six isolated recovery fixtures, and five controlled native scenarios plus ten
+mirror duels. It requires Python 3.11+, .NET Framework 4.8
 MSBuild and the explicitly selected MDPro4 data/server. Override `-DataRoot`,
 `-Server`, `-MSBuild` and `-Python` if installed elsewhere. `-MirrorGames 0` skips
 mirrors but is not the complete workflow. Existing output folders are rejected.
@@ -982,6 +983,97 @@ Follow-up acceptance on 2026-11-07: Debug/Release built; 92/92 focused checks,
 mirrors passed. Native OTK and four-/six-card Lemnisgate returns were observed.
 Final receipts, frozen inputs, failed intermediate runs and coverage limits are
 under `Artifacts/skystriker-fix-20261107/acceptance-report.md` at workspace root.
+
+### Decision recovery and Witchcraft-derived principles (2026-11-08)
+
+`SkyStriker2026` now separates a setup projection, a current response-window
+decision, and a bounded observed-board battle route. `GameAI` still has final
+dispatch authority: only current engine offers can be selected, in registered
+handler order. No shared protocol lifecycle or original `SkyStriker` executor
+was replaced. The RDA reference is the supplied Malckyor Red Dragon Archfiend
+template/live TheCrimsonKing structure, not a generic learning algorithm.
+
+The repaired boundaries are:
+
+- `StrategicAllows` no longer treats `ConsideredRootActions` (a bitmask) as proof
+  that PASS is optimal. `Route`, `Incomplete`, `Unmodeled`, and `NoImprovement`
+  are distinguished. Inconclusive search returns to cost/target guards; starter
+  fallbacks must preserve a Main Zone exit when Sky Striker spells are planned.
+  Public ATK, negation, locations, chain targets and offers invalidate cached plans.
+- `DecisionContext` records actual response offers. A Crown merely present in
+  the backrow cannot veto an offered Widow. Reviewed live effects use their
+  activation location, description and public targets: Lumina revival is not its
+  End Phase mill, Michael removal is not an ordinary attack. Ultimate Sky's field
+  mode can chain; its hand/GY mode is not the only reactive mode. Crown/Widow/
+  Droplet do not add the old generic chain bonus again to a reviewed effect value.
+- Imminent-loss evaluation lets a threatened Shark Cannon banish a public GY
+  engine such as Snow before Duster resolves. It does not invent a monster target
+  for Widow/Crown, revive a body into MZ without a conversion, or treat destruction
+  of an activated ordinary Spell as negation.
+- Lemnisgate field activation charges its card and lost three-spell threshold,
+  and compares with free battle removal in both Main and Battle. Its GY conversion
+  binds a real material/destination and requires a timing gain: Kaina protecting
+  a weaker body in the opponent's Battle, or a spent attacker enabling a supported
+  damage line. Merely having Kagari/Engage is no longer sufficient; a free normal
+  Main Phase Link preserves the GY resource.
+- `BattlePlanner` searches up to 768 positions/14 steps without enlarging the
+  setup beam budget. Existing attackers, known non-effect blockers, offered
+  Afterburners, Raye tags, Linkage/Kagari and Zero release are modeled. A supported
+  lethal takes priority over Upstart/searching; subsequent actions are replanned
+  from engine observations. A just-set Linkage is not counted as usable fuel.
+- `Outcomes` follows Witchcraft's distinction between prediction and observation:
+  accepted Shark banishes, Ultimate field negation, planned Linkage and Lemnisgate
+  conversions get receipts reconciled at chain end. Changed/interrupted outcomes
+  retire the forecast. This is diagnostic replanning, not automatic learning.
+
+Run only the additional tests after building, using fresh output directories:
+
+```powershell
+.\WindBot\Tools\Invoke-SkyStrikerRecoveryChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -CardDatabase D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/sky-recovery-checks-new
+python WindBot/Tools/skystriker_recovery_native.py `
+  --bot-exe WindBot/bin/Debug/WindBot.exe --data-root D:/Games/MDPro4/Data `
+  --server D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll `
+  --output-dir Artifacts/sky-recovery-native-new
+```
+
+Recovery native fixtures add a **test-only setup card** to an isolated CDB/archive.
+Every original Lua entry is verified byte-identical. Initial boards and fixture
+termination are artificial; offers, payments, targeting and actual card resolution
+are native. Lethal assertions require actual damage to zero, not the fixture's
+artificial victory. They cover Duster/Snow, Lumina revival, Michael banish,
+multi-attacker lethal versus Upstart, Lemnisgate versus free battle, and holding
+Ultimate on Lumina's End Phase mill. These are reconstructed/controlled variants,
+not exact replays of logs that omit offered-action lists.
+
+Two historical native assertions named exact routes rather than their objective.
+Their original failures remain in `candidate2-native-existing` evidence. The
+updated checker retains `historical_route_observations` and also accepts (1) the
+exact Raye/Kagari/Zero/Raye/Roze five-attack sequence using only one Linkage and
+turn-two lethal, or (2) Kagari recovering Linkage, Zero releasing both pilots,
+five or more attacks and damage-to-zero on turn three while keeping Lemnisgate.
+It does not accept a generic eventual win in place of those milestones.
+
+Validation on 2026-11-08: recovery dispatcher checks improved from 7/18 to 18/18,
+recovery native fixtures from 1/6 to 6/6. The final delivery binary passed 92/92
+existing focused checks, 5/5 native route objectives and 10/10 mirror audits.
+Debug and Release built into isolated `Artifacts/skystriker-recovery-20261108/delivery`
+folders because running processes held the default Debug executable/intermediate.
+No process was stopped. Close the old bot before rebuilding with the normal
+launcher; running duels do not hot-load these changes.
+
+Limits: this is not Witchcraft strength parity or a complete opponent-turn
+simulator. Battle certification declines unknown backrow, facedown defenders,
+effect monsters (even disabled ones can have GY triggers), and reviewed GY threats.
+Opponent hidden responses remain unknown. Unreviewed effects and setup endpoints
+still use heuristic values; those numbers are not probabilities or measured
+advantage. The setup model still compresses some resources to booleans. GY
+Lemnisgate's urgent multi-material/Main Phase conversions and its positive Kaina
+trigger window need further native coverage. Receipts cover selected actions,
+not every effect. See `Artifacts/skystriker-recovery-20261108/acceptance-report.md`
+for baseline/candidate evidence, unchanged failed experiments and open limits.
 
 ## Voiceless Voice routes and recovery
 

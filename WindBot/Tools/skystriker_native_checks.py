@@ -39,6 +39,7 @@ def inspect(path, names, name, opening):
     lines = [re.sub(r"^\[[^\]]+\] ", "", s) for s in
              path.read_text(encoding="utf-8", errors="replace").splitlines()]
     checks = []
+    historical_route = {}
     def check(label, passed):
         checks.append({"name": label, "passed": bool(passed)})
     begin = lines.index("*********Bot Hand*********") if "*********Bot Hand*********" in lines else -1
@@ -59,8 +60,20 @@ def inspect(path, names, name, opening):
     check("no engine retry or runtime error", not any(re.search(
         r"MSG_RETRY|Duel retry|Invalid card selection|Fail to select|Tick Error|Run Error|Unhandled Exception", s, re.I) for s in lines))
     if name == "linkage-otk":
-        check("Hayate starts the turn-two battle route", moved(HAYATE, "Extra", "MonsterZone", at=2))
-        check("Kagari recovers Linkage in turn two", moved(LINKAGE, "Grave", "Hand", at=2))
+        historical_route = {"Hayate starts route": moved(HAYATE, "Extra", "MonsterZone", at=2),
+                            "Kagari recovers Linkage": moved(LINKAGE, "Grave", "Hand", at=2)}
+        # Preserve the old route observations, but do not require spending an
+        # additional Extra Deck body when Raye itself can supply the first hit.
+        # The alternative must prove the exact lower-resource sequence AND the
+        # same turn-two lethal, not merely a later duel win.
+        attack_names = [s for _, t, s in attacks if t == 2]
+        compact = attack_names == ['(' + names[c] + ' direct attack!!)' for c in
+                                   (RAYE, KAGARI, ZERO, RAYE, ROZE)]
+        compact = compact and sum(t == 2 and p == '0' and n == names[LINKAGE]
+                                  for _, t, p, n, _ in acts) == 1
+        compact = compact and moved(KAGARI, 'Extra', 'MonsterZone', at=2)
+        check("Hayate/recovery route OR verified one-Linkage five-attack route",
+              all(historical_route.values()) or compact)
         check("Zero summoned in turn two", moved(ZERO, "Extra", "MonsterZone", at=2))
         check("Raye and Roze released for final attacks", all(
               moved(code, "Grave", "MonsterZone", at=2) or moved(code, "Deck", "MonsterZone", at=2)
@@ -92,9 +105,16 @@ def inspect(path, names, name, opening):
               for _, t, p, n, _ in acts))
         check("grave resource retained when the same normal Link is free", not any(t == 3 and p == "0" and
               n == names[LEMN] and loc == "Grave" for _, t, p, n, loc in acts))
-        check("normal recovery still reaches Kagari and Zero", moved(KAGARI, "Extra", "MonsterZone", at=3)
-              and moved(HORNET, "Grave", "Hand", at=3) and moved(ZERO, "Extra", "MonsterZone", at=3))
-    return {"passed": all(c["passed"] for c in checks), "checks": checks, "turns": turn}
+        original = moved(KAGARI, "Extra", "MonsterZone", at=3) and moved(HORNET, "Grave", "Hand", at=3) and moved(ZERO, "Extra", "MonsterZone", at=3)
+        historical_route = {"Hornet recovery into setup Zero": original}
+        immediate = moved(KAGARI, "Extra", "MonsterZone", at=3) and moved(LINKAGE, "Grave", "Hand", at=3)
+        immediate = immediate and moved(ZERO, "Extra", "MonsterZone", at=3) and all(
+            moved(c, "Grave", "MonsterZone", at=3) or moved(c, "Deck", "MonsterZone", at=3) for c in (RAYE, ROZE))
+        immediate = immediate and sum(t == 3 for _, t, _ in attacks) >= 5 and turn == 3 and any(
+            '(1 got damage , LifePoint left = 0)' in s for s in lines)
+        check("free normal recovery OR immediate Linkage lethal while preserving Lemnisgate", original or immediate)
+    return {"passed": all(c["passed"] for c in checks), "checks": checks, "turns": turn,
+            "historical_route_observations": historical_route}
 
 
 def audit_mirror(path, names):

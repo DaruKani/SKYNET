@@ -66,6 +66,8 @@ namespace WindBot.Game.AI.Decks
             public int Expanded;
             public bool TimedOut;
             public int ConsideredRootActions;
+            public string Outcome = "Unmodeled";
+            public string Reason = "no modeled legal root";
         }
 
         private sealed class SkyStrategicState : IEquatable<SkyStrategicState>
@@ -290,11 +292,18 @@ namespace WindBot.Game.AI.Decks
 
                 result.Expanded = expanded;
                 result.TimedOut = Expired(watch, cancellation);
+                result.Outcome = result.TimedOut || expanded >= MaximumExpanded || generated >= MaximumCandidates
+                    ? "Incomplete" : result.ConsideredRootActions == 0 ? "Unmodeled" : "NoImprovement";
+                result.Reason = result.Outcome == "Incomplete" ? "bounded search exhausted; local evaluation required" :
+                    result.Outcome == "Unmodeled" ? "no supported root; local evaluation required" :
+                    "projection found no better terminal; not proof that PASS dominates real actions";
                 if (!cancellation.IsCancellationRequested && best != null &&
                     bestScore > EvaluateTerminal(root) + 100)
                 {
                     result.Steps.AddRange(best.Steps);
                     result.Score = bestScore;
+                    result.Outcome = "Route";
+                    result.Reason = "completed modeled route improves projected terminal";
                 }
                 return result;
             }
@@ -902,6 +911,7 @@ namespace WindBot.Game.AI.Decks
         private SkyStrategicPlan StrategicPlan;
         private CancellationTokenSource StrategicPlanCancellation;
         private int StrategicSearchTargetPending;
+        private string StrategicObservationKey;
 
         private SkyStrategicAction GetStrategicRecommendation()
         {
@@ -910,14 +920,16 @@ namespace WindBot.Game.AI.Decks
                 return null;
 
             SkyStrategicState observed = CaptureSkyStrategicState();
+            string observationKey = GetDecisionObservationKey();
             if (StrategicPlan == null || StrategicPlanState == null ||
-                !StrategicPlanState.Equals(observed))
+                !StrategicPlanState.Equals(observed) || StrategicObservationKey != observationKey)
             {
                 RetireSkyStrategicPlan();
                 StrategicPlanCancellation = new CancellationTokenSource();
                 StrategicPlan = SkyStrategicPlanner.Plan(observed,
                     StrategicPlanCancellation.Token);
                 StrategicPlanState = observed;
+                StrategicObservationKey = observationKey;
                 if (StrategicPlan.Steps.Count > 0)
                 {
                     SkyStrategicState end = StrategicPlan.Steps.Last().After;
@@ -931,11 +943,11 @@ namespace WindBot.Game.AI.Decks
                         string.Join(" > ", StrategicPlan.Steps.Select(step =>
                             step.Action.Text).ToArray()));
                 }
-                else if (StrategicPlan.ConsideredRootActions != 0 && !StrategicPlan.TimedOut)
+                else
                 {
-                    Logger.DebugWriteLine("[SkyStriker2026:RDA] hold: no completed route " +
-                        "improves the current position; considered=" +
-                        StrategicPlan.ConsideredRootActions);
+                    Logger.DebugWriteLine("[SkyStriker2026:plan] outcome=" + StrategicPlan.Outcome +
+                        " reason=" + StrategicPlan.Reason + " consideredMask=" +
+                        StrategicPlan.ConsideredRootActions + " expanded=" + StrategicPlan.Expanded);
                 }
             }
             return StrategicPlan == null || StrategicPlan.Steps.Count == 0
@@ -959,10 +971,31 @@ namespace WindBot.Game.AI.Decks
             SkyStrategicAction action = GetStrategicRecommendation();
             if (action != null)
                 return action.Kind == kind;
-            // No recommendation can mean "holding is better", not merely
-            // "this package was not modeled". Preserve the former decision.
-            return StrategicPlan == null || StrategicPlan.TimedOut ||
-                (StrategicPlan.ConsideredRootActions & (1 << (int)kind)) == 0;
+            // A bit in ConsideredRootActions means generated, NOT evaluated to
+            // completion and NOT proven inferior to PASS. Handlers retain their
+            // cost/legality guards. The one-step fallback must still have an exit.
+            bool allow = true;
+            string reason = "evaluate offered action with local cost/target guards";
+            if (kind == SkyStrategicActionKind.ActivateHornet)
+            {
+                allow = Bot.HasInExtra(new[] { CardId.Kagari, CardId.Shizuku,
+                    CardId.Hayate, CardId.Kaina, CardId.Amatsu, CardId.Linkuriboh });
+                reason = allow ? "token has an Extra Deck conversion" : "PASS: token would block MZ with no exit";
+            }
+            if ((kind == SkyStrategicActionKind.NormalRaye || kind == SkyStrategicActionKind.NormalRoze) &&
+                HasPlannedSkyStrikerSpell())
+            {
+                bool exit = (!KagariSummoned && Bot.HasInExtra(CardId.Kagari)) ||
+                    (!ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku)) ||
+                    (!HayateSummoned && Bot.HasInExtra(CardId.Hayate)) ||
+                    (!KainaSummoned && Bot.HasInExtra(CardId.Kaina)) ||
+                    kind == SkyStrategicActionKind.NormalRaye && !ZeroSummoned && Bot.HasInExtra(CardId.Zero);
+                allow = exit;
+                reason = exit ? "normal summon has a modeled MZ exit" : "PASS: preserve spell access; no MZ exit";
+            }
+            Logger.DebugWriteLine("[SkyStriker2026:decision] fallback=" + kind +
+                " accept=" + allow + " reason=" + reason);
+            return allow;
         }
 
         private bool StrategicReservesModeledLink()
@@ -991,6 +1024,7 @@ namespace WindBot.Game.AI.Decks
             }
             StrategicPlanState = null;
             StrategicPlan = null;
+            StrategicObservationKey = null;
         }
 
         private SkyStrategicState CaptureSkyStrategicState()

@@ -27,6 +27,14 @@ try {
         -BotExecutable 'WindBot/bin/Debug/WindBot.exe' `
         -CardDatabase (Join-Path $DataRoot 'locales/en-US/cards.cdb') `
         -OutputDirectory (Join-Path $outputPath 'checks')
+    & (Join-Path $PSScriptRoot 'Invoke-SkyStrikerRecoveryChecks.ps1') `
+        -BotExecutable 'WindBot/bin/Debug/WindBot.exe' `
+        -CardDatabase (Join-Path $DataRoot 'locales/en-US/cards.cdb') `
+        -OutputDirectory (Join-Path $outputPath 'recovery-checks')
+    & $Python (Join-Path $PSScriptRoot 'skystriker_recovery_native.py') `
+        --bot-exe 'WindBot/bin/Debug/WindBot.exe' --data-root $DataRoot --server $Server `
+        --output-dir (Join-Path $outputPath 'recovery-native')
+    if ($LASTEXITCODE -ne 0) { throw "Recovery native checks failed. Inspect $outputPath" }
     & $Python (Join-Path $PSScriptRoot 'skystriker_native_checks.py') `
         --bot-exe 'WindBot/bin/Debug/WindBot.exe' --data-root $DataRoot --server $Server `
         --deck 'WindBot/Decks/AI_SkyStriker2026.ydk' --output-dir (Join-Path $outputPath 'native') `

@@ -164,6 +164,7 @@ namespace WindBot.Game.AI.Decks
             : base(ai, duel)
         {
             AddExecutor(ExecutorType.GoToBattlePhase, EvenlyMatchedToBattle);
+            AddExecutor(ExecutorType.GoToBattlePhase, BattleLethalToBattle);
 
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, AshBlossomEffect);
             AddExecutor(ExecutorType.Activate, CardId.GhostBelle, DefaultGhostBelleAndHauntedMansion);
@@ -316,6 +317,16 @@ namespace WindBot.Game.AI.Decks
             TopologicComboStarted = false;
             NormalSummoned = false;
             RayeGraveEffectUsed = false;
+            ZeroEffectSpent = false;
+            RayeTagSpent = false;
+            BattleSummonTarget = 0;
+            BattlePlanKey = null;
+            SpellsSetThisTurn.Clear();
+            BattleDecisionTraces.Clear();
+            LemnisgateLinkMaterial = null;
+            LemnisgateLinkDestination = 0;
+            ReactionOffers.Clear();
+            ReactionStateKey = null;
             AreaZeroSetForJamming = false;
             WidowAnchorTakeControl = false;
             SharkCannonBanishOnly = false;
@@ -366,6 +377,12 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChaining(int player, ClientCard card)
         {
+            RecordAcceptedOutcome(player, card);
+            if (player == 0 && card.IsCode(CardId.Zero)) ZeroEffectSpent = true;
+            ChainInfo activated = Duel.CurrentChainInfo.LastOrDefault();
+            if (player == 0 && card.IsCode(CardId.Raye) && activated != null &&
+                activated.HasLocation(CardLocation.MonsterZone)) RayeTagSpent = true;
+            BattlePlanKey = null;
             if (player == 1)
                 ObserveSkyStrikerMirror(card, true);
             base.OnChaining(player, card);
@@ -373,6 +390,11 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            ReconcileAcceptedOutcomes();
+            LemnisgateLinkMaterial = null;
+            LemnisgateLinkDestination = 0;
+            BattleSummonTarget = 0;
+            ReactionStateKey = null;
             RetireSkyStrategicPlan();
             TurnNegatedCards.RemoveAll(card => card == null ||
                 card.Location != CardLocation.MonsterZone);
@@ -448,6 +470,15 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousControler, int previousLocation,
             int currentControler, int currentLocation)
         {
+            BattlePlanKey = null;
+            if (card != null)
+            {
+                if (currentControler == 0 && currentLocation == (int)CardLocation.SpellZone &&
+                    card.IsFacedown())
+                    SpellsSetThisTurn.Add(card);
+                else
+                    SpellsSetThisTurn.Remove(card);
+            }
             RetireSkyStrategicPlan();
             if (previousControler == 1 && currentControler == 1 &&
                 (previousLocation & (int)CardLocation.Deck) != 0 &&
@@ -799,6 +830,11 @@ namespace WindBot.Game.AI.Decks
                 return SelectLemnisgateBounceTargets(cards, min, max);
 
             if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
+                solving.HasLocation(CardLocation.Grave) && hint == HintMsg.LinkMaterial &&
+                LemnisgateLinkMaterial != null && cards.Contains(LemnisgateLinkMaterial))
+                return Util.CheckSelectCount(new[] { LemnisgateLinkMaterial }, cards, min, max);
+
+            if (solving != null && solving.ActivatePlayer == 0 && solving.IsActivateCode(CardId.Lemnisgate) &&
                 hint == HintMsg.SpSummon)
             {
                 SelectSkyStrikerLinkPlace();
@@ -915,6 +951,11 @@ namespace WindBot.Game.AI.Decks
 
         public override BattlePhaseAction OnBattle(IList<ClientCard> attackers, IList<ClientCard> defenders)
         {
+            BattleRoute route = GetBattleRoute();
+            BattleStep step = route.Lethal ? route.Steps.FirstOrDefault() : null;
+            if (step != null && step.Kind == "attack" && attackers.Contains(step.Source) &&
+                (step.Target == null && defenders.Count == 0 || defenders.Contains(step.Target)))
+                return AI.Attack(step.Source, step.Target);
             if (defenders.Count == 0 && Bot.HasInMonstersZone(CardId.BorrelswordDragon, true))
             {
                 ClientCard raye = attackers.FirstOrDefault(card => card.IsCode(CardId.Raye));
@@ -1170,14 +1211,9 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
-            if (Duel.CurrentChain.Count > 0)
-            {
-                TraceUltimateSkyDecision("hold: chain effect below value threshold",
-                    chainScore, null);
-                return false;
-            }
-
-            if (CanStartUltimateSkyLinkagePlan())
+            // Field-target mode can also be chained. Hand/GY mode is NOT the
+            // only response mode; evaluate the current field effect before it resolves.
+            if (Duel.CurrentChain.Count == 0 && CanStartUltimateSkyLinkagePlan())
             {
                 UltimateSkyLinkageSetupPending = true;
                 TraceUltimateSkyDecision("activate: Linkage fuel for Zero", 0, null);
@@ -1248,6 +1284,9 @@ namespace WindBot.Game.AI.Decks
                 return 0;
 
             ClientCard threat = last.RelatedCard ?? Util.GetLastChainCard();
+            EffectImpact impact = AssessLiveEffect(last);
+            if (impact.Known)
+                return impact.PreventedValue;
             ClientCard previousOwnCard = Duel.CurrentChain.Count >= 2
                 ? Duel.CurrentChain[Duel.CurrentChain.Count - 2] : null;
             return GetUltimateSkyChainPriority(threat == null ? 0 : threat.Id,
@@ -1327,6 +1366,7 @@ namespace WindBot.Game.AI.Decks
 
             List<ClientCard> candidates = Enemy.GetMonsters().Concat(Enemy.GetSpells())
                 .Where(card => card.IsFaceup() && !card.IsDisabled() &&
+                    !card.IsShouldNotBeTarget() && !card.IsShouldNotBeSpellTrapTarget() &&
                     !IsCurrentChainHandled(card) && GetUltimateSkyNegateScore(card) >= 2600)
                 .OrderByDescending(GetUltimateSkyNegateScore)
                 .ToList();
@@ -1351,7 +1391,16 @@ namespace WindBot.Game.AI.Decks
                 target.IsDisabled())
                 return 0;
             if (target.IsMonster())
-                return GetObservedThreatScore(target);
+            {
+                ChainInfo live = Duel.CurrentChainInfo.LastOrDefault();
+                if (live != null && live.ActivatePlayer == 1 && live.RelatedCard == target &&
+                    live.HasLocation(CardLocation.MonsterZone))
+                    return GetNegationOutcomeValue(target);
+                // Negating an ordinary attacker does not stop its attack. Only
+                // persistent effect suppression is valuable outside a live effect.
+                return target.IsFloodgate() || target.IsMonsterShouldBeDisabledBeforeItUseEffect()
+                    ? GetObservedThreatScore(target) : 0;
+            }
             if (!IsPersistentSpellTrap(target))
                 return 0;
             int score = target.IsFloodgate() ? 7000 : 3000;
@@ -1668,7 +1717,7 @@ namespace WindBot.Game.AI.Decks
                     SkyStrategicActionKind.ResolveZeroSearch);
                 ZeroSearchPending = false;
                 bool activateSearch = LinkageOtk != LinkageOtkStage.ZeroReady &&
-                    !DefaultCheckWhetherCardIsNegated(Card);
+                    !DefaultCheckWhetherCardIsNegated(Card) && !GetBattleRoute().Lethal;
                 Logger.DebugWriteLine("[SkyStriker2026] Zero summon search desc=" +
                     ActivateDescription.ToString() + " activate=" + activateSearch.ToString());
                 return activateSearch;
@@ -1884,6 +1933,14 @@ namespace WindBot.Game.AI.Decks
 
             if (Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2)
             {
+                BattleRoute route = GetBattleRoute();
+                BattleStep next = route.Lethal ? route.Steps.FirstOrDefault() : null;
+                if (next != null && next.Kind == "linkage")
+                {
+                    BattleSummonTarget = next.Summon;
+                    LinkageOtkSendTarget = next.Source;
+                    return true;
+                }
                 if (LinkageOtk == LinkageOtkStage.KagariReady)
                 {
                     ClientCard kagari = Bot.GetMonsters().FirstOrDefault(card =>
@@ -2096,6 +2153,11 @@ namespace WindBot.Game.AI.Decks
                 .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost) +
                 monsters.OrderByDescending(GetLemnisgateRecycleValue)
                     .Take(pairCount).Sum(GetLemnisgateRecycleOpportunityCost);
+            // Pay the spell itself once. Returning Extra Deck cards is future
+            // access, not cash that can make every bad bounce profitable.
+            recycleCost = Math.Max(0, recycleCost) + 1000;
+            if (GetSpellCountInGrave() >= 3 && projectedSpellCount < 3 && HasPlannedSkyStrikerSpell())
+                recycleCost += 1500;
             return ShouldActivateLemnisgateForNetValue(bounceValue, recycleCost);
         }
 
@@ -2174,77 +2236,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool ShouldUseLemnisgateGraveLink()
         {
-            // After a summon on our own Main Phase, the same Link can be
-            // performed normally as soon as the trigger window closes. Paying
-            // the once-only grave resource adds no speed or material advantage.
-            if (Duel.Player == 0 && Duel.CurrentChain.Count == 0 &&
-                (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2))
-                return false;
-            List<ClientCard> materials = Bot.GetMonsters().Where(card =>
-                card.IsFaceup()).ToList();
-            if (materials.Count == 0 || GetLemnisgateExtraDeckPriority().Length == 0)
-                return false;
-
-            if (HasPlannedSkyStrikerSpell() && materials.Count > 1 &&
-                HornetSetupStage != HornetZeroSetupStage.NeedZero)
-                return false;
-
-            int planValue = GetLemnisgateGraveLinkPlanValue(materials);
-            int materialCount = HornetSetupStage == HornetZeroSetupStage.NeedZero
-                ? 2 : 1;
-            if (materials.Count < materialCount)
-                return false;
-            int materialCost = materials.OrderBy(GetLinkMaterialValue)
-                .Take(materialCount).Sum(GetLinkMaterialValue) + 700;
-            bool use = ShouldUseLemnisgateGraveLinkForValue(planValue, materialCost);
-            Logger.DebugWriteLine("[SkyStriker2026] Lemnisgate GY Link: value=" +
-                planValue + ", material cost=" + materialCost + ", use=" + use);
-            return use;
-        }
-
-        private int GetLemnisgateGraveLinkPlanValue(List<ClientCard> materials)
-        {
-            bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
-            if (battle && Duel.Player == 0)
-                return materials.Any(card => card.Attacked &&
-                    (IsSkyStrikerAce(card) || ControlledEnemyCards.Contains(card)))
-                    ? 5600 : 0;
-
-            ClientCard liveThreat = Enemy.GetMonsters().Where(card => card.IsFaceup() &&
-                card.IsAttack() && !card.Attacked)
-                .OrderByDescending(GetObservedThreatScore).FirstOrDefault();
-            if (Duel.Player == 1)
-            {
-                if (liveThreat == null ||
-                    !Bot.HasInExtra(new[] { CardId.Kaina, CardId.Amatsu }))
-                    return 0;
-                return Math.Max(0, GetObservedThreatScore(liveThreat)) +
-                    Math.Min(3000, Math.Max(0, liveThreat.Attack));
-            }
-
-            if (HornetSetupStage == HornetZeroSetupStage.NeedZero &&
-                materials.Count >= 2 && Bot.HasInExtra(CardId.Zero))
-                return 7600;
-
-            if (Duel.Phase == DuelPhase.Main1 && !KagariSummoned &&
-                Bot.HasInExtra(CardId.Kagari))
-            {
-                if (Bot.HasInGraveyard(CardId.Engage))
-                    return 5600;
-                if (Bot.HasInGraveyard(CardId.Linkage))
-                    return 4700;
-                if (Bot.HasInGraveyard(CardId.WidowAnchor))
-                    return 4100;
-                if (Bot.HasInGraveyard(CardId.HornetDrones))
-                    return 3500;
-            }
-
-            if ((Duel.Phase == DuelPhase.Main2 || Duel.Phase == DuelPhase.End) &&
-                !ShizukuSummoned && Bot.HasInExtra(CardId.Shizuku) &&
-                materials.Any(card => card.Attacked ||
-                    ControlledEnemyCards.Contains(card) || card.IsCode(CardId.Token)))
-                return 4700;
-            return 0;
+            return TryPlanLemnisgateGraveConversion();
         }
 
         private static bool ShouldUseLemnisgateGraveLinkForValue(int planValue,
@@ -2276,6 +2268,8 @@ namespace WindBot.Game.AI.Decks
 
             if (card.IsMonster())
             {
+                if (HasFreeBattleRemoval(card))
+                    return 0;
                 int score = card.IsFaceup() ? GetObservedThreatScore(card) : 1200;
                 if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz |
                     CardType.Link))
@@ -2664,7 +2658,7 @@ namespace WindBot.Game.AI.Decks
         {
             // Do not raise the opponent from 8000 to 9000 while the exact Linkage
             // damage line is already prepared.
-            return !ShouldReserveKagariForLinkageOtk() &&
+            return !GetBattleRoute().Lethal && !ShouldReserveKagariForLinkageOtk() &&
                 !ShouldPrepareWidowLinkageOtk();
         }
 
@@ -2762,7 +2756,9 @@ namespace WindBot.Game.AI.Decks
 
         private bool AfterburnersEffect()
         {
-            ClientCard target = GetEnemyMonsterTarget(false);
+            BattleRoute route = GetBattleRoute();
+            BattleStep next = route.Lethal ? route.Steps.FirstOrDefault() : null;
+            ClientCard target = next != null && next.Kind == "remove" ? next.Target : GetEnemyMonsterTarget(false);
             if (target == null)
                 return false;
             MarkCurrentChainHandled(target);
@@ -2789,6 +2785,9 @@ namespace WindBot.Game.AI.Decks
 
         private bool EngageEffect()
         {
+            if (!EmptyMainMonsterZone() || !DefaultCheckWhetherBotCanSearch() ||
+                DefaultCheckWhetherCardIsNegated(Card))
+                return false;
             if (!StrategicAllows(SkyStrategicActionKind.ActivateEngage))
                 return false;
             int plannedTarget = GetStrategicSearchTarget(
@@ -2985,7 +2984,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool SharkCannonEffect()
         {
-            if (Util.ChainContainsCard(CardId.SharkCannon))
+            if (!EmptyMainMonsterZone() || Util.ChainContainsCard(CardId.SharkCannon))
                 return false;
 
             List<ClientCard> targets = Enemy.GetGraveyardMonsters()
@@ -2993,6 +2992,9 @@ namespace WindBot.Game.AI.Decks
                     SkyStrikerMirrorObserved && card.IsCode(CardId.Roze) ? 1 : 2)
                 .ThenByDescending(card => card.Attack)
                 .ToList();
+
+            if (TrySalvageSharkCannon(targets))
+                return true;
 
             ChainInfo lastChain = Duel.CurrentChainInfo.LastOrDefault();
             if (lastChain != null && lastChain.ActivatePlayer == 1)
@@ -3246,6 +3248,17 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
+            BattleRoute battleRoute = GetBattleRoute();
+            if (battleRoute.Lethal && battleRoute.Steps.Count > 0)
+            {
+                BattleStep next = battleRoute.Steps[0];
+                if (next.Kind != "raye-tag" || next.Source != Card)
+                    return false;
+                SelectSkyStrikerLinkPlace();
+                AI.SelectCard(next.Summon);
+                return true;
+            }
+
             if (LinkageOtk == LinkageOtkStage.RayeRozeReady)
                 return false;
 
@@ -3280,6 +3293,13 @@ namespace WindBot.Game.AI.Decks
         private void RayeSelectTarget()
         {
             SelectSkyStrikerLinkPlace();
+            BattleRoute route = GetBattleRoute();
+            BattleStep step = route.Lethal ? route.Steps.FirstOrDefault() : null;
+            if (step != null && step.Kind == "raye-tag")
+            {
+                AI.SelectCard(step.Summon);
+                return;
+            }
             if (RayeToZeroSetupPending && !ZeroSummoned && Bot.HasInExtra(CardId.Zero))
             {
                 AI.SelectCard(CardId.Zero);
@@ -3372,6 +3392,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
+            if (Bot.HasInGraveyard(CardId.Linkage) && GetBattleRoute(true).Lethal)
+            {
+                AI.SelectCard(CardId.Linkage);
+                return true;
+            }
             if (LinkageOtk == LinkageOtkStage.KagariReady)
             {
                 ClientCard linkage = Bot.GetGraveyardSpells().FirstOrDefault(card =>
@@ -4936,6 +4961,8 @@ namespace WindBot.Game.AI.Decks
         private int[] GetLinkageExtraDeckPriority()
         {
             List<int> result = new List<int>();
+            if (BattleSummonTarget != 0 && Bot.HasInExtra(BattleSummonTarget))
+                return new[] { BattleSummonTarget };
             if (LinkageOtk == LinkageOtkStage.SummonKagari)
                 return Bot.HasInExtra(CardId.Kagari)
                     ? new[] { CardId.Kagari }
@@ -4981,6 +5008,8 @@ namespace WindBot.Game.AI.Decks
 
         private int[] GetLemnisgateExtraDeckPriority()
         {
+            if (LemnisgateLinkDestination != 0 && Bot.HasInExtra(LemnisgateLinkDestination))
+                return new[] { LemnisgateLinkDestination };
             List<int> result = new List<int>();
             bool battle = Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2;
             if (Duel.Player == 1)
