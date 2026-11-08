@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory = $true)][string]$DataRoot,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [string]$Deck = (Join-Path $PSScriptRoot '../Decks/AI_Witchcraft2026.ydk'),
-    [ValidateSet('Guide', 'FieldAccess', 'FieldlessLacrima', 'FieldlessMaid')][string]$Scenario = 'Guide',
+    [ValidateSet('Guide', 'FieldAccess', 'FieldlessLacrima', 'FieldlessMaid', 'FieldlessControl')][string]$Scenario = 'Guide',
     [switch]$AllowVerifiedLethal,
     [string[]]$Opening = @('21522601', '6071005', '58139997', '57916305', '22623509')
 )
@@ -71,6 +71,21 @@ for ($number = 1; $number -le 2; $number++) {
                 'Red-Eyes Dark Dragoon from Extra move to MonsterZone')) {
                 $checks += [ordered]@{ duel = $number; assertion = $event; passed = $turn.Contains($event) }
             }
+        } elseif ($Scenario -eq 'FieldlessControl') {
+            # A separate endpoint assertion, not a rewrite of the strict Marka/Dragoon
+            # fixture above. Temporary Gaze valuation can select this lasting board.
+            foreach ($event in @('Verre Magic - Lacrima of Light from Hand move to SpellZone',
+                'Witchcrafter Genni from Deck move to Grave', 'Witchcrafter Genni from Grave move to Removed',
+                'Verre Magic - Lacrima of Light from Grave move to Removed',
+                'Witchcrafter Terracottan from Deck move to MonsterZone',
+                'Witchcrafter Pupils from Extra move to MonsterZone',
+                'Witchcrafter Celebration from Deck move to Hand',
+                'Witchcrafter Vice-Madame from Extra move to MonsterZone')) {
+                $checks += [ordered]@{ duel = $number; assertion = $event; passed = $turn.Contains($event) }
+            }
+            $checks += [ordered]@{ duel = $number; assertion = 'Pupils and Vice survive the first Main Phase';
+                passed = (-not $turn.Contains('Witchcrafter Pupils from MonsterZone move to') -and
+                    -not $turn.Contains('Witchcrafter Vice-Madame from MonsterZone move to')) }
         } else {
             foreach ($event in @('Genni, the Maid of Endymion from Hand move to MonsterZone',
                 'Witchcrafter Pittore from MonsterZone move to Removed',

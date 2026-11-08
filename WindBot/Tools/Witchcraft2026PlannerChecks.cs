@@ -21,6 +21,15 @@ internal static class Witchcraft2026PlannerChecks
     private static int Count(object s, int id, string z) { return (int)S.GetMethod("Count", F).Invoke(s, new[] { (object)id, Zone(z) }); }
     private static void Move(object s, int id, string from, string to) { S.GetMethod("Move", F).Invoke(s, new[] { (object)id, Zone(from), Zone(to) }); }
     private static object Empty() { return Activator.CreateInstance(S, true); }
+    private static object Restrict(object s, int id, int used, bool active = true)
+    {
+        Type type = S.DeclaringType.GetNestedType("WRestriction", F);
+        object r = Activator.CreateInstance(type, true);
+        Set(r, "Id", id); Set(r, "Player", 1); Set(r, "Used", used); Set(r, "Active", active);
+        Set(r, "SummonLimit", id == 94977269 ? 1 : 0); Set(r, "SpellHandGrave", id == 19261966);
+        ((IList)Get(s, "Restrictions")).Add(r);
+        return r;
+    }
     private static object Opening(params int[] hand)
     {
         object s = Empty();
@@ -157,6 +166,8 @@ internal static class Witchcraft2026PlannerChecks
         links.Clear();
         object fields = Property(duel, "Fields");
         object bot = ((Array)fields).GetValue(0), opponent = ((Array)fields).GetValue(1);
+        bot.GetType().GetMethod("SetInitialDeck").Invoke(bot,
+            new object[] { Array.CreateInstance(asm.GetType("YGOSharp.OCGWrapper.NamedCard"), 0) });
         Array monsters = (Array)Property(bot, "MonsterZone");
         monsters.SetValue(dragoon, 0); Property(dragoon, "Attack", 3000); Property(dragoon, "Type", 97);
         object vice = card(9603252, "MonsterZone"); Property(vice, "Type", 97); monsters.SetValue(vice, 1);
@@ -202,6 +213,162 @@ internal static class Witchcraft2026PlannerChecks
             ReferenceEquals(executor.GetMethod("PromptAction", F).Invoke(ex, null), secondPrompt));
         executor.GetMethod("OnChainEnd").Invoke(ex, null);
         Check("chain end retires all link-owned prompts", ((IDictionary)Get(ex, "_prompts")).Count == 0);
+        links.Clear(); chainCards.Clear(); Property(duel, "SolvingChainIndex", 0);
+        foreach (int index in Enumerable.Range(0, monsters.Length)) monsters.SetValue(null, index);
+        Array foes = (Array)Property(opponent, "MonsterZone");
+        foreach (int index in Enumerable.Range(0, foes.Length)) foes.SetValue(null, index);
+        object winda = card(94977269, "MonsterZone"); Property(winda, "Controller", 1);
+        Property(winda, "Type", 97); foes.SetValue(winda, 0);
+        Func<object, int, bool> protectedFrom = (c, player) => (bool)executor.GetMethod("DestructionProtected", F)
+            .Invoke(null, new[] { c, (object)player, false });
+        Check("active Winda resists opposing effect destruction", protectedFrom(winda, 0));
+        Check("Winda protection is controller-relative, not unconditional", !protectedFrom(winda, 1));
+        Property(winda, "Disabled", 1);
+        Check("negated Winda becomes destructible", !protectedFrom(winda, 0));
+        Property(winda, "Disabled", 0);
+        object verre = card(21522601, "MonsterZone"); Property(verre, "Type", 33);
+        monsters.SetValue(verre, 0); monsters.SetValue(vice, 1);
+        Set(ex, "_viceRemoval", winda);
+        links.Add(link(verre, 0, 21522601 * 16 + 1)); links.Add(link(vice, 0, 9603252 * 16));
+        Check("Vice ABOVE Verre resolves against still-protected Winda", !contains(forecast(), "Removed", winda));
+        links.Clear(); links.Add(link(vice, 0, 9603252 * 16)); links.Add(link(verre, 0, 21522601 * 16 + 1));
+        Check("Verre ABOVE Vice disables protection before destruction", contains(forecast(), "Removed", winda));
+        links.Clear(); Set(ex, "_viceRemoval", null);
+        double pair = (double)executor.GetMethod("DestructionPairValue", F).Invoke(ex, new[] { vice, winda });
+        Check("Celebration pair predicts own Vice loss without Winda removal", pair < 0);
+        object seed = card(59106048, "MonsterZone"); monsters.SetValue(seed, 2);
+        object ordinary = card(69247929, "MonsterZone"); Property(ordinary, "Controller", 1);
+        Property(ordinary, "Attack", 2000); Property(ordinary, "Type", 17);
+        object pupils = card(69964858, "MonsterZone"); links.Add(link(pupils, 0, 69964858 * 16));
+        Property(duel, "SolvingChainIndex", 1);
+        candidates = list(); candidates.Add(vice); candidates.Add(seed); candidates.Add(winda); candidates.Add(ordinary);
+        int destroyHint = (int)asm.GetType("WindBot.Game.AI.HintMsg").GetField("Destroy", F).GetValue(null);
+        picked = (IList)executor.GetMethod("OnSelectCard").Invoke(ex, new object[] { candidates, 2, 2, destroyHint, false });
+        Check("forced copied Celebration picks expendable friendly and destructible enemy",
+            picked.Contains(seed) && picked.Contains(ordinary) && !picked.Contains(vice) && !picked.Contains(winda));
+        Property(duel, "SolvingChainIndex", 0); links.Clear();
+        object scheiren = card(572850, "Hand"); Property(scheiren, "Controller", 1);
+        links.Add(link(scheiren, 1, 572850 * 16));
+        Check("negate-destroy does not spend Distortion merely to enable known GY Fusion",
+            !(bool)executor.GetMethod("ValuableNegate", F).Invoke(ex, new object[] { "Distortion", 5.0 }));
+        object trap = card(69748261, "SpellZone"); links.Add(link(trap, 0, -1));
+        Check("negate-destroy forecast sends hand monster away and records GY follow-up",
+            contains(forecast(), "Removed", scheiren) && contains(forecast(), "GraveFollowups", scheiren));
+        links.Clear(); Property(scheiren, "Location", Enum.Parse(location, "Grave"));
+        links.Add(link(scheiren, 1, 572850 * 16 + 1));
+        Check("actual GY Fusion offer can be negated without a second destroy trigger",
+            (bool)executor.GetMethod("ValuableNegate", F).Invoke(ex, new object[] { "Distortion", 5.0 }));
+        links.Clear();
+        object ano = card(19261966, "MonsterZone"); Property(ano, "Controller", 1);
+        Property(ano, "Attack", 2700); Property(ano, "Type", 97); foes.SetValue(ano, 0);
+        monsters.SetValue(null, 0); monsters.SetValue(null, 2);
+        Check("equal trade does not throw away Vice when no restriction bypass is unlocked",
+            (double)executor.GetMethod("EqualTradeValue", F).Invoke(ex, new[] { vice, ano }) < 0);
+        IList hand = (IList)Property(bot, "Hand"); hand.Add(card(70226289, "Hand")); hand.Add(card(84523092, "Hand"));
+        hand.Add(card(57916305, "Hand"));
+        Check("equal trade can be worthwhile when it unlocks a real hand-summon defense",
+            (double)executor.GetMethod("EqualTradeValue", F).Invoke(ex, new[] { vice, ano }) > 0);
+        hand.Clear();
+        // Actual successful summon callbacks count events, not monsters in a group.
+        foes.SetValue(winda, 0);
+        ((IList)Property(duel, "LastSummonedCards")).Add(vice);
+        Property(duel, "LastSummonPlayer", 0);
+        executor.GetMethod("OnSpSummoning").Invoke(ex, null);
+        executor.GetMethod("OnSpSummoned").Invoke(ex, null);
+        object observed = executor.GetMethod("Observe", F).Invoke(ex, null);
+        Check("observed Winda tracks one successful simultaneous summon event",
+            ((IList)Get(observed, "Restrictions")).Cast<object>().Any(r => (int)Get(r, "Used") == 1));
+        Property(winda, "Disabled", 1);
+        executor.GetMethod("OnSpSummoning").Invoke(ex, null); executor.GetMethod("OnSpSummoned").Invoke(ex, null);
+        observed = executor.GetMethod("Observe", F).Invoke(ex, null);
+        Check("Winda counter still advances while temporarily disabled (core semantics)",
+            ((IList)Get(observed, "Restrictions")).Cast<object>().Any(r => (int)Get(r, "Used") == 2 && !(bool)Get(r, "Active")));
+        executor.GetMethod("OnMove").Invoke(ex, new object[] { winda, 1, 4, 1, 16 });
+        Check("source leaving resets its own restriction lifetime", ((IDictionary)Get(ex, "_limitCounts")).Count == 0);
+        Property(winda, "Disabled", 0);
+        executor.GetMethod("OnSpSummoning").Invoke(ex, null); executor.GetMethod("OnSpSummoned").Invoke(ex, null);
+        executor.GetMethod("OnPosChange").Invoke(ex, new object[] { winda, 1, 8 });
+        Check("setting the restriction face-down clears its lifetime counter", ((IDictionary)Get(ex, "_limitCounts")).Count == 0);
+        links.Clear(); Property(scheiren, "Location", Enum.Parse(location, "Hand"));
+        links.Add(link(scheiren, 1, 572850 * 16));
+        ((HashSet<int>)Get(ex, "_graveFusionSpent")).Add(572850);
+        Check("already-spent public GY trigger does not cause unconditional Scheiren pass",
+            (bool)executor.GetMethod("ValuableNegate", F).Invoke(ex, new object[] { "Distortion", 5.0 }));
+        links.Clear(); object gazeCard = card(22283204, "SpellZone"); links.Add(link(gazeCard, 0, 22283204 * 16));
+        Property(duel, "SolvingChainIndex", 1); Property(duel, "Turn", 5);
+        IList summoned = (IList)Property(duel, "LastSummonedCards"); summoned.Clear(); summoned.Add(dragoon);
+        monsters.SetValue(dragoon, 3); executor.GetMethod("OnSpSummoned").Invoke(ex, null);
+        observed = executor.GetMethod("Observe", F).Invoke(ex, null);
+        Check("Gaze successful summon callback observes next-turn expiry", ((IDictionary)Get(observed, "Temporary")).Contains(37818794) &&
+            (int)((IDictionary)Get(observed, "Temporary"))[37818794] == 6);
+        executor.GetMethod("OnMove").Invoke(ex, new object[] { dragoon, 0, 4, 0, 16 });
+        Check("leaving field clears the observed Gaze card-instance lifetime", ((IDictionary)Get(ex, "_expires")).Count == 0);
+    }
+
+    private static void OutcomeModelChecks(Type executor)
+    {
+        object s = Empty(); Add(s, 64756282, "Board"); Add(s, 21744288, "Deck");
+        Add(s, 84523092, "Deck"); Add(s, 70226289, "Hand"); Add(s, 32353566, "Backrow");
+        Add(s, 57916305, "Deck"); object restriction = Restrict(s, 94977269, 0);
+        object recruit = Actions(s).Cast<object>().First(a => Kind(a) == "Recruit" && (int)Get(a, "Target") == 21744288);
+        object after = Apply(s, recruit);
+        Check("one summon under Winda blocks subsequent ladder summons", !Actions(after).Cast<object>().Any(a => Kind(a) == "Recruit"));
+        Set(restriction, "Used", 1);
+        Check("spent Winda excludes summon roots rather than just lowering their score", !Actions(s).Cast<object>().Any(a => Kind(a) == "Recruit"));
+        Set(restriction, "Active", false);
+        Check("negating restriction restores summon generation", Actions(s).Cast<object>().Any(a => Kind(a) == "Recruit"));
+        ((IList)Get(s, "Restrictions")).Clear();
+        Check("removing restriction restores summon generation", Actions(s).Cast<object>().Any(a => Kind(a) == "Recruit"));
+        s = Empty(); Add(s, 69964858, "Board"); Add(s, 6958567, "Hand"); Add(s, 9603252, "Extra");
+        Add(s, 64756282, "Grave"); Add(s, 21744288, "Grave"); Add(s, 57916305, "Deck");
+        Restrict(s, 94977269, 1);
+        Check("Pupils cannot offer an impossible copied Fusion under spent Winda", !Actions(s).Cast<object>().Any(a => Kind(a) == "Fusion"));
+        Check("Pupils retains its legal non-summoning search alternative", Actions(s).Cast<object>().Any(a => Kind(a) == "PupilsSearch"));
+        object search = Actions(s).Cast<object>().First(a => Kind(a) == "PupilsSearch");
+        after = Apply(s, search); ((IList)Get(after, "Restrictions")).Clear();
+        Check("Pupils search and copy share the installed once-per-name limit", !Actions(after).Cast<object>().Any(a => Kind(a) == "Fusion" && (int)Get(a, "Source") == 69964858));
+        Add(s, 21522601, "Board");
+        object negate = Actions(s).Cast<object>().First(a => Kind(a) == "NegateBoard");
+        after = Apply(s, negate);
+        Check("Verre branch spends a real spell then unlocks Fusion", Count(after, 6958567, "Hand") == 0 &&
+            ((IList)Get(after, "Restrictions")).Cast<object>().All(r => !(bool)Get(r, "Active")));
+        s = Empty(); Add(s, 73664385, "Hand"); Add(s, 84523092, "Hand"); Add(s, 70226289, "Hand");
+        Add(s, 64756282, "Grave"); Add(s, 73664385, "Grave"); Add(s, 58139997, "Board");
+        Add(s, 21522601, "Grave"); Set(s, "EnemyChain", true); Restrict(s, 19261966, 0);
+        Check("Anoyatyllis blocks direct spell summons from hand", !Actions(s).Cast<object>().Any(a => Kind(a) == "Unveiling" || Kind(a) == "LacrimaRecruit"));
+        Check("copied Lacrima is a monster effect and can summon from hand", Actions(s).Cast<object>().Any(a => Kind(a) == "GenniLacrima" && (int)Get(a, "Target") == 84523092));
+        Check("Anoyatyllis does not block Edel monster-effect revival", Actions(s).Cast<object>().Any(a => Kind(a) == "EdelRevive"));
+        Add(s, 84523092, "Deck");
+        recruit = Actions(s).Cast<object>().First(a => Kind(a) == "LacrimaRecruit" && (int)Get(a, "Target") == 84523092);
+        after = Apply(s, recruit);
+        Check("direct Lacrima chooses Deck rather than same-name blocked Hand", Count(after, 84523092, "Hand") == 1 && Count(after, 84523092, "Deck") == 0 && Count(after, 84523092, "Board") == 1);
+        Add(s, 22283204, "Hand"); Add(s, 59400890, "Grave"); Add(s, 37818794, "Extra"); Set(s, "Turn", 5);
+        object gaze = Actions(s).Cast<object>().First(a => Kind(a) == "Gaze"); after = Apply(s, gaze);
+        Check("Gaze is an Extra summon despite its GY return target", Count(after, 37818794, "Board") == 1);
+        object projected = executor.GetMethod("ProjectDelayed", F).Invoke(null, new[] { after, (object)6 });
+        Check("Gaze Dragoon is banished in next-turn End projection", Count(projected, 37818794, "Board") == 0 && Count(projected, 37818794, "Banished") == 1);
+        Move(after, 37818794, "Board", "Grave"); Move(after, 37818794, "Grave", "Board");
+        projected = executor.GetMethod("ProjectDelayed", F).Invoke(null, new[] { after, (object)6 });
+        Check("leaving and reviving clears Gaze delayed removal lifetime", Count(projected, 37818794, "Board") == 1);
+        s = Empty(); Add(s, 58139997, "Hand"); Add(s, 32353566, "Backrow");
+        Add(s, 95245544, "Deck"); Add(s, 21522601, "Deck"); Add(s, 83289866, "Backrow");
+        Restrict(s, 94977269, 0);
+        after = Run(s, "collapsed board with unmodeled-before Pittore access");
+        Check("Walpurgis recovery reaches a real boss with remaining Pittore", Count(after, 21522601, "Board") == 1);
+        s = Empty(); Add(s, 58139997, "Hand"); Add(s, 32353566, "Backrow"); Add(s, 83289866, "Backrow");
+        Add(s, 95245544, "Deck"); Add(s, 59851535, "Deck"); Add(s, 84523092, "Deck"); Add(s, 57916305, "Deck");
+        Add(s, 57916305, "Grave"); Add(s, 35098357, "Grave"); Add(s, 70226289, "Grave"); Restrict(s, 94977269, 0);
+        after = Run(s, "194227 19:55 collapsed board public-resource subset");
+        Check("reported collapse has Walpurgis -> remaining low -> Haine recovery", Count(after, 84523092, "Board") == 1);
+        s = Empty(); Add(s, 58139997, "Hand");
+        Check("empty board and only Edel does not invent a free summon", Actions(s).Count == 0);
+        Add(s, 38943357, "Hand"); Add(s, 7656689, "Banished"); Add(s, 22623509, "Grave");
+        Check("19:57 Mastery cannot search the Maids already outside Deck", Actions(s).Count == 0);
+        s = Empty(); Add(s, 6958567, "Hand"); Add(s, 9603252, "Extra"); Add(s, 64756282, "Grave"); Add(s, 21744288, "Grave");
+        Check("Fusion exists before new floodgate", Actions(s).Cast<object>().Any(a => Kind(a) == "Fusion"));
+        string key = (string)S.GetMethod("Key", F).Invoke(s, null); Restrict(s, 94977269, 1);
+        Check("new floodgate invalidates plan key and eliminates impossible Fusion", key != (string)S.GetMethod("Key", F).Invoke(s, null) &&
+            !Actions(s).Cast<object>().Any(a => Kind(a) == "Fusion"));
     }
     private static void Check(string name, bool passed, object detail = null)
     {
@@ -248,6 +415,7 @@ internal static class Witchcraft2026PlannerChecks
         P = executor.GetNestedType("WPlanner", F);
         Z = executor.GetNestedType("WZone", F);
         A = executor.GetNestedType("WAction", F);
+        OutcomeModelChecks(executor);
         DeckPath = Path.Combine(Path.GetDirectoryName(assembly), "Decks", "AI_Witchcraft2026.ydk");
         try
         {

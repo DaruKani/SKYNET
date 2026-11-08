@@ -114,6 +114,10 @@ namespace WindBot.Game.AI.Decks
             _chainOffers = null;
             _viceRemoval = null;
             _lastTacticalDiagnostic = null;
+            _limitCounts.Clear();
+            _summonLimitSources.Clear();
+            _predictions.Clear();
+            _graveFusionSpent.Clear();
             Invalidate();
             base.OnNewTurn();
         }
@@ -127,6 +131,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnSpSummoned()
         {
+            SummonOutcomes();
             Invalidate();
             base.OnSpSummoned();
         }
@@ -141,6 +146,8 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChaining(int player, ClientCard card)
         {
+            if (player == 1 && card != null && card.Id == GraveFusionTrigger && card.Location == CardLocation.Grave)
+                _graveFusionSpent.Add(card.Id);
             if (card != null && card.IsSpell()) _spellActivity = true;
             if (player == 0 && _awaitingChain && _accepted != null && card != null &&
                 card.Id == _accepted.Source)
@@ -170,12 +177,14 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            ReconcilePredictions();
             _viceRemoval = null;
             _lastTacticalDiagnostic = null;
             _prompts.Clear();
             _accepted = null;
             _awaitingChain = false;
             _chainOffers = null;
+            _summonLimitSources.Clear();
             Invalidate();
             base.OnChainEnd();
         }
@@ -183,6 +192,13 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousController, int previousLocation,
             int currentController, int currentLocation)
         {
+            if (previousLocation == (int)CardLocation.MonsterZone &&
+                currentLocation != (int)CardLocation.MonsterZone)
+            {
+                _limitCounts.Remove(card);
+                _summonLimitSources.Remove(card);
+                _expires.Remove(card);
+            }
             Invalidate();
             base.OnMove(card, previousController, previousLocation, currentController, currentLocation);
         }
@@ -231,6 +247,7 @@ namespace WindBot.Game.AI.Decks
             s.OtherMonsters = Bot.GetMonsters().Count - s.Size(WZone.Board);
             ClientCard extraZoneCard = Bot.GetMonsters().FirstOrDefault(c => c.Sequence >= 5);
             s.ExtraOccupant = extraZoneCard == null ? 0 : extraZoneCard.Id;
+            ObserveOutcomes(s);
             // A multi-trigger window may offer several monsters. Pending belongs to
             // this candidate, not whichever unrelated offer happens to be listed last.
             if ((AI.SelectingEffectYn || _chainOffers != null) && Card != null)
@@ -303,6 +320,7 @@ namespace WindBot.Game.AI.Decks
             }
             if (Duel.Phase != DuelPhase.Main1 && Duel.Phase != DuelPhase.Main2)
                 return false;
+            if (Duel.CurrentChain.Count == 0 && !_awaitingChain) ReconcilePredictions();
             WState observed = Observe();
             string key = observed.Key() + (AI.SelectingEffectYn || _chainOffers != null ?
                 "|" + Card.Id + ":" + ActivateDescription : "");
@@ -313,6 +331,12 @@ namespace WindBot.Game.AI.Decks
                 Logger.DebugWriteLine("Witchcraft2026 compare: hold=" + WPlanner.Evaluate(observed).ToString("0.0") +
                     " best=" + _plan.Score.ToString("0.0") + " nodes=" + _plan.Expanded +
                     " bounded=" + _plan.TimedOut + " alternatives=" + string.Join(" | ", _plan.Alternatives));
+                if (_plan.Steps.Count == 0 && Duel.CurrentChain.Count == 0 && Duel.Player == 0)
+                    Logger.DebugWriteLine("Witchcraft2026 hold audit: model=" + WPlanner.Actions(observed).Take(257).Count() +
+                        " offered-model=" + WPlanner.Actions(observed).Count(IsOffered) +
+                        " engine-activate=" + (Duel.MainPhase == null ? "unknown" :
+                        string.Join(",", Duel.MainPhase.ActivableCards.Select((c, i) => c.Id + "/" + Duel.MainPhase.ActivableDescs[i]))) +
+                        " restrictions=" + RestrictionSummary(observed));
             }
             if (_plan.Steps.Count == 0) return false;
             WAction action = _plan.Steps[0].Action;
@@ -326,9 +350,19 @@ namespace WindBot.Game.AI.Decks
 
         private void AcceptAction(WAction action)
         {
+            if (action.Kind != WKind.Tactical)
+            {
+                WState before = Observe();
+                _predictions.Add(new WPrediction { Action = action, Before = before, After = WPlanner.Apply(before, action) });
+            }
             _accepted = action;
             _awaitingChain = Type == ExecutorType.Activate;
             _used.Add(action.Usage);
+            if (action.Source == CardId.Pupils && (action.Kind == WKind.Fusion || action.Kind == WKind.PupilsSearch))
+            {
+                _used.Add(CardId.Pupils + ":" + WKind.Fusion);
+                _used.Add(CardId.Pupils + ":" + WKind.PupilsSearch);
+            }
             if (action.Kind == WKind.GenniCopy || action.Kind == WKind.GenniLacrima)
             {
                 _used.Add(CardId.Genni + ":" + WKind.GenniCopy);
@@ -372,6 +406,7 @@ namespace WindBot.Game.AI.Decks
                 Bot.Hand.Any(c => c.IsSpell()))
             {
                 AI.SelectCard(DiscardOrder(Bot.Hand.Where(c => c.IsSpell())));
+                _used.Add(CardId.MadameVerre + ":" + WKind.NegateBoard);
                 return true;
             }
             return false;
@@ -456,6 +491,9 @@ namespace WindBot.Game.AI.Decks
         {
             ChainInfo resolving = Duel.GetCurrentSolvingChainInfo();
             if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
+                (resolving.ActivateId == CardId.Celebration || resolving.ActivateId == CardId.Pupils))
+                return SelectDestructionPair(cards, min, max, cancelable);
+            if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
                 resolving.ActivateId == CardId.ViceMadame)
                 return cards.OrderByDescending(c => RemovalValue(c, false))
                     .ThenByDescending(c => c.Controller == 1).Take(Math.Min(max, Math.Max(1, min))).ToList();
@@ -468,6 +506,13 @@ namespace WindBot.Game.AI.Decks
                 {
                     ClientCard cost = cards.FirstOrDefault(c => c.Id == action.Cost && Zone(c.Location) == action.CostZone);
                     if (cost != null && min <= 1) return new[] { cost };
+                }
+                if (hint == HintMsg.SpSummon && action.Kind == WKind.LacrimaRecruit)
+                {
+                    WState state = Observe();
+                    WZone origin = RecruitOrigin(state, action);
+                    ClientCard target = cards.FirstOrDefault(c => c.Id == action.Target && Zone(c.Location) == origin);
+                    if (target != null && min <= 1) return new[] { target };
                 }
                 if (hint == HintMsg.SpSummon && action.Kind == WKind.RillieRecruit)
                     return Pick(cards, action.Recruits, min, max, action.Recruits.Length);
@@ -518,6 +563,11 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<int> options)
         {
             WAction action = PromptAction();
+            if (action != null && action.Kind == WKind.PupilsSearch)
+            {
+                int search = options.IndexOf(UtilString(CardId.Pupils, 2));
+                if (search >= 0) return search;
+            }
             if (action != null && (action.Kind == WKind.LacrimaSend ||
                 action.Kind == WKind.LacrimaRecruit || action.Kind == WKind.GenniLacrima))
             {
@@ -531,6 +581,12 @@ namespace WindBot.Game.AI.Decks
                     int index = options.IndexOf(Util.GetStringId(id, 3));
                     if (index >= 0) return index;
                 }
+                // We cannot fabricate a cancel option after activation. Retire the
+                // fusion expectation and let the owned destruction callback minimize
+                // loss if the engine supplies only that mandatory mode.
+                Logger.DebugWriteLine("Witchcraft2026 mode mismatch: wanted Fusion, offered=" +
+                    string.Join(",", options) + "; forecast invalidated, no invented cancel");
+                Invalidate();
             }
             return base.OnSelectOption(options);
         }

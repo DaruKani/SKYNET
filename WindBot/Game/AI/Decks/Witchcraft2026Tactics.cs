@@ -15,13 +15,14 @@ namespace WindBot.Game.AI.Decks
             public readonly HashSet<ClientCard> Disabled = new HashSet<ClientCard>();
             public readonly HashSet<int> Negated = new HashSet<int>();
             public readonly List<string> Trace = new List<string>();
+            public readonly HashSet<ClientCard> GraveFollowups = new HashSet<ClientCard>();
         }
 
         private string _lastTacticalDiagnostic;
         private ClientCard _viceRemoval;
 
         internal static WChainForecast ForecastChain(IList<ChainInfo> links, IEnumerable<int> negated,
-            ClientCard viceRemoval)
+            ClientCard viceRemoval, IEnumerable<ClientCard> publicMonsters = null)
         {
             WChainForecast f = new WChainForecast();
             foreach (int index in negated) f.Negated.Add(index - 1);
@@ -43,8 +44,13 @@ namespace WindBot.Game.AI.Decks
                         f.Negated.Add(i - 1);
                         ClientCard destroyed = links[i - 1].RelatedCard;
                         if (link.ActivateId != CardId.AshBlossom && destroyed != null &&
-                            (destroyed.Location == CardLocation.MonsterZone || destroyed.Location == CardLocation.SpellZone) &&
-                            !KnownDestructionProtected(destroyed)) f.Removed.Add(destroyed);
+                            (destroyed.Location == CardLocation.MonsterZone || destroyed.Location == CardLocation.SpellZone ||
+                            destroyed.Location == CardLocation.Hand) &&
+                            !DestructionProtected(destroyed, link.ActivatePlayer, f.Disabled.Contains(destroyed)))
+                        {
+                            f.Removed.Add(destroyed);
+                            if (HasGraveFusionFollowup(destroyed)) f.GraveFollowups.Add(destroyed);
+                        }
                     }
                     f.Trace.Add(i + ":negate preceding link");
                 }
@@ -56,7 +62,7 @@ namespace WindBot.Game.AI.Decks
                         if (f.Removed.Contains(target) || (target.Location != CardLocation.MonsterZone &&
                             target.Location != CardLocation.SpellZone))
                         { f.Trace.Add(i + ":target already absent"); continue; }
-                        if (link.ActivateId == CardId.Haine && KnownDestructionProtected(target))
+                        if (link.ActivateId == CardId.Haine && DestructionProtected(target, link.ActivatePlayer, f.Disabled.Contains(target)))
                         { f.Trace.Add(i + ":destruction uncertain/protected"); continue; }
                         f.Removed.Add(target);
                         f.Trace.Add(i + ":remove " + target.Id);
@@ -65,8 +71,16 @@ namespace WindBot.Game.AI.Decks
                 else if (link.ActivateId == CardId.ViceMadame &&
                     link.ActivateDescription == UtilString(CardId.ViceMadame, 0) && viceRemoval != null)
                 {
-                    if (!KnownDestructionProtected(viceRemoval)) f.Removed.Add(viceRemoval);
+                    if (!DestructionProtected(viceRemoval, link.ActivatePlayer, f.Disabled.Contains(viceRemoval))) f.Removed.Add(viceRemoval);
                     f.Trace.Add(i + ":resolution-choice removal " + viceRemoval.Id);
+                }
+                else if (link.ActivateId == CardId.MadameVerre &&
+                    link.ActivateDescription == UtilString(CardId.MadameVerre, 1))
+                {
+                    foreach (ClientCard target in publicMonsters ?? Enumerable.Empty<ClientCard>())
+                        if (target.Controller != link.ActivatePlayer && target.IsFaceup() &&
+                            target.Location == CardLocation.MonsterZone && !f.Removed.Contains(target)) f.Disabled.Add(target);
+                    f.Trace.Add(i + ":negate currently surviving opposing monsters");
                 }
                 else if (link.ActivateId == 98338152) // Widow Anchor: removing its spell is NOT negation.
                 {
@@ -84,8 +98,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.SolvingChainIndex > 0)
                 return ForecastChain(Duel.CurrentChainInfo.Take(Duel.SolvingChainIndex - 1).ToList(),
-                    Duel.NegatedChainIndexList, null);
-            return ForecastChain(Duel.CurrentChainInfo, Duel.NegatedChainIndexList, _viceRemoval);
+                    Duel.NegatedChainIndexList, null, Bot.GetMonsters().Concat(Enemy.GetMonsters()));
+            return ForecastChain(Duel.CurrentChainInfo, Duel.NegatedChainIndexList, _viceRemoval,
+                Bot.GetMonsters().Concat(Enemy.GetMonsters()));
         }
 
         private bool TacticalDecision(string action, double gain, double cost, string reason, ClientCard target = null)
@@ -120,7 +135,14 @@ namespace WindBot.Game.AI.Decks
         private static bool KnownDestructionProtected(ClientCard card)
         {
             // Battle invincibility helpers do not imply effect-destruction immunity.
-            return card.Id == CardId.RedEyesDarkDragoon && card.IsFaceup() && !card.IsDisabled();
+            return DestructionProtected(card, 0, false);
+        }
+
+        private static bool HasGraveFusionFollowup(ClientCard card)
+        {
+            return card != null && card.Id == GraveFusionTrigger && card.Location != CardLocation.Grave &&
+                card.Location != CardLocation.Removed && card.Location != CardLocation.Deck &&
+                card.Location != CardLocation.Extra;
         }
 
         private ClientCard RemovalTarget(bool targeting)
@@ -153,6 +175,14 @@ namespace WindBot.Game.AI.Decks
             else if (threat.Targets.Any(t => t.Controller == 0 && !forecast.Removed.Contains(t)))
                 gain = 24;
             double reserve = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() && c.Id == 76072561) ? 6 : 0;
+            // Destroying the known hand activation by EFFECT sends it to GY and
+            // enables a new Fusion trigger. Its materials/Extra are hidden: do not
+            // claim Winda is guaranteed. With no identified urgent protected target,
+            // retain this negate for the actual GY offer instead of trading it for
+            // another live activation. A higher-priority observed threat can override.
+            if (HasGraveFusionFollowup(threat.RelatedCard) && !_graveFusionSpent.Contains(threat.ActivateId) && gain <= 12)
+                return TacticalDecision(name, 0, cost + reserve,
+                    "negate+destroy -> GY by effect -> possible Fusion trigger; hidden materials unknown; reserve for actual follow-up");
             return TacticalDecision(name, gain, cost + reserve, "live threat vs paid resource and reserved interruption");
         }
 
@@ -225,6 +255,40 @@ namespace WindBot.Game.AI.Decks
                 }
             }
             return base.OnBattle(attackers, defenders);
+        }
+
+        internal double EqualTradeValue(ClientCard attacker, ClientCard defender)
+        {
+            WState before = Observe();
+            if (!before.Has(attacker.Id, WZone.Board)) return double.NegativeInfinity;
+            WState after = before.Copy(); after.Move(attacker.Id, WZone.Board, WZone.Grave);
+            WRestriction removed = after.Restrictions.FirstOrDefault(r => r.Id == defender.Id && r.Player == 1);
+            if (removed != null) after.Restrictions.Remove(removed);
+            after.IncomingAttack = Math.Max(0, after.IncomingAttack - defender.Attack);
+            // Compare actual modeled continuations, not a blanket floodgate bonus.
+            double preserved, traded;
+            using (var budget = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token))
+            {
+                budget.CancelAfter(180); // one budget for both sides of this comparison
+                preserved = WPlanner.Plan(before, null, budget.Token).Score;
+                traded = WPlanner.Plan(after, null, budget.Token).Score;
+            }
+            bool recovers = defender.HasSetcode(0x9d) && Enemy.Graveyard.Any(c =>
+                c.HasSetcode(0x9d) && (c.IsSpell() || c.IsTrap()));
+            return traded - preserved + 10 + Math.Max(0, defender.Attack) / 500.0 - (recovers ? 2 : 0);
+        }
+
+        public override bool OnPreBattleBetween(ClientCard attacker, ClientCard defender)
+        {
+            if (!base.OnPreBattleBetween(attacker, defender)) return false;
+            if (defender.IsFaceup() && defender.IsAttack() && attacker.RealPower == defender.RealPower &&
+                attacker.RealPower > 0 && IsSpellcasterMaterial(attacker.Id))
+            {
+                double value = EqualTradeValue(attacker, defender);
+                return TacticalDecision("equal-ATK trade", value, 0,
+                    "both bodies lost; public GY recovery and legal Main2 continuation vs preserve; unexposed protection not assumed", defender);
+            }
+            return true;
         }
     }
 }

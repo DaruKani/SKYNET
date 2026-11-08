@@ -328,6 +328,92 @@ blocked-board lethal and more card-effect coverage; frozen Arena matchup compari
 No new Arena strength result or universal chain intelligence is claimed. Neither
 successful passive duels nor focused assertions establish competitive strength.
 
+### Floodgate/outcome repair (2026-11-07)
+
+The `Witchcraft2026-20261107-194227.log` failure was not simply a weak deck list.
+The following confirmed defects were repaired without changing the deck,
+registration, launcher, shared dispatcher or search depth:
+
+| Log evidence | Before | Updated decision/model |
+| --- | --- | --- |
+| 19:46:16–19:46:27 | Vice selected protected Winda above Verre in the chain. | Effect-destruction protection is conditional on controller, face-up presence and current negation; a lower Verre link is not applied early. Reverse-chain fixtures cover both orders. |
+| 19:49:27–19:49:43 | After one special summon under Winda, Pupils/Celebration still forecast Fusion. The script could activate its destruction mode instead, losing Vice/Marka without removing Winda. | Every modeled summon is filtered by observed per-source limits. Pupils can choose its separate search mode. Forced destruction selection evaluates a friendly/enemy pair's actual removals and minimizes friendly loss; absent Fusion options invalidate the expectation, never invent a cancellation. |
+| 19:53:27–19:54:55 | Newly summoned Anoyatyllis/Winda did not constrain future modeled summons. | Re-observation includes restriction source, active/disabled state and event count. Spell hand/GY summons are distinguished from Deck/Extra origins and monster-effect copies. Verre has a resource-paid planning branch to disable opposing restrictions first. |
+| 19:45:30–19:45:59 | Distortion destroyed hand Scheiren and enabled its GY Fusion. | Negate-and-destroy forecasts include the destination and known possible GY trigger. With no identified urgent target the response is reserved for an actual follow-up offer. Public already-spent triggers and urgent threats are distinguished; hidden Fusion materials are not guessed. |
+| 19:54:39–19:55:30 | Gaze Dragoon counted as permanent. | The observed card instance and modeled board track next-turn End expiry. Leaving/returning or being set clears its lifetime. Evaluation compares current interaction with the projected post-expiry board; it remains a two-horizon heuristic, not a win probability. |
+| 19:55:12–19:55:14 | Base battle selection allowed an equal-ATK Vice trade without evaluating its engine loss. | Compare lost defense, public GY recovery and resource-valid Main2 continuations after removing the restriction, under one bounded comparison budget. Equal trades can still be accepted when they unlock enough real follow-up. |
+| 19:55:36 and 19:57:38 | Four-name Walpurgis search coverage missed remaining Pittore/Potterie. | Search considers all supported Witchcrafter monsters, including discarding the just-searched card. The earlier collapse has a modeled low-monster-to-Haine recovery; after Walpurgis is destroyed, Edel plus Mastery with both Maids outside Deck does not invent a route. |
+
+`Witchcraft2026Outcomes.cs` owns verified semantic profiles, restriction/lifetime
+observations, paired destruction and prediction reconciliation. The strategic
+planner applies these constraints to all edges; tactics uses resolution-aware
+protection and battle/negate outcomes; the executor binds them to actual callbacks
+and legal offers. `reconcile` logs expected versus observed zone deltas,
+restrictions, expiry and evaluation after a chain, then retires the forecast.
+Concurrent chain effects can legitimately produce differences: the log labels
+them `changed-or-interrupted`, not automatically an engine error. `hold audit`
+separates generated/offered model actions from the engine's activation offers.
+These checks do not write predictions into authoritative duel state.
+
+The installed core independently verifies 16 mechanics assertions, including
+protected versus disabled Winda, harmful paired destruction, per-source summon
+limits (including while temporarily disabled and a newly arriving source), and
+all six tested Anoyatyllis source/effect-class distinctions. This is a scripted
+core probe, **not** a WindBot replay of the human's whole duel:
+
+```powershell
+& C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  WindBot/Tools/witchcraft_outcome_native.py `
+  --core D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ocgcore.dll `
+  --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  --scripts D:/Games/MDPro4/Data/script.zip `
+  --output Artifacts/witchcraft-outcomes-core-my-change.json
+```
+
+The tool uses the core's 76-byte/16-ushort-setcode reader ABI and checks populated
+metadata in Lua. The obsolete managed wrapper's packed-setcode ABI is not valid
+for this DLL. Initial probe development failures (ABI, placement/position waits,
+adjustment timing) were corrected; successful receipt is
+`Artifacts/witchcraft-outcomes-core-05.json`. Inputs are hashed there. No installed
+scripts, databases, game settings or unrelated processes are changed.
+
+Validation receipts under `Artifacts/witchcraft-outcomes-*` distinguish:
+
+- `accepted-focused/report.json`: 90 deterministic model/callback checks, including
+  the original guide, legal recovery versus no recovery, chain order and resets.
+- `accepted-guide/route-checks.json`: the original 39/44 strict guide milestones;
+  the first duel takes separately verified early lethal after the prefix, and
+  the second completes all 22. The five strict failures remain recorded.
+- `access-01`, `maid-01`, `control-01`: two native duels each, respectively 6/6,
+  12/12 and 22/22 movement assertions. The fieldless control route is Lacrima ->
+  Genni copy -> Terra -> Pupils search -> Celebration/Vice, with both Fusions
+  surviving the first Main Phase. Run the existing native command with
+  `-Scenario FieldlessControl -Opening @('59106048','95245544','58139997','73664385','14558127')`.
+- `fieldless-01`: the unchanged strict Marka/Dragoon fixture records **12/16**,
+  because the temporary-boss-aware planner chooses the above control route.
+  These four route-specific failures are not erased or counted as passes by the
+  new, separately named scenario. Both duels complete without material mismatch.
+- `rda-01` and `skystriker-01`: unchanged-bot scheduling/model/callback regressions
+  pass. No shared bot/protocol source was edited. Debug and Release builds pass
+  with five pre-existing warnings; all four Witchcraft2026 files compile as C# 6.
+
+Baseline runtime was preserved before building in
+`Artifacts/witchcraft-floodgate-baseline-9f3c588f` (executable SHA-256
+`a55a8d70947d789a8f6aa4e085ca3b09e6db28e074f5ee5979dcaedfae83067a`).
+Native receipts contain each candidate executable, host and data hash. Wins over
+passive Default establish neither competitive strength nor the correctness of an
+unexercised hostile chain. No configured Arena SQLite/dedicated SRVPro instance
+or running loopback console was available; no Arena win-rate result is claimed.
+
+Remaining priorities: (1) a full native hostile-chain fixture with changing
+floodgates and delayed Gaze, not only isolated mechanics/callbacks and the supplied
+log; (2) more verified protection/floating/replacement-effect profiles and exposed
+usage counters, especially Bystreet's consumed shield and negated summon attempts;
+(3) deeper opponent battle/response forecasting and an actual frozen Arena matchup
+comparison. Unknown effects, hidden resources and unexposed protection counters
+remain unknown. The paired-destruction fallback conservatively assumes a friendly
+card can be lost rather than crediting an unverified remaining Bystreet shield.
+
 All three changed executor/model/tactics files compile independently with C# 6.
 A whole-solution C# 6 override still fails in pre-existing AIUtil/Albaz/Ryzeal
 syntax; ordinary Debug/Release builds use the project's existing language setup.

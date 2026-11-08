@@ -17,7 +17,7 @@ namespace WindBot.Game.AI.Decks
             Normal, Recruit, DarkSummon, GazeSearch, Gaze, GenniCopy, Recover,
             Fusion, Send, RillieRecruit, EdelRevive, ViceRecover, MaidSummon,
             MaidSearch, SetTrap, Unveiling, LacrimaSend, LacrimaRecruit,
-            GenniLacrima, MaidExchange, Tactical
+            GenniLacrima, MaidExchange, NegateBoard, PupilsSearch, Tactical
         }
 
         internal sealed class WAction
@@ -47,6 +47,9 @@ namespace WindBot.Game.AI.Decks
             public Dictionary<long, int> Cards = new Dictionary<long, int>();
             public HashSet<string> Used = new HashSet<string>();
             public HashSet<int> Disabled = new HashSet<int>();
+            public List<WRestriction> Restrictions = new List<WRestriction>();
+            public Dictionary<int, int> Temporary = new Dictionary<int, int>();
+            public int Turn;
             public bool Normal = true;
             public bool SpellActivity;
             public bool ExtraLock;
@@ -68,6 +71,8 @@ namespace WindBot.Game.AI.Decks
                 copy.Cards = new Dictionary<long, int>(Cards);
                 copy.Used = new HashSet<string>(Used);
                 copy.Disabled = new HashSet<int>(Disabled);
+                copy.Restrictions = Restrictions.Select(r => r.Copy()).ToList();
+                copy.Temporary = new Dictionary<int, int>(Temporary);
                 return copy;
             }
             public int Count(int id, WZone zone)
@@ -88,6 +93,7 @@ namespace WindBot.Game.AI.Decks
                 Add(id, from, -1);
                 Add(id, to);
                 if (from == WZone.Board && ExtraOccupant == id) ExtraOccupant = 0;
+                if (from == WZone.Board) Temporary.Remove(id);
             }
             public IEnumerable<int> In(WZone zone)
             {
@@ -107,7 +113,9 @@ namespace WindBot.Game.AI.Decks
                     Normal + "|" + SpellActivity + "|" + ExtraLock + "|" + Maxx +
                     "|" + Pending + "|" + ViceWindow + "|" + FutureSummons + "|" +
                     ExtraOccupant + "|" + UnknownHand + "|" + OtherMonsters + "|" +
-                    OpponentTurn + "|" + EnemyChain + "|" + IncomingAttack + "|" + LifePoints;
+                    OpponentTurn + "|" + EnemyChain + "|" + IncomingAttack + "|" + LifePoints +
+                    "|" + RestrictionSummary(this) + "|" + Turn + "|" +
+                    string.Join(",", Temporary.OrderBy(p => p.Key).Select(p => p.Key + "@" + p.Value));
             }
         }
 
@@ -371,6 +379,7 @@ namespace WindBot.Game.AI.Decks
                         a.Kind != WKind.RillieRecruit && a.Kind != WKind.MaidSearch) continue;
                     if (s.Used.Contains(a.Usage)) continue;
                     if (a.Location == WZone.Board && s.Disabled.Contains(a.Source)) continue;
+                    if (!SummonAllowed(s, a)) continue;
                     yield return a;
                 }
             }
@@ -427,10 +436,10 @@ namespace WindBot.Game.AI.Decks
                 if (s.Has(CardId.Walpurgis, WZone.Backrow) && !s.Disabled.Contains(CardId.Walpurgis))
                 {
                     foreach (int target in new[] { CardId.Genni, CardId.Schmietta,
-                        CardId.Terracottan, CardId.Marka })
+                        CardId.Terracottan, CardId.Marka }.Concat(WitchMonsters).Distinct())
                     {
                         if (!s.Has(target, WZone.Deck)) continue;
-                        foreach (int discard in s.In(WZone.Hand).OrderBy(id =>
+                        foreach (int discard in s.In(WZone.Hand).Concat(new[] { target }).Distinct().OrderBy(id =>
                             GetWalpurgisDiscardRank(id, true)).Take(3))
                         {
                             WAction a = A(WKind.FieldSearch, CardId.Walpurgis, WZone.Backrow, target, 0);
@@ -440,9 +449,21 @@ namespace WindBot.Game.AI.Decks
                         }
                     }
                 }
+                if (s.Active(CardId.MadameVerre) && s.Restrictions.Any(r => r.Player == 1 && r.Active))
+                    foreach (int cost in s.In(WZone.Hand).Where(IsModelSpell))
+                    {
+                        WAction a = A(WKind.NegateBoard, CardId.MadameVerre, WZone.Board, 0, 1);
+                        a.Cost = cost; a.CostZone = WZone.Hand;
+                        a.Route = "disable observed summon restrictions before extending";
+                        yield return a;
+                    }
+                if (s.Active(CardId.Pupils))
+                    foreach (int target in WitchSpells.Concat(new[] { CardId.Lacrima }))
+                        if (s.Has(target, WZone.Deck))
+                            yield return A(WKind.PupilsSearch, CardId.Pupils, WZone.Board, target, 0);
                 if (s.Has(CardId.Creation, WZone.Hand))
                     foreach (int target in new[] { CardId.Marka, CardId.Genni,
-                        CardId.Schmietta, CardId.Terracottan })
+                        CardId.Schmietta, CardId.Terracottan }.Concat(WitchMonsters).Distinct())
                         if (s.Has(target, WZone.Deck))
                             yield return A(WKind.Creation, CardId.Creation, WZone.Hand, target);
                 foreach (WZone zone in new[] { WZone.Hand, WZone.Board })
@@ -635,6 +656,7 @@ namespace WindBot.Game.AI.Decks
 
             public static WState Apply(WState state, WAction a)
             {
+                if (!SummonAllowed(state, a)) throw new InvalidOperationException("Restricted summon: " + a);
                 WState s = state.Copy();
                 s.Used.Add(a.Usage);
                 s.Steps++;
@@ -660,7 +682,13 @@ namespace WindBot.Game.AI.Decks
                     case WKind.Creation:
                     case WKind.GazeSearch:
                     case WKind.MaidSearch:
+                    case WKind.PupilsSearch:
                         s.Move(a.Target, WZone.Deck, WZone.Hand); break;
+                    case WKind.NegateBoard:
+                        s.Move(a.Cost, WZone.Hand, WZone.Grave);
+                        foreach (WRestriction restriction in s.Restrictions.Where(r => r.Player == 1))
+                            restriction.Active = false;
+                        break;
                     case WKind.Marka:
                         s.Move(a.Source, a.Location, WZone.Grave);
                         s.Move(a.Target, WZone.Deck, WZone.Hand); break;
@@ -682,7 +710,9 @@ namespace WindBot.Game.AI.Decks
                         s.Pending = a.Source; s.FutureSummons++; break;
                     case WKind.Gaze:
                         s.Move(a.Materials[0], a.MaterialZones[0], WZone.Extra);
-                        s.Move(a.Target, WZone.Extra, WZone.Board); s.FutureSummons++; break;
+                        s.Move(a.Target, WZone.Extra, WZone.Board);
+                        s.Temporary[a.Target] = s.Turn + 1;
+                        s.FutureSummons++; break;
                     case WKind.GenniCopy:
                         s.Move(CardId.Genni, WZone.Grave, WZone.Banished);
                         s.Move(CardId.Creation, WZone.Grave, WZone.Banished);
@@ -692,7 +722,7 @@ namespace WindBot.Game.AI.Decks
                         s.Move(CardId.Lacrima, WZone.Grave, WZone.Banished);
                         goto case WKind.LacrimaRecruit;
                     case WKind.LacrimaRecruit:
-                        s.Move(a.Target, s.Has(a.Target, WZone.Hand) ? WZone.Hand : WZone.Deck, WZone.Board);
+                        s.Move(a.Target, RecruitOrigin(s, a), WZone.Board);
                         if (a.Target == CardId.MaidVerre) s.Pending = a.Target;
                         s.FutureSummons++; break;
                     case WKind.LacrimaSend:
@@ -736,6 +766,14 @@ namespace WindBot.Game.AI.Decks
                     case WKind.SetTrap:
                         s.Move(a.Source, WZone.Hand, WZone.Backrow); break;
                 }
+                if (IsSummon(a))
+                    foreach (WRestriction restriction in s.Restrictions.Where(r => r.SummonLimit > 0))
+                        restriction.Used++;
+                if (a.Source == CardId.Pupils && (a.Kind == WKind.Fusion || a.Kind == WKind.PupilsSearch))
+                {
+                    s.Used.Add(CardId.Pupils + ":" + WKind.Fusion);
+                    s.Used.Add(CardId.Pupils + ":" + WKind.PupilsSearch);
+                }
                 if ((a.Kind == WKind.Recruit || a.Kind == WKind.EdelRevive || a.Kind == WKind.Unveiling) &&
                     a.Target == CardId.MaidVerre) s.Pending = a.Target;
                 // Copied spell shares Genni's once-per-turn with the Creation copy.
@@ -774,6 +812,14 @@ namespace WindBot.Game.AI.Decks
 
             public static double Evaluate(WState s)
             {
+                // One defended turn plus the following recovery board, not a permanent
+                // boss valuation for a card whose installed script schedules its exit.
+                if (s.Temporary.Count > 0)
+                {
+                    WState present = s.Copy(); present.Temporary.Clear();
+                    WState future = ProjectDelayed(s, s.Turn + 1); future.Temporary.Clear();
+                    return (Evaluate(present) + Evaluate(future)) / 2;
+                }
                 int spells = s.In(WZone.Hand).Where(IsModelSpell).Sum(id => s.Count(id, WZone.Hand));
                 bool witchBoard = s.In(WZone.Board).Any(IsWitchMaterial);
                 // Evaluate usable interaction after the upcoming End Phase, including
