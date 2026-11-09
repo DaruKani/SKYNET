@@ -177,6 +177,8 @@ def main(lua=LUA, expected_checks=16, responder=None):
                 packet = bytes(buf[:size])
                 if not packet:
                     continue  # core can yield between confirmation and chain-end without a response prompt
+                if len(packet) == 7 and packet[0] == 2:
+                    continue  # MSG_HINT notification after announce-number, not a response request
                 if responder is not None:
                     messages.append('FIXTURE_PROMPT:' + packet.hex())
                     response = responder(packet)

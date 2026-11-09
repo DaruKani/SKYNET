@@ -98,6 +98,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnPosChange(ClientCard card, int previousPosition, int currentPosition)
         {
+            _freshBystreetShields.Remove(card);
             if ((currentPosition & (int)CardPosition.FaceDown) != 0) _opponent.ResetInstance(card);
             if ((currentPosition & (int)CardPosition.FaceDown) != 0)
             {

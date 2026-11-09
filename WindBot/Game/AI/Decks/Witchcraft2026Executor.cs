@@ -108,6 +108,8 @@ namespace WindBot.Game.AI.Decks
         public override void OnNewTurn()
         {
             _opponent.NewTurn();
+            _freshBystreetShields.Clear();
+            _bystreetSeenThisTurn = Bot.GetSpells().Any(c => c.IsFaceup() && c.Id == CardId.Bystreet);
             _spellActivity = _normalUsed = _extraLock = _maxx = false;
             _used.Clear();
             _prompts.Clear();
@@ -149,6 +151,9 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChaining(int player, ClientCard card)
         {
+            // Any intervening effect can consume an unreported destruction shield.
+            // Retire certainty; never infer an unused counter from the card surviving.
+            _freshBystreetShields.Clear();
             _opponent.Observe(Duel.CurrentChainInfo); // current link is appended after this hook
             if (player == 1 && card != null && card.Id == GraveFusionTrigger && card.Location == CardLocation.Grave)
                 _graveFusionSpent.Add(card.Id);
@@ -170,6 +175,7 @@ namespace WindBot.Game.AI.Decks
             ChainInfo info = Duel.GetCurrentSolvingChainInfo();
             if (info != null && !Duel.IsCurrentSolvingChainNegated())
             {
+                ObserveBystreetResolution(info);
                 if (info.ActivatePlayer == 1 && info.ActivateId == CardId.MaxxC)
                     _maxx = true;
                 if (info.ActivatePlayer == 0 && info.ActivateId == CardId.Terracottan &&
@@ -201,7 +207,10 @@ namespace WindBot.Game.AI.Decks
         {
             _opponent.Observe(Duel.CurrentChainInfo);
             if (previousLocation != currentLocation)
+            {
                 _opponent.ResetInstance(card);
+                _freshBystreetShields.Remove(card);
+            }
             if (previousLocation == (int)CardLocation.MonsterZone &&
                 currentLocation != (int)CardLocation.MonsterZone)
             {
@@ -239,7 +248,6 @@ namespace WindBot.Game.AI.Decks
                 LifePoints = Bot.LifePoints,
                 Used = new HashSet<string>(_used)
             };
-            s.OpposingResponses = _opponent.VisibleResponses(Enemy.GetMonsters());
             foreach (int id in KnownIds)
             {
                 int count = Bot.GetCardCountInDeck(id);
@@ -260,6 +268,7 @@ namespace WindBot.Game.AI.Decks
             ClientCard extraZoneCard = Bot.GetMonsters().FirstOrDefault(c => c.Sequence >= 5);
             s.ExtraOccupant = extraZoneCard == null ? 0 : extraZoneCard.Id;
             ObserveOutcomes(s);
+            ObserveCoverage(s);
             // A multi-trigger window may offer several monsters. Pending belongs to
             // this candidate, not whichever unrelated offer happens to be listed last.
             if ((AI.SelectingEffectYn || _chainOffers != null) && Card != null)
@@ -343,12 +352,8 @@ namespace WindBot.Game.AI.Decks
                 Logger.DebugWriteLine("Witchcraft2026 compare: hold=" + WPlanner.Evaluate(observed).ToString("0.0") +
                     " best=" + _plan.Score.ToString("0.0") + " nodes=" + _plan.Expanded +
                     " bounded=" + _plan.TimedOut + " alternatives=" + string.Join(" | ", _plan.Alternatives));
-                if (_plan.Steps.Count == 0 && Duel.CurrentChain.Count == 0 && Duel.Player == 0)
-                    Logger.DebugWriteLine("Witchcraft2026 hold audit: model=" + WPlanner.Actions(observed).Take(257).Count() +
-                        " offered-model=" + WPlanner.Actions(observed).Count(IsOffered) +
-                        " engine-activate=" + (Duel.MainPhase == null ? "unknown" :
-                        string.Join(",", Duel.MainPhase.ActivableCards.Select((c, i) => c.Id + "/" + Duel.MainPhase.ActivableDescs[i]))) +
-                        " restrictions=" + RestrictionSummary(observed));
+                if (Duel.Player == 0)
+                    Logger.DebugWriteLine("Witchcraft2026 Action Coverage Audit: " + ActionCoverageAudit(observed, _plan));
             }
             if (_plan.Steps.Count == 0) return false;
             WAction action = _plan.Steps[0].Action;
@@ -370,6 +375,7 @@ namespace WindBot.Game.AI.Decks
             _accepted = action;
             _awaitingChain = Type == ExecutorType.Activate;
             _used.Add(action.Usage);
+            MarkSharedUsage(_used, action);
             if (action.Source == CardId.Pupils && (action.Kind == WKind.Fusion || action.Kind == WKind.PupilsSearch))
             {
                 _used.Add(CardId.Pupils + ":" + WKind.Fusion);
@@ -582,6 +588,13 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<int> options)
         {
             WAction action = PromptAction();
+            if (action != null && action.Kind == WKind.CelebrationDestroy)
+            {
+                int destroy = options.IndexOf(UtilString(CardId.Celebration, 2));
+                if (destroy >= 0) return destroy;
+                Logger.DebugWriteLine("Witchcraft2026 mode mismatch: wanted destruction, offered=" + string.Join(",", options));
+                Invalidate();
+            }
             if (action != null && action.Kind == WKind.PupilsSearch)
             {
                 int search = options.IndexOf(UtilString(CardId.Pupils, 2));

@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)][string]$BotExecutable,
     [Parameter(Mandatory = $true)][string]$Database,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [switch]$CoverageComparison,
     [string]$Compiler = 'C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe'
 )
 $ErrorActionPreference = 'Stop'
@@ -22,7 +23,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Opponent harness compilation failed.' }
 @{ bot = (Get-FileHash -LiteralPath $botPath).Hash; database = (Get-FileHash -LiteralPath $databasePath).Hash } |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputPath 'inputs.json') -Encoding UTF8
 Push-Location (Split-Path -Parent $botPath)
-try { & $harness $databasePath (Join-Path $outputPath 'report.json') }
+try {
+    if ($CoverageComparison) { & $harness $databasePath (Join-Path $outputPath 'report.json') coverage-comparison }
+    else { & $harness $databasePath (Join-Path $outputPath 'report.json') }
+}
 finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw "Opponent checks failed; inspect $outputPath" }
 Write-Output "Receipt: $outputPath"

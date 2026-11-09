@@ -13,6 +13,7 @@ namespace WindBot.Game.AI.Decks
             failed.DenialFloor = null; failed.CommitmentCost = 0;
             failed.Pending = 0; failed.ViceWindow = false;
             failed.Used.Add(action.Usage);
+            MarkSharedUsage(failed.Used, action);
             if (action.Location == WZone.Hand && IsModelSpell(action.Source) &&
                 action.Kind != WKind.SetTrap && action.Kind != WKind.ActivateField)
                 failed.Move(action.Source, WZone.Hand, WZone.Grave);
@@ -55,11 +56,16 @@ namespace WindBot.Game.AI.Decks
             bool monster = !IsModelSpell(action.Source);
             OpponentResponse kind = monster ? (action.Location == WZone.Board ? OpponentResponse.FieldMonster :
                 OpponentResponse.HandGraveMonster) : OpponentResponse.Spell;
-            bool exposed = (before.OpposingResponses & kind) != 0;
+            bool conditionalBox = kind == OpponentResponse.FieldMonster &&
+                (before.OpposingResponses & OpponentResponse.ConditionalFieldMonster) != 0 &&
+                action.Kind != WKind.Recruit && action.Kind != WKind.EdelRevive && action.Kind != WKind.Marka &&
+                action.Source != CardId.RedEyesDarkDragoon;
+            bool exposed = (before.OpposingResponses & kind) != 0 || conditionalBox;
             bool paidRecruit = action.Kind == WKind.Recruit && action.CostZone == WZone.Hand &&
                 !before.Has(CardId.Walpurgis, WZone.Backrow);
             if (!exposed && !paidRecruit) return;
             WState failed = DeniedAction(before, action);
+            if (conditionalBox && failed.Has(action.Source, WZone.Board)) failed.Disabled.Add(action.Source);
             double floor = WPlanner.UninterruptedValue(failed) + IndependentAccess(failed);
             if (exposed)
             {
@@ -82,7 +88,8 @@ namespace WindBot.Game.AI.Decks
                 }
                 after.DenialFloor = before.DenialFloor.HasValue ? Math.Min(before.DenialFloor.Value, floor) : floor;
                 if (!before.DenialFloor.HasValue || floor < before.DenialFloor.Value)
-                    after.Vulnerability = action.Kind + "/" + kind + "/single-response-sensitivity";
+                    after.Vulnerability = action.Kind + "/" + kind + (conditionalBox ?
+                        "/conditional-Box:counter-unobserved,coin,hidden-Deck;not-guaranteed" : "/single-response-sensitivity");
             }
             if (paidRecruit)
             {

@@ -328,6 +328,129 @@ blocked-board lethal and more card-effect coverage; frozen Arena matchup compari
 No new Arena strength result or universal chain intelligence is claimed. Neither
 successful passive duels nor focused assertions establish competitive strength.
 
+### Action coverage repair: 232940 (2026-11-09)
+
+The reported stall is confirmed, but **the two missing action modes predate the
+opponent-awareness patch**. Inspection of `a300a992` (before `f2bd32ff`) finds the
+same generator omissions. The new resilience layer did not prune the recorded
+state: `visible-response=None`, `denial-floor` empty, `commitment=0`, `nodes=1`,
+`bounded=False`. Reverting opponent awareness would not restore these actions.
+
+At 23:30:46 the actual own Main Phase hand is Edel, Lacrima, Seed, Bystreet,
+Celebration; Ash was already discarded on the opponent's turn. At 23:30:58 Seed
+is on the field, Lacrima and Ash are in GY, and Edel/Bystreet/Celebration remain in
+hand. Genni was **not** sent. Reversal Box is faceup; the second opposing set card
+is still unknown at this decision. Later revealed identities are not imported
+into the reconstruction.
+
+| Finding | Correction / comparison |
+| --- | --- |
+| Bystreet could be a modeled discard replacement but had no hand-activation edge. | Add `ActivateBystreet`, moving hand to continuous S/T zone, not GY. Compare preserving the hand card against one-destruction protection. Empty boards do not force activation. |
+| Celebration generated Fusion only. The existing destruction selector could answer a prompt but never made that action a planner candidate. | Add non-targeting paired destruction with a real friendly Witchcrafter and public enemy slot. Apply actual friendly loss, shared opponent removal consequences and both modes' shared usage limit. Separate option indices select destruction or Fusion. |
+| The hold audit printed idle lists even in chain windows; the Lacrima entry therefore did not establish a fresh legal GY effect. | Print offer location/description, actual window, generated/unoffered examples, immediate values, bounded decision and delegated/missing modes. Never treat a stale idle list as current chain authorization. Installed Lacrima has no GY activation; Ash spends its send flag and does not create another opponent-chain window. |
+| Visible responses examined monsters only. | Snapshot public S/T cards too. Reversal Box is a **conditional** surviving-field-monster response, not a guaranteed negate. Tributing a recruiter as cost removes Box's required target. Verre does not erase this backrow threat. |
+
+The same deliberately restricted post-Ash snapshot (no Deck/Extra continuation)
+against preserved and repaired binaries produces:
+
+| Runtime | Generated actions | Hold / best | Chosen continuation |
+| --- | --- | --- | --- |
+| Preserved `035d82b3` working runtime | 0 | 9 / 9, 1 node | HOLD |
+| Repaired runtime | 2 | 9 / 14.1, 7 nodes | Bystreet, then Celebration destruction |
+
+These scores are internal utility, not win probabilities. In the supported
+uninterrupted branch Seed survives its first destruction while Box is destroyed.
+Without a proven fresh shield, friendly destruction is charged normally; no
+free sacrifice is assumed. Native verification confirms the branch, not a claim
+that this would win the original duel. The complete own-deck deterministic fixture
+also covers Lacrima success/negation and the real idle handler accepting Bystreet.
+
+Implementation: `Witchcraft2026Coverage.cs` owns public target snapshots, the two
+new actions, shared usage bookkeeping and coverage diagnostics. The existing
+Executor/Outcomes hooks track conservative fresh-shield evidence; StrategicPlanner
+applies resource changes; Resilience preserves real paid costs and distinguishes
+conditional Box disable from C104 negation. `OpponentAwareness.cs` contains the
+reviewed Box profile. No deck, launcher, protocol or other executor was changed.
+
+Bystreet protection is once **per monster per turn**, including destruction by
+its controller's effects. Shield certainty is only established after a known new
+activation, and retired on intervening chains, position/zone changes or battle
+entry because prevention events are not exposed. Its discard replacement and
+End Phase placement share a limit; activating the Continuous Spell is separate.
+The conservative model values a proven shield as one generic body (3 utility),
+not another boss/negate. Unknown shield counts do not receive that value.
+
+Box's installed `c2606417.lua` requires a counter, a still-related field monster,
+free monster zone, a summonable hidden-Deck target and its coin outcome. This
+client discards counter quantities, so availability is explicitly uncertain.
+The installed operation uses `coin ~= res`, despite the English text saying
+"call it right"; the model does not choose a guaranteed outcome from that text.
+No hidden Deck target or coin result is invented. Combat/coin outcome trees and
+the newly summoned opponent body's identity are not simulated.
+
+Reproduce from the workspace root, with fresh output paths:
+
+```powershell
+./WindBot/Tools/Invoke-WitchcraftOpponentChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/coverage-my-check
+
+# Observation-only before/after receipt, NOT a regression PASS indicator:
+./WindBot/Tools/Invoke-WitchcraftOpponentChecks.ps1 `
+  -BotExecutable Artifacts/witchcraft-coverage-baseline-035d82b3/WindBot.exe `
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/coverage-my-before -CoverageComparison
+# Repeat with WindBot/bin/Debug/WindBot.exe and a different output directory.
+
+& C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  WindBot/Tools/witchcraft_coverage_native.py `
+  --core D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ocgcore.dll `
+  --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  --scripts D:/Games/MDPro4/Data/script.zip `
+  --output Artifacts/coverage-my-core.json
+# Add --end-phase and another output path for actual Bystreet End Phase recovery.
+```
+
+Evidence, not competitive-strength claims:
+
+- `witchcraft-coverage-comparison-before/report.json` and `...-after/report.json`
+  record the comparison above. Baseline EXE SHA-256 is
+  `91f27e550e941db8f2229d9c0fac85ddc4a1fbf564e377127d110e6251936e29`.
+- `witchcraft-coverage-accepted-focused2/report.json`: **73/73**, including the prior
+  41 opponent checks and 32 coverage/handler/cost/uncertainty checks. The initial
+  risk fixture selected an unfinished trigger endpoint with no positive immediate
+  improvement; the retained `...-focused-final` failure prompted correction to a
+  completed Haine endpoint for the positive-value sensitivity assertion.
+- `witchcraft-coverage-accepted-existing2/report.json`: **90/90**; RDA and Sky Striker
+  `...-rda-final` / `...-sky-final` pass **14/14** and **92/92**, respectively.
+- Native `witchcraft-coverage-core-05.json`: **11/11**, real Lacrima/Ash chain,
+  hand offers after failure, Bystreet/Celebration resolution, shared Celebration
+  limit and second destruction. `...-recovery-core-01.json`: **2/2**, actual End
+  Phase placement and shared replacement count. Box counter-cost/absent-source
+  checks invoke reviewed predicates; its entire coin-response chain is not replayed.
+  Early fixture failures (forced trigger, placement and a detached test effect)
+  remain in receipts. The core runner now skips a seven-byte MSG_HINT notification
+  after number selection, never answering it as a decision prompt.
+- Existing native mechanics `...-old-core-final.json` **16/16** and K9 chains
+  `...-opponent-core-final.json` **7/7** pass with that runner change.
+- Full-bot guide `...-accepted-guide`: two completed passive Default games,
+  **39/44 strict** milestones plus separately verified early lethal in game 1.
+  Earlier `...-guide-01` was **44/44**. All strict failures remain; no criteria
+  were weakened. Neither is a full hostile replay of `232940`.
+- Debug, Release, C# 6 subset compilation and `.bat --build-only` pass (builds
+  retain the same five pre-existing warnings). No Arena
+  comparison was performed and no external game settings/scripts were edited.
+
+Coverage limits remain explicit: Seed's GY hand redraw, other unmodeled draw/link
+branches and copied destruction are not implemented by these two added actions.
+The audit reports `MISSING`/`UNCLASSIFIED` or `delegated/partial`, not an invented
+strategic rejection. Destruction selection is reevaluated against actual offered
+cards; full unknown protection, replacements and counter history remain outside
+this bounded model. Shields and Box response risk are conservative estimates,
+not an exact adversarial engine. The current repaired idle route is tested;
+automatic execution of every legal quick-response mode is deliberately not claimed.
+
 ### Opponent-aware foundation (2026-11-08)
 
 This is a working, bounded foundation, **not universal card understanding**. It

@@ -17,7 +17,8 @@ namespace WindBot.Game.AI.Decks
             Normal, Recruit, DarkSummon, GazeSearch, Gaze, GenniCopy, Recover,
             Fusion, Send, RillieRecruit, EdelRevive, ViceRecover, MaidSummon,
             MaidSearch, SetTrap, Unveiling, LacrimaSend, LacrimaRecruit,
-            GenniLacrima, MaidExchange, NegateBoard, PupilsSearch, Tactical
+            GenniLacrima, MaidExchange, NegateBoard, PupilsSearch, Tactical,
+            ActivateBystreet, CelebrationDestroy
         }
 
         internal sealed class WAction
@@ -33,12 +34,13 @@ namespace WindBot.Game.AI.Decks
             public WZone[] MaterialZones = new WZone[0];
             public int[] Recruits = new int[0];
             public string Route;
+            public int EnemyKey;
             public string Usage { get { return Source + ":" + Kind; } }
             public string Identity { get { return Kind + ":" + Source + ":" + Location; } }
             public override string ToString()
             {
                 return Kind + "(" + Source + ")->" + Target + " cost=" + Cost +
-                    " materials=" + string.Join(",", Materials);
+                    " materials=" + string.Join(",", Materials) + (EnemyKey == 0 ? "" : " enemy-slot=" + EnemyKey);
             }
         }
 
@@ -69,6 +71,11 @@ namespace WindBot.Game.AI.Decks
             public double? DenialFloor;
             public double CommitmentCost;
             public string Vulnerability;
+            public List<WRemovalTarget> EnemyTargets = new List<WRemovalTarget>();
+            public HashSet<int> FreshShields = new HashSet<int>();
+            public bool CanEstablishShield = true;
+            public int OccupiedBackrow;
+            public double RemovedThreat;
             public WState Copy()
             {
                 WState copy = (WState)MemberwiseClone();
@@ -77,6 +84,8 @@ namespace WindBot.Game.AI.Decks
                 copy.Disabled = new HashSet<int>(Disabled);
                 copy.Restrictions = Restrictions.Select(r => r.Copy()).ToList();
                 copy.Temporary = new Dictionary<int, int>(Temporary);
+                copy.EnemyTargets = new List<WRemovalTarget>(EnemyTargets);
+                copy.FreshShields = new HashSet<int>(FreshShields);
                 return copy;
             }
             public int Count(int id, WZone zone)
@@ -120,7 +129,10 @@ namespace WindBot.Game.AI.Decks
                     OpponentTurn + "|" + EnemyChain + "|" + IncomingAttack + "|" + LifePoints +
                     "|" + RestrictionSummary(this) + "|" + Turn + "|" +
                     string.Join(",", Temporary.OrderBy(p => p.Key).Select(p => p.Key + "@" + p.Value)) +
-                    "|" + OpposingResponses + "|" + DenialFloor + "|" + CommitmentCost;
+                    "|" + OpposingResponses + "|" + DenialFloor + "|" + CommitmentCost +
+                    "|" + string.Join(",", EnemyTargets.Select(t => t.Key + ":" + t.Id + ":" + t.Value + ":" + t.Responses)) +
+                    "|" + string.Join(",", FreshShields.OrderBy(id => id)) + "|" + CanEstablishShield +
+                    "|" + OccupiedBackrow + "|" + RemovedThreat;
             }
         }
 
@@ -422,6 +434,8 @@ namespace WindBot.Game.AI.Decks
                     yield break;
                 }
 
+                foreach (WAction coverage in CoverageActions(s)) yield return coverage;
+
                 foreach (int source in new[] { CardId.Terraforming, CardId.RainbowBridgeBifrost })
                 {
                     if (s.Has(source, WZone.Hand) && s.Has(CardId.Walpurgis, WZone.Deck) &&
@@ -599,7 +613,8 @@ namespace WindBot.Game.AI.Decks
                 if (!s.OpponentTurn && s.Has(CardId.Walpurgis, WZone.Backrow) && !s.Disabled.Contains(CardId.Walpurgis))
                     foreach (int id in order.Distinct())
                         if (s.Has(id, WZone.Deck)) yield return Tuple.Create(id, WZone.Deck);
-                if (s.Has(CardId.Bystreet, WZone.Backrow) && !s.Disabled.Contains(CardId.Bystreet))
+                if (s.Has(CardId.Bystreet, WZone.Backrow) && !s.Disabled.Contains(CardId.Bystreet) &&
+                    !s.Used.Contains(CardId.Bystreet + ":cost-or-recovery"))
                     yield return Tuple.Create(CardId.Bystreet, WZone.Backrow);
                 foreach (int id in s.In(WZone.Hand).Where(IsModelSpell)
                     .OrderBy(id => Array.IndexOf(order, id) < 0 ? 100 : Array.IndexOf(order, id)))
@@ -670,7 +685,7 @@ namespace WindBot.Game.AI.Decks
                     a.Kind != WKind.Fusion && a.Source != CardId.ViceMadame &&
                     (IsModelSpell(a.Source) || IsSpellcasterMaterial(a.Source));
                 if (a.Location == WZone.Hand && IsModelSpell(a.Source) &&
-                    a.Kind != WKind.ActivateField && a.Kind != WKind.SetTrap)
+                    a.Kind != WKind.ActivateField && a.Kind != WKind.SetTrap && a.Kind != WKind.ActivateBystreet)
                 {
                     s.Move(a.Source, WZone.Hand, WZone.Grave);
                     s.SpellActivity = true;
@@ -691,7 +706,7 @@ namespace WindBot.Game.AI.Decks
                         s.Move(a.Target, WZone.Deck, WZone.Hand); break;
                     case WKind.NegateBoard:
                         s.Move(a.Cost, WZone.Hand, WZone.Grave);
-                        s.OpposingResponses = OpponentResponse.None;
+                        s.OpposingResponses &= OpponentResponse.ConditionalFieldMonster;
                         foreach (WRestriction restriction in s.Restrictions.Where(r => r.Player == 1))
                             restriction.Active = false;
                         break;
@@ -700,6 +715,16 @@ namespace WindBot.Game.AI.Decks
                         s.Move(a.Target, WZone.Deck, WZone.Hand); break;
                     case WKind.ActivateField:
                         s.Move(a.Source, WZone.Hand, WZone.Backrow); s.SpellActivity = true; break;
+                    case WKind.ActivateBystreet:
+                        s.Move(a.Source, WZone.Hand, WZone.Backrow); s.SpellActivity = true;
+                        s.OccupiedBackrow++;
+                        if (s.CanEstablishShield)
+                            s.FreshShields.UnionWith(s.In(WZone.Board).Where(id => IsWitchMaterial(id) && s.Count(id, WZone.Board) == 1));
+                        s.CanEstablishShield = false;
+                        break;
+                    case WKind.CelebrationDestroy:
+                        ApplyDestructionPair(s, a);
+                        break;
                     case WKind.FieldSearch:
                         s.Move(a.Target, WZone.Deck, WZone.Hand);
                         s.Move(a.Cost, WZone.Hand, WZone.Grave); break;
@@ -775,6 +800,7 @@ namespace WindBot.Game.AI.Decks
                 if (IsSummon(a))
                     foreach (WRestriction restriction in s.Restrictions.Where(r => r.SummonLimit > 0))
                         restriction.Used++;
+                MarkSharedUsage(s.Used, a);
                 if (a.Source == CardId.Pupils && (a.Kind == WKind.Fusion || a.Kind == WKind.PupilsSearch))
                 {
                     s.Used.Add(CardId.Pupils + ":" + WKind.Fusion);
@@ -845,7 +871,7 @@ namespace WindBot.Game.AI.Decks
                     !s.Used.Contains(id + ":" + (id == CardId.Creation ? WKind.Creation :
                     id == CardId.Unveiling ? WKind.Unveiling : WKind.Fusion))) : 0;
                 bool cost = spells + recoverable > 0 || s.Has(CardId.Bystreet, WZone.Backrow);
-                double score = s.Size(WZone.Hand) * 2 + s.UnknownHand * 2 + recoverable * 2;
+                double score = s.Size(WZone.Hand) * 2 + s.UnknownHand * 2 + recoverable * 2 + s.RemovedThreat;
                 foreach (int id in s.In(WZone.Board))
                 {
                     double value = 3;
@@ -870,6 +896,11 @@ namespace WindBot.Game.AI.Decks
                 }.Contains(id));
                 if (s.Has(CardId.Distortion, WZone.Backrow)) score += highWitch ? 25 : 1;
                 if (s.Has(CardId.Walpurgis, WZone.Backrow)) score += 3;
+                // A shield preserves a real body once, not immunity or another negate.
+                // Existing counters are unobservable: only freshly established shields
+                // earn this value; unverified shields never justify a free sacrifice.
+                if (s.Has(CardId.Bystreet, WZone.Backrow) && !s.Disabled.Contains(CardId.Bystreet))
+                    score += s.FreshShields.Count(id => s.Has(id, WZone.Board)) * 3;
                 foreach (int id in WitchSpells.Where(id => s.Has(id, WZone.Grave))) score += 1;
                 if (s.Active(CardId.Pupils) && s.Has(CardId.ConfusionConfession, WZone.Hand)) score += 5;
                 // Public damage pressure makes a durable stop materially different from

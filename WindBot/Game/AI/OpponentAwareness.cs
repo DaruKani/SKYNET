@@ -13,7 +13,7 @@ namespace WindBot.Game.AI
     }
 
     [Flags]
-    public enum OpponentResponse { None = 0, FieldMonster = 1, HandGraveMonster = 2, Spell = 4 }
+    public enum OpponentResponse { None = 0, FieldMonster = 1, HandGraveMonster = 2, Spell = 4, ConditionalFieldMonster = 8 }
     public enum OpponentWindow { Activation, Ignition, Quick, Summoned, Destroyed }
     public enum OpponentLimit { NameTurn, InstanceTurn, UnknownActivation, None }
 
@@ -237,7 +237,8 @@ namespace WindBot.Game.AI
             OpponentResponse result = OpponentResponse.None;
             foreach (ClientCard card in cards.Where(c => c.IsFaceup() && !c.IsDisabled()))
                 foreach (OpponentEffect effect in _effects.Where(e => e.CardId == card.Id && (e.Location & card.Location) != 0))
-                    if (Available(effect, card) && PublicCondition(effect, card) && !effect.HiddenCost)
+                    if (Available(effect, card) && PublicCondition(effect, card) &&
+                        (!effect.HiddenCost || effect.RespondsTo == OpponentResponse.ConditionalFieldMonster))
                         result |= effect.RespondsTo;
             return result;
         }
@@ -253,6 +254,14 @@ namespace WindBot.Game.AI
         {
             // Provenance: configured MDPro4 script.zip, reviewed 2026-11-08; hashes
             // and native receipts in README. No downloaded text is executed here.
+            OpponentEffect box = E(2606417, 1, 1, "counter + coin + hidden Deck summon -> disable surviving target / ATK0", CardLocation.SpellZone,
+                OpponentWindow.Quick, OpponentOutcome.Summon | OpponentOutcome.Negate);
+            box.Limit = OpponentLimit.None; box.HiddenCost = true; box.RequiresFaceup = true;
+            box.RespondsTo = OpponentResponse.ConditionalFieldMonster;
+            yield return box;
+            OpponentEffect counters = E(2606417, 0, 0, "Standby die -> public counters (client does not retain quantity)", CardLocation.SpellZone,
+                OpponentWindow.Summoned, OpponentOutcome.None);
+            counters.Limit = OpponentLimit.InstanceTurn; yield return counters;
             yield return E(28642461, 1, 0, "reveal two Level5 -> summon pair", CardLocation.Hand, OpponentWindow.Ignition, OpponentOutcome.Summon);
             yield return E(28642461, 2, 1, "non-Aqua K9 search", CardLocation.MonsterZone, OpponentWindow.Ignition, OpponentOutcome.Search);
             yield return E(92248362, 1, 0, "conditional hand summon", CardLocation.Hand, OpponentWindow.Quick, OpponentOutcome.Summon);

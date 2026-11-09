@@ -197,9 +197,157 @@ internal static class WitchcraftOpponentChecks
     public static int Main(string[] args)
     {
         NamedCardsManager.Init(args[0]);
-        try { UsageChecks(); IntegrationChecks(); PlannerChecks(); }
+        if (args.Length > 2 && args[2] == "coverage-comparison")
+        {
+            CoverageComparison(args[1]);
+            return 0; // observation receipt, not a PASS/FAIL regression suite
+        }
+        try { UsageChecks(); IntegrationChecks(); PlannerChecks(); CoverageChecks(); }
         catch (Exception e) { Check("harness exception", false, e.ToString()); }
         File.WriteAllText(args[1], new JavaScriptSerializer().Serialize(Results));
         return Failures == 0 ? 0 : 1;
+    }
+
+    private static void CoverageChecks()
+    {
+        Type executor = typeof(Witchcraft2026Executor), planner = executor.GetNestedType("WPlanner", F);
+        Type zone = executor.GetNestedType("WZone", F);
+        Func<object, List<object>> actions = s => ((IEnumerable)planner.GetMethod("Actions", F).Invoke(null, new[] { s })).Cast<object>().ToList();
+        Func<object, object, object> apply = (s, a) => planner.GetMethod("Apply", F).Invoke(null, new[] { s, a });
+        Func<object, object> plan = s => planner.GetMethod("Plan", F).Invoke(null, new object[] { s, null, System.Threading.CancellationToken.None });
+        Func<object, int, string, int> count = (s, id, z) => (int)Call(s, "Count", id, Enum.Parse(zone, z));
+        Func<object, double> value = s => (double)planner.GetMethod("Evaluate", F).Invoke(null, new[] { s });
+        var duel = new Duel { Player = 0, Phase = DuelPhase.Main1, Turn = 2 };
+        duel.Fields[0].Init(0, 0, 0); duel.Fields[1].Init(0, 0, 1);
+        int[] deck = File.ReadLines("Decks/AI_Witchcraft2026.ydk").TakeWhile(l => l != "#extra")
+            .Where(l => l.Length > 0 && char.IsDigit(l[0])).Select(int.Parse).ToArray();
+        duel.Fields[0].SetInitialDeck(deck.Select(NamedCard.Get).ToArray());
+        foreach (int id in new[] { 58139997, 73664385, 59106048, 83289866, 6958567 }) duel.Fields[0].Hand.Add(Card(id, CardLocation.Hand, 0));
+        duel.Fields[0].Graveyard.Add(Card(14558127, CardLocation.Grave, 0)); // used during the opponent's first turn
+        foreach (int id in new[] { 9603252, 69964858, 33475154, 37818794, 59400890 }) duel.Fields[0].ExtraDeck.Add(Card(id, CardLocation.Extra, 0));
+        var box = Card(2606417, CardLocation.SpellZone); duel.Fields[1].SpellZone[0] = box;
+        var game = new GameClient(new WindBotInfo { Chat = false });
+        var ex = new Witchcraft2026Executor(new GameAI(game, duel), duel);
+        object opening = Call(ex, "Observe");
+        Check("232940 actual own first main hand includes Celebration draw and spent Ash", count(opening, 6958567, "Hand") == 1 && count(opening, 14558127, "Grave") == 1 && count(opening, 59106048, "Hand") == 1);
+        Check("face-up Box is conditional backrow response, not guaranteed negate", (int)(OpponentResponse)Get(opening, "OpposingResponses") == 8);
+        var normal = actions(opening).First(a => Get(a, "Kind").ToString() == "Normal" && (int)Get(a, "Source") == 59106048);
+        object summoned = apply(opening, normal);
+        var send = actions(summoned).First(a => Get(a, "Kind").ToString() == "LacrimaSend" && (int)Get(a, "Target") == 64756282);
+        object resolved = apply(summoned, send);
+        Check("Lacrima resolving creates actual Genni access and copied spell continuation", count(resolved, 64756282, "Grave") == 1 && actions(resolved).Any(a => Get(a, "Kind").ToString() == "GenniLacrima"));
+        object failed = executor.GetMethod("DeniedAction", F).Invoke(null, new[] { summoned, send });
+        Check("Ash-negated Lacrima spends Spell, not the unperformed Deck send", count(failed, 73664385, "Grave") == 1 && count(failed, 64756282, "Grave") == 0 && count(failed, 64756282, "Deck") > 0);
+        Check("Ash does not reset Lacrima send limit or manufacture a new recruit window", !actions(failed).Any(a => Get(a, "Kind").ToString().StartsWith("Lacrima")));
+        Check("post-Ash includes Bystreet activation and Celebration destruction", actions(failed).Any(a => Get(a, "Kind").ToString() == "ActivateBystreet") && actions(failed).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy"));
+        object recovery = plan(failed);
+        var route = ((IEnumerable)Get(recovery, "Steps")).Cast<object>().Select(m => Get(m, "Action")).ToList();
+        Check("post-Ash planner plays a beneficial legal modeled continuation, not empty hold", route.Count > 0 && (double)Get(recovery, "Score") > value(failed), route.Select(a => a.ToString()).ToArray());
+        var activate = actions(failed).First(a => Get(a, "Kind").ToString() == "ActivateBystreet");
+        object protectedState = apply(failed, activate);
+        Check("Bystreet activation stays on field and creates no extra body", count(protectedState, 83289866, "Backrow") == 1 && count(protectedState, 83289866, "Grave") == 0 && count(protectedState, 59106048, "Board") == 1);
+        var destroy = actions(protectedState).First(a => Get(a, "Kind").ToString() == "CelebrationDestroy");
+        object destroyed = apply(protectedState, destroy);
+        Check("fresh shield protects Seed while paired destruction removes Box", count(destroyed, 59106048, "Board") == 1 && (OpponentResponse)Get(destroyed, "OpposingResponses") == OpponentResponse.None);
+        Check("paired destruction spends Celebration shared Fusion mode", ((HashSet<string>)Get(destroyed, "Used")).Contains("6958567:Fusion") && ((HashSet<string>)Get(destroyed, "Used")).Contains("6958567:CelebrationDestroy"));
+        object uncertain = Call(protectedState, "Copy"); ((HashSet<int>)Get(uncertain, "FreshShields")).Clear();
+        object unshielded = apply(uncertain, destroy);
+        Check("unobserved Bystreet shield is not assumed to save a sacrifice", count(unshielded, 59106048, "Grave") == 1);
+        object noEnemy = Call(failed, "Copy"); ((IList)Get(noEnemy, "EnemyTargets")).Clear(); Set(noEnemy, "OpposingResponses", OpponentResponse.None);
+        Check("no enemy means no destruction mode, but protection still evaluated", !actions(noEnemy).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy") && actions(noEnemy).Any(a => Get(a, "Kind").ToString() == "ActivateBystreet"));
+        object noBody = Call(noEnemy, "Copy"); Call(noBody, "Move", 59106048, Enum.Parse(zone, "Board"), Enum.Parse(zone, "Grave"));
+        Check("empty board does not auto-activate Bystreet", ((IEnumerable)Get(plan(noBody), "Steps")).Cast<object>().Count() == 0);
+        object both = Call(failed, "Copy"); Call(both, "Add", 64756282, Enum.Parse(zone, "Grave"), 1); Call(both, "Add", 21744288, Enum.Parse(zone, "Grave"), 1);
+        Check("Celebration independently generates Fusion and destruction modes", actions(both).Any(a => Get(a, "Kind").ToString() == "Fusion" && (int)Get(a, "Source") == 6958567) && actions(both).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy"));
+        Check("no materials means Celebration cannot fabricate Fusion", !actions(failed).Any(a => Get(a, "Kind").ToString() == "Fusion"));
+        object badTrade = Call(failed, "Copy");
+        Call(badTrade, "Move", 83289866, Enum.Parse(zone, "Hand"), Enum.Parse(zone, "Grave"));
+        IList weakTargets = (IList)Get(badTrade, "EnemyTargets"); weakTargets.Clear();
+        object weak = Activator.CreateInstance(executor.GetNestedType("WRemovalTarget", F), true);
+        Set(weak, "Key", 129); Set(weak, "Id", 2606417); Set(weak, "Value", 1.0); weakTargets.Add(weak);
+        Set(badTrade, "OpposingResponses", OpponentResponse.None);
+        Check("legal negative-value destruction is compared and rejected, not forced", actions(badTrade).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy") &&
+            ((IEnumerable)Get(plan(badTrade), "Steps")).Cast<object>().Count() == 0);
+        Set(ex, "_accepted", destroy);
+        Check("destruction option follows actual offered option index", ex.OnSelectOption(new[] { 6958567 * 16 + 3, 6958567 * 16 + 2 }) == 1);
+
+        // Real executor observation/offer boundary following the failed starter.
+        var seed = duel.Fields[0].Hand.First(c => c.Id == 59106048); duel.Fields[0].Hand.Remove(seed); seed.Location = CardLocation.MonsterZone; duel.Fields[0].MonsterZone[0] = seed;
+        var lacrima = duel.Fields[0].Hand.First(c => c.Id == 73664385); duel.Fields[0].Hand.Remove(lacrima); lacrima.Location = CardLocation.Grave; duel.Fields[0].Graveyard.Add(lacrima);
+        Set(ex, "_normalUsed", true); ((HashSet<string>)Get(ex, "_used")).Add("73664385:LacrimaSend");
+        var bystreet = duel.Fields[0].Hand.First(c => c.Id == 83289866); var celebration = duel.Fields[0].Hand.First(c => c.Id == 6958567);
+        duel.MainPhase = new MainPhase(); duel.MainPhase.ActivableCards.Add(bystreet); duel.MainPhase.ActivableDescs.Add(0);
+        duel.MainPhase.ActivableCards.Add(celebration); duel.MainPhase.ActivableDescs.Add(6958567 * 16);
+        ex.SetCard(ExecutorType.Activate, bystreet, 0);
+        Check("actual idle handler accepts represented Bystreet action after Ash", (bool)Call(ex, "PlannedAction"));
+        object observed = Call(ex, "Observe"); object reportPlan = plan(observed);
+        string audit = (string)Call(ex, "ActionCoverageAudit", observed, reportPlan);
+        Check("coverage audit separates generated, offered and evaluated choices", audit.Contains("modeled=") && audit.Contains("CelebrationDestroy") && audit.Contains("unavailable-model=") && !audit.Contains("MISSING"), audit);
+        ex.OnSelectChain(new[] { bystreet });
+        Check("chain-window audit does not mislabel stale idle offers", ((string)Call(ex, "ActionCoverageAudit", observed, reportPlan)).Contains("idle-list-not-current"));
+        var model = new OpponentAwareness(); box.Position = (int)CardPosition.FaceDownDefence;
+        Check("facedown Box identity is not used for visible response", model.VisibleResponses(new[] { box }) == OpponentResponse.None);
+        box.Position = (int)CardPosition.FaceUpAttack;
+        object lowState = Call(failed, "Copy"); Call(lowState, "Add", 21744288, Enum.Parse(zone, "Board"), 1);
+        var recruit = actions(lowState).First(a => Get(a, "Kind").ToString() == "Recruit");
+        Check("Box cannot target a recruiting monster that tributes itself as cost", Get(apply(lowState, recruit), "DenialFloor") == null);
+        var twoModes = actions(both).First(a => Get(a, "Kind").ToString() == "Fusion" && (int)Get(a, "Source") == 6958567);
+        object fused = apply(both, twoModes);
+        Check("Fusion also consumes Celebration destruction mode", !actions(fused).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy"));
+        object exposed = Call(both, "Copy"); Call(exposed, "Add", 7656689, Enum.Parse(zone, "Board"), 1);
+        var exchange = actions(exposed).First(a => Get(a, "Kind").ToString() == "MaidExchange" && (int)Get(a, "Target") == 84523092);
+        object interrupted = apply(exposed, exchange);
+        Check("surviving field monster effect is exposed to conditional Box disable", Get(interrupted, "DenialFloor") != null && Get(interrupted, "Vulnerability").ToString().Contains("conditional-Box"));
+        Set(exposed, "OpposingResponses", OpponentResponse.None);
+        Check("absent Box restores uninterrupted valuation without inventing another threat", Get(apply(exposed, exchange), "DenialFloor") == null && value(apply(exposed, exchange)) > value(interrupted));
+        var deniedPair = executor.GetMethod("DeniedAction", F).Invoke(null, new[] { protectedState, destroy });
+        Check("negated Celebration retains both targets but spends shared activation", count(deniedPair, 59106048, "Board") == 1 && ((IList)Get(deniedPair, "EnemyTargets")).Count == 1 && ((HashSet<string>)Get(deniedPair, "Used")).Contains("6958567:Fusion"));
+        object disabledResponse = Call(protectedState, "Copy");
+        object spentEnemy = Activator.CreateInstance(executor.GetNestedType("WRemovalTarget", F), true);
+        Set(spentEnemy, "Key", 65); Set(spentEnemy, "Id", 49456901); Set(spentEnemy, "Value", 3.0);
+        Set(spentEnemy, "Responses", OpponentResponse.FieldMonster);
+        ((IList)Get(disabledResponse, "EnemyTargets")).Add(spentEnemy); Set(disabledResponse, "OpposingResponses", (OpponentResponse)8);
+        Check("removing Box does not resurrect a previously disabled monster response", (OpponentResponse)Get(apply(disabledResponse, destroy), "OpposingResponses") == OpponentResponse.None);
+        object fullBackrow = Call(failed, "Copy"); Set(fullBackrow, "OccupiedBackrow", 5);
+        Check("full spell zones cannot generate either new hand activation", !actions(fullBackrow).Any(a => Get(a, "Kind").ToString() == "ActivateBystreet" || Get(a, "Kind").ToString() == "CelebrationDestroy"));
+        duel.CurrentChainInfo.Clear(); duel.CurrentChain.Clear();
+        duel.Fields[0].Hand.Remove(bystreet); bystreet.Location = CardLocation.SpellZone; duel.Fields[0].SpellZone[0] = bystreet;
+        duel.CurrentChainInfo.Add(Link(bystreet, 0)); duel.SolvingChainIndex = 1;
+        ex.OnChainSolved(1);
+        Check("actual successful Bystreet resolution establishes shield evidence", ((HashSet<int>)Get(Call(ex, "Observe"), "FreshShields")).Contains(59106048));
+        duel.Phase = DuelPhase.BattleStart; ex.OnNewPhase();
+        Check("entering battle retires unreported shield-count certainty", ((HashSet<int>)Get(Call(ex, "Observe"), "FreshShields")).Count == 0);
+        duel.Phase = DuelPhase.End;
+        ex.SetCard(ExecutorType.Activate, Card(83289866, CardLocation.Grave, 0), 83289866 * 16);
+        Check("Bystreet actual End Phase handler accepts legal GY recovery", (bool)Call(ex, "EndPhaseRecovery"));
+        duel.Fields[0].MonsterZone[0] = null;
+        Check("Bystreet recovery handler does not invent a required Witchcrafter", !(bool)Call(ex, "EndPhaseRecovery"));
+    }
+
+    private static void CoverageComparison(string output)
+    {
+        // Same public post-Ash state against either preserved runtime. No expected
+        // winner encoded: record the actual generator and executor's shared planner.
+        var duel = new Duel { Player = 0, Phase = DuelPhase.Main1, Turn = 2 };
+        duel.Fields[0].Init(0, 0, 0); duel.Fields[1].Init(0, 0, 1);
+        duel.Fields[0].SetInitialDeck(new NamedCard[0]);
+        foreach (int id in new[] { 58139997, 83289866, 6958567 }) duel.Fields[0].Hand.Add(Card(id, CardLocation.Hand, 0));
+        duel.Fields[0].MonsterZone[0] = Card(59106048, CardLocation.MonsterZone, 0);
+        duel.Fields[0].Graveyard.Add(Card(73664385, CardLocation.Grave, 0));
+        duel.Fields[0].Graveyard.Add(Card(14558127, CardLocation.Grave, 0));
+        duel.Fields[1].SpellZone[0] = Card(2606417, CardLocation.SpellZone);
+        var game = new GameClient(new WindBotInfo { Chat = false });
+        var ex = new Witchcraft2026Executor(new GameAI(game, duel), duel);
+        Set(ex, "_normalUsed", true); ((HashSet<string>)Get(ex, "_used")).Add("73664385:LacrimaSend");
+        object state = Call(ex, "Observe");
+        Type planner = typeof(Witchcraft2026Executor).GetNestedType("WPlanner", F);
+        object result = planner.GetMethod("Plan", F).Invoke(null, new object[] { state, null, System.Threading.CancellationToken.None });
+        File.WriteAllText(output, new JavaScriptSerializer().Serialize(new {
+            purpose = "before/after post-Ash public subset, no Deck/Extra continuations; observation not regression pass",
+            actions = ((IEnumerable)planner.GetMethod("Actions", F).Invoke(null, new[] { state })).Cast<object>().Select(a => a.ToString()).ToArray(),
+            hold = planner.GetMethod("Evaluate", F).Invoke(null, new[] { state }),
+            best = Get(result, "Score"), nodes = Get(result, "Expanded"),
+            route = ((IEnumerable)Get(result, "Steps")).Cast<object>().Select(m => Get(m, "Action").ToString()).ToArray()
+        }));
     }
 }
