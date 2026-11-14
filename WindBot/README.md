@@ -336,6 +336,59 @@ paths on another machine. Use a Debug client for its authoritative result logs.
 Exact source/script/deck hashes and separate focused, native and Arena evidence
 are recorded in [voiceless-provenance.json](voiceless-provenance.json).
 
+## Sky Striker 2026 executor
+
+`Deck=SkyStriker2026` is a separate normal registration using
+`Decks/AI_SkyStriker2026.ydk` (40 Main / 15 Extra / 15 Side). The original
+`SkyStriker` executor/deck remain unchanged. Imported from the tested
+implementation at `DaruKani/SKYNET` revision `94a977b2`, with a distinct roster
+entry. No dependency on the separate Witchcraft executor is required.
+
+The bounded RDA-style route planner compares executable continuations and retained
+resources. Each actual offer, chain outcome and interruption can invalidate the
+forecast. Raye/Roze access, Zero setup, Engage/Kagari recovery, Linkage battle
+extension, Lemnisgate field/GY conversion, modern Ace links and the
+Fallen/Dogma/Ecclesia package have explicit decisions and offered-card callbacks.
+Draw/search restrictions and the Main Monster Zone condition constrain planning;
+a plan cannot reserve an unavailable search and suppress a real setup action.
+
+Battle planning uses observed attackable targets, spent attackers and current
+damage modifiers, with bounded search and replanning after each event. It does
+not assume unknown backrow or hand responses are absent. Removal is not treated
+as negation; known GY follow-ups and paid costs are accounted for. Lemnisgate
+compares conversion/timing value against a free normal Link or immediate battle.
+This remains a partial heuristic model, not universal effect coverage or an
+optimal-play guarantee. Side-card handlers do not imply automatic side decking.
+
+Run from the workspace root with a compatible server already listening:
+
+```powershell
+WindBot\Tools\Run-SkyStriker2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb"
+WindBot\Tools\Run-SkyStriker2026.bat --build-only
+./WindBot/Tools/Invoke-SkyStrikerPlannerChecks.ps1 -BotExecutable WindBot/bin/Debug/WindBot.exe -CardDatabase D:/Games/MDPro4/Data/locales/en-US/cards.cdb -OutputDirectory Artifacts/sky-planner
+./WindBot/Tools/Invoke-SkyStrikerRecoveryChecks.ps1 -BotExecutable WindBot/bin/Debug/WindBot.exe -CardDatabase D:/Games/MDPro4/Data/locales/en-US/cards.cdb -OutputDirectory Artifacts/sky-recovery
+./WindBot/Tools/Test-SkyStriker2026.ps1 -Python python -DataRoot D:/Games/MDPro4/Data -Server D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll -OutputDirectory Artifacts/sky-native -MirrorGames 2
+```
+
+Use fresh receipt paths, Python 3.11+ and explicitly selected compatible CDB,
+scripts and duel server. The test wrapper builds Debug/Release, runs focused
+checks, recovery fixtures, fixed-opening native scenarios and the requested even
+number of mirror games. Its seed controls fixture deck permutations, **not** the
+unknown core RNG. Runtime inputs, logs and result receipts stay under ignored
+`Artifacts/`; no external scripts or game settings are edited.
+
+The launcher uses Debug and opt-in `LogPath` for a timestamped log beside the
+`.bat`. Without that argument the existing console behavior is retained. The
+same logging change is included in the independent Witchcraft 2026 PR so either
+branch can build and launch on upstream without the other deck.
+
+Upstream-based branch validation (2026-11-15): Debug/Release builds and focused
+92/92 planner/policy plus 18/18 recovery assertions. Native scripted recovery
+passes 6/6 cases; five fixed-opening scenarios and two paired mirror games pass
+their behavior/completion audits (designated client: one win, one loss).
+These checks are not a frozen Arena comparison or a competitive-strength claim.
+Normal registration is a selection category, not a certification of playing skill.
+
 ## Current validation and Arena results
 
 The loss-analysis update preserves all three deck lists. Voiceless now targets
