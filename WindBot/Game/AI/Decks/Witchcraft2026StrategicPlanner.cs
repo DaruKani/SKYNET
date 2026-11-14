@@ -18,7 +18,8 @@ namespace WindBot.Game.AI.Decks
             Fusion, Send, RillieRecruit, EdelRevive, ViceRecover, MaidSummon,
             MaidSearch, SetTrap, Unveiling, LacrimaSend, LacrimaRecruit,
             GenniLacrima, MaidExchange, NegateBoard, PupilsSearch, Tactical,
-            ActivateBystreet, CelebrationDestroy
+            ActivateBystreet, CelebrationDestroy, SeedRedraw, PittoreDraw, PotterieRecover,
+            DistortionSearch, CopiedDraping
         }
 
         internal sealed class WAction
@@ -35,12 +36,14 @@ namespace WindBot.Game.AI.Decks
             public int[] Recruits = new int[0];
             public string Route;
             public int EnemyKey;
+            public int CopiedSpell;
             public string Usage { get { return Source + ":" + Kind; } }
             public string Identity { get { return Kind + ":" + Source + ":" + Location; } }
             public override string ToString()
             {
                 return Kind + "(" + Source + ")->" + Target + " cost=" + Cost +
-                    " materials=" + string.Join(",", Materials) + (EnemyKey == 0 ? "" : " enemy-slot=" + EnemyKey);
+                    " materials=" + string.Join(",", Materials) + (EnemyKey == 0 ? "" : " enemy-slot=" + EnemyKey) +
+                    (CopiedSpell == 0 ? "" : " copy=" + CopiedSpell);
             }
         }
 
@@ -76,6 +79,11 @@ namespace WindBot.Game.AI.Decks
             public bool CanEstablishShield = true;
             public int OccupiedBackrow;
             public double RemovedThreat;
+            public bool RandomBoundary;
+            public double DrawUtility;
+            public bool DistortionReady;
+            public bool SpellcasterProtected;
+            public HashSet<int> BanishOnLeave = new HashSet<int>();
             public WState Copy()
             {
                 WState copy = (WState)MemberwiseClone();
@@ -86,6 +94,7 @@ namespace WindBot.Game.AI.Decks
                 copy.Temporary = new Dictionary<int, int>(Temporary);
                 copy.EnemyTargets = new List<WRemovalTarget>(EnemyTargets);
                 copy.FreshShields = new HashSet<int>(FreshShields);
+                copy.BanishOnLeave = new HashSet<int>(BanishOnLeave);
                 return copy;
             }
             public int Count(int id, WZone zone)
@@ -103,6 +112,8 @@ namespace WindBot.Game.AI.Decks
             }
             public void Move(int id, WZone from, WZone to)
             {
+                if (from == WZone.Board && BanishOnLeave.Remove(id)) to = WZone.Banished;
+                if (id == CardId.Distortion && to == WZone.Grave) DistortionReady = false;
                 Add(id, from, -1);
                 Add(id, to);
                 if (from == WZone.Board && ExtraOccupant == id) ExtraOccupant = 0;
@@ -132,7 +143,8 @@ namespace WindBot.Game.AI.Decks
                     "|" + OpposingResponses + "|" + DenialFloor + "|" + CommitmentCost +
                     "|" + string.Join(",", EnemyTargets.Select(t => t.Key + ":" + t.Id + ":" + t.Value + ":" + t.Responses)) +
                     "|" + string.Join(",", FreshShields.OrderBy(id => id)) + "|" + CanEstablishShield +
-                    "|" + OccupiedBackrow + "|" + RemovedThreat;
+                    "|" + OccupiedBackrow + "|" + RemovedThreat + "|" + RandomBoundary + "|" + DrawUtility +
+                    "|" + DistortionReady + "|" + SpellcasterProtected + "|" + string.Join(",", BanishOnLeave.OrderBy(id => id));
             }
         }
 
@@ -168,7 +180,7 @@ namespace WindBot.Game.AI.Decks
         internal static readonly int[] WitchSpells =
         {
             CardId.Walpurgis, CardId.Creation, CardId.Celebration,
-            CardId.ConfusionConfession, CardId.Unveiling, CardId.Bystreet
+            CardId.ConfusionConfession, CardId.Unveiling, CardId.Bystreet, CardId.Draping
         };
         internal static readonly int[] KnownIds = typeof(CardId).GetFields()
             .Where(field => field.IsLiteral).Select(field => (int)field.GetRawConstantValue()).ToArray();
@@ -393,7 +405,8 @@ namespace WindBot.Game.AI.Decks
                 {
                     if (s.OpponentTurn && a.Kind != WKind.Recruit && a.Kind != WKind.MaidExchange &&
                         a.Kind != WKind.LacrimaRecruit && a.Kind != WKind.ViceRecover &&
-                        a.Kind != WKind.RillieRecruit && a.Kind != WKind.MaidSearch) continue;
+                        a.Kind != WKind.RillieRecruit && a.Kind != WKind.MaidSearch && a.Kind != WKind.DistortionSearch) continue;
+                    if (a.Source == CardId.Genni && a.Location == WZone.Grave && s.Used.Contains("64756282:grave-copy")) continue;
                     if (s.Used.Contains(a.Usage)) continue;
                     if (a.Location == WZone.Board && s.Disabled.Contains(a.Source)) continue;
                     if (!SummonAllowed(s, a)) continue;
@@ -403,6 +416,7 @@ namespace WindBot.Game.AI.Decks
 
             private static IEnumerable<WAction> Generate(WState s)
             {
+                if (s.RandomBoundary) yield break; // unknown draw identities require a real observation
                 int board = s.Size(WZone.Board) + s.OtherMonsters;
                 if (s.Pending == CardId.DarkMagicianOfDestruction)
                 {
@@ -435,6 +449,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 foreach (WAction coverage in CoverageActions(s)) yield return coverage;
+                foreach (WAction grave in GraveActions(s)) yield return grave;
 
                 foreach (int source in new[] { CardId.Terraforming, CardId.RainbowBridgeBifrost })
                 {
@@ -532,13 +547,12 @@ namespace WindBot.Game.AI.Decks
                             yield return a;
                         }
                 if (s.Has(CardId.Genni, WZone.Grave) && s.Has(CardId.Creation, WZone.Grave))
-                    foreach (int target in new[] { CardId.Terracottan, CardId.Marka })
+                    foreach (int target in WitchMonsters)
                         if (s.Has(target, WZone.Deck))
                             yield return A(WKind.GenniCopy, CardId.Genni, WZone.Grave, target, 1);
                 if (s.Has(CardId.Genni, WZone.Grave) && s.Has(CardId.Lacrima, WZone.Grave) &&
                     MainMonsters(s) < 5)
-                    foreach (int target in new[] { CardId.MaidVerre, CardId.Marka,
-                        CardId.Terracottan, CardId.Haine, CardId.MadameVerre })
+                    foreach (int target in WitchMonsters)
                         if (s.Has(target, WZone.Deck) || s.Has(target, WZone.Hand))
                             yield return A(WKind.GenniLacrima, CardId.Genni, WZone.Grave, target, 1);
                 if (s.Has(CardId.Lacrima, WZone.Hand))
@@ -560,7 +574,7 @@ namespace WindBot.Game.AI.Decks
                         if (s.Has(target, WZone.Grave))
                             yield return A(WKind.Recover, CardId.Terracottan, WZone.Hand, target, 0);
                 if (s.Has(CardId.Schmietta, WZone.Grave))
-                    foreach (int target in new[] { CardId.MadameVerre, CardId.Celebration, CardId.Bystreet })
+                    foreach (int target in WitchMonsters.Concat(WitchSpells).Concat(new[] { CardId.Lacrima, CardId.Distortion }).Where(id => id != CardId.Schmietta))
                         if (s.Has(target, WZone.Deck) && !s.Has(target, WZone.Grave))
                             yield return A(WKind.Send, CardId.Schmietta, WZone.Grave, target, 1);
 
@@ -621,7 +635,7 @@ namespace WindBot.Game.AI.Decks
                     yield return Tuple.Create(id, WZone.Hand);
             }
 
-            private static IEnumerable<WAction> Fusions(WState s)
+            internal static IEnumerable<WAction> Fusions(WState s)
             {
                 foreach (int source in new[] { CardId.Terracottan, CardId.Pupils,
                     CardId.Celebration, CardId.ConfusionConfession })
@@ -681,6 +695,11 @@ namespace WindBot.Game.AI.Decks
                 s.Used.Add(a.Usage);
                 s.Steps++;
                 s.Pending = 0;
+                if (a.CopiedSpell != 0)
+                {
+                    s.Move(CardId.Genni, WZone.Grave, WZone.Banished);
+                    s.Move(a.CopiedSpell, WZone.Grave, WZone.Banished);
+                }
                 s.ViceWindow = a.Kind != WKind.Normal && a.Kind != WKind.SetTrap &&
                     a.Kind != WKind.Fusion && a.Source != CardId.ViceMadame &&
                     (IsModelSpell(a.Source) || IsSpellcasterMaterial(a.Source));
@@ -692,6 +711,12 @@ namespace WindBot.Game.AI.Decks
                 }
                 switch (a.Kind)
                 {
+                    case WKind.SeedRedraw:
+                    case WKind.PittoreDraw:
+                    case WKind.PotterieRecover:
+                    case WKind.DistortionSearch:
+                    case WKind.CopiedDraping:
+                        ApplyGraveAction(s, a); break;
                     case WKind.FieldAccess:
                         if (a.Source == CardId.RainbowBridgeBifrost)
                             foreach (int id in new[] { CardId.CosmicQuasarDragon,
@@ -771,7 +796,7 @@ namespace WindBot.Game.AI.Decks
                         s.Move(a.Source, WZone.Grave, WZone.Banished);
                         s.Move(a.Target, WZone.Deck, WZone.Grave); break;
                     case WKind.Fusion:
-                        bool recycle = a.Source == CardId.Pupils || a.Source == CardId.Celebration;
+                        bool recycle = a.Source == CardId.Pupils || a.Source == CardId.Celebration || a.CopiedSpell == CardId.Celebration;
                         for (int i = 0; i < a.Materials.Length; i++)
                             s.Move(a.Materials[i], a.MaterialZones[i],
                                 recycle ? (IsExtra(a.Materials[i]) ? WZone.Extra : WZone.Deck) : WZone.Grave);
@@ -793,7 +818,8 @@ namespace WindBot.Game.AI.Decks
                         if (a.Source == CardId.MaidVerre) s.Pending = CardId.MaidVerre;
                         s.FutureSummons++; break;
                     case WKind.Unveiling:
-                        s.Move(a.Target, WZone.Hand, WZone.Board); s.FutureSummons++; break;
+                        s.Move(a.Target, WZone.Hand, WZone.Board); s.FutureSummons++;
+                        s.SpellcasterProtected = true; break;
                     case WKind.SetTrap:
                         s.Move(a.Source, WZone.Hand, WZone.Backrow); break;
                 }
@@ -871,7 +897,7 @@ namespace WindBot.Game.AI.Decks
                     !s.Used.Contains(id + ":" + (id == CardId.Creation ? WKind.Creation :
                     id == CardId.Unveiling ? WKind.Unveiling : WKind.Fusion))) : 0;
                 bool cost = spells + recoverable > 0 || s.Has(CardId.Bystreet, WZone.Backrow);
-                double score = s.Size(WZone.Hand) * 2 + s.UnknownHand * 2 + recoverable * 2 + s.RemovedThreat;
+                double score = s.Size(WZone.Hand) * 2 + s.UnknownHand * 2 + recoverable * 2 + s.RemovedThreat + s.DrawUtility;
                 foreach (int id in s.In(WZone.Board))
                 {
                     double value = 3;

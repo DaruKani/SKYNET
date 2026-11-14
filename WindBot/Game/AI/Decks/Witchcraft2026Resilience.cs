@@ -14,6 +14,18 @@ namespace WindBot.Game.AI.Decks
             failed.Pending = 0; failed.ViceWindow = false;
             failed.Used.Add(action.Usage);
             MarkSharedUsage(failed.Used, action);
+            if (action.CopiedSpell != 0)
+            {
+                failed.Move(CardId.Genni, WZone.Grave, WZone.Banished);
+                failed.Move(action.CopiedSpell, WZone.Grave, WZone.Banished);
+                return failed; // copied operation has not resolved; materials stay put
+            }
+            if (action.Kind == WKind.SeedRedraw || action.Kind == WKind.PittoreDraw ||
+                action.Kind == WKind.PotterieRecover || action.Kind == WKind.DistortionSearch)
+            {
+                failed.Move(action.Source, WZone.Grave, WZone.Banished);
+                return failed; // hand selection/discard occurs only at resolution
+            }
             if (action.Location == WZone.Hand && IsModelSpell(action.Source) &&
                 action.Kind != WKind.SetTrap && action.Kind != WKind.ActivateField)
                 failed.Move(action.Source, WZone.Hand, WZone.Grave);
@@ -54,6 +66,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (action.Kind == WKind.Normal || action.Kind == WKind.DarkSummon || action.Kind == WKind.SetTrap) return;
             bool monster = !IsModelSpell(action.Source);
+            if (monster && IsSpellcasterMaterial(action.Source) && before.SpellcasterProtected) return;
             OpponentResponse kind = monster ? (action.Location == WZone.Board ? OpponentResponse.FieldMonster :
                 OpponentResponse.HandGraveMonster) : OpponentResponse.Spell;
             bool conditionalBox = kind == OpponentResponse.FieldMonster &&

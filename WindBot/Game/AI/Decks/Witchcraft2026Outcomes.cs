@@ -54,7 +54,7 @@ namespace WindBot.Game.AI.Decks
             if (!IsSummon(a)) return true;
             if (s.Restrictions.Any(r => r.Active && r.SummonLimit > 0 && r.Used >= r.SummonLimit)) return false;
             if (!s.Restrictions.Any(r => r.Active && r.SpellHandGrave)) return true;
-            if (a.Kind == WKind.Unveiling) return false;
+            if (a.Kind == WKind.Unveiling && a.CopiedSpell == 0) return false;
             if (a.Kind == WKind.LacrimaRecruit) return s.Has(a.Target, WZone.Deck);
             // Fusion/Gaze summon FROM Extra; materials in hand/GY are not summon origins.
             // Recruit, Edel, Rillie, Genni, Terra and Maid are monster effects.
@@ -102,6 +102,7 @@ namespace WindBot.Game.AI.Decks
             if ((currentPosition & (int)CardPosition.FaceDown) != 0) _opponent.ResetInstance(card);
             if ((currentPosition & (int)CardPosition.FaceDown) != 0)
             {
+                _markaRevived.Remove(card);
                 _limitCounts.Remove(card);
                 _summonLimitSources.Remove(card);
                 _expires.Remove(card);
@@ -120,6 +121,11 @@ namespace WindBot.Game.AI.Decks
                     _limitCounts[card] = used + 1; // simultaneous group = one event
                 }
                 ChainInfo resolving = Duel.GetCurrentSolvingChainInfo();
+                WAction action = PromptAction();
+                if (resolving != null && resolving.ActivatePlayer == 0 &&
+                    (resolving.ActivateId == CardId.Unveiling ||
+                    (resolving.ActivateId == CardId.Genni && action != null && action.CopiedSpell == CardId.Unveiling)))
+                    _unveilingProtection = true;
                 if (resolving != null && resolving.ActivatePlayer == 0 && resolving.ActivateId == CardId.GazeOfTimaeus)
                     foreach (ClientCard card in Duel.LastSummonedCards.Where(c => c.Controller == 0))
                         _expires[card] = Duel.Turn + 1;

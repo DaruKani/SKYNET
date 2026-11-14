@@ -39,6 +39,7 @@ namespace WindBot.Game.AI.Decks
             public const int ConfusionConfession = 35098357;
             public const int Celebration = 6958567;
             public const int Distortion = 69748261;
+            public const int Draping = 56894757;
 
             public const int MadameRillie = 33475154;
             public const int RedEyesDarkDragoon = 37818794;
@@ -75,6 +76,7 @@ namespace WindBot.Game.AI.Decks
                 AI.Game.Connection.Disconnected += error => _shutdown.Cancel();
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
+            AddExecutor(ExecutorType.Activate, GraveWindowAction);
             AddExecutor(ExecutorType.Activate, CardId.Distortion, DistortionEffect);
             AddExecutor(ExecutorType.Activate, CardId.RedEyesDarkDragoon, DragoonEffect);
             AddExecutor(ExecutorType.Activate, CardId.Haine, HaineEffect);
@@ -111,8 +113,10 @@ namespace WindBot.Game.AI.Decks
             _freshBystreetShields.Clear();
             _bystreetSeenThisTurn = Bot.GetSpells().Any(c => c.IsFaceup() && c.Id == CardId.Bystreet);
             _spellActivity = _normalUsed = _extraLock = _maxx = false;
+            _unveilingProtection = false;
             _used.Clear();
             _prompts.Clear();
+            _seedPicked.Clear();
             _accepted = null;
             _awaitingChain = false;
             _chainOffers = null;
@@ -176,6 +180,7 @@ namespace WindBot.Game.AI.Decks
             if (info != null && !Duel.IsCurrentSolvingChainNegated())
             {
                 ObserveBystreetResolution(info);
+                ObserveGraveResolution(info);
                 if (info.ActivatePlayer == 1 && info.ActivateId == CardId.MaxxC)
                     _maxx = true;
                 if (info.ActivatePlayer == 0 && info.ActivateId == CardId.Terracottan &&
@@ -188,6 +193,7 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainEnd()
         {
+            _seedPicked.Clear();
             _opponent.Observe(Duel.CurrentChainInfo);
             ReconcilePredictions();
             _opponent.EndChain();
@@ -205,6 +211,7 @@ namespace WindBot.Game.AI.Decks
         public override void OnMove(ClientCard card, int previousController, int previousLocation,
             int currentController, int currentLocation)
         {
+            ObserveGraveMove(card, previousLocation, currentController, currentLocation);
             _opponent.Observe(Duel.CurrentChainInfo);
             if (previousLocation != currentLocation)
             {
@@ -269,6 +276,7 @@ namespace WindBot.Game.AI.Decks
             s.ExtraOccupant = extraZoneCard == null ? 0 : extraZoneCard.Id;
             ObserveOutcomes(s);
             ObserveCoverage(s);
+            ObserveGraveState(s);
             // A multi-trigger window may offer several monsters. Pending belongs to
             // this candidate, not whichever unrelated offer happens to be listed last.
             if ((AI.SelectingEffectYn || _chainOffers != null) && Card != null)
@@ -315,7 +323,7 @@ namespace WindBot.Game.AI.Decks
                 // spend Celebration just because Terra's ignition effect is not offered
                 // in this window. Only expiring trigger/recovery opportunities run here.
                 if (action.Kind != WKind.GazeSearch && action.Kind != WKind.RillieRecruit &&
-                    action.Kind != WKind.MaidSearch && action.Kind != WKind.ViceRecover) return false;
+                    action.Kind != WKind.MaidSearch && action.Kind != WKind.ViceRecover && action.Kind != WKind.DistortionSearch) return false;
                 // Descriptions are available for the currently evaluated offer only.
                 // Never choose a different effect of this same card in a chain window.
                 return action.Source == Card.Id && Matches(action, Card, ActivateDescription);
@@ -467,7 +475,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool EndPhaseRecovery()
         {
-            if (Duel.Phase != DuelPhase.End || Card.Controller != 0) return false;
+            if (Duel.Phase != DuelPhase.End || Duel.Player != 0 || Card.Controller != 0) return false;
             if (Card.Id == CardId.Pupils && Card.Location == CardLocation.MonsterZone)
             {
                 AI.SelectCard(CardId.Creation, CardId.Genni, CardId.Marka);
@@ -507,9 +515,12 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max,
             int hint, bool cancelable)
         {
+            IList<ClientCard> graveSelection = SelectGraveCards(cards, min, max, hint, cancelable);
+            if (graveSelection != null) return graveSelection;
             ChainInfo resolving = Duel.GetCurrentSolvingChainInfo();
             if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
-                (resolving.ActivateId == CardId.Celebration || resolving.ActivateId == CardId.Pupils))
+                (resolving.ActivateId == CardId.Celebration || resolving.ActivateId == CardId.Pupils ||
+                (resolving.ActivateId == CardId.Genni && PromptAction() != null && PromptAction().CopiedSpell == CardId.Celebration)))
                 return SelectDestructionPair(cards, min, max, cancelable);
             if (hint == HintMsg.Destroy && resolving != null && resolving.ActivatePlayer == 0 &&
                 resolving.ActivateId == CardId.ViceMadame)
@@ -525,6 +536,8 @@ namespace WindBot.Game.AI.Decks
             WAction action = PromptAction();
             if (action != null)
             {
+                if (hint == HintMsg.Remove && action.CopiedSpell != 0)
+                    return Pick(cards, new[] { action.CopiedSpell }, min, max);
                 if (action.Kind == WKind.Tactical && (hint == HintMsg.Destroy || hint == HintMsg.ReturnToHand))
                     return Pick(cards, new[] { action.Target }, min, max);
                 if ((hint == HintMsg.Discard || hint == HintMsg.ToGrave) && action.Cost != 0)

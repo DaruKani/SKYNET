@@ -328,6 +328,108 @@ blocked-board lethal and more card-effect coverage; frozen Arena matchup compari
 No new Arena strength result or universal chain intelligence is claimed. Neither
 successful passive duels nor focused assertions establish competitive strength.
 
+### Graveyard effect coverage (2026-11-15)
+
+Audited the selected, unchanged `Decks/AI_Witchcraft2026.ydk` (40 Main / 15 Extra /
+7 Side) against the installed English CDB and Lua scripts. All **15 distinct
+cards with activatable GY effects in this list** now have activation/selection
+handling. This is coverage of this deck, not every Witchcrafter card or every
+legal strategic branch. The executor-builder/RDA separation keeps predicted
+resources separate from authoritative client state; no protocol code changed.
+
+| GY effect | Implemented behavior |
+| --- | --- |
+| Seed | Evaluate Spell-containing hand-return subsets; select the exact multiset across subgroup prompts; stop prediction at the random draw and replan from the actual hand. |
+| Pittore | Evaluate draw/send when holding a Witch card; choose the send from the actual post-draw hand. Empty-hand setup is modeled separately. Deliberately pass with a nonempty all-non-Witch hand rather than risk banishing it all. |
+| Potterie | Require an actually empty hand, recover a real Witch card, and return Fusion cards to Extra rather than inventing a hand card. |
+| Distortion | Track the turn it entered GY; search a current-deck Level 5+ Spellcaster and discard at resolution, not as cost. Support actual Quick-effect offers, including the opposing turn. |
+| Marka | Handle the engine-offered removal trigger, revive and choose a non-targeting tribute; track the revived instance's banish-on-leave condition. |
+| Madame Rilliona | Handle actual own-End-Phase revival offers and reveal a Spell without discarding it. Do not invent a Fusion-summon recruit on revival. |
+| Despian Luluwalilith | Handle the engine-offered sent-this-turn End Phase trigger and select a legal offered recruit. The current Main Deck has **no** qualifying LIGHT/equal-ATK-DEF Spellcaster; the native fixture uses Effect Veiler solely as test input. |
+| Genni | Expand Creation/recruit targets and add copied Celebration Fusion/destruction, Confusion Fusion, Unveiling, Lacrima send and Draping bounce. Pay both banishes before material selection, share the GY copy limit, and do not consume the original Spell's activation count. |
+| Schmietta | Expand send candidates to current-deck Witch monsters, Spells and Distortion; retain the policy against sending another copy already in GY. |
+| Creation, Unveiling, Confusion, Celebration, Draping (Side), Bystreet | Retain recovery/placement handlers and restrict them to the actual own End Phase. |
+
+Lacrima has **no own GY activation** in the installed script. Genni can copy its
+activation operation, including send without the direct-activation board
+condition. Walpurgis and Bystreet do not supply a useful copied activation
+operation. No Masterpiece/Patronus or other absent card was added to the deck.
+Copied Celebration can recycle Genni after Genni has already been banished as
+cost; this was checked with the installed core, not assumed from text.
+
+`Witchcraft2026Graveyard.cs` owns these additions. Negated GY actions spend real
+banish costs but do not simulate resolution draws/discards or Fusion materials.
+Successful direct/copied Unveiling establishes observed Spellcaster response
+protection until turn reset. Draw valuation uses remaining own-deck counts and
+a downside heuristic, not hidden deck order, win probability or a promised draw.
+Trigger-only revivals follow real engine offers instead of predicting arbitrary
+future triggers. The bounded model still aggregates some same-name resources;
+Draping copy currently evaluates one useful public S/T target, not every
+multi-target combination. Full stochastic search and universal optimal play
+are not claimed.
+
+Reproduce from the workspace root (use fresh output paths):
+
+```powershell
+./WindBot/Tools/Invoke-WitchcraftOpponentChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/grave-my-focused
+./WindBot/Tools/Invoke-Witchcraft2026PlannerChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  -OutputDirectory Artifacts/grave-my-existing
+& C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  -X utf8 WindBot/Tools/witchcraft_grave_native.py --scenario seed `
+  --core D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ocgcore.dll `
+  --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  --scripts D:/Games/MDPro4/Data/script.zip --output Artifacts/grave-my-seed.json
+./WindBot/Tools/Invoke-Witchcraft2026NativeChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Python C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe `
+  -ServerLibrary D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll `
+  -DataRoot D:/Games/MDPro4/Data -OutputDirectory Artifacts/grave-my-guide `
+  -AllowVerifiedLethal
+WindBot\Tools\Run-Witchcraft2026.bat --build-only
+```
+
+The native scenario names are `seed`, `pittore`, `potterie`, `distortion`, `marka`,
+`rilliona`, `luluwalilith`, `genni-celebration`, `genni-confusion`,
+`genni-unveiling`, `genni-send`, `genni-draping`, `genni-destroy`, `seed-negated`,
+`pittore-negated`, `distortion-negated`, plus `57916305-recovery`,
+`70226289-recovery`, `35098357-recovery`, `6958567-recovery`, `56894757-recovery`.
+These strict offered-response drivers verify mechanics, not the bot's strategy.
+
+Evidence under ignored `Artifacts/`:
+
+- Baseline runtime preserved at `witchcraft-grave-baseline-abb1496f` before edits.
+- `witchcraft-grave-final-focused/report.json`: **119/119** (73 existing + 46
+  GY decision, callback, cost and reset assertions); `...-final-existing`:
+  **90/90**. Shared RDA and Sky Striker checks: **14/14** and **92/92** in
+  `...-final-rda` and `...-final-sky`.
+- `witchcraft-grave-final-native/*.json`: **21 scenarios, 43/43 assertions**
+  using actual installed scripts, including real Ash-negated GY effects.
+  Each receipt records fixture/core/database/script hashes.
+- `witchcraft-grave-final-guide`: **44/44 strict guide assertions**, two
+  completed wins against passive Default. Earlier `...-guide-01` retained
+  **39/44 strict** plus separately verified early lethal; no criteria weakened.
+- Debug/Release, independent C# 6 subset compilation and launcher `--build-only`
+  pass. Release retains five unrelated existing warnings. No Arena strength
+  comparison was run; passive-duel completion does not establish competitive play.
+- Retained early failures exposed overly optimistic draw valuation (added a
+  downside penalty), a pure-planner DB dependency (removed), and fixture issues
+  involving remaining-deck counts, discard preference and a one-option prompt.
+  The old empty-board shield test now explicitly spends Seed's new GY mode so
+  its existing protection-only assertion remains isolated, not weakened.
+
+Runtime data remains `D:/Games/MDPro4/Data/locales/en-US/cards.cdb` (SHA-256
+`1f4a9afbec2133fd9c051fb53e940aaeb9d5603af74a29dc7dae62ef630086c8`),
+`D:/Games/MDPro4/Data/script.zip`
+(`7638c79ebcc7fbfa03980a3cf32375558d2633fd053de2b8f8c2ecff372885cb`),
+and the selected MDPro4 `ocgcore.dll`
+(`51287007cb534e89443e3990c6e97629a163b36165f5443ed8d23f72173d47cc`).
+External scripts, game settings, the selected deck and launcher are unchanged.
+
 ### Action coverage repair: 232940 (2026-11-09)
 
 The reported stall is confirmed, but **the two missing action modes predate the
@@ -442,8 +544,9 @@ Evidence, not competitive-strength claims:
   retain the same five pre-existing warnings). No Arena
   comparison was performed and no external game settings/scripts were edited.
 
-Coverage limits remain explicit: Seed's GY hand redraw, other unmodeled draw/link
-branches and copied destruction are not implemented by these two added actions.
+At this revision, Seed's GY hand redraw and copied destruction were missing;
+the graveyard follow-up above now implements them. Other unmodeled draw/link
+branches are not implemented by these two added actions.
 The audit reports `MISSING`/`UNCLASSIFIED` or `delegated/partial`, not an invented
 strategic rejection. Destruction selection is reevaluated against actual offered
 cards; full unknown protection, replacements and counter history remain outside

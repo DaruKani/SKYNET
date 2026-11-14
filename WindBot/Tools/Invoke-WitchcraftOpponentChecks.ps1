@@ -18,7 +18,7 @@ foreach ($arch in @('x64', 'x86')) {
     Copy-Item -LiteralPath (Join-Path (Split-Path $botPath) $arch) -Destination (Join-Path $outputPath $arch) -Recurse
 }
 $harness = Join-Path $outputPath 'WitchcraftOpponentChecks.exe'
-& $Compiler /nologo /langversion:6 /target:exe /platform:x64 /r:System.Core.dll /r:System.Web.Extensions.dll "/r:$botPath" "/out:$harness" (Join-Path $PSScriptRoot 'WitchcraftOpponentChecks.cs')
+& $Compiler /nologo /langversion:6 /target:exe /platform:x64 /r:System.Core.dll /r:System.Web.Extensions.dll "/r:$botPath" "/out:$harness" (Join-Path $PSScriptRoot 'WitchcraftOpponentChecks.cs') (Join-Path $PSScriptRoot 'WitchcraftGraveChecks.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Opponent harness compilation failed.' }
 @{ bot = (Get-FileHash -LiteralPath $botPath).Hash; database = (Get-FileHash -LiteralPath $databasePath).Hash } |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputPath 'inputs.json') -Encoding UTF8

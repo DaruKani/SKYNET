@@ -12,7 +12,7 @@ using WindBot.Game.AI.Decks;
 using YGOSharp.OCGWrapper;
 using YGOSharp.OCGWrapper.Enums;
 
-internal static class WitchcraftOpponentChecks
+internal static partial class WitchcraftOpponentChecks
 {
     private const BindingFlags F = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<object> Results = new List<object>();
@@ -202,7 +202,7 @@ internal static class WitchcraftOpponentChecks
             CoverageComparison(args[1]);
             return 0; // observation receipt, not a PASS/FAIL regression suite
         }
-        try { UsageChecks(); IntegrationChecks(); PlannerChecks(); CoverageChecks(); }
+        try { UsageChecks(); IntegrationChecks(); PlannerChecks(); CoverageChecks(); GraveChecks(); }
         catch (Exception e) { Check("harness exception", false, e.ToString()); }
         File.WriteAllText(args[1], new JavaScriptSerializer().Serialize(Results));
         return Failures == 0 ? 0 : 1;
@@ -256,6 +256,9 @@ internal static class WitchcraftOpponentChecks
         object noEnemy = Call(failed, "Copy"); ((IList)Get(noEnemy, "EnemyTargets")).Clear(); Set(noEnemy, "OpposingResponses", OpponentResponse.None);
         Check("no enemy means no destruction mode, but protection still evaluated", !actions(noEnemy).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy") && actions(noEnemy).Any(a => Get(a, "Kind").ToString() == "ActivateBystreet"));
         object noBody = Call(noEnemy, "Copy"); Call(noBody, "Move", 59106048, Enum.Parse(zone, "Board"), Enum.Parse(zone, "Grave"));
+        // Isolate the existing protection decision. Seed now has a separate legal
+        // redraw route in GY, covered by GraveChecks rather than forbidden here.
+        ((HashSet<string>)Get(noBody, "Used")).Add("59106048:SeedRedraw");
         Check("empty board does not auto-activate Bystreet", ((IEnumerable)Get(plan(noBody), "Steps")).Cast<object>().Count() == 0);
         object both = Call(failed, "Copy"); Call(both, "Add", 64756282, Enum.Parse(zone, "Grave"), 1); Call(both, "Add", 21744288, Enum.Parse(zone, "Grave"), 1);
         Check("Celebration independently generates Fusion and destruction modes", actions(both).Any(a => Get(a, "Kind").ToString() == "Fusion" && (int)Get(a, "Source") == 6958567) && actions(both).Any(a => Get(a, "Kind").ToString() == "CelebrationDestroy"));

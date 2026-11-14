@@ -42,6 +42,8 @@ namespace WindBot.Game.AI.Decks
 
         private static void MarkSharedUsage(HashSet<string> used, WAction a)
         {
+            if (a.Source == CardId.Genni && a.Location == WZone.Grave)
+                used.Add("64756282:grave-copy");
             if (a.Source == CardId.Celebration && (a.Kind == WKind.Fusion || a.Kind == WKind.CelebrationDestroy))
             {
                 used.Add(CardId.Celebration + ":" + WKind.Fusion);
@@ -143,8 +145,8 @@ namespace WindBot.Game.AI.Decks
             if (card.Id == CardId.Bystreet)
                 return card.Location == CardLocation.Grave ? "delegated: own End Phase recovery handler; shared cost/recovery limit engine-owned" :
                     "policy-omission: duplicate Bystreet or occupied S/T zones; no new shield assumed";
-            if (card.Id == CardId.Seed && card.Location == CardLocation.Grave)
-                return "MISSING: Seed hand redraw; random identities not modeled";
+            if (card.Location == CardLocation.Grave && IsGraveSupported(card.Id))
+                return "grave mode: conditions/usage or event window; draws use unknown-outcome boundary; Pittore preserves non-Witch hand";
             if (card.Id == CardId.AshBlossom || card.Id == CardId.MaxxC || card.Id == CardId.Haine ||
                 card.Id == CardId.MadameVerre || card.Id == CardId.ViceMadame || card.Id == CardId.Distortion || card.Id == CardId.Seed)
                 return "delegated/partial: tactical handler owns applicable mode; not evidence every mode is supported";
