@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
     parseArguments,
+    printRunSummary,
     selectNormalOpponents,
 } = require('../Tools/run_shaddoll2025_challenge');
 
@@ -52,4 +53,26 @@ test('Shaddoll runner requires a Normal-classified Shaddoll target', () => {
         ))),
         /classified as AI_LV3/,
     );
+});
+
+test('Shaddoll result summary uses the observed matchup count', () => {
+    const originalTable = console.table;
+    let rows;
+    console.table = (value) => { rows = value; };
+    try {
+        printRunSummary({
+            matchups: [{
+                label: 'Lightsworn',
+                observedGames: 1,
+                competitors: [
+                    { source: 'target', win: 0, flee: 0 },
+                    { source: 'opponent', win: 1, flee: 0 },
+                ],
+            }],
+        });
+    } finally {
+        console.table = originalTable;
+    }
+    assert.equal(rows[0].observed, 1);
+    assert.equal(rows[0].opponentWins, 1);
 });

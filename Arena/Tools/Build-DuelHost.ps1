@@ -74,14 +74,17 @@ $payload = foreach ($relativePath in $payloadPaths) {
     }
 }
 $receipt = [ordered]@{
-    schema = 'skynet-native-host-v1'
+    schema = 'skynet-native-host-v2'
     builtAtUtc = [DateTime]::UtcNow.ToString('o')
     platform = 'windows-x64-net48'
     inputs = @($inputRecords)
     files = @($payload)
     nativeCalls = @('start_server')
-    runtimeValidation = 'Not run. Compilation and staging do not establish protocol compatibility.'
-    binding = 'Owned by the staged native library. This wrapper does not override its socket binding.'
+    nativeLibrarySha256 = ($inputRecords | Where-Object role -eq 'nativeLibrary').sha256
+    nativeHostSha256 = ($payload | Where-Object path -eq 'SKYNET_DUEL_HOST.exe').sha256
+    listenAddress = '127.0.0.1'
+    binding = 'The host replaces the staged ygoserver.dll WS2_32!bind import and rewrites only AF_INET INADDR_ANY to loopback before start_server.'
+    runtimeValidation = 'Not run by this build step. Verify the listening address and a real Arena match separately.'
 }
 $receiptPath = Join-Path $targetPath 'host-receipt.json'
 [System.IO.File]::WriteAllText($receiptPath, ($receipt | ConvertTo-Json -Depth 8) + "`n", [System.Text.UTF8Encoding]::new($false))

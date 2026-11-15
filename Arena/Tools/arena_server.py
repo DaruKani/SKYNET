@@ -72,9 +72,15 @@ def prepare(args):
         if not filename.is_file():
             raise ValueError("Missing explicit input: " + str(filename))
     receipt = json.loads(args.native_receipt.read_text(encoding="utf-8-sig"))
-    # This assertion is deliberately part of the generated local build contract.
-    if receipt.get("listenAddress") != "127.0.0.1" or receipt.get("sha256") != sha256(args.native_library):
-        raise ValueError("Native receipt must certify this exact library as loopback-only.")
+    # Accept either the source-patched native build or the v2 host-enforced
+    # binding contract. Both certify every executable input by exact hash.
+    source_patched = (receipt.get("schema") == "skynet-arena-native-v1"
+                      and receipt.get("sha256") == sha256(args.native_library))
+    host_enforced = (receipt.get("schema") == "skynet-native-host-v2"
+                     and receipt.get("nativeLibrarySha256") == sha256(args.native_library)
+                     and receipt.get("nativeHostSha256") == sha256(args.native_host))
+    if receipt.get("listenAddress") != "127.0.0.1" or not (source_patched or host_enforced):
+        raise ValueError("Binding receipt must certify the exact host and native library as loopback-only.")
     if args.port == args.admin_port:
         raise ValueError("Duel and management ports must differ.")
     # Hash only the complete, explicit runtime allowlist: no recursive discovery.

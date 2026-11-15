@@ -16,11 +16,26 @@ namespace Skynet.Tools
         [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         private delegate int StartServer([MarshalAs(UnmanagedType.LPStr)] string arguments);
 
+        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+        private delegate int BindSocket(IntPtr socket, IntPtr address, int addressLength);
+
+        private static BindSocket _originalBind;
+        private static BindSocket _loopbackBind;
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibraryEx(string filename, IntPtr file, uint flags);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
         private static extern IntPtr GetProcAddress(IntPtr module, string name);
+
+        [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+        private static extern bool VirtualProtect(IntPtr address, UIntPtr size, uint newProtection, out uint oldProtection);
+
+        [DllImport("kernel32.dll", ExactSpelling = true)]
+        private static extern IntPtr GetCurrentProcess();
+
+        [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+        private static extern bool FlushInstructionCache(IntPtr process, IntPtr address, UIntPtr size);
 
         private static int Main(string[] args)
         {
@@ -49,6 +64,7 @@ namespace Skynet.Tools
                 IntPtr module = LoadLibraryEx(library, IntPtr.Zero, searchDllLoadDirectory | searchDefaultDirectories);
                 if (module == IntPtr.Zero)
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot load the staged ygoserver.dll.");
+                InstallLoopbackBindGuard(module);
                 IntPtr address = GetProcAddress(module, "start_server");
                 if (address == IntPtr.Zero)
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "The native library does not export start_server.");
@@ -63,6 +79,119 @@ namespace Skynet.Tools
             {
                 Console.Error.WriteLine("SKYNET duel host failed: " + exception.Message);
                 return 1;
+            }
+        }
+
+        private static void InstallLoopbackBindGuard(IntPtr module)
+        {
+            const int dosHeaderOffset = 0x3c;
+            const int peSignature = 0x00004550;
+            const short pe32PlusMagic = 0x20b;
+            int peOffset = Marshal.ReadInt32(module, dosHeaderOffset);
+            IntPtr ntHeaders = IntPtr.Add(module, peOffset);
+            if (Marshal.ReadInt32(ntHeaders) != peSignature)
+                throw new InvalidOperationException("The staged native library has an invalid PE signature.");
+
+            IntPtr optionalHeader = IntPtr.Add(ntHeaders, 24);
+            short magic = Marshal.ReadInt16(optionalHeader);
+            if (magic != pe32PlusMagic)
+                throw new InvalidOperationException("The staged native library must be a 64-bit PE image.");
+            const int importDirectoryOffset = 120;
+
+            int importRva = Marshal.ReadInt32(optionalHeader, importDirectoryOffset);
+            if (importRva <= 0)
+                throw new InvalidOperationException("The staged native library has no import table.");
+            IntPtr descriptors = IntPtr.Add(module, importRva);
+            IntPtr bindEntry = IntPtr.Zero;
+            for (int descriptorIndex = 0; descriptorIndex < 1024; descriptorIndex++)
+            {
+                IntPtr descriptor = IntPtr.Add(descriptors, descriptorIndex * 20);
+                int originalThunkRva = Marshal.ReadInt32(descriptor);
+                int nameRva = Marshal.ReadInt32(descriptor, 12);
+                int firstThunkRva = Marshal.ReadInt32(descriptor, 16);
+                if (originalThunkRva == 0 && nameRva == 0 && firstThunkRva == 0)
+                    break;
+                if (originalThunkRva == 0 || nameRva <= 0 || firstThunkRva <= 0)
+                    continue;
+                string libraryName = Marshal.PtrToStringAnsi(IntPtr.Add(module, nameRva));
+                if (!string.Equals(libraryName, "WS2_32.dll", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                IntPtr names = IntPtr.Add(module, originalThunkRva);
+                IntPtr entries = IntPtr.Add(module, firstThunkRva);
+                for (int thunkIndex = 0; thunkIndex < 65536; thunkIndex++)
+                {
+                    long value = Marshal.ReadInt64(names, thunkIndex * 8);
+                    if (value == 0)
+                        break;
+                    if ((value & long.MinValue) != 0)
+                    {
+                        // Microsoft Winsock keeps the classic bind entry at
+                        // ordinal 2; release builds may omit its import name.
+                        if ((value & 0xffff) == 2)
+                        {
+                            bindEntry = IntPtr.Add(entries, thunkIndex * 8);
+                            break;
+                        }
+                        continue;
+                    }
+                    IntPtr importByName = IntPtr.Add(module, checked((int)value));
+                    string functionName = Marshal.PtrToStringAnsi(IntPtr.Add(importByName, 2));
+                    if (functionName == "bind")
+                    {
+                        bindEntry = IntPtr.Add(entries, thunkIndex * 8);
+                        break;
+                    }
+                }
+                break;
+            }
+            if (bindEntry == IntPtr.Zero)
+                throw new InvalidOperationException("The staged native library does not import WS2_32!bind.");
+
+            IntPtr original = Marshal.ReadIntPtr(bindEntry);
+            if (original == IntPtr.Zero)
+                throw new InvalidOperationException("The staged native library has an unresolved bind import.");
+            _originalBind = (BindSocket)Marshal.GetDelegateForFunctionPointer(original, typeof(BindSocket));
+            _loopbackBind = GuardedBind;
+            IntPtr replacement = Marshal.GetFunctionPointerForDelegate(_loopbackBind);
+            uint oldProtection;
+            if (!VirtualProtect(bindEntry, (UIntPtr)IntPtr.Size, 0x04, out oldProtection))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot protect the native bind import entry.");
+            try
+            {
+                Marshal.WriteIntPtr(bindEntry, replacement);
+            }
+            finally
+            {
+                uint ignored;
+                if (!VirtualProtect(bindEntry, (UIntPtr)IntPtr.Size, oldProtection, out ignored))
+                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot restore the native bind import protection.");
+            }
+            if (!FlushInstructionCache(GetCurrentProcess(), bindEntry, (UIntPtr)IntPtr.Size))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot flush the native bind import entry.");
+        }
+
+        private static int GuardedBind(IntPtr socket, IntPtr address, int addressLength)
+        {
+            const short addressFamilyInternet = 2;
+            bool rewritten = address != IntPtr.Zero
+                && addressLength >= 16
+                && Marshal.ReadInt16(address) == addressFamilyInternet
+                && Marshal.ReadInt32(address, 4) == 0;
+            if (rewritten)
+            {
+                // sockaddr_in stores IPv4 octets in network order. On little-endian
+                // Windows, writing 0x0100007f produces the bytes 7f 00 00 01.
+                Marshal.WriteInt32(address, 4, 0x0100007f);
+            }
+            try
+            {
+                return _originalBind(socket, address, addressLength);
+            }
+            finally
+            {
+                if (rewritten)
+                    Marshal.WriteInt32(address, 4, 0);
             }
         }
 

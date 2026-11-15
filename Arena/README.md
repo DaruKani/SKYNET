@@ -52,15 +52,14 @@ and script snapshots are included in `../DeckWorkshop/Data/`.
 
 Double-click **`Shaddoll 2025 Arena.cmd`** to build the normal WindBot Release
 runtime, copy the versioned Standard card database, run the focused Shaddoll
-checks, open Arena, and start a Challenge against every `AI_LV3` opponent.
+checks, start the prepared loopback-only duel server, apply its generated Arena
+credentials without printing them, open Arena, and start a Challenge.
 The English MDPro4 roster defines LV3 as **Normal**. The launcher defaults to one
-best-of-three match per opponent and records normal Arena results in SQLite.
-
-The first run can only start duels after a dedicated `arena-srvpro` has been
-configured and saved under **Settings → SRVPro**. If those settings are missing,
-the launcher opens Arena and stops before creating an experiment; configure the
-server, then run the command again. It never substitutes an ordinary duel server
-or fabricates a result.
+best-of-three match against Lightsworn and records the result in SQLite. It opens
+separate consoles for Arena and the dedicated server; keep both open during the
+match. The prepared runtime lives under ignored `Arena/Artifacts/arena-server-v2`
+and uses only `127.0.0.1`, ports `17911`/`17922`. It never changes the installed
+game, firewall or global services.
 
 Optional Command Prompt examples:
 
@@ -70,9 +69,9 @@ Optional Command Prompt examples:
 "Shaddoll 2025 Arena.cmd" -PreflightOnly -SkipBuild -SkipChecks
 ```
 
-`-OpponentDeck` accepts only LV3 roster entries. Omit it to use every Normal
-opponent except Shaddoll itself. Keep the Arena console open until the run ends;
-press Ctrl+C there to stop Arena and its owned duel processes.
+`-OpponentDeck` accepts only LV3 roster entries. Pass multiple names to run more
+Normal opponents. Keep both consoles open until the run ends; Ctrl+C stops only
+the processes owned by that console.
 
 ## Deck Workshop
 
@@ -217,7 +216,11 @@ search neighboring directories.
 2. Build the owned `SKYNET_DUEL_HOST.exe` with explicit engine and data inputs.
    It accepts exactly the native API's twelve room arguments, loads only its
    staged library, rejects external expansion/script environment overrides and
-   remains alive until that native room retires.
+   remains alive until that native room retires. Its v2 receipt also supports an
+   installed MDPro4 `ygoserver.dll`: the host replaces that exact module's
+   `WS2_32!bind` import before `start_server` and rewrites only IPv4
+   `INADDR_ANY` listeners to `127.0.0.1`. The receipt binds both executable
+   hashes, and the staged server rejects a mismatched host or library.
 
    ```powershell
    ./Tools/Build-DuelHost.ps1 `

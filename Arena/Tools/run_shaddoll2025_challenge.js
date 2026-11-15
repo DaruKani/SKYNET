@@ -94,7 +94,7 @@ function printRunSummary(run) {
         const opponent = matchup.competitors.find((item) => item.source === 'opponent');
         return {
             opponent: matchup.label,
-            observed: Math.min(...matchup.competitors.map((item) => item.observedGames || 0)),
+            observed: matchup.observedGames || 0,
             targetWins: target?.win || 0,
             opponentWins: opponent?.win || 0,
             targetDisconnects: target?.flee || 0,
@@ -167,5 +167,6 @@ module.exports = {
     NORMAL_AI_LEVEL,
     TARGET_DECK,
     parseArguments,
+    printRunSummary,
     selectNormalOpponents,
 };

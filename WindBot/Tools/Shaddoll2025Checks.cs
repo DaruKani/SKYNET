@@ -23,6 +23,7 @@ internal static class Shaddoll2025Checks
     private const int Ariel = 97518132, Veiler = 97268402, MaxxC = 23434538;
     private const int Void = 61345801, ElFusion = 6417578, Lev = 34950192;
     private const int Fusion = 44394295, Schism = 21011044, Droll = 94145021;
+    private const int Resh = 23912837, Evil = 97051536, Purulia = 84192580;
     private const int Mesh = 32467459, Construct = 20366274, Apkallone = 50907446;
     private const int Perfume = 81196066, Wendikuruhu = 8852158, Winda = 94977269;
     private const int BlueEyes = 89631139;
@@ -43,6 +44,8 @@ internal static class Shaddoll2025Checks
         {
             Bot.Init(MainDeck.Count, 0, 0);
             Enemy.Init(40, 0, 1);
+            Bot.LifePoints = 8000;
+            Enemy.LifePoints = 8000;
             Bot.SetInitialDeck(MainDeck.Select(NamedCard.Get));
             foreach (int id in ExtraDeck)
                 Bot.ExtraDeck.Add(Card(id, CardLocation.Extra));
@@ -224,6 +227,16 @@ internal static class Shaddoll2025Checks
             Is(f.Select(HintMsg.ToGrave, Card(Apkallone, CardLocation.Extra),
                 Card(Mesh, CardLocation.Extra)), Mesh,
                 "Lev missed Meshachrer revival value");
+        });
+
+        Run("Lev sends Infernoid Evil when its grave trigger finds Void", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            f.Chain(lev, true);
+            Is(f.Select(HintMsg.ToGrave, Card(Apkallone, CardLocation.Extra),
+                Card(Evil, CardLocation.Extra)), Evil,
+                "Lev missed the deck's Evil-to-Void starter line");
         });
 
         Run("Lev can use its tribute effect after resolving its activation effect", () =>
@@ -425,6 +438,122 @@ internal static class Shaddoll2025Checks
                 "Apkallone failed to preserve opponent-turn interaction");
         });
 
+        Run("Apkallone declines its optional negate without an enemy target", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard apkallone = f.Add(Apkallone, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.MonsterZone);
+            Require(!f.AI.OnSelectEffectYn(apkallone, Desc(Apkallone, 0)),
+                "Apkallone activated only to negate a friendly card");
+        });
+
+        Run("Apkallone targets the live enemy card instead of itself", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard apkallone = f.Add(Apkallone, CardLocation.MonsterZone);
+            ClientCard enemy = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            Require(f.AI.OnSelectEffectYn(apkallone, Desc(Apkallone, 0)),
+                "Apkallone declined a useful enemy negate");
+            f.Chain(apkallone, true);
+            Is(f.Select(HintMsg.Disable, apkallone, enemy), BlueEyes,
+                "Apkallone selected a friendly negate target");
+        });
+
+        Run("A continuously negated Apkallone does not predict a useful resolution", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard apkallone = f.Add(Apkallone, CardLocation.MonsterZone);
+            Set(apkallone, "Disabled", 1);
+            f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            Require(!f.AI.OnSelectEffectYn(apkallone, Desc(Apkallone, 0)),
+                "A disabled Apkallone attempted to use its optional negate");
+        });
+
+        Run("Low-ATK utility monster chooses Defense to avoid lethal exposure", () =>
+        {
+            Fixture f = new Fixture();
+            f.Bot.LifePoints = 1000;
+            f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            CardPosition selected = f.Executor.OnSelectPosition(Purulia,
+                new[] { CardPosition.FaceUpAttack, CardPosition.FaceUpDefence });
+            Require(selected == CardPosition.FaceUpDefence,
+                "A 100 ATK utility monster was exposed in Attack Position");
+        });
+
+        Run("Resh revives Winda to rebuild the control plan", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard resh = f.Add(Resh, CardLocation.SpellZone);
+            ClientCard winda = f.Add(Winda, CardLocation.Grave);
+            Require(f.AI.OnSelectEffectYn(resh, Desc(Resh, 0)),
+                "Resh declined a live Winda rebuild");
+            f.Chain(resh, true);
+            Is(f.Select(HintMsg.SpSummon, winda, Card(Squamata, CardLocation.Grave)),
+                Winda, "Resh revived a low-value body instead of Winda");
+        });
+
+        Run("Resh flips a prepared Shaddoll without exposing another monster", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard resh = f.Add(Resh, CardLocation.Grave);
+            ClientCard squamata = f.Add(Squamata, CardLocation.MonsterZone, 0, true);
+            f.Add(Wendi, CardLocation.Grave);
+            f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            Require(f.AI.OnSelectEffectYn(resh, Desc(Resh, 1)),
+                "Resh declined a useful opponent-turn Flip interaction");
+            f.Chain(resh, true);
+            Is(f.Select(HintMsg.PosChange, squamata), Squamata,
+                "Resh did not flip the prepared control monster");
+        });
+
+        Run("Fusion material preserves an established Winda", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard fusion = f.Add(Fusion, CardLocation.SpellZone);
+            ClientCard winda = f.Add(Winda, CardLocation.MonsterZone);
+            ClientCard squamata = f.Add(Squamata, CardLocation.MonsterZone);
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.FusionMaterial, 1, 1, winda, squamata)[0], Squamata,
+                "Fusion planning consumed the active floodgate without justification");
+        });
+
+        Run("Active Winda stops redundant Fusion extension", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(Winda, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Veiler, CardLocation.Hand);
+            ClientCard fusion = f.Add(Fusion, CardLocation.Hand);
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "The executor weakened its Winda lock with another Fusion");
+        });
+
+        Run("A safe lethal board stops extending and proceeds toward battle", () =>
+        {
+            Fixture f = new Fixture();
+            f.Enemy.LifePoints = 2000;
+            f.Add(Construct, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Veiler, CardLocation.Hand);
+            ClientCard fusion = f.Add(Fusion, CardLocation.Hand);
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "The executor extended instead of preserving on-board lethal damage");
+        });
+
+        Run("Unknown backrow prevents the safe-lethal shortcut", () =>
+        {
+            Fixture f = new Fixture();
+            f.Enemy.LifePoints = 2000;
+            f.Add(Construct, CardLocation.MonsterZone);
+            f.Add(Schism, CardLocation.SpellZone, 1, true);
+            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Veiler, CardLocation.Hand);
+            ClientCard fusion = f.Add(Fusion, CardLocation.Hand);
+            Require(f.AI.OnSelectEffectYn(fusion, 0),
+                "The executor treated unknown backrow as guaranteed safe lethal");
+        });
+
         Run("Cartesia selects Granguignol when its named line is legal", () =>
         {
             Fixture f = new Fixture();
@@ -521,7 +650,7 @@ internal static class Shaddoll2025Checks
             int id;
             if (section != null && int.TryParse(line, out id)) section.Add(id);
         }
-        Require(MainDeck.Count == 40, "Expected 40 Main Deck cards; got " + MainDeck.Count);
+        Require(MainDeck.Count == 41, "Expected the supplied 41-card Main Deck; got " + MainDeck.Count);
         Require(ExtraDeck.Count == 15, "Expected 15 Extra Deck cards; got " + ExtraDeck.Count);
     }
 

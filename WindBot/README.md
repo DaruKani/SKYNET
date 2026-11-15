@@ -602,12 +602,19 @@ remain under `Artifacts/destiny-board-implementation-20261102/`.
 
 ## Shaddoll 2025 executor
 
-`Shaddoll2025` is a normal WindBot executor for the exact 40 Main / 15 Extra
-card list supplied as `Shaddoll2025.ydk`. It uses the released Standard catalog
-in `DeckWorkshop/Data/standard` as its implementation reference and the
-[Master Duel Meta Shaddoll guide](https://www.masterduelmeta.com/articles/guides/shaddoll-pancakes)
-as strategic background. The installed scripts and card database take priority
-over the guide.
+`Shaddoll2025` is a normal WindBot executor for the exact 41 Main / 15 Extra /
+1 Side card list supplied as `Shaddoll2025.ydk`. It uses the released Standard
+catalog in `DeckWorkshop/Data/standard` as its implementation reference. The
+installed scripts and card database take priority over external strategy notes.
+The supplied file's tournament provenance has not been independently confirmed;
+the one-card Side Deck also means this is not a complete tournament match list.
+The source review is deliberately separate from the executor design: Konami's
+[public deck database](https://www.db.yugioh-card.com/yugiohdb/member_deck.action?cgid=417886d4321be901de816ca475c25137&dno=6&request_locale=en)
+and the [TW03 strategy profile](https://ygorganization.com/cdp_shaddolltw03/)
+support Resh/Evil-era Shaddoll play, but neither is this exact 41-card file. A
+later [Belen WCQ Regional result](https://ygoprodeck.com/tournament/belen-wcq-regional-5175)
+used a different Branded/Dogmatika shell and therefore is not provenance for
+this list.
 
 The executor re-evaluates the current legal offers rather than assuming a fixed
 combo. Its implemented decisions include:
@@ -624,15 +631,25 @@ combo. Its implemented decisions include:
 - delayed opponent-turn Winda/Schism use, Wendikuruhu flip control, Shekhinaga
   response deduplication, and Maxx "C"/Mulcharmy extension shortening once a
   functional board is established;
+- Fusion Control board evaluation that preserves an active Winda or other live
+  interaction, stops redundant extensions and proceeds to battle with safe
+  on-board lethal;
+- Resh Shaddoll Incarnation revival and position-change decisions, including
+  rebuilding Winda, flipping prepared Shaddolls and resetting spent Flip
+  monsters without consuming the active floodgate;
+- the Lev Shaddoll Fusion -> Infernoid Evil -> Void Unleashing setup when the
+  current legal offers support it, plus defensive positions for exposed
+  low-ATK utility monsters;
+- optional Apkallone negation only when a live opposing target exists, avoiding
+  self-negation and declining when Apkallone is already disabled;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
   grind-game Spell/Trap recovery, and conservative use of hand traps.
 
-The supplied list has no Infernoid Evil, Resh Shaddoll Incarnation, Fallen of
-Albaz, Lunalight Main Deck monster, or Dracotail Spell/Trap. The executor does
-not invent those guide lines: Void Unleashing's GY effect and Faimena's Set
-trigger therefore have no target, Cartesia cannot self-Special Summon by her
-Albaz condition, and Perfume Dancer is a Lev GY utility card rather than a normal
-Fusion target.
+The supplied list does contain one Infernoid Evil and one Resh Shaddoll
+Incarnation. It has no Fallen of Albaz, Lunalight Main Deck monster or Dracotail
+Spell/Trap, so the executor does not invent those absent lines: Cartesia cannot
+self-Special Summon by her Albaz condition, Faimena has no Set target, and
+Perfume Dancer remains a Lev GY utility card rather than a normal Fusion target.
 
 Build and run the offline registration and focused callback checks from the
 workspace root:
@@ -640,13 +657,25 @@ workspace root:
 ```powershell
 msbuild WindBot/WindBot.sln /p:Configuration=Debug /p:Platform="Any CPU"
 msbuild WindBot/WindBot.sln /p:Configuration=Release /p:Platform="Any CPU"
-python WindBot/Tools/bot_tool.py check --suite runtime --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --registration Shaddoll2025 --output Artifacts/shaddoll-runtime
-python WindBot/Tools/bot_tool.py check --suite shaddoll-2025 --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --output Artifacts/shaddoll-focused
+python WindBot/Tools/bot_tool.py check --suite runtime --configuration Release --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --registration Shaddoll2025 --output Artifacts/shaddoll-runtime
+python WindBot/Tools/bot_tool.py check --suite shaddoll-2025 --configuration Release --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --output Artifacts/shaddoll-focused
 ```
 
 The focused suite uses synthetic legal offers against the compiled dispatcher;
-it verifies selection bounds and decisions but does not execute Lua. A real
-script-backed duel still requires an explicitly selected compatible host using
-the same database and scripts. No native Shaddoll combo result or Arena win rate
-is claimed until those runs are recorded. The client cannot see hidden opponent
-cards, simulate future Lua resolution, or know an opponent's unobserved hand.
+it verifies selection bounds and decisions but does not execute Lua. WindBot's
+local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
+HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
+
+The focused suite currently covers 37 callback and deck-structure scenarios,
+including the Fusion Control regressions above. Real script-backed Arena runs
+use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
+legality checks and an uncontrolled core seed. Their results prove the complete
+launch, duel and result-recording path only; a small sample is not a strength or
+win-rate claim. The client cannot see hidden opponent cards, simulate future Lua
+resolution, or know an opponent's unobserved hand.
+
+After the Fusion Control corrections, Arena run
+`6908bad6-e1e4-410e-901d-91a23fec89ab` completed three Normal-level matches
+against `Lightsworn`: Shaddoll2025 won 2–1, all three results were observed and
+the Shaddoll client recorded no disconnects. This is a functional regression
+sample, not an estimate of matchup win rate or competitive strength.
