@@ -48,6 +48,32 @@ You can also run `npm run build` and `npm start` directly on Windows or Linux.
 Model files and server credentials are not shipped. Standard and Rush database
 and script snapshots are included in `../DeckWorkshop/Data/`.
 
+### Shaddoll 2025 one-click challenge
+
+Double-click **`Shaddoll 2025 Arena.cmd`** to build the normal WindBot Release
+runtime, copy the versioned Standard card database, run the focused Shaddoll
+checks, open Arena, and start a Challenge against every `AI_LV3` opponent.
+The English MDPro4 roster defines LV3 as **Normal**. The launcher defaults to one
+best-of-three match per opponent and records normal Arena results in SQLite.
+
+The first run can only start duels after a dedicated `arena-srvpro` has been
+configured and saved under **Settings → SRVPro**. If those settings are missing,
+the launcher opens Arena and stops before creating an experiment; configure the
+server, then run the command again. It never substitutes an ordinary duel server
+or fabricates a result.
+
+Optional Command Prompt examples:
+
+```bat
+"Shaddoll 2025 Arena.cmd" -GamesPerOpponent 3
+"Shaddoll 2025 Arena.cmd" -OpponentDeck Lightsworn -SkipBuild -SkipChecks
+"Shaddoll 2025 Arena.cmd" -PreflightOnly -SkipBuild -SkipChecks
+```
+
+`-OpponentDeck` accepts only LV3 roster entries. Omit it to use every Normal
+opponent except Shaddoll itself. Keep the Arena console open until the run ends;
+press Ctrl+C there to stop Arena and its owned duel processes.
+
 ## Deck Workshop
 
 Choose **Deck Workshop** in the top navigation, or open
