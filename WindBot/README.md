@@ -603,10 +603,9 @@ remain under `Artifacts/destiny-board-implementation-20261102/`.
 ## Shaddoll 2025 executor
 
 `Shaddoll2025` is a normal WindBot executor for a 40 Main / 15 Extra / 9 Side
-revision of the supplied `Shaddoll2025.ydk`. El Shaddoll Grysta was moved from
-the Side Deck into the game-one Extra Deck and El Shaddoll Anoyatyllis moved to
-the Side Deck, making the opponent-turn summon-negate branch actually available.
-It uses the released Standard
+revision of the supplied `Shaddoll2025.ydk`. El Shaddoll Anoyatyllis remains in
+the game-one Extra Deck; El Shaddoll Grysta and Shaddoll Construct (the Link
+Monster) remain in the Side Deck. It uses the released Standard
 catalog in `DeckWorkshop/Data/standard` as its implementation reference. The
 installed scripts and card database take priority over external strategy notes.
 The supplied file's tournament provenance has not been independently confirmed;
@@ -627,26 +626,27 @@ combo. Its implemented decisions include:
   Lunalight Perfume Dancer only when its GY ATK reduction has battle value;
 - a state-derived Lev route through Apkallone, Squamata, Tohushaddoll Grysta and
   Meshachrer, followed by Void, Construct, Hedgehog/Wendi, El Shaddoll Fusion,
-  Wendikuruhu, Ariel, Squamata and recovered Schism when every observed resource
-  remains available;
+  Wendikuruhu, Ariel and revived face-up Squamata. Construct recovers El Shaddoll
+  Fusion while the searched Schism remains in hand, then both cards are set;
 - real idle-command sequencing for the committed route: Lev starts before an
-  unrelated Void line, Meshachrer takes its search before being tributed, a
-  searched Void resolves before Lev's tribute effect, and flexible Fusion
-  effects wait until the Construct continuation is ready;
+  unrelated Void line, Meshachrer searches Void before being tributed, Lev makes
+  Construct, Hedgehog finds Wendi, and only then does Void reveal Wendi and
+  resolve before the flexible Fusion continuation;
 - recalculation at each legal offer: missing Apkallone can use the Evil/Void
-  fallback, missing Void can search El Shaddoll Fusion, missing Meshachrer can
-  choose another legal Fusion, and Lev-only hands convert the completed
-  Meshachrer into a Defense Position Winda instead of pretending Void is live;
+  fallback, missing Void can search El Shaddoll Fusion, and missing Meshachrer
+  can choose another legal Fusion;
 - Void Unleashing searches that preserve the required different card types and
-  discard Shaddolls by effect when their unused GY effect is useful;
+  preserve Wendi, El Shaddoll Fusion and Schism while using the supplied discard
+  cost;
 - state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
   Construct setup, Apkallone search/discard and Meshachrer search/revival;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
-- opponent-turn branch selection between Winda's summon limit, Apkallone's
-  face-up negate and El Shaddoll Grysta's Special Summon negate, plus delayed
-  Schism use, Wendikuruhu flip control, Shekhinaga response deduplication, and
-  Maxx "C"/Mulcharmy extension shortening once a functional board is established;
+- opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
+  Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
+  that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
+  Shaddoll negate cost remain. Schism separately prioritizes Winda and offers its
+  send only for an opposing face-up DARK monster;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -664,29 +664,31 @@ combo. Its implemented decisions include:
 The revised list contains one Infernoid Evil, one Resh Shaddoll Incarnation and
 three Armageddon Knight starters. Shaddoll Construct (the Link Monster) is in
 the Side Deck rather than the game-one Extra Deck, so the executor does not
-fabricate the promotional Link continuation. El Shaddoll Grysta is now in the
-game-one Extra Deck; its script negates a Special Summon and destroys those
-monsters, but it is not an omni-negate. The current game-one branches use
-Wendikuruhu, a prepared Flip monster, Schism, Winda, Apkallone or Grysta according
-to the observed board. Cartesia cannot
+fabricate the promotional Link continuation. El Shaddoll Grysta also remains in
+the Side Deck and is not claimed as part of the game-one combo. The current
+game-one branches use Wendikuruhu, Squamata, Apkallone, Tohushaddoll Grysta,
+Shekhinaga or another legally offered Fusion, Schism and Winda according to the
+observed board. Cartesia cannot
 self-Special Summon by an absent Albaz condition, Faimena has no Dracotail Set
 target, and Perfume Dancer remains a Lev GY utility card.
 
 The referenced [Lev combo](https://www.masterduelmeta.com/combo/6a6d325cb3d5c9618637712e)
 and [Shaddoll guide](https://www.masterduelmeta.com/articles/guides/shaddoll-pancakes)
-describe the route as a 1.5-card combo. The scripts confirm why: after the
-Lev/Apkallone/Squamata/Tohushaddoll/Meshachrer sequence, Void Unleashing still
-requires a Shaddoll card in hand to reveal. With Lev plus four non-engine cards,
-the verified legal line ends on Winda in Defense Position and Wendi follow-up.
-With one of those four cards replaced by a compatible Shaddoll monster—Wendi,
-or a monster that leaves the single Hedgehog-to-Wendi search available in the
-Main Deck—the recorded control continuation is live. The lone Main Deck
-Hedgehog is not by itself sufficient for that exact branch. Wendikuruhu and
-Schism provide activation windows that can branch into multiple effects:
-Squamata's destroy, Schism's same-attribute send, Apkallone's face-up negate,
-Grysta's future summon negate or Winda's floodgate. Availability depends on the
-material, target, summon timing and once-per-turn state, so the promotional
-label is not treated as four unconditional omni-negates.
+describe the route as a 1.5-card combo. The recorded Combo Sheet resolves the
+apparent reveal problem by searching Void with Meshachrer, using Lev to make
+Construct, and searching Wendi with Hedgehog before activating Void. A
+deterministic Lev-plus-four-non-engine replay now reaches the recorded endboard:
+face-up Wendikuruhu, Ariel and Squamata; face-up Lev; and set El Shaddoll Fusion
+plus Schism. One non-engine card is used as Void's discard cost.
+
+On the opponent's turn, Wendikuruhu's position change remains conditional on a
+legal facedown monster. El Shaddoll Fusion can use Squamata to summon Apkallone,
+whose summon-trigger effect negates one face-up card; Squamata can then send
+Tohushaddoll Grysta. Its Fusion continuation chooses Shekhinaga only with a legal
+EARTH material and a remaining Shaddoll hand cost. Schism summons Winda as the
+Special Summon floodgate and can additionally send an opponent's face-up DARK
+monster. These are separate timing windows and conditional interactions, not
+four unconditional omni-negates.
 
 Build and run the offline registration and focused callback checks from the
 workspace root:
@@ -700,8 +702,8 @@ python WindBot/Tools/bot_tool.py check --suite shaddoll-2025 --configuration Rel
 
 The focused suite uses synthetic legal offers and a deterministic state replay
 against the compiled dispatcher. It records the final field, Graveyard,
-banished cards, hand, Life Points and verified interaction categories for both
-Lev-only and Lev-plus-Shaddoll openings. It follows the selected Lua scripts but
+banished cards, hand, Life Points and verified interaction categories for the
+Lev-plus-four-non-engine opening and its opponent-turn branches. It follows the selected Lua scripts but
 does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
@@ -721,13 +723,23 @@ disconnects. This is a functional regression sample, not an estimate of matchup
 win rate or competitive strength.
 
 Scheduler-fix run `da97e47f-5c46-447e-b3c8-578b3024fd51` expanded the smoke
-matrix to 30 Normal-level games before the Grysta/Anoyatyllis Extra Deck swap.
+matrix to 30 Normal-level games before the temporary Grysta/Anoyatyllis Extra Deck swap.
 Shaddoll2025 went 1–4 against Blue-Eyes, 0–5 against Chaos-MAX, 2–3 against Dark
 Magician, 2–3 against Mathmech, 5–0 against Salamangreat and 4–1 against Sky
-Striker, with no Shaddoll disconnects. Final revised-deck run
+Striker, with no Shaddoll disconnects. The later run
 `2e3b4c81-d8d1-4d16-a3ba-7be06f03d567` completed another 18 observed games:
 0–3 Blue-Eyes, 0–3 Chaos-MAX, 0–3 Dark Magician, 3–0 Mathmech, 0–3
-Salamangreat and 1–2 Sky Striker, again with no Shaddoll disconnects. These
+Salamangreat and 1–2 Sky Striker, again with no Shaddoll disconnects, but used
+the mistaken El Shaddoll Grysta game-one swap and is superseded by the restored
+list. These
 results show that the launch/runtime path is stable and that the combo scheduler
 regression is covered, but they also show unresolved matchup weakness and high
 small-sample variance; they are not evidence of competitive strength.
+
+Combo-Sheet correction run `1e840c39-f0bb-4f82-8836-20e200ae7c44` used the
+restored game-one Extra Deck and the executor that records Wendikuruhu, Ariel,
+Squamata, El Shaddoll Fusion and Schism correctly. It completed one Normal-level
+game each against Blue-Eyes, Dark Magician and Sky Striker: Shaddoll2025 went
+0–3 with zero disconnects. Arena exposes the observed results but not the hidden
+opening hands or a per-action duel trace, so this run proves runtime completion
+only; it does not show that Lev was drawn or that the deterministic combo occurred.

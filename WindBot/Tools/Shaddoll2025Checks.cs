@@ -25,10 +25,10 @@ internal static class Shaddoll2025Checks
     private const int Fusion = 44394295, Schism = 21011044, Droll = 94145021;
     private const int Resh = 23912837, Evil = 97051536, Purulia = 84192580;
     private const int Mesh = 32467459, Construct = 20366274, Apkallone = 50907446;
-    private const int ElGrysta = 48424886, Perfume = 81196066;
+    private const int Shekhinaga = 74822425, Perfume = 81196066;
     private const int Wendikuruhu = 8852158, Winda = 94977269;
     private const int Armageddon = 28985331, Ash = 14558127, LinkConstruct = 86938484;
-    private const int BlueEyes = 89631139;
+    private const int BlueEyes = 89631139, DarkMagician = 46986414;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<Dictionary<string, object>> Results = new List<Dictionary<string, object>>();
     private static readonly List<int> MainDeck = new List<int>();
@@ -279,15 +279,14 @@ internal static class Shaddoll2025Checks
         Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": " + detail);
     }
 
-    private static Fixture ExecuteLevOpening(bool assisted)
+    private static Fixture ExecuteLevOpening()
     {
         Fixture f = new Fixture();
         ClientCard lev = f.Add(Lev, CardLocation.Hand);
-        if (assisted) f.Add(Grysta, CardLocation.Hand);
         f.Add(Ash, CardLocation.Hand);
         f.Add(MaxxC, CardLocation.Hand);
         f.Add(Droll, CardLocation.Hand);
-        if (!assisted) f.Add(Veiler, CardLocation.Hand);
+        f.Add(Veiler, CardLocation.Hand);
 
         Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 0)), "Lev activation was rejected");
         f.Move(lev, CardLocation.SpellZone);
@@ -335,52 +334,10 @@ internal static class Shaddoll2025Checks
         Require(f.AI.OnSelectEffectYn(mesh, Desc(Mesh, 1)), "Meshachrer search was rejected");
         f.Bot.LifePoints -= 800;
         f.Chain(mesh, true);
-        int meshChoice = assisted ? Void : Wendi;
         Is(f.Select(HintMsg.AddToHand, Card(Void, CardLocation.Deck),
             Card(Wendi, CardLocation.Deck), Card(Schism, CardLocation.Deck)),
-            meshChoice, assisted ? "Meshachrer missed Void with a reveal available" :
-            "Meshachrer searched an unusable Void without a reveal");
-        ClientCard meshSearch = f.Add(meshChoice, CardLocation.Hand);
-        f.AI.OnChainEnd();
-
-        if (!assisted)
-        {
-            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
-                "Lev stopped before converting Meshachrer into a control body");
-            f.Chain(lev, true);
-            Is(f.Select(HintMsg.Release, mesh), Mesh, "Lev tributed the wrong Fusion");
-            f.Move(mesh, CardLocation.Grave);
-            ClientCard winda = f.Extra(Winda);
-            Is(f.Select(HintMsg.SpSummon, winda, f.Extra(Construct)), Winda,
-                "Lev-only route did not choose the verified Winda endboard");
-            CardPosition position = f.Executor.OnSelectPosition(Winda,
-                new[] { CardPosition.FaceUpAttack, CardPosition.FaceUpDefence });
-            Require(position == CardPosition.FaceUpDefence,
-                "Lev exposed its 0 ATK Winda in Attack Position");
-            f.Move(winda, CardLocation.MonsterZone);
-            winda.Position = (int)position;
-            f.AI.OnChainEnd();
-            LevComboEvidence["levOnly"] = Snapshot(f, 0, 0, 1,
-                "Void requires an additional Shaddoll card in hand; the legal Lev-only line ends on 0 ATK Winda in Defense Position plus follow-up Wendi.");
-            return f;
-        }
-
-        ClientCard voidCard = meshSearch;
-        Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)), "Void activation was rejected");
-        f.Move(voidCard, CardLocation.SpellZone);
-        f.Chain(voidCard, true);
-        ClientCard revealed = f.Bot.Hand.First(c => c.IsCode(Grysta));
-        Is(f.Select(HintMsg.Confirm, revealed), Grysta, "Void revealed the wrong card type");
-        IList<ClientCard> voidSearch = f.Select(HintMsg.AddToHand, 2, 2,
-            Card(ElFusion, CardLocation.Deck), Card(Schism, CardLocation.Deck),
-            Card(Lev, CardLocation.Deck), Card(Squamata, CardLocation.Deck));
-        Has(voidSearch, ElFusion, "Void missed El Shaddoll Fusion");
-        Has(voidSearch, Schism, "Void missed Shaddoll Schism");
-        ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
-        ClientCard schism = f.Add(Schism, CardLocation.Hand);
-        Is(f.Select(HintMsg.Discard, f.Bot.Hand.ToArray()), Schism,
-            "Void did not stage Schism for Construct recovery");
-        f.Move(schism, CardLocation.Grave);
+            Void, "Meshachrer did not plan the future Wendi reveal for Void");
+        ClientCard meshSearch = f.Add(Void, CardLocation.Hand);
         f.AI.OnChainEnd();
 
         Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
@@ -414,6 +371,25 @@ internal static class Shaddoll2025Checks
         ClientCard wendi = f.Add(Wendi, CardLocation.Hand);
         f.AI.OnChainEnd();
 
+        ClientCard voidCard = meshSearch;
+        Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)), "Void activation was rejected");
+        f.Move(voidCard, CardLocation.SpellZone);
+        f.Chain(voidCard, true);
+        Is(f.Select(HintMsg.Confirm, wendi), Wendi, "Void did not reveal the searched Wendi");
+        IList<ClientCard> voidSearch = f.Select(HintMsg.AddToHand, 2, 2,
+            Card(ElFusion, CardLocation.Deck), Card(Schism, CardLocation.Deck),
+            Card(Lev, CardLocation.Deck), Card(Squamata, CardLocation.Deck));
+        Has(voidSearch, ElFusion, "Void missed El Shaddoll Fusion");
+        Has(voidSearch, Schism, "Void missed Shaddoll Schism");
+        ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+        ClientCard schism = f.Add(Schism, CardLocation.Hand);
+        ClientCard voidCost = f.Select(HintMsg.Discard, f.Bot.Hand.ToArray());
+        Require(!voidCost.IsCode(Wendi, ElFusion, Schism),
+            "Void discarded a required combo piece instead of the supplied non-engine cost");
+        f.Move(voidCost, CardLocation.Grave);
+        f.Move(voidCard, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
         Require(f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
             "El Shaddoll Fusion continuation was rejected");
         f.Move(elFusion, CardLocation.SpellZone);
@@ -422,7 +398,7 @@ internal static class Shaddoll2025Checks
         Is(f.Select(HintMsg.SpSummon, wendikuruhu, f.Extra(Winda), f.Extra(Construct)),
             Wendikuruhu, "El Shaddoll Fusion missed Wendikuruhu");
         IList<ClientCard> controlMaterials = f.Select(HintMsg.FusionMaterial, 2, 2,
-            construct, wendi, revealed);
+            construct, wendi);
         Has(controlMaterials, Construct, "Control Fusion did not use Construct");
         Has(controlMaterials, Wendi, "Control Fusion did not use Wendi");
         foreach (ClientCard material in controlMaterials) f.Move(material, CardLocation.Grave);
@@ -442,10 +418,9 @@ internal static class Shaddoll2025Checks
         Require(f.AI.OnSelectEffectYn(construct, Desc(Construct, 2)),
             "Construct recovery trigger was rejected");
         f.Chain(construct, true);
-        Is(f.Select(HintMsg.AddToHand, schism, elFusion), Schism,
-            "Construct did not recover Schism");
-        f.Move(schism, CardLocation.Hand);
-        f.Move(schism, CardLocation.SpellZone, true);
+        Is(f.Select(HintMsg.AddToHand, schism, elFusion), ElFusion,
+            "Construct did not recover El Shaddoll Fusion");
+        f.Move(elFusion, CardLocation.Hand);
         f.AI.OnChainEnd();
 
         Require(f.AI.OnSelectEffectYn(wendikuruhu, Desc(Wendikuruhu, 0)),
@@ -459,11 +434,15 @@ internal static class Shaddoll2025Checks
         f.Chain(ariel, true);
         Is(f.Select(HintMsg.SpSummon, squamata), Squamata,
             "Ariel did not recover the banished Squamata");
-        f.Move(squamata, CardLocation.MonsterZone, true);
+        f.Move(squamata, CardLocation.MonsterZone);
+        squamata.Position = (int)CardPosition.FaceUpDefence;
         f.AI.OnChainEnd();
 
-        LevComboEvidence["levPlusShaddoll"] = Snapshot(f, 2, 2, 1,
-            "Two immediate activation windows are Wendikuruhu and Schism. Squamata destruction and Schism's same-attribute send are conditional; Winda is available through Schism. Link Shaddoll Construct is in the Side Deck, so the showcased Link continuation is unavailable in game one.");
+        f.Move(elFusion, CardLocation.SpellZone, true);
+        f.Move(schism, CardLocation.SpellZone, true);
+
+        LevComboEvidence["levPlusCost"] = Snapshot(f, 3, 2, 1,
+            "Recorded Combo Sheet endboard: Wendikuruhu, Ariel and face-up Squamata; Lev remains face-up, while El Shaddoll Fusion and Schism are set. Apkallone, Shekhinaga and Winda are opponent-turn branches whose interactions remain conditional on legal materials and timing.");
         return f;
     }
 
@@ -555,31 +534,22 @@ internal static class Shaddoll2025Checks
                 "Idle scheduler fused before Lev converted Mesh into Construct");
         });
 
-        Run("Lev-only deterministic opening reports the legal Winda ceiling", () =>
+        Run("Lev plus four non-engine cards reaches the recorded Combo Sheet board", () =>
         {
-            Fixture f = ExecuteLevOpening(false);
-            Require(f.Bot.GetMonsters().Count(c => c.IsCode(Winda) && c.IsDefense()) == 1,
-                "Lev-only line did not end on Defense Position Winda");
-            Require(f.Bot.Hand.Any(c => c.IsCode(Wendi)),
-                "Lev-only line lost its Wendi follow-up");
-            Require(f.Bot.Banished.Count(c => c.IsCode(Apkallone, Squamata, Grysta)) == 3,
-                "Lev-only line recorded the wrong banished materials");
-            Require(f.Bot.Graveyard.Count(c => c.IsCode(Mesh)) == 1,
-                "Lev-only line recorded the wrong Graveyard");
-        });
-
-        Run("Lev plus one compatible Shaddoll reaches the verified control continuation", () =>
-        {
-            Fixture f = ExecuteLevOpening(true);
+            Fixture f = ExecuteLevOpening();
             Require(f.Bot.GetMonsters().Any(c => c.IsCode(Wendikuruhu) && c.IsDefense()),
                 "Full continuation did not retain Wendikuruhu");
             Require(f.Bot.GetMonsters().Any(c => c.IsCode(Ariel) && c.IsFaceup()),
                 "Full continuation did not flip Ariel");
-            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Squamata) && c.IsFacedown()),
-                "Full continuation did not preserve the Squamata Flip interaction");
+            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Squamata) && c.IsFaceup() && c.IsDefense()),
+                "Full continuation did not revive face-up Squamata in Defense Position");
+            Require(f.Bot.GetSpells().Any(c => c.IsCode(ElFusion) && c.IsFacedown()),
+                "Full continuation did not set the recovered El Shaddoll Fusion");
             Require(f.Bot.GetSpells().Any(c => c.IsCode(Schism) && c.IsFacedown()),
-                "Full continuation did not set the recovered Schism");
-            Require(new[] { Construct, Wendi, Hedgehog, ElFusion, Mesh }
+                "Full continuation did not preserve and set Schism");
+            Require(f.Bot.GetSpells().Any(c => c.IsCode(Lev) && c.IsFaceup()),
+                "Full continuation did not retain face-up Lev");
+            Require(new[] { Construct, Wendi, Hedgehog, Mesh }
                 .All(id => f.Bot.Graveyard.Any(c => c.IsCode(id))),
                 "Full continuation did not record its spent engine resources");
             Require(!f.Bot.ExtraDeck.Any(c => c.IsCode(LinkConstruct)),
@@ -684,55 +654,98 @@ internal static class Shaddoll2025Checks
                 Grysta, "Squamata missed the adaptive fusion extender");
         });
 
-        Run("Opponent-turn fusion chooses Winda at the interaction point", () =>
+        Run("Schism chooses Winda for the opponent-turn floodgate", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
-            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone);
-            f.Chain(fusion, true);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone);
+            f.Chain(schism, true);
             Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
                 Card(Construct, CardLocation.Extra)), Winda,
-                "Opponent-turn fusion failed to establish the summon limit");
+                "Schism failed to establish Winda's summon limit");
         });
 
-        Run("Opponent-turn Fusion adds Apkallone disruption behind Winda", () =>
+        Run("Schism sends only a monster matching Winda's DARK attribute", () =>
+        {
+            Fixture light = new Fixture();
+            light.Add(Winda, CardLocation.MonsterZone);
+            light.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            Require(!light.AI.OnSelectYesNo(Desc(Schism, 0)),
+                "Schism tried to send a LIGHT monster after summoning DARK Winda");
+
+            Fixture dark = new Fixture();
+            dark.Add(Winda, CardLocation.MonsterZone);
+            dark.Add(DarkMagician, CardLocation.MonsterZone, 1);
+            Require(dark.AI.OnSelectYesNo(Desc(Schism, 0)),
+                "Schism declined its legal DARK send after summoning Winda");
+        });
+
+        Run("Recorded control board uses El Fusion to summon Apkallone", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
-            f.Add(Winda, CardLocation.MonsterZone);
-            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            f.Add(Schism, CardLocation.SpellZone, 0, true);
             ClientCard threat = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
-            ClientCard fusion = f.Add(ElFusion, CardLocation.Hand);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
             f.Chain(threat, false);
             Require(f.AI.OnSelectEffectYn(fusion, 0),
-                "El Shaddoll Fusion stopped at Winda instead of using the opponent-turn branch");
+                "El Shaddoll Fusion rejected the prepared opponent-turn branch");
             f.Chain(fusion, true);
             Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
-                f.Extra(Construct), f.Extra(ElGrysta)), Apkallone,
-                "Fusion did not choose the live face-up negate behind Winda");
+                f.Extra(Construct), f.Extra(Shekhinaga)), Apkallone,
+                "El Shaddoll Fusion did not choose Apkallone for the face-up negate");
+            IList<ClientCard> materials = f.Select(HintMsg.FusionMaterial, 2, 2,
+                f.Bot.GetMonsters().First(c => c.IsCode(Squamata)),
+                f.Bot.GetMonsters().First(c => c.IsCode(Ariel)),
+                f.Bot.GetMonsters().First(c => c.IsCode(Wendikuruhu)));
+            Has(materials, Squamata, "Apkallone branch did not send Squamata by El Fusion");
+            Has(materials, Ariel, "Apkallone branch consumed Wendikuruhu before its interaction");
         });
 
-        Run("Opponent-turn Fusion can prepare Grysta summon negation", () =>
+        Run("Squamata sent by El Fusion sends Tohushaddoll Grysta", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
-            f.Add(Winda, CardLocation.MonsterZone);
-            f.Add(Wendi, CardLocation.Hand);
-            ClientCard fusion = f.Add(ElFusion, CardLocation.Hand);
-            f.Chain(fusion, true);
-            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(ElGrysta),
-                f.Extra(74822425)), ElGrysta,
-                "Fusion missed the available summon-negate branch");
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            ClientCard squamata = f.Add(Squamata, CardLocation.Grave);
+            f.Add(Apkallone, CardLocation.MonsterZone);
+            f.Add(Schism, CardLocation.SpellZone, 0, true);
+            f.Chain(squamata, true);
+            Is(f.Select(HintMsg.ToGrave, Card(Grysta, CardLocation.Deck),
+                Card(Hedgehog, CardLocation.Deck), Card(Wendi, CardLocation.Deck)), Grysta,
+                "Squamata did not send Tohushaddoll Grysta for the follow-up Fusion");
         });
 
-        Run("El Shaddoll Grysta holds a Shaddoll cost for a real summon", () =>
+        Run("Tohushaddoll Grysta converts the branch into live Shekhinaga", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
-            ClientCard grysta = f.Add(ElGrysta, CardLocation.MonsterZone);
-            f.Add(Wendi, CardLocation.Hand);
-            Require(f.AI.OnSelectEffectYn(grysta, 0),
-                "El Shaddoll Grysta rejected its live summon-negate window");
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            f.Chain(elFusion, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Apkallone), f.Extra(Winda)), Apkallone,
+                "Prepared branch did not establish Apkallone state");
+            f.AI.OnChainEnd();
+
+            f.Add(Resh, CardLocation.Hand);
+            ClientCard earthMaterial = f.Add(MaxxC, CardLocation.Hand);
+            ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Grave);
+            f.Chain(tohushaddoll, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Construct), f.Extra(Shekhinaga),
+                f.Extra(Winda)), Shekhinaga,
+                "Tohushaddoll Grysta did not choose live Shekhinaga with a Shaddoll cost");
+            IList<ClientCard> materials = f.Select(HintMsg.FusionMaterial, 2, 2,
+                earthMaterial, tohushaddoll,
+                f.Bot.GetMonsters().First(c => c.IsCode(Wendikuruhu)));
+            Has(materials, MaxxC, "Shekhinaga branch did not use the available EARTH material");
+            Has(materials, Grysta, "Shekhinaga branch did not use Tohushaddoll Grysta");
         });
 
         Run("Going second fusion chooses Construct over premature Winda", () =>
