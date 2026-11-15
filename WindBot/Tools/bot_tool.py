@@ -21,6 +21,7 @@ SUITES = {
     "voiceless": "VoicelessChecks.cs",
     "metalmorph": "MetalmorphChecks.cs",
     "destiny-board": "DestinyBoardChecks.cs",
+    "shaddoll-2025": "Shaddoll2025Checks.cs",
 }
 
 

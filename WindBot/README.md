@@ -599,3 +599,54 @@ reliable improvement or tournament strength. Pilot runs are excluded. Exact
 inputs, observed first-player counts and separate evidence are in
 [Destiny Board provenance](destiny-board-provenance.json); detailed local logs
 remain under `Artifacts/destiny-board-implementation-20261102/`.
+
+## Shaddoll 2025 executor
+
+`Shaddoll2025` is a normal WindBot executor for the exact 40 Main / 15 Extra
+card list supplied as `Shaddoll2025.ydk`. It uses the released Standard catalog
+in `DeckWorkshop/Data/standard` as its implementation reference and the
+[Master Duel Meta Shaddoll guide](https://www.masterduelmeta.com/articles/guides/shaddoll-pancakes)
+as strategic background. The installed scripts and card database take priority
+over the guide.
+
+The executor re-evaluates the current legal offers rather than assuming a fixed
+combo. Its implemented decisions include:
+
+- contextual Lev dumps: Apkallone for search/discard setup, Meshachrer for a
+  live revival, Fusion recovery when a Spell/Trap is already in the GY, and
+  Lunalight Perfume Dancer only when its GY ATK reduction has battle value;
+- Void Unleashing searches that preserve the required different card types and
+  discard Shaddolls by effect when their unused GY effect is useful;
+- state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
+  Construct setup, Apkallone search/discard and Meshachrer search/revival;
+- legal-offer Fusion target and material scoring for Shaddoll Fusion, El
+  Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
+- delayed opponent-turn Winda/Schism use, Wendikuruhu flip control, Shekhinaga
+  response deduplication, and Maxx "C"/Mulcharmy extension shortening once a
+  functional board is established;
+- going-second Construct/Apkallone priorities, visible backrow and GY answers,
+  grind-game Spell/Trap recovery, and conservative use of hand traps.
+
+The supplied list has no Infernoid Evil, Resh Shaddoll Incarnation, Fallen of
+Albaz, Lunalight Main Deck monster, or Dracotail Spell/Trap. The executor does
+not invent those guide lines: Void Unleashing's GY effect and Faimena's Set
+trigger therefore have no target, Cartesia cannot self-Special Summon by her
+Albaz condition, and Perfume Dancer is a Lev GY utility card rather than a normal
+Fusion target.
+
+Build and run the offline registration and focused callback checks from the
+workspace root:
+
+```powershell
+msbuild WindBot/WindBot.sln /p:Configuration=Debug /p:Platform="Any CPU"
+msbuild WindBot/WindBot.sln /p:Configuration=Release /p:Platform="Any CPU"
+python WindBot/Tools/bot_tool.py check --suite runtime --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --registration Shaddoll2025 --output Artifacts/shaddoll-runtime
+python WindBot/Tools/bot_tool.py check --suite shaddoll-2025 --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --output Artifacts/shaddoll-focused
+```
+
+The focused suite uses synthetic legal offers against the compiled dispatcher;
+it verifies selection bounds and decisions but does not execute Lua. A real
+script-backed duel still requires an explicitly selected compatible host using
+the same database and scripts. No native Shaddoll combo result or Arena win rate
+is claimed until those runs are recorded. The client cannot see hidden opponent
+cards, simulate future Lua resolution, or know an opponent's unobserved hand.

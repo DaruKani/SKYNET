@@ -1,0 +1,1031 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using YGOSharp.OCGWrapper.Enums;
+using WindBot.Game;
+using WindBot.Game.AI;
+
+namespace WindBot.Game.AI.Decks
+{
+    [Deck("Shaddoll2025", "AI_Shaddoll2025")]
+    public class Shaddoll2025Executor : DefaultExecutor
+    {
+        public static class CardId
+        {
+            public const int ReeshaddollWendi = 51023024;
+            public const int TohushaddollGrysta = 95072744;
+            public const int ShaddollBeast = 3717252;
+            public const int ShaddollDragon = 77723643;
+            public const int ShaddollSquamata = 30328508;
+            public const int BlazingCartesia = 95515789;
+            public const int MulcharmyPurulia = 84192580;
+            public const int MulcharmyFuwalos = 42141493;
+            public const int ShaddollHedgehog = 4939890;
+            public const int NaelshaddollAriel = 97518132;
+            public const int DrollLockBird = 94145021;
+            public const int EffectVeiler = 97268402;
+            public const int VoidUnleashing = 61345801;
+            public const int ElShaddollFusion = 6417578;
+            public const int FusionDeployment = 6498706;
+            public const int LevShaddollFusion = 34950192;
+            public const int ShaddollFusion = 44394295;
+            public const int ShaddollSchism = 21011044;
+            public const int DracotailFaimena = 1498449;
+            public const int TearlamentsScheiren = 572850;
+            public const int MaxxC = 23434538;
+
+            public const int ElShaddollMeshachrer = 32467459;
+            public const int ElShaddollShekhinaga = 74822425;
+            public const int ElShaddollAnoyatyllis = 19261966;
+            public const int ElShaddollConstruct = 20366274;
+            public const int GranguignolDuskDragon = 24915933;
+            public const int ElShaddollApkallone = 50907446;
+            public const int LunalightPerfumeDancer = 81196066;
+            public const int ReeshaddollWendikuruhu = 8852158;
+            public const int ElShaddollWinda = 94977269;
+        }
+
+        private const int ShaddollSetcode = 0x9d;
+
+        private readonly HashSet<int> _usedEffects = new HashSet<int>();
+        private int _specialSummonsThisTurn;
+        private int _coveredOpponentChainLength;
+        private int _pendingFusionTargetId;
+        private CardType _voidRevealedType;
+        private bool _shaddollExtraDeckLock;
+
+        private static readonly int[] ShaddollMainMonsterIds =
+        {
+            CardId.ShaddollSquamata,
+            CardId.TohushaddollGrysta,
+            CardId.ShaddollHedgehog,
+            CardId.ReeshaddollWendi,
+            CardId.NaelshaddollAriel,
+            CardId.ShaddollDragon,
+            CardId.ShaddollBeast
+        };
+
+        private static readonly int[] ShaddollSpellTrapIds =
+        {
+            CardId.LevShaddollFusion,
+            CardId.ShaddollFusion,
+            CardId.ElShaddollFusion,
+            CardId.ShaddollSchism
+        };
+
+        private static readonly int[] ShaddollFusionIds =
+        {
+            CardId.ElShaddollMeshachrer,
+            CardId.ElShaddollConstruct,
+            CardId.ElShaddollApkallone,
+            CardId.ElShaddollWinda,
+            CardId.ElShaddollShekhinaga,
+            CardId.ElShaddollAnoyatyllis,
+            CardId.ReeshaddollWendikuruhu
+        };
+
+        public Shaddoll2025Executor(GameAI ai, Duel duel)
+            : base(ai, duel)
+        {
+            // Opponent-turn cards are evaluated first. Each predicate declines
+            // redundant responses when the current chain is already covered.
+            AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
+            AddExecutor(ExecutorType.Activate, CardId.MulcharmyFuwalos, MulcharmyActivate);
+            AddExecutor(ExecutorType.Activate, CardId.MulcharmyPurulia, MulcharmyActivate);
+            AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollActivate);
+            AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, EffectVeilerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollShekhinaga, ShekhinagaActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ReeshaddollWendikuruhu, WendikuruhuActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollSchism, SchismActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollFusion, ElShaddollFusionActivate);
+            AddExecutor(ExecutorType.Activate, CardId.DracotailFaimena, FaimenaActivate);
+            AddExecutor(ExecutorType.Activate, CardId.BlazingCartesia, CartesiaActivate);
+
+            // Starters and extenders. The order favors setup that creates a
+            // resilient route before spending cards from hand as Fusion material.
+            AddExecutor(ExecutorType.Activate, CardId.VoidUnleashing, VoidUnleashingActivate);
+            AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevShaddollFusionActivate);
+            AddExecutor(ExecutorType.Activate, CardId.FusionDeployment, FusionDeploymentActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollFusion, ShaddollFusionActivate);
+            AddExecutor(ExecutorType.Activate, CardId.TearlamentsScheiren, ScheirenActivate);
+
+            // Shaddoll and Fusion trigger effects. Selection is owned by the
+            // actual resolving chain link, so forced triggers work without a plan flag.
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollSquamata, SquamataActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollHedgehog, HedgehogActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ReeshaddollWendi, WendiActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollDragon, DragonActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollBeast, BeastActivate);
+            AddExecutor(ExecutorType.Activate, CardId.NaelshaddollAriel, ArielActivate);
+            AddExecutor(ExecutorType.Activate, CardId.TohushaddollGrysta, TohushaddollGrystaActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollConstruct, ConstructActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollApkallone, ApkalloneActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollMeshachrer, MeshachrerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollWinda, FusionRecoveryActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollAnoyatyllis, FusionRecoveryActivate);
+            AddExecutor(ExecutorType.Activate, CardId.LunalightPerfumeDancer, PerfumeDancerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.GranguignolDuskDragon, GranguignolActivate);
+
+            // Establish a flip body only after the non-Normal-Summon starters.
+            AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollSquamata, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollDragon, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.ReeshaddollWendi, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollHedgehog, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.NaelshaddollAriel, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollBeast, SetShaddollMonster);
+            AddExecutor(ExecutorType.MonsterSet, CardId.TohushaddollGrysta, SetShaddollMonster);
+
+            AddExecutor(ExecutorType.SpellSet, SetSpellTrap);
+            AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
+        }
+
+        public override bool OnSelectHand()
+        {
+            return true;
+        }
+
+        public override void OnNewTurn()
+        {
+            base.OnNewTurn();
+            _usedEffects.Clear();
+            _specialSummonsThisTurn = 0;
+            _coveredOpponentChainLength = 0;
+            _pendingFusionTargetId = 0;
+            _voidRevealedType = 0;
+            _shaddollExtraDeckLock = false;
+        }
+
+        public override void OnChainEnd()
+        {
+            base.OnChainEnd();
+            _coveredOpponentChainLength = 0;
+            _pendingFusionTargetId = 0;
+            _voidRevealedType = 0;
+        }
+
+        public override void OnSpSummoned()
+        {
+            if (Duel.LastSummonPlayer == 0)
+                _specialSummonsThisTurn++;
+            base.OnSpSummoned();
+        }
+
+        public override IList<ClientCard> OnSelectCard(
+            IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        {
+            if (cards == null || cards.Count == 0)
+                return base.OnSelectCard(cards, min, max, hint, cancelable);
+
+            if (PromptIs(CardId.VoidUnleashing))
+            {
+                if (hint == HintMsg.AddToHand)
+                    return SelectVoidSearch(cards, min, max);
+                if (hint == HintMsg.Discard)
+                    return SelectByScore(cards, min, max, DiscardScore);
+            }
+
+            if (PromptIs(CardId.LevShaddollFusion))
+            {
+                if (hint == HintMsg.ToGrave && cards.All(c => c.Location == CardLocation.Extra))
+                    return SelectByScore(cards, min, max, LevDumpScore);
+                if (hint == HintMsg.SpSummon)
+                    return SelectFusionTarget(cards, min, max, CardId.LevShaddollFusion);
+            }
+
+            if (PromptIs(CardId.FusionDeployment))
+            {
+                if (hint == HintMsg.Confirm)
+                    return SelectIds(cards, min, max, CardId.GranguignolDuskDragon);
+                if (hint == HintMsg.SpSummon)
+                    return SelectIds(cards, min, max, CardId.BlazingCartesia);
+            }
+
+            if (IsFusionPromptOwner())
+            {
+                if (hint == HintMsg.SpSummon && cards.Any(c => c.Location == CardLocation.Extra))
+                    return SelectFusionTarget(cards, min, max, GetPromptOwnerId());
+                if (hint == HintMsg.FusionMaterial)
+                    return SelectByScore(cards, min, max, FusionMaterialScore);
+            }
+
+            if (PromptIs(CardId.ElShaddollMeshachrer))
+            {
+                if (hint == HintMsg.AddToHand)
+                    return SelectByScore(cards, min, max, MeshSearchScore);
+                if (hint == HintMsg.SpSummon)
+                    return SelectByScore(cards, min, max, RevivalScore);
+            }
+
+            if (PromptIs(CardId.ElShaddollApkallone))
+            {
+                if (hint == HintMsg.Disable || hint == HintMsg.Target)
+                    return SelectEnemyThreat(cards, min, max);
+                if (hint == HintMsg.AddToHand)
+                    return SelectByScore(cards, min, max, ShaddollSearchScore);
+                if (hint == HintMsg.Discard)
+                    return SelectByScore(cards, min, max, DiscardScore);
+            }
+
+            if (PromptIs(CardId.ElShaddollConstruct) && hint == HintMsg.ToGrave)
+                return SelectByScore(cards, min, max, ShaddollSendScore);
+
+            if (PromptIs(CardId.GranguignolDuskDragon) && hint == HintMsg.ToGrave)
+                return SelectByScore(cards, min, max, LevDumpScore);
+
+            if (PromptIs(CardId.ShaddollSquamata))
+            {
+                if (hint == HintMsg.ToGrave)
+                    return SelectByScore(cards, min, max, ShaddollSendScore);
+                if (hint == HintMsg.Destroy || hint == HintMsg.Target)
+                    return SelectEnemyThreat(cards, min, max);
+            }
+
+            if (PromptIs(CardId.ShaddollHedgehog))
+            {
+                if (hint == HintMsg.AddToHand)
+                {
+                    bool monstersOnly = cards.All(c => c.IsMonster());
+                    return SelectByScore(cards, min, max,
+                        monstersOnly ? (Func<ClientCard, int>)ShaddollMonsterSearchScore : ShaddollSearchScore);
+                }
+            }
+
+            if (PromptIs(CardId.ReeshaddollWendi) && hint == HintMsg.SpSummon)
+                return SelectByScore(cards, min, max, WendiSummonScore);
+
+            if (PromptIs(CardId.ShaddollDragon) &&
+                (hint == HintMsg.Destroy || hint == HintMsg.ReturnToHand || hint == HintMsg.Target))
+                return SelectEnemyThreat(cards, min, max);
+
+            if (PromptIs(CardId.NaelshaddollAriel))
+            {
+                if (hint == HintMsg.Remove)
+                    return SelectArielTargets(cards, min, max);
+                if (hint == HintMsg.SpSummon)
+                    return SelectByScore(cards, min, max, RevivalScore);
+            }
+
+            if (PromptIs(CardId.TohushaddollGrysta) && hint == HintMsg.Target)
+                return SelectByScore(cards, min, max, FlipCopyScore);
+
+            if (PromptIs(CardId.ReeshaddollWendikuruhu))
+            {
+                if (hint == HintMsg.PosChange || hint == HintMsg.Position)
+                {
+                    if (cards.Any(c => c.Controller == 0 && c.IsFacedown()))
+                        return SelectByScore(cards, min, max, FlipUpScore);
+                    return SelectEnemyThreat(cards, min, max);
+                }
+                if (hint == HintMsg.AddToHand || hint == HintMsg.Target)
+                    return SelectByScore(cards, min, max, ShaddollRecoveryScore);
+            }
+
+            if (PromptIs(CardId.ElShaddollShekhinaga) && hint == HintMsg.ToGrave)
+                return SelectByScore(cards, min, max, DiscardScore);
+
+            if (IsFusionRecoveryPrompt() && (hint == HintMsg.AddToHand || hint == HintMsg.Target))
+                return SelectByScore(cards, min, max, SpellTrapRecoveryScore);
+
+            if (PromptIs(CardId.TearlamentsScheiren) && hint == HintMsg.ToGrave)
+                return SelectByScore(cards, min, max, DiscardScore);
+
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
+        }
+
+        public override bool OnSelectYesNo(int desc)
+        {
+            if (desc == Util.GetStringId(CardId.ShaddollSchism, 0))
+                return Enemy.GetMonsters().Any(c => c.IsFaceup());
+            if (desc == Util.GetStringId(CardId.ReeshaddollWendikuruhu, 2))
+                return Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.HasType(CardType.Link));
+            return base.OnSelectYesNo(desc);
+        }
+
+        public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
+        {
+            if (ShaddollMainMonsterIds.Contains(cardId) && positions.Contains(CardPosition.FaceDownDefence))
+                return CardPosition.FaceDownDefence;
+            if (cardId == CardId.ElShaddollWinda && positions.Contains(CardPosition.FaceUpAttack))
+                return CardPosition.FaceUpAttack;
+            return base.OnSelectPosition(cardId, positions);
+        }
+
+        private bool MulcharmyActivate()
+        {
+            if (Duel.Player != 1 || Duel.Phase > DuelPhase.Main1 ||
+                DefaultCheckWhetherCardIsNegated(Card))
+                return false;
+            int used = 0;
+            if (_usedEffects.Contains(CardId.MulcharmyFuwalos)) used++;
+            if (_usedEffects.Contains(CardId.MulcharmyPurulia)) used++;
+            if (used >= 2)
+                return false;
+            _usedEffects.Add(Card.Id);
+            return true;
+        }
+
+        private bool DrollActivate()
+        {
+            if (Duel.Player != 1 || DefaultCheckWhetherCardIsNegated(Card))
+                return false;
+            return !_usedEffects.Contains(CardId.DrollLockBird) && MarkUsed(CardId.DrollLockBird);
+        }
+
+        private bool EffectVeilerActivate()
+        {
+            if (CurrentOpponentChainIsCovered() || !DefaultEffectVeiler())
+                return false;
+            CoverCurrentOpponentChain();
+            return true;
+        }
+
+        private bool ShekhinagaActivate()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return FusionRecoveryActivate();
+            if (CurrentOpponentChainIsCovered() || !Bot.Hand.Any(IsShaddollCard))
+                return false;
+            ClientCard last = Util.GetLastChainCard();
+            if (Duel.LastChainPlayer != 1 || last == null || last.IsDisabled())
+                return false;
+            CoverCurrentOpponentChain();
+            return MarkUsed(CardId.ElShaddollShekhinaga);
+        }
+
+        private bool WendikuruhuActivate()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return HasRecoverableShaddollCard() && MarkUsed(CardId.ReeshaddollWendikuruhu + 1);
+            if (Card.Location != CardLocation.MonsterZone ||
+                !Bot.GetMonsters().Any(c => c.IsFacedown() && c.HasType(CardType.Flip)))
+                return false;
+            bool usefulNow = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.HasType(CardType.Link));
+            bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
+            return (usefulNow || Duel.Player == 0 || mainEnd) && MarkUsed(CardId.ReeshaddollWendikuruhu);
+        }
+
+        private bool SchismActivate()
+        {
+            if (Card.IsFacedown())
+                return Duel.Player == 1 && IsMainPhase() && HasFusionResources(true);
+            if (!IsMainPhase() || !HasFusionResources(true) || FunctionalWinda())
+                return false;
+            if (Duel.Player == 0 && !Enemy.GetMonsters().Any(c => c.IsFaceup()))
+                return false;
+            if (Duel.Player == 1 && Enemy.GetMonsterCount() == 0 && Duel.CurrentChain.Count == 0)
+                return false;
+            return MarkUsed(CardId.ShaddollSchism);
+        }
+
+        private bool ElShaddollFusionActivate()
+        {
+            if (!HasFusionResources(false) || ShouldStopSpecialSummoning(CardLocation.Extra))
+                return false;
+            if (Duel.Player == 1)
+                return Enemy.GetMonsterCount() > 0 || Duel.CurrentChain.Count > 0;
+            return Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2 ||
+                Duel.Phase == DuelPhase.BattleStart;
+        }
+
+        private bool FaimenaActivate()
+        {
+            if (Card.Location != CardLocation.Hand || !IsMainPhase() ||
+                ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda())
+                return false;
+            return Bot.Hand.Count(c => c.IsMonster()) >= 2 && Bot.HasInExtra(ShaddollFusionIds);
+        }
+
+        private bool CartesiaActivate()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return Duel.Phase == DuelPhase.End;
+            if (Card.Location != CardLocation.MonsterZone || !IsMainPhase() ||
+                ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda())
+                return false;
+            return Bot.Hand.Concat(Bot.GetMonsters()).Count(c => c != null && c.IsMonster()) >= 2 &&
+                (Bot.HasInExtra(CardId.GranguignolDuskDragon) || Bot.HasInExtra(ShaddollFusionIds));
+        }
+
+        private bool VoidUnleashingActivate()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return false; // The supplied deck contains no Infernoid monster.
+            if (DefaultCheckWhetherCardIsNegated(Card))
+                return false;
+            ClientCard reveal = Bot.Hand
+                .Where(c => c != Card && IsShaddollCard(c))
+                .OrderBy(c => c.IsTrap() ? 0 : c.IsMonster() ? 1 : 2)
+                .FirstOrDefault();
+            if (reveal == null)
+                return false;
+            _voidRevealedType = reveal.IsMonster() ? CardType.Monster : reveal.IsSpell() ? CardType.Spell : CardType.Trap;
+            AI.SelectCard(reveal);
+            return MarkUsed(CardId.VoidUnleashing);
+        }
+
+        private bool LevShaddollFusionActivate()
+        {
+            if (DefaultCheckWhetherCardIsNegated(Card))
+                return false;
+            if (Card.Location == CardLocation.SpellZone && Card.IsFaceup())
+            {
+                ClientCard tribute = Bot.GetMonsters()
+                    .Where(c => c.HasType(CardType.Fusion) && c.IsFaceup())
+                    .OrderBy(c => LevTributeScore(c))
+                    .FirstOrDefault();
+                if (tribute == null || ShouldStopSpecialSummoning(CardLocation.Extra))
+                    return false;
+                AI.SelectCard(tribute);
+                _shaddollExtraDeckLock = true;
+                return MarkUsed(CardId.LevShaddollFusion + 1);
+            }
+            if (Bot.ExtraDeck.Count == 0)
+                return false;
+            _shaddollExtraDeckLock = true;
+            return MarkUsed(CardId.LevShaddollFusion);
+        }
+
+        private bool FusionDeploymentActivate()
+        {
+            if (DefaultCheckWhetherCardIsNegated(Card) ||
+                ShouldStopSpecialSummoning(CardLocation.Deck))
+                return false;
+            return Bot.HasInDeck(CardId.BlazingCartesia) && Bot.HasInExtra(CardId.GranguignolDuskDragon);
+        }
+
+        private bool ShaddollFusionActivate()
+        {
+            if (DefaultCheckWhetherCardIsNegated(Card) || !HasFusionResources(false) ||
+                ShouldStopSpecialSummoning(CardLocation.Extra))
+                return false;
+            return Duel.Player == 0 && IsMainPhase();
+        }
+
+        private bool ScheirenActivate()
+        {
+            if (Card.Location == CardLocation.Hand)
+            {
+                if (FunctionalWinda() || ShouldStopSpecialSummoning(CardLocation.Hand) || Bot.Hand.Count < 2)
+                    return false;
+                return MarkUsed(CardId.TearlamentsScheiren);
+            }
+            if (Card.Location == CardLocation.Grave)
+                return !FunctionalWinda() && !ShouldStopSpecialSummoning(CardLocation.Extra) &&
+                    MarkUsed(CardId.TearlamentsScheiren + 1);
+            return false;
+        }
+
+        private bool SquamataActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return Enemy.GetMonsterCount() > 0 && MarkUsed(CardId.ShaddollSquamata);
+            return HasShaddollSendTarget() && MarkUsed(CardId.ShaddollSquamata);
+        }
+
+        private bool HedgehogActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return ShaddollSpellTrapIds.Any(Bot.HasInDeck) && MarkUsed(CardId.ShaddollHedgehog);
+            return ShaddollMainMonsterIds.Any(Bot.HasInDeck) && MarkUsed(CardId.ShaddollHedgehog);
+        }
+
+        private bool WendiActivate()
+        {
+            return Bot.GetMonsterCount() < 5 && ShaddollMainMonsterIds.Any(Bot.HasInDeck) &&
+                MarkUsed(CardId.ReeshaddollWendi);
+        }
+
+        private bool DragonActivate()
+        {
+            bool useful = Card.Location == CardLocation.MonsterZone ?
+                Enemy.GetFieldCount() > 0 : Enemy.GetSpellCount() > 0;
+            return useful && MarkUsed(CardId.ShaddollDragon);
+        }
+
+        private bool BeastActivate()
+        {
+            bool useful = Card.Location == CardLocation.MonsterZone ? Bot.Hand.Count > 0 : Bot.Deck.Count > 0;
+            return useful && MarkUsed(CardId.ShaddollBeast);
+        }
+
+        private bool ArielActivate()
+        {
+            bool useful = Card.Location == CardLocation.MonsterZone ?
+                Bot.Banished.Any(c => IsShaddollCard(c)) : Enemy.Graveyard.Any(c => c.IsMonster());
+            return useful && MarkUsed(CardId.NaelshaddollAriel);
+        }
+
+        private bool TohushaddollGrystaActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return Bot.Graveyard.Any(c => IsShaddollCard(c) && c.HasType(CardType.Flip)) &&
+                    MarkUsed(CardId.TohushaddollGrysta);
+            if (FunctionalWinda() || ShouldStopSpecialSummoning(CardLocation.Extra) || !HasFusionResources(true))
+                return false;
+            _shaddollExtraDeckLock = true;
+            return MarkUsed(CardId.TohushaddollGrysta);
+        }
+
+        private bool ConstructActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return HasShaddollSendTarget();
+            return HasRecoverableSpellTrap();
+        }
+
+        private bool ApkalloneActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return Bot.GetFieldCount() + Enemy.GetFieldCount() > 1;
+            return HasRecoverableShaddollCard();
+        }
+
+        private bool MeshachrerActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return Bot.LifePoints > 1600 && HasUsefulMeshSearch();
+            return Bot.GetMonsterCount() < 5 && Bot.Graveyard.Any(IsShaddollMonster);
+        }
+
+        private bool FusionRecoveryActivate()
+        {
+            return Card.Location == CardLocation.Grave && HasRecoverableSpellTrap();
+        }
+
+        private bool PerfumeDancerActivate()
+        {
+            if (Card.Location != CardLocation.Grave || Duel.Player != 0 || Duel.Phase > DuelPhase.Main2)
+                return false;
+            return Enemy.GetMonsters().Any(c => c.IsFaceup() && c.Defense >= 2000) &&
+                Bot.GetMonsters().Any(c => c.IsFaceup() && c.Attack > 0);
+        }
+
+        private bool GranguignolActivate()
+        {
+            if (Card.Location == CardLocation.MonsterZone)
+                return Bot.ExtraDeck.Any(c => c.Level >= 6 && c.HasAttribute(CardAttribute.Light | CardAttribute.Dark));
+            return false; // No Dogmatika or Despia summon target exists in the supplied deck.
+        }
+
+        private bool SetShaddollMonster()
+        {
+            if (Bot.GetMonsterCount() >= 5)
+                return false;
+            if (Bot.HasInMonstersZone(CardId.ReeshaddollWendikuruhu))
+                return true;
+            return !HasImmediateFusionStarter() || Bot.GetMonsterCount() == 0;
+        }
+
+        private bool SetSpellTrap()
+        {
+            if (Card.IsCode(CardId.ShaddollSchism, CardId.ElShaddollFusion))
+                return Bot.GetSpellCountWithoutField() < 4;
+            return DefaultSpellSet();
+        }
+
+        private IList<ClientCard> SelectVoidSearch(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> selected = new List<ClientCard>();
+            foreach (CardType type in new[] { CardType.Trap, CardType.Spell, CardType.Monster })
+            {
+                if ((_voidRevealedType & type) != 0)
+                    continue;
+                ClientCard choice = cards.Where(c => MatchesBaseType(c, type) && !selected.Contains(c))
+                    .OrderByDescending(VoidSearchScore).FirstOrDefault();
+                if (choice != null)
+                    selected.Add(choice);
+                if (selected.Count == max)
+                    break;
+            }
+            return FillSelection(selected, cards, min, max);
+        }
+
+        private IList<ClientCard> SelectFusionTarget(IList<ClientCard> cards, int min, int max, int ownerId)
+        {
+            List<ClientCard> ordered = cards.OrderByDescending(c => FusionTargetScore(c, ownerId)).ToList();
+            IList<ClientCard> result = FillSelection(ordered, cards, min, max);
+            if (result.Count > 0)
+                _pendingFusionTargetId = result[0].Id;
+            return result;
+        }
+
+        private IList<ClientCard> SelectEnemyThreat(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> ordered = cards
+                .OrderByDescending(c => c.Controller == 1 ? 1 : 0)
+                .ThenByDescending(c => c.IsFaceup() && !c.IsDisabled() ? 1 : 0)
+                .ThenByDescending(c => c.GetDefensePower())
+                .ToList();
+            return FillSelection(ordered, cards, min, max);
+        }
+
+        private IList<ClientCard> SelectArielTargets(IList<ClientCard> cards, int min, int max)
+        {
+            List<ClientCard> enemyTargets = cards
+                .Where(c => c.Controller == 1)
+                .OrderByDescending(GraveDisruptionScore)
+                .Take(Math.Min(3, max))
+                .ToList();
+            int targetCount = Math.Max(min, enemyTargets.Count);
+            targetCount = Math.Min(targetCount, Math.Min(3, max));
+            List<ClientCard> ordered = enemyTargets
+                .Concat(cards.Where(c => !enemyTargets.Contains(c)).OrderByDescending(GraveDisruptionScore))
+                .ToList();
+            return FillSelection(ordered, cards, targetCount, targetCount);
+        }
+
+        private IList<ClientCard> SelectIds(IList<ClientCard> cards, int min, int max, params int[] ids)
+        {
+            List<ClientCard> ordered = new List<ClientCard>();
+            foreach (int id in ids)
+                ordered.AddRange(cards.Where(c => c.IsCode(id) && !ordered.Contains(c)));
+            return FillSelection(ordered, cards, min, max);
+        }
+
+        private IList<ClientCard> SelectByScore(
+            IList<ClientCard> cards, int min, int max, Func<ClientCard, int> score)
+        {
+            return FillSelection(cards.OrderByDescending(score).ToList(), cards, min, max);
+        }
+
+        private IList<ClientCard> FillSelection(
+            IList<ClientCard> preferred, IList<ClientCard> offered, int min, int max)
+        {
+            List<ClientCard> result = new List<ClientCard>();
+            int targetCount = Math.Min(max, Math.Max(min, 1));
+            foreach (ClientCard card in preferred)
+            {
+                if (card != null && offered.Contains(card) && !result.Contains(card))
+                    result.Add(card);
+                if (result.Count == targetCount)
+                    break;
+            }
+            foreach (ClientCard card in offered)
+            {
+                if (result.Count >= targetCount)
+                    break;
+                if (!result.Contains(card))
+                    result.Add(card);
+            }
+            return result;
+        }
+
+        private int FusionTargetScore(ClientCard card, int ownerId)
+        {
+            if (_shaddollExtraDeckLock && !card.HasSetcode(ShaddollSetcode))
+                return -1000;
+            int score = 0;
+            if (card.IsCode(CardId.ElShaddollWinda))
+            {
+                score = Duel.Player == 1 ? 105 : Duel.Phase == DuelPhase.Main2 ? 82 : 35;
+                if (FunctionalWinda()) score -= 100;
+            }
+            else if (card.IsCode(CardId.ElShaddollConstruct))
+                score = Enemy.GetMonsterCount() > 0 ? 98 : 70;
+            else if (card.IsCode(CardId.ElShaddollApkallone))
+                score = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()) ? 94 : 72;
+            else if (card.IsCode(CardId.ElShaddollMeshachrer))
+                score = Bot.LifePoints > 1600 && Bot.Hand.Count >= 2 ? 92 : 58;
+            else if (card.IsCode(CardId.ReeshaddollWendikuruhu))
+                score = Bot.GetMonsters().Any(c => c.IsFacedown() && c.HasType(CardType.Flip)) ? 90 : 55;
+            else if (card.IsCode(CardId.ElShaddollShekhinaga))
+                score = Bot.Hand.Any(IsShaddollCard) ? 85 : 60;
+            else if (card.IsCode(CardId.ElShaddollAnoyatyllis))
+                score = Enemy.Graveyard.Count + Enemy.Hand.Count > 5 ? 68 : 48;
+            else if (card.IsCode(CardId.GranguignolDuskDragon))
+                score = ownerId == CardId.BlazingCartesia || ownerId == CardId.FusionDeployment ? 96 : 40;
+
+            if (ShouldStopSpecialSummoning(CardLocation.Extra) && FunctionalBoard())
+                score -= 60;
+            return score;
+        }
+
+        private int FusionMaterialScore(ClientCard card)
+        {
+            int score = 0;
+            if (card.Location == CardLocation.Grave) score += 35;
+            if (card.Location == CardLocation.Deck) score += 30;
+            if (card.Location == CardLocation.MonsterZone && card.IsFacedown()) score += 16;
+            if (card.Location == CardLocation.Hand) score -= 8;
+            if (IsShaddollMonster(card)) score += ShaddollSendScore(card);
+            if (card.IsCode(CardId.EffectVeiler, CardId.DrollLockBird, CardId.MaxxC,
+                CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) score -= 18;
+            if (card.IsCode(CardId.BlazingCartesia, CardId.DracotailFaimena)) score -= 25;
+            if (card.Id == _pendingFusionTargetId) score -= 100;
+            return score;
+        }
+
+        private int LevDumpScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.LunalightPerfumeDancer) &&
+                Enemy.GetMonsters().Any(c => c.IsFaceup() && c.Defense >= 2500)) return 120;
+            if (card.IsCode(CardId.ElShaddollMeshachrer) && Bot.Graveyard.Any(IsShaddollMonster) &&
+                Bot.GetMonsterCount() < 5) return 112;
+            if (card.IsCode(CardId.ReeshaddollWendikuruhu) && HasRecoverableShaddollCard()) return 105;
+            if (card.IsCode(CardId.ElShaddollConstruct) && HasRecoverableSpellTrap()) return 102;
+            if (card.IsCode(CardId.ElShaddollApkallone)) return 100;
+            if (card.IsCode(CardId.ElShaddollWinda, CardId.ElShaddollShekhinaga,
+                CardId.ElShaddollAnoyatyllis)) return HasRecoverableSpellTrap() ? 88 : 40;
+            return 10;
+        }
+
+        private int LevTributeScore(ClientCard card)
+        {
+            int score = card.GetDefensePower();
+            if (card.Attack == 0) score -= 1000;
+            if (card.IsDisabled()) score -= 800;
+            if (card.IsCode(CardId.ElShaddollConstruct, CardId.ElShaddollApkallone)) score -= 300;
+            return score;
+        }
+
+        private int ShaddollSendScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpellCount() > 0 &&
+                !EffectUsed(CardId.ShaddollDragon)) return 115;
+            if (card.IsCode(CardId.NaelshaddollAriel) && Enemy.Graveyard.Any(c => c.IsMonster()) &&
+                !EffectUsed(CardId.NaelshaddollAriel)) return 110;
+            if (card.IsCode(CardId.TohushaddollGrysta) && !EffectUsed(CardId.TohushaddollGrysta) &&
+                HasFusionResources(true)) return 106;
+            if (card.IsCode(CardId.ShaddollSquamata) && !EffectUsed(CardId.ShaddollSquamata)) return 102;
+            if (card.IsCode(CardId.ShaddollHedgehog) && !EffectUsed(CardId.ShaddollHedgehog)) return 96;
+            if (card.IsCode(CardId.ReeshaddollWendi) && !EffectUsed(CardId.ReeshaddollWendi) &&
+                Bot.GetMonsterCount() < 5) return 92;
+            if (card.IsCode(CardId.ShaddollBeast) && !EffectUsed(CardId.ShaddollBeast)) return 80;
+            return IsShaddollCard(card) ? 25 : 5;
+        }
+
+        private int DiscardScore(ClientCard card)
+        {
+            int score = ShaddollSendScore(card);
+            if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInSpellZone(CardId.ShaddollSchism)) score -= 80;
+            if (card.IsCode(CardId.ElShaddollFusion) && !Bot.HasInSpellZone(CardId.ElShaddollFusion)) score -= 50;
+            if (card.IsCode(CardId.MaxxC, CardId.EffectVeiler, CardId.DrollLockBird,
+                CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) score -= 40;
+            return score;
+        }
+
+        private int ShaddollMonsterSearchScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.TohushaddollGrysta) && HasFusionResources(true)) return 110;
+            if (card.IsCode(CardId.ShaddollSquamata)) return 100;
+            if (card.IsCode(CardId.ReeshaddollWendi) && Bot.GetMonsterCount() < 5) return 90;
+            if (card.IsCode(CardId.NaelshaddollAriel) && Enemy.Graveyard.Any(c => c.IsMonster())) return 88;
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpellCount() > 0) return 85;
+            if (card.IsCode(CardId.ShaddollBeast)) return 70;
+            return 20;
+        }
+
+        private int ShaddollSearchScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInHandOrInSpellZone(CardId.ShaddollSchism)) return 120;
+            if (card.IsCode(CardId.ElShaddollFusion) && !Bot.HasInHandOrInSpellZone(CardId.ElShaddollFusion)) return 112;
+            if (card.IsCode(CardId.ShaddollFusion) && !Bot.HasInHandOrInSpellZone(CardId.ShaddollFusion)) return 108;
+            if (card.IsCode(CardId.LevShaddollFusion) && !Bot.HasInHandOrInSpellZone(CardId.LevShaddollFusion)) return 104;
+            return card.IsMonster() ? ShaddollMonsterSearchScore(card) : 35;
+        }
+
+        private int VoidSearchScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSchism)) return 130;
+            if (card.IsCode(CardId.LevShaddollFusion) && !_shaddollExtraDeckLock) return 125;
+            if (card.IsCode(CardId.ElShaddollFusion)) return 115;
+            if (card.IsCode(CardId.ShaddollFusion)) return Enemy.GetMonsters().Any(IsExtraDeckMonster) ? 122 : 105;
+            if (card.IsCode(CardId.TohushaddollGrysta) && HasFusionResources(true)) return 118;
+            if (card.IsCode(CardId.ShaddollSquamata)) return 112;
+            return ShaddollSearchScore(card);
+        }
+
+        private int MeshSearchScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.VoidUnleashing) && !EffectUsed(CardId.VoidUnleashing)) return 125;
+            if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInHandOrInSpellZone(CardId.ShaddollSchism)) return 120;
+            return ShaddollSearchScore(card);
+        }
+
+        private int WendiSummonScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSquamata) && Enemy.GetMonsterCount() > 0) return 110;
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetFieldCount() > 0) return 105;
+            if (card.IsCode(CardId.ShaddollHedgehog)) return 98;
+            if (card.IsCode(CardId.NaelshaddollAriel) && Bot.Banished.Any(IsShaddollMonster)) return 94;
+            if (card.IsCode(CardId.ShaddollBeast)) return 82;
+            if (card.IsCode(CardId.TohushaddollGrysta)) return 70;
+            return 20;
+        }
+
+        private int FlipUpScore(ClientCard card)
+        {
+            if (card.Controller == 1) return 5;
+            if (card.IsCode(CardId.ShaddollSquamata) && Enemy.GetMonsterCount() > 0) return 120;
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetFieldCount() > 0) return 115;
+            if (card.IsCode(CardId.ReeshaddollWendi)) return 105;
+            if (card.IsCode(CardId.ShaddollHedgehog)) return 98;
+            if (card.IsCode(CardId.ShaddollBeast)) return 90;
+            return 40;
+        }
+
+        private int FlipCopyScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSquamata) && Enemy.GetMonsterCount() > 0) return 120;
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetFieldCount() > 0) return 115;
+            if (card.IsCode(CardId.NaelshaddollAriel) && Bot.Banished.Any(IsShaddollMonster)) return 105;
+            if (card.IsCode(CardId.ReeshaddollWendi)) return 100;
+            if (card.IsCode(CardId.ShaddollHedgehog)) return 90;
+            if (card.IsCode(CardId.ShaddollBeast)) return 80;
+            return 20;
+        }
+
+        private int GraveDisruptionScore(ClientCard card)
+        {
+            int score = card.Controller == 1 ? 100 : 0;
+            if (card.IsMonster()) score += 25;
+            if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)) score += 20;
+            return score + card.Level;
+        }
+
+        private int RevivalScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ElShaddollWinda)) return Duel.Player == 1 ? 115 : 75;
+            if (card.IsCode(CardId.ElShaddollConstruct)) return 108;
+            if (card.IsCode(CardId.ElShaddollApkallone)) return 104;
+            if (card.IsCode(CardId.ReeshaddollWendikuruhu)) return 100;
+            if (card.IsCode(CardId.ShaddollSquamata)) return 90;
+            return card.GetDefensePower();
+        }
+
+        private int ShaddollRecoveryScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSchism)) return 120;
+            if (card.IsCode(CardId.ElShaddollFusion)) return 115;
+            if (card.IsCode(CardId.ShaddollFusion)) return 110;
+            if (card.IsCode(CardId.LevShaddollFusion)) return 105;
+            return ShaddollMonsterSearchScore(card);
+        }
+
+        private int SpellTrapRecoveryScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInSpellZone(CardId.ShaddollSchism)) return 120;
+            if (card.IsCode(CardId.ElShaddollFusion)) return 115;
+            if (card.IsCode(CardId.ShaddollFusion)) return 110;
+            if (card.IsCode(CardId.LevShaddollFusion)) return 105;
+            return 20;
+        }
+
+        private bool MarkUsed(int effectId)
+        {
+            if (_usedEffects.Contains(effectId))
+                return false;
+            _usedEffects.Add(effectId);
+            return true;
+        }
+
+        private bool EffectUsed(int effectId)
+        {
+            return _usedEffects.Contains(effectId);
+        }
+
+        private bool CurrentOpponentChainIsCovered()
+        {
+            return _coveredOpponentChainLength > 0 &&
+                _coveredOpponentChainLength == Duel.CurrentChainInfo.Count;
+        }
+
+        private void CoverCurrentOpponentChain()
+        {
+            _coveredOpponentChainLength = Duel.CurrentChainInfo.Count;
+        }
+
+        private bool ShouldStopSpecialSummoning(CardLocation source)
+        {
+            bool maxx = enemyResolvedEffectIdList.Contains(CardId.MaxxC);
+            bool purulia = enemyResolvedEffectIdList.Contains(CardId.MulcharmyPurulia) &&
+                (source & CardLocation.Hand) != 0;
+            bool fuwalos = enemyResolvedEffectIdList.Contains(CardId.MulcharmyFuwalos) &&
+                (source & (CardLocation.Deck | CardLocation.Extra)) != 0;
+            if (!maxx && !purulia && !fuwalos)
+                return false;
+            return FunctionalBoard() || _specialSummonsThisTurn >= 1;
+        }
+
+        private bool FunctionalBoard()
+        {
+            return Bot.GetMonsters().Any(c => c.IsFaceup() && c.IsCode(
+                CardId.ElShaddollWinda,
+                CardId.ElShaddollShekhinaga,
+                CardId.ReeshaddollWendikuruhu,
+                CardId.ElShaddollMeshachrer)) ||
+                Bot.HasInSpellZone(CardId.ShaddollSchism);
+        }
+
+        private bool FunctionalWinda()
+        {
+            return Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
+                c.IsCode(CardId.ElShaddollWinda));
+        }
+
+        private bool HasImmediateFusionStarter()
+        {
+            return Bot.HasInHandOrInSpellZone(CardId.ShaddollFusion) ||
+                Bot.HasInHandOrInSpellZone(CardId.ElShaddollFusion) ||
+                Bot.HasInHandOrInSpellZone(CardId.LevShaddollFusion) ||
+                Bot.HasInHandOrInSpellZone(CardId.VoidUnleashing);
+        }
+
+        private bool HasFusionResources(bool includeGrave)
+        {
+            int materialCount = Bot.Hand.Count(c => c.IsMonster()) + Bot.GetMonsterCount();
+            if (includeGrave)
+                materialCount += Bot.Graveyard.Count(c => c.IsMonster());
+            return materialCount >= 2 && Bot.ExtraDeck.Any(c => ShaddollFusionIds.Contains(c.Id));
+        }
+
+        private bool HasShaddollSendTarget()
+        {
+            return ShaddollMainMonsterIds.Any(id => id != CardId.ShaddollSquamata && Bot.HasInDeck(id)) ||
+                ShaddollSpellTrapIds.Any(Bot.HasInDeck);
+        }
+
+        private bool HasRecoverableSpellTrap()
+        {
+            return Bot.Graveyard.Any(c => (c.IsSpell() || c.IsTrap()) && IsShaddollCard(c));
+        }
+
+        private bool HasRecoverableShaddollCard()
+        {
+            return Bot.Graveyard.Any(IsShaddollCard) || ShaddollMainMonsterIds.Any(Bot.HasInDeck) ||
+                ShaddollSpellTrapIds.Any(Bot.HasInDeck);
+        }
+
+        private bool HasUsefulMeshSearch()
+        {
+            return Bot.HasInDeck(CardId.VoidUnleashing) || ShaddollSpellTrapIds.Any(Bot.HasInDeck) ||
+                ShaddollMainMonsterIds.Any(Bot.HasInDeck);
+        }
+
+        private bool IsMainPhase()
+        {
+            return Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2;
+        }
+
+        private bool IsShaddollCard(ClientCard card)
+        {
+            return card != null && card.HasSetcode(ShaddollSetcode);
+        }
+
+        private bool IsShaddollMonster(ClientCard card)
+        {
+            return IsShaddollCard(card) && card.IsMonster();
+        }
+
+        private bool IsExtraDeckMonster(ClientCard card)
+        {
+            return card != null && card.IsMonster() && card.HasType(
+                CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link);
+        }
+
+        private bool MatchesBaseType(ClientCard card, CardType type)
+        {
+            if (type == CardType.Monster) return card.IsMonster();
+            if (type == CardType.Spell) return card.IsSpell();
+            if (type == CardType.Trap) return card.IsTrap();
+            return false;
+        }
+
+        private int GetPromptOwnerId()
+        {
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null)
+                return solving.ActivateId;
+            ClientCard chainCard = Duel.GetCurrentChainCard();
+            return chainCard == null ? 0 : chainCard.Id;
+        }
+
+        private bool PromptIs(int cardId)
+        {
+            ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+            if (solving != null)
+                return solving.IsActivateCode(cardId);
+            ClientCard chainCard = Duel.GetCurrentChainCard();
+            return chainCard != null && chainCard.IsCode(cardId);
+        }
+
+        private bool IsFusionPromptOwner()
+        {
+            return PromptIs(CardId.ShaddollFusion) ||
+                PromptIs(CardId.ElShaddollFusion) ||
+                PromptIs(CardId.ShaddollSchism) ||
+                PromptIs(CardId.TohushaddollGrysta) ||
+                PromptIs(CardId.BlazingCartesia) ||
+                PromptIs(CardId.DracotailFaimena) ||
+                PromptIs(CardId.TearlamentsScheiren);
+        }
+
+        private bool IsFusionRecoveryPrompt()
+        {
+            return PromptIs(CardId.ElShaddollConstruct) ||
+                PromptIs(CardId.ElShaddollWinda) ||
+                PromptIs(CardId.ElShaddollShekhinaga) ||
+                PromptIs(CardId.ElShaddollAnoyatyllis);
+        }
+    }
+}
