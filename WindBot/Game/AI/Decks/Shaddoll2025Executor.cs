@@ -911,6 +911,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (card.IsCode(CardId.LunalightPerfumeDancer) &&
                 Enemy.GetMonsters().Any(c => c.IsFaceup() && c.Defense >= 2500)) return 250;
+            if (card.IsCode(CardId.InfernoidEvil) && IsArmageddonLevRoute() &&
+                Bot.HasInDeck(CardId.VoidUnleashing)) return 245;
             if (card.IsCode(CardId.ElShaddollApkallone) && CanStartLevPrimaryRoute()) return 220;
             if (card.IsCode(CardId.InfernoidEvil) && Bot.HasInDeck(CardId.VoidUnleashing) &&
                 HasVoidRevealInHand() && !Bot.HasInHandOrInSpellZone(CardId.VoidUnleashing)) return 126;
@@ -1074,6 +1076,8 @@ namespace WindBot.Game.AI.Decks
 
         private int MeshSearchScore(ClientCard card)
         {
+            if (!IsLevRouteActive() && IsArmageddonLevRoute() &&
+                card.IsCode(CardId.LevShaddollFusion)) return 260;
             if (IsLevRouteActive() && card.IsCode(CardId.VoidUnleashing) &&
                 !EffectUsed(CardId.VoidUnleashing)) return 250;
             if (IsLevRouteActive() && HasVoidRevealInHand() &&
@@ -1290,6 +1294,14 @@ namespace WindBot.Game.AI.Decks
                 Bot.GetMonsters().Any(c => c.IsCode(CardId.NaelshaddollAriel)) &&
                 Bot.GetMonsters().Any(c => c.IsCode(CardId.ShaddollSquamata)) &&
                 Bot.GetSpells().Any(c => c.IsCode(CardId.ShaddollSchism));
+        }
+
+        private bool IsArmageddonLevRoute()
+        {
+            return Bot.HasInMonstersZone(CardId.ElShaddollMeshachrer) &&
+                Bot.Banished.Any(c => c.IsCode(CardId.ArmageddonKnight)) &&
+                Bot.HasInExtra(CardId.InfernoidEvil) &&
+                Bot.HasInDeck(CardId.VoidUnleashing);
         }
 
         private bool HasLevControlExtension()

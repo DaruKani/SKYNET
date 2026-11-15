@@ -631,6 +631,55 @@ internal static class Shaddoll2025Checks
                 Squamata, "Armageddon Knight missed the Squamata starter");
         });
 
+        Run("Double Armageddon route bridges Mesh through Lev and Evil into Void", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard spentArmageddon = f.Add(Armageddon, CardLocation.Removed);
+            f.Add(Squamata, CardLocation.Removed);
+            f.Add(Grysta, CardLocation.Removed);
+            ClientCard discardArmageddon = f.Add(Armageddon, CardLocation.Hand);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+
+            f.Chain(mesh, true);
+            Is(f.Select(HintMsg.AddToHand, Card(Lev, CardLocation.Deck),
+                Card(Schism, CardLocation.Deck), Card(ElFusion, CardLocation.Deck)), Lev,
+                "Meshachrer did not search Lev for the recorded Armageddon route");
+            ClientCard lev = f.Add(Lev, CardLocation.Hand);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 0)),
+                "Lev activation was rejected after the Armageddon opening");
+            f.Move(lev, CardLocation.SpellZone);
+            f.Chain(lev, true);
+            ClientCard evil = f.Extra(Evil);
+            Is(f.Select(HintMsg.ToGrave, evil, f.Extra(Apkallone), f.Extra(Construct)), Evil,
+                "Lev did not send Infernoid Evil for the Void bridge");
+            f.Move(evil, CardLocation.Grave);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(evil, Desc(Evil, 0)),
+                "Infernoid Evil did not activate from the Graveyard");
+            f.Chain(evil, true);
+            Is(f.Select(HintMsg.AddToHand, Card(Void, CardLocation.Deck),
+                Card(Schism, CardLocation.Deck)), Void,
+                "Infernoid Evil did not search Void Unleashing");
+            f.Add(Void, CardLocation.Hand);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
+                "Lev did not continue after Infernoid Evil found Void");
+            f.Chain(lev, true);
+            Is(f.Select(HintMsg.Release, mesh), Mesh,
+                "Lev did not tribute the route's Meshachrer");
+            f.Move(mesh, CardLocation.Grave);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Construct), f.Extra(Winda)), Construct,
+                "Lev did not bridge the recorded route into Construct");
+
+            Require(spentArmageddon.Location == CardLocation.Removed &&
+                discardArmageddon.Location == CardLocation.Hand,
+                "Armageddon route changed the recorded banished body or future Void cost");
+        });
+
         Run("Squamata sends Dragon into visible backrow", () =>
         {
             Fixture f = new Fixture();

@@ -656,6 +656,9 @@ combo. Its implemented decisions include:
 - the Lev Shaddoll Fusion -> Infernoid Evil -> Void Unleashing fallback when the
   primary route is unavailable, plus defensive positions for exposed low-ATK
   utility monsters and every 0 ATK Fusion summoned by Lev;
+- the recorded double-Armageddon route: the first Knight sends Squamata and is
+  banished into Meshachrer, Meshachrer searches Lev, Lev sends Infernoid Evil,
+  Evil finds Void, and the second Knight remains available as Void's discard;
 - optional Apkallone negation only when a live opposing target exists, avoiding
   self-negation and declining when Apkallone is already disabled;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
@@ -708,7 +711,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 47 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 48 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
