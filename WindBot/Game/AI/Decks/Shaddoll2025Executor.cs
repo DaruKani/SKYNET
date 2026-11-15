@@ -35,6 +35,8 @@ namespace WindBot.Game.AI.Decks
             public const int TearlamentsScheiren = 572850;
             public const int MaxxC = 23434538;
             public const int ReshShaddollIncarnation = 23912837;
+            public const int ArmageddonKnight = 28985331;
+            public const int AshBlossomJoyousSpring = 14558127;
 
             public const int ElShaddollMeshachrer = 32467459;
             public const int ElShaddollShekhinaga = 74822425;
@@ -46,6 +48,7 @@ namespace WindBot.Game.AI.Decks
             public const int ReeshaddollWendikuruhu = 8852158;
             public const int ElShaddollWinda = 94977269;
             public const int InfernoidEvil = 97051536;
+            public const int ShaddollConstruct = 86938484;
         }
 
         private const int ShaddollSetcode = 0x9d;
@@ -56,6 +59,7 @@ namespace WindBot.Game.AI.Decks
         private int _pendingFusionTargetId;
         private CardType _voidRevealedType;
         private bool _shaddollExtraDeckLock;
+        private bool _levTributedMesh;
 
         private static readonly int[] ShaddollMainMonsterIds =
         {
@@ -97,6 +101,8 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.MulcharmyFuwalos, MulcharmyActivate);
             AddExecutor(ExecutorType.Activate, CardId.MulcharmyPurulia, MulcharmyActivate);
             AddExecutor(ExecutorType.Activate, CardId.DrollLockBird, DrollActivate);
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossomJoyousSpring,
+                DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, EffectVeilerActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollShekhinaga, ShekhinagaActivate);
             AddExecutor(ExecutorType.Activate, CardId.ReeshaddollWendikuruhu, WendikuruhuActivate);
@@ -113,6 +119,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.FusionDeployment, FusionDeploymentActivate);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollFusion, ShaddollFusionActivate);
             AddExecutor(ExecutorType.Activate, CardId.TearlamentsScheiren, ScheirenActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ArmageddonKnight, ArmageddonKnightActivate);
 
             // Shaddoll and Fusion trigger effects. Selection is owned by the
             // actual resolving chain link, so forced triggers work without a plan flag.
@@ -133,6 +140,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.GranguignolDuskDragon, GranguignolActivate);
 
             // Establish a flip body only after the non-Normal-Summon starters.
+            AddExecutor(ExecutorType.Summon, CardId.ArmageddonKnight, ArmageddonKnightSummon);
             AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollSquamata, SetShaddollMonster);
             AddExecutor(ExecutorType.MonsterSet, CardId.ShaddollDragon, SetShaddollMonster);
             AddExecutor(ExecutorType.MonsterSet, CardId.ReeshaddollWendi, SetShaddollMonster);
@@ -159,6 +167,7 @@ namespace WindBot.Game.AI.Decks
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
             _shaddollExtraDeckLock = false;
+            _levTributedMesh = false;
         }
 
         public override void OnChainEnd()
@@ -167,6 +176,7 @@ namespace WindBot.Game.AI.Decks
             _coveredOpponentChainLength = 0;
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
+            _levTributedMesh = false;
         }
 
         public override void OnSpSummoned()
@@ -187,7 +197,7 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.AddToHand)
                     return SelectVoidSearch(cards, min, max);
                 if (hint == HintMsg.Discard)
-                    return SelectByScore(cards, min, max, DiscardScore);
+                    return SelectByScore(cards, min, max, VoidDiscardScore);
             }
 
             if (PromptIs(CardId.LevShaddollFusion))
@@ -227,9 +237,9 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.Disable || hint == HintMsg.Target)
                     return SelectEnemyThreat(cards, min, max);
                 if (hint == HintMsg.AddToHand)
-                    return SelectByScore(cards, min, max, ShaddollSearchScore);
+                    return SelectByScore(cards, min, max, ApkalloneSearchScore);
                 if (hint == HintMsg.Discard)
-                    return SelectByScore(cards, min, max, DiscardScore);
+                    return SelectByScore(cards, min, max, ApkalloneDiscardScore);
             }
 
             if (PromptIs(CardId.ReshShaddollIncarnation))
@@ -250,7 +260,7 @@ namespace WindBot.Game.AI.Decks
                 return SelectIds(cards, min, max, CardId.VoidUnleashing);
 
             if (PromptIs(CardId.ElShaddollConstruct) && hint == HintMsg.ToGrave)
-                return SelectByScore(cards, min, max, ShaddollSendScore);
+                return SelectByScore(cards, min, max, ConstructSendScore);
 
             if (PromptIs(CardId.GranguignolDuskDragon) && hint == HintMsg.ToGrave)
                 return SelectByScore(cards, min, max, LevDumpScore);
@@ -258,7 +268,7 @@ namespace WindBot.Game.AI.Decks
             if (PromptIs(CardId.ShaddollSquamata))
             {
                 if (hint == HintMsg.ToGrave)
-                    return SelectByScore(cards, min, max, ShaddollSendScore);
+                    return SelectByScore(cards, min, max, SquamataSendScore);
                 if (hint == HintMsg.Destroy || hint == HintMsg.Target)
                     return SelectEnemyThreat(cards, min, max);
             }
@@ -269,9 +279,12 @@ namespace WindBot.Game.AI.Decks
                 {
                     bool monstersOnly = cards.All(c => c.IsMonster());
                     return SelectByScore(cards, min, max,
-                        monstersOnly ? (Func<ClientCard, int>)ShaddollMonsterSearchScore : ShaddollSearchScore);
+                        monstersOnly ? (Func<ClientCard, int>)HedgehogMonsterSearchScore : ShaddollSearchScore);
                 }
             }
+
+            if (PromptIs(CardId.ArmageddonKnight) && hint == HintMsg.ToGrave)
+                return SelectByScore(cards, min, max, ArmageddonSendScore);
 
             if (PromptIs(CardId.ReeshaddollWendi) && hint == HintMsg.SpSummon)
                 return SelectByScore(cards, min, max, WendiSummonScore);
@@ -337,6 +350,14 @@ namespace WindBot.Game.AI.Decks
 
         public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
         {
+            // Lev sets the summoned Fusion's ATK to 0 after this prompt. Keep
+            // that combo body out of Attack Position even though card data still
+            // contains its printed ATK here.
+            if (PromptIs(CardId.LevShaddollFusion) && positions.Contains(CardPosition.FaceUpDefence))
+                return CardPosition.FaceUpDefence;
+            if (PromptIs(CardId.NaelshaddollAriel) && cardId == CardId.ShaddollSquamata &&
+                Bot.HasInExtra(CardId.ShaddollConstruct) && positions.Contains(CardPosition.FaceUpDefence))
+                return CardPosition.FaceUpDefence;
             if (ShaddollMainMonsterIds.Contains(cardId) && positions.Contains(CardPosition.FaceDownDefence))
                 return CardPosition.FaceDownDefence;
 
@@ -485,7 +506,8 @@ namespace WindBot.Game.AI.Decks
                 return false;
             ClientCard reveal = Bot.Hand
                 .Where(c => c != Card && IsShaddollCard(c))
-                .OrderBy(c => c.IsTrap() ? 0 : c.IsMonster() ? 1 : 2)
+                .OrderBy(c => c.IsMonster() ? 0 : c.IsTrap() ? 1 : 2)
+                .ThenByDescending(ShaddollMonsterSearchScore)
                 .FirstOrDefault();
             if (reveal == null)
                 return false;
@@ -502,11 +524,13 @@ namespace WindBot.Game.AI.Decks
             {
                 ClientCard tribute = Bot.GetMonsters()
                     .Where(c => c.HasType(CardType.Fusion) && c.IsFaceup() && !ShouldPreserveMonster(c))
-                    .OrderBy(c => LevTributeScore(c))
+                    .OrderByDescending(c => c.IsCode(CardId.ElShaddollMeshachrer) && IsLevRouteActive() ? 1 : 0)
+                    .ThenBy(c => LevTributeScore(c))
                     .FirstOrDefault();
                 if (tribute == null || ShouldStopSpecialSummoning(CardLocation.Extra))
                     return false;
                 AI.SelectCard(tribute);
+                _levTributedMesh = tribute.IsCode(CardId.ElShaddollMeshachrer);
                 _shaddollExtraDeckLock = true;
                 return MarkUsed(CardId.LevShaddollFusion + 1);
             }
@@ -546,6 +570,17 @@ namespace WindBot.Game.AI.Decks
                 return !FunctionalWinda() && !ShouldStopSpecialSummoning(CardLocation.Extra) &&
                     MarkUsed(CardId.TearlamentsScheiren + 1);
             return false;
+        }
+
+        private bool ArmageddonKnightSummon()
+        {
+            return IsMainPhase() && Bot.GetMonsterCount() < 5 &&
+                (Bot.HasInDeck(CardId.ShaddollSquamata) || HasShaddollSendTarget());
+        }
+
+        private bool ArmageddonKnightActivate()
+        {
+            return Card.Location == CardLocation.MonsterZone && HasShaddollSendTarget();
         }
 
         private bool SquamataActivate()
@@ -754,6 +789,21 @@ namespace WindBot.Game.AI.Decks
         {
             if (_shaddollExtraDeckLock && !card.HasSetcode(ShaddollSetcode))
                 return -1000;
+            if (ownerId == CardId.TohushaddollGrysta && IsLevRouteActive() &&
+                card.IsCode(CardId.ElShaddollMeshachrer))
+                return 240;
+            if (ownerId == CardId.LevShaddollFusion &&
+                (_levTributedMesh || Bot.HasInMonstersZone(CardId.ElShaddollMeshachrer)))
+            {
+                if (HasLevControlExtension() && card.IsCode(CardId.ElShaddollConstruct))
+                    return 240;
+                if (!HasLevControlExtension() && card.IsCode(CardId.ElShaddollWinda))
+                    return 235;
+            }
+            if (ownerId == CardId.ElShaddollFusion && HasLevControlExtension() &&
+                Bot.HasInMonstersZone(CardId.ElShaddollConstruct) &&
+                card.IsCode(CardId.ReeshaddollWendikuruhu))
+                return 240;
             int score = 0;
             if (card.IsCode(CardId.ElShaddollWinda))
             {
@@ -782,13 +832,20 @@ namespace WindBot.Game.AI.Decks
 
         private int FusionMaterialScore(ClientCard card)
         {
+            if (_pendingFusionTargetId == CardId.ReeshaddollWendikuruhu &&
+                HasLevControlExtension())
+            {
+                if (card.IsCode(CardId.ElShaddollConstruct)) return 260;
+                if (card.IsCode(CardId.ReeshaddollWendi)) return 250;
+            }
             int score = 0;
             if (card.Location == CardLocation.Grave) score += 35;
             if (card.Location == CardLocation.Deck) score += 30;
             if (card.Location == CardLocation.MonsterZone && card.IsFacedown()) score += 16;
             if (card.Location == CardLocation.Hand) score -= 8;
             if (IsShaddollMonster(card)) score += ShaddollSendScore(card);
-            if (card.IsCode(CardId.EffectVeiler, CardId.DrollLockBird, CardId.MaxxC,
+            if (card.IsCode(CardId.AshBlossomJoyousSpring, CardId.EffectVeiler,
+                CardId.DrollLockBird, CardId.MaxxC,
                 CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) score -= 18;
             if (card.IsCode(CardId.BlazingCartesia, CardId.DracotailFaimena)) score -= 25;
             if (ShouldPreserveMonster(card)) score -= 300;
@@ -798,10 +855,11 @@ namespace WindBot.Game.AI.Decks
 
         private int LevDumpScore(ClientCard card)
         {
-            if (card.IsCode(CardId.InfernoidEvil) && Bot.HasInDeck(CardId.VoidUnleashing) &&
-                !Bot.HasInHandOrInSpellZone(CardId.VoidUnleashing)) return 126;
             if (card.IsCode(CardId.LunalightPerfumeDancer) &&
-                Enemy.GetMonsters().Any(c => c.IsFaceup() && c.Defense >= 2500)) return 120;
+                Enemy.GetMonsters().Any(c => c.IsFaceup() && c.Defense >= 2500)) return 250;
+            if (card.IsCode(CardId.ElShaddollApkallone) && CanStartLevPrimaryRoute()) return 220;
+            if (card.IsCode(CardId.InfernoidEvil) && Bot.HasInDeck(CardId.VoidUnleashing) &&
+                HasVoidRevealInHand() && !Bot.HasInHandOrInSpellZone(CardId.VoidUnleashing)) return 126;
             if (card.IsCode(CardId.ElShaddollMeshachrer) && Bot.Graveyard.Any(IsShaddollMonster) &&
                 Bot.GetMonsterCount() < 5) return 112;
             if (card.IsCode(CardId.ReeshaddollWendikuruhu) && HasRecoverableShaddollCard()) return 105;
@@ -842,9 +900,60 @@ namespace WindBot.Game.AI.Decks
             int score = ShaddollSendScore(card);
             if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInSpellZone(CardId.ShaddollSchism)) score -= 80;
             if (card.IsCode(CardId.ElShaddollFusion) && !Bot.HasInSpellZone(CardId.ElShaddollFusion)) score -= 50;
-            if (card.IsCode(CardId.MaxxC, CardId.EffectVeiler, CardId.DrollLockBird,
+            if (card.IsCode(CardId.AshBlossomJoyousSpring, CardId.MaxxC,
+                CardId.EffectVeiler, CardId.DrollLockBird,
                 CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) score -= 40;
             return score;
+        }
+
+        private int ApkalloneSearchScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && CanContinueLevThroughSquamata() &&
+                card.IsCode(CardId.ShaddollSquamata)) return 240;
+            return ShaddollSearchScore(card);
+        }
+
+        private int ApkalloneDiscardScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && CanContinueLevThroughSquamata() &&
+                card.IsCode(CardId.ShaddollSquamata)) return 240;
+            return DiscardScore(card);
+        }
+
+        private int SquamataSendScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && Bot.HasInExtra(CardId.ElShaddollMeshachrer) &&
+                card.IsCode(CardId.TohushaddollGrysta)) return 240;
+            return ShaddollSendScore(card);
+        }
+
+        private int ConstructSendScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && HasLevControlExtension())
+            {
+                if (!Bot.HasInHand(CardId.ReeshaddollWendi) &&
+                    card.IsCode(CardId.ShaddollHedgehog)) return 240;
+                if (Bot.HasInHand(CardId.ReeshaddollWendi) &&
+                    card.IsCode(CardId.ReshShaddollIncarnation)) return 235;
+            }
+            return ShaddollSendScore(card);
+        }
+
+        private int VoidDiscardScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ElShaddollMeshachrer))
+            {
+                if (card.IsCode(CardId.ShaddollSchism)) return 240;
+                if (card.IsCode(CardId.ReshShaddollIncarnation)) return 230;
+            }
+            return DiscardScore(card);
+        }
+
+        private int ArmageddonSendScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSquamata) && Bot.HasInDeck(CardId.TohushaddollGrysta) &&
+                Bot.HasInExtra(CardId.ElShaddollMeshachrer)) return 220;
+            return ShaddollSendScore(card);
         }
 
         private int ReshCostScore(ClientCard card)
@@ -869,6 +978,13 @@ namespace WindBot.Game.AI.Decks
             return 20;
         }
 
+        private int HedgehogMonsterSearchScore(ClientCard card)
+        {
+            if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ElShaddollConstruct) &&
+                card.IsCode(CardId.ReeshaddollWendi)) return 240;
+            return ShaddollMonsterSearchScore(card);
+        }
+
         private int ShaddollSearchScore(ClientCard card)
         {
             if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInHandOrInSpellZone(CardId.ShaddollSchism)) return 120;
@@ -883,8 +999,16 @@ namespace WindBot.Game.AI.Decks
 
         private int VoidSearchScore(ClientCard card)
         {
+            if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ElShaddollMeshachrer))
+            {
+                if (card.IsCode(CardId.ShaddollSchism)) return 240;
+                if (card.IsCode(CardId.ElShaddollFusion)) return 235;
+                if ((_voidRevealedType & CardType.Monster) == 0 &&
+                    card.IsCode(CardId.ReeshaddollWendi)) return 230;
+            }
             if (card.IsCode(CardId.ShaddollSchism)) return 130;
-            if (card.IsCode(CardId.LevShaddollFusion) && !_shaddollExtraDeckLock) return 125;
+            if (card.IsCode(CardId.LevShaddollFusion) && !_shaddollExtraDeckLock &&
+                !Bot.HasInHandOrInSpellZone(CardId.LevShaddollFusion)) return 125;
             if (card.IsCode(CardId.ElShaddollFusion)) return 115;
             if (card.IsCode(CardId.ShaddollFusion)) return Enemy.GetMonsters().Any(IsExtraDeckMonster) ? 122 : 105;
             if (card.IsCode(CardId.TohushaddollGrysta) && HasFusionResources(true)) return 118;
@@ -894,13 +1018,21 @@ namespace WindBot.Game.AI.Decks
 
         private int MeshSearchScore(ClientCard card)
         {
-            if (card.IsCode(CardId.VoidUnleashing) && !EffectUsed(CardId.VoidUnleashing)) return 125;
+            if (IsLevRouteActive() && !HasVoidRevealInHand() &&
+                card.IsCode(CardId.ReeshaddollWendi)) return 240;
+            if (card.IsCode(CardId.VoidUnleashing) && HasVoidRevealInHand() &&
+                !EffectUsed(CardId.VoidUnleashing)) return 235;
+            if (IsLevRouteActive() && HasVoidRevealInHand() &&
+                card.IsCode(CardId.ElShaddollFusion)) return 225;
             if (card.IsCode(CardId.ShaddollSchism) && !Bot.HasInHandOrInSpellZone(CardId.ShaddollSchism)) return 120;
             return ShaddollSearchScore(card);
         }
 
         private int WendiSummonScore(ClientCard card)
         {
+            if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ReeshaddollWendikuruhu) &&
+                Bot.Banished.Any(c => c.IsCode(CardId.ShaddollSquamata)) &&
+                card.IsCode(CardId.NaelshaddollAriel)) return 240;
             if (card.IsCode(CardId.ShaddollSquamata) && Enemy.GetMonsterCount() > 0) return 110;
             if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetFieldCount() > 0) return 105;
             if (card.IsCode(CardId.ShaddollHedgehog)) return 98;
@@ -1068,6 +1200,41 @@ namespace WindBot.Game.AI.Decks
         {
             return Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                 c.IsCode(CardId.ElShaddollWinda));
+        }
+
+        private bool IsLevRouteActive()
+        {
+            return EffectUsed(CardId.LevShaddollFusion) ||
+                Bot.HasInSpellZone(CardId.LevShaddollFusion);
+        }
+
+        private bool CanStartLevPrimaryRoute()
+        {
+            return Bot.HasInExtra(CardId.ElShaddollApkallone) &&
+                CanContinueLevThroughSquamata();
+        }
+
+        private bool CanContinueLevThroughSquamata()
+        {
+            return (Bot.HasInDeck(CardId.ShaddollSquamata) ||
+                    Bot.HasInHand(CardId.ShaddollSquamata)) &&
+                Bot.HasInDeck(CardId.TohushaddollGrysta) &&
+                Bot.HasInExtra(CardId.ElShaddollMeshachrer);
+        }
+
+        private bool HasVoidRevealInHand()
+        {
+            return Bot.Hand.Any(IsShaddollCard);
+        }
+
+        private bool HasLevControlExtension()
+        {
+            if (!IsLevRouteActive() || !Bot.HasInHandOrInSpellZone(CardId.ElShaddollFusion))
+                return false;
+            if (Bot.HasInHand(CardId.ReeshaddollWendi))
+                return true;
+            return Bot.HasInDeck(CardId.ShaddollHedgehog) &&
+                Bot.HasInDeck(CardId.ReeshaddollWendi);
         }
 
         private bool HasImmediateFusionStarter()

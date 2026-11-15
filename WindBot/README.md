@@ -602,16 +602,16 @@ remain under `Artifacts/destiny-board-implementation-20261102/`.
 
 ## Shaddoll 2025 executor
 
-`Shaddoll2025` is a normal WindBot executor for the exact 41 Main / 15 Extra /
-1 Side card list supplied as `Shaddoll2025.ydk`. It uses the released Standard
+`Shaddoll2025` is a normal WindBot executor for the exact 40 Main / 15 Extra /
+9 Side card list supplied as `Shaddoll2025.ydk`. It uses the released Standard
 catalog in `DeckWorkshop/Data/standard` as its implementation reference. The
 installed scripts and card database take priority over external strategy notes.
 The supplied file's tournament provenance has not been independently confirmed;
-the one-card Side Deck also means this is not a complete tournament match list.
+the nine-card Side Deck also means this is not a complete tournament match list.
 The source review is deliberately separate from the executor design: Konami's
 [public deck database](https://www.db.yugioh-card.com/yugiohdb/member_deck.action?cgid=417886d4321be901de816ca475c25137&dno=6&request_locale=en)
 and the [TW03 strategy profile](https://ygorganization.com/cdp_shaddolltw03/)
-support Resh/Evil-era Shaddoll play, but neither is this exact 41-card file. A
+support Resh/Evil-era Shaddoll play, but neither is this exact 40-card file. A
 later [Belen WCQ Regional result](https://ygoprodeck.com/tournament/belen-wcq-regional-5175)
 used a different Branded/Dogmatika shell and therefore is not provenance for
 this list.
@@ -622,6 +622,14 @@ combo. Its implemented decisions include:
 - contextual Lev dumps: Apkallone for search/discard setup, Meshachrer for a
   live revival, Fusion recovery when a Spell/Trap is already in the GY, and
   Lunalight Perfume Dancer only when its GY ATK reduction has battle value;
+- a state-derived Lev route through Apkallone, Squamata, Tohushaddoll Grysta and
+  Meshachrer, followed by Void, Construct, Hedgehog/Wendi, El Shaddoll Fusion,
+  Wendikuruhu, Ariel, Squamata and recovered Schism when every observed resource
+  remains available;
+- recalculation at each legal offer: missing Apkallone can use the Evil/Void
+  fallback, missing Void can search El Shaddoll Fusion, missing Meshachrer can
+  choose another legal Fusion, and Lev-only hands convert the completed
+  Meshachrer into a Defense Position Winda instead of pretending Void is live;
 - Void Unleashing searches that preserve the required different card types and
   discard Shaddolls by effect when their unused GY effect is useful;
 - state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
@@ -637,19 +645,36 @@ combo. Its implemented decisions include:
 - Resh Shaddoll Incarnation revival and position-change decisions, including
   rebuilding Winda, flipping prepared Shaddolls and resetting spent Flip
   monsters without consuming the active floodgate;
-- the Lev Shaddoll Fusion -> Infernoid Evil -> Void Unleashing setup when the
-  current legal offers support it, plus defensive positions for exposed
-  low-ATK utility monsters;
+- the Lev Shaddoll Fusion -> Infernoid Evil -> Void Unleashing fallback when the
+  primary route is unavailable, plus defensive positions for exposed low-ATK
+  utility monsters and every 0 ATK Fusion summoned by Lev;
 - optional Apkallone negation only when a live opposing target exists, avoiding
   self-negation and declining when Apkallone is already disabled;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
   grind-game Spell/Trap recovery, and conservative use of hand traps.
 
-The supplied list does contain one Infernoid Evil and one Resh Shaddoll
-Incarnation. It has no Fallen of Albaz, Lunalight Main Deck monster or Dracotail
-Spell/Trap, so the executor does not invent those absent lines: Cartesia cannot
-self-Special Summon by her Albaz condition, Faimena has no Set target, and
-Perfume Dancer remains a Lev GY utility card rather than a normal Fusion target.
+The supplied list contains one Infernoid Evil, one Resh Shaddoll Incarnation and
+three Armageddon Knight starters. Shaddoll Construct (the Link Monster) is in
+the Side Deck rather than the game-one Extra Deck, so the executor does not
+fabricate the promotional Link continuation. The current game-one ceiling uses
+Wendikuruhu, a prepared Flip monster and Schism instead. Cartesia cannot
+self-Special Summon by an absent Albaz condition, Faimena has no Dracotail Set
+target, and Perfume Dancer remains a Lev GY utility card.
+
+The referenced [Lev combo](https://www.masterduelmeta.com/combo/6a6d325cb3d5c9618637712e)
+and [Shaddoll guide](https://www.masterduelmeta.com/articles/guides/shaddoll-pancakes)
+describe the route as a 1.5-card combo. The scripts confirm why: after the
+Lev/Apkallone/Squamata/Tohushaddoll/Meshachrer sequence, Void Unleashing still
+requires a Shaddoll card in hand to reveal. With Lev plus four non-engine cards,
+the verified legal line ends on Winda in Defense Position and Wendi follow-up.
+With one of those four cards replaced by a compatible Shaddoll monster—Wendi,
+or a monster that leaves the single Hedgehog-to-Wendi search available in the
+Main Deck—the recorded control continuation is live. The lone Main Deck
+Hedgehog is not by itself sufficient for that exact branch. Wendikuruhu and
+Schism are two usable activation windows; Squamata's
+destroy and Schism's same-attribute send remain conditional effects, while
+Winda is the resulting floodgate. They are not blindly counted as four
+independent interruptions.
 
 Build and run the offline registration and focused callback checks from the
 workspace root:
@@ -661,12 +686,15 @@ python WindBot/Tools/bot_tool.py check --suite runtime --configuration Release -
 python WindBot/Tools/bot_tool.py check --suite shaddoll-2025 --configuration Release --database DeckWorkshop/Data/standard/cards.cdb --deck WindBot/Decks/AI_Shaddoll2025.ydk --output Artifacts/shaddoll-focused
 ```
 
-The focused suite uses synthetic legal offers against the compiled dispatcher;
-it verifies selection bounds and decisions but does not execute Lua. WindBot's
+The focused suite uses synthetic legal offers and a deterministic state replay
+against the compiled dispatcher. It records the final field, Graveyard,
+banished cards, hand, Life Points and verified interaction categories for both
+Lev-only and Lev-plus-Shaddoll openings. It follows the selected Lua scripts but
+does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 37 callback and deck-structure scenarios,
+The focused suite currently covers 42 callback, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -674,8 +702,8 @@ launch, duel and result-recording path only; a small sample is not a strength or
 win-rate claim. The client cannot see hidden opponent cards, simulate future Lua
 resolution, or know an opponent's unobserved hand.
 
-After the Fusion Control corrections, Arena run
-`6908bad6-e1e4-410e-901d-91a23fec89ab` completed three Normal-level matches
-against `Lightsworn`: Shaddoll2025 won 2–1, all three results were observed and
-the Shaddoll client recorded no disconnects. This is a functional regression
-sample, not an estimate of matchup win rate or competitive strength.
+Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
+and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
+2–1, all three results were observed and the Shaddoll client recorded no
+disconnects. This is a functional regression sample, not an estimate of matchup
+win rate or competitive strength.

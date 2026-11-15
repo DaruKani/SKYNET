@@ -26,11 +26,14 @@ internal static class Shaddoll2025Checks
     private const int Resh = 23912837, Evil = 97051536, Purulia = 84192580;
     private const int Mesh = 32467459, Construct = 20366274, Apkallone = 50907446;
     private const int Perfume = 81196066, Wendikuruhu = 8852158, Winda = 94977269;
+    private const int Armageddon = 28985331, Ash = 14558127, LinkConstruct = 86938484;
     private const int BlueEyes = 89631139;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<Dictionary<string, object>> Results = new List<Dictionary<string, object>>();
     private static readonly List<int> MainDeck = new List<int>();
     private static readonly List<int> ExtraDeck = new List<int>();
+    private static readonly List<int> SideDeck = new List<int>();
+    private static readonly Dictionary<string, object> LevComboEvidence = new Dictionary<string, object>();
 
     private sealed class Fixture
     {
@@ -122,6 +125,43 @@ internal static class Shaddoll2025Checks
         {
             return Select(hint, 1, 1, offered)[0];
         }
+
+        internal ClientCard Extra(int id)
+        {
+            return Bot.ExtraDeck.First(c => c.IsCode(id));
+        }
+
+        internal void Move(ClientCard card, CardLocation destination, bool faceDown = false)
+        {
+            if (card.Location == CardLocation.Hand) Bot.Hand.Remove(card);
+            else if (card.Location == CardLocation.Grave) Bot.Graveyard.Remove(card);
+            else if (card.Location == CardLocation.Removed) Bot.Banished.Remove(card);
+            else if (card.Location == CardLocation.Extra) Bot.ExtraDeck.Remove(card);
+            else if (card.Location == CardLocation.MonsterZone) Bot.MonsterZone[card.Sequence] = null;
+            else if (card.Location == CardLocation.SpellZone) Bot.SpellZone[card.Sequence] = null;
+
+            card.LastLocation = card.Location;
+            card.Location = destination;
+            card.Position = (int)(faceDown ? CardPosition.FaceDownDefence : CardPosition.FaceUpAttack);
+            if (destination == CardLocation.Hand) Bot.Hand.Add(card);
+            else if (destination == CardLocation.Grave) Bot.Graveyard.Add(card);
+            else if (destination == CardLocation.Removed) Bot.Banished.Add(card);
+            else if (destination == CardLocation.Extra) Bot.ExtraDeck.Add(card);
+            else if (destination == CardLocation.MonsterZone)
+            {
+                int slot = Array.FindIndex(Bot.MonsterZone, value => value == null);
+                Require(slot >= 0, "No open monster zone");
+                card.Sequence = slot;
+                Bot.MonsterZone[slot] = card;
+            }
+            else if (destination == CardLocation.SpellZone)
+            {
+                int slot = Array.FindIndex(Bot.SpellZone, value => value == null);
+                Require(slot >= 0, "No open spell/trap zone");
+                card.Sequence = slot;
+                Bot.SpellZone[slot] = card;
+            }
+        }
     }
 
     private static ClientCard Card(int id, CardLocation location, bool faceDown = false)
@@ -170,6 +210,25 @@ internal static class Shaddoll2025Checks
         Require(actual.Any(c => c.Id == id), detail + "; missing " + id);
     }
 
+    private static Dictionary<string, object> Snapshot(
+        Fixture fixture, int immediateActivations, int conditionalEffects,
+        int floodgateCoverage, string limit)
+    {
+        return new Dictionary<string, object>
+        {
+            { "monsters", fixture.Bot.GetMonsters().Select(c => c.Id + ":" + c.Position).ToArray() },
+            { "spells", fixture.Bot.GetSpells().Select(c => c.Id + ":" + c.Position).ToArray() },
+            { "graveyard", fixture.Bot.Graveyard.Select(c => c.Id).OrderBy(id => id).ToArray() },
+            { "banished", fixture.Bot.Banished.Select(c => c.Id).OrderBy(id => id).ToArray() },
+            { "hand", fixture.Bot.Hand.Select(c => c.Id).OrderBy(id => id).ToArray() },
+            { "lifePoints", fixture.Bot.LifePoints },
+            { "immediatelyUsableActivations", immediateActivations },
+            { "conditionalEffects", conditionalEffects },
+            { "floodgateCoverage", floodgateCoverage },
+            { "limit", limit }
+        };
+    }
+
     private static void Run(string name, Action action)
     {
         Stopwatch watch = Stopwatch.StartNew();
@@ -192,6 +251,194 @@ internal static class Shaddoll2025Checks
             { "detail", detail }
         });
         Console.WriteLine((passed ? "PASS " : "FAIL ") + name + ": " + detail);
+    }
+
+    private static Fixture ExecuteLevOpening(bool assisted)
+    {
+        Fixture f = new Fixture();
+        ClientCard lev = f.Add(Lev, CardLocation.Hand);
+        if (assisted) f.Add(Grysta, CardLocation.Hand);
+        f.Add(Ash, CardLocation.Hand);
+        f.Add(MaxxC, CardLocation.Hand);
+        f.Add(Droll, CardLocation.Hand);
+        if (!assisted) f.Add(Veiler, CardLocation.Hand);
+
+        Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 0)), "Lev activation was rejected");
+        f.Move(lev, CardLocation.SpellZone);
+        f.Chain(lev, true);
+        ClientCard apkallone = f.Extra(Apkallone);
+        Is(f.Select(HintMsg.ToGrave, apkallone, f.Extra(Evil), f.Extra(Construct)),
+            Apkallone, "Lev did not begin the primary route");
+        f.Move(apkallone, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(apkallone, Desc(Apkallone, 1)),
+            "Apkallone grave trigger was rejected");
+        f.Chain(apkallone, true);
+        Is(f.Select(HintMsg.AddToHand, Card(Squamata, CardLocation.Deck),
+            Card(Wendi, CardLocation.Deck), Card(Schism, CardLocation.Deck)),
+            Squamata, "Apkallone did not search the primary-route Squamata");
+        ClientCard squamata = f.Add(Squamata, CardLocation.Hand);
+        Is(f.Select(HintMsg.Discard, f.Bot.Hand.ToArray()), Squamata,
+            "Apkallone did not discard Squamata by effect");
+        f.Move(squamata, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(squamata, Desc(Squamata, 1)),
+            "Squamata grave trigger was rejected");
+        f.Chain(squamata, true);
+        Is(f.Select(HintMsg.ToGrave, Card(Grysta, CardLocation.Deck),
+            Card(Hedgehog, CardLocation.Deck), Card(Wendi, CardLocation.Deck)),
+            Grysta, "Squamata did not send Tohushaddoll Grysta");
+        ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(tohushaddoll, Desc(Grysta, 1)),
+            "Tohushaddoll Grysta fusion trigger was rejected");
+        f.Chain(tohushaddoll, true);
+        ClientCard mesh = f.Extra(Mesh);
+        Is(f.Select(HintMsg.SpSummon, mesh, f.Extra(Construct), f.Extra(Winda)),
+            Mesh, "Tohushaddoll Grysta did not choose Meshachrer");
+        IList<ClientCard> openingMaterials = f.Select(HintMsg.FusionMaterial, 3, 3,
+            apkallone, squamata, tohushaddoll);
+        Require(openingMaterials.Count == 3, "Meshachrer did not use exactly three materials");
+        foreach (ClientCard material in openingMaterials) f.Move(material, CardLocation.Removed);
+        f.Move(mesh, CardLocation.MonsterZone);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(mesh, Desc(Mesh, 1)), "Meshachrer search was rejected");
+        f.Bot.LifePoints -= 800;
+        f.Chain(mesh, true);
+        int meshChoice = assisted ? Void : Wendi;
+        Is(f.Select(HintMsg.AddToHand, Card(Void, CardLocation.Deck),
+            Card(Wendi, CardLocation.Deck), Card(Schism, CardLocation.Deck)),
+            meshChoice, assisted ? "Meshachrer missed Void with a reveal available" :
+            "Meshachrer searched an unusable Void without a reveal");
+        ClientCard meshSearch = f.Add(meshChoice, CardLocation.Hand);
+        f.AI.OnChainEnd();
+
+        if (!assisted)
+        {
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
+                "Lev stopped before converting Meshachrer into a control body");
+            f.Chain(lev, true);
+            Is(f.Select(HintMsg.Release, mesh), Mesh, "Lev tributed the wrong Fusion");
+            f.Move(mesh, CardLocation.Grave);
+            ClientCard winda = f.Extra(Winda);
+            Is(f.Select(HintMsg.SpSummon, winda, f.Extra(Construct)), Winda,
+                "Lev-only route did not choose the verified Winda endboard");
+            CardPosition position = f.Executor.OnSelectPosition(Winda,
+                new[] { CardPosition.FaceUpAttack, CardPosition.FaceUpDefence });
+            Require(position == CardPosition.FaceUpDefence,
+                "Lev exposed its 0 ATK Winda in Attack Position");
+            f.Move(winda, CardLocation.MonsterZone);
+            winda.Position = (int)position;
+            f.AI.OnChainEnd();
+            LevComboEvidence["levOnly"] = Snapshot(f, 0, 0, 1,
+                "Void requires an additional Shaddoll card in hand; the legal Lev-only line ends on 0 ATK Winda in Defense Position plus follow-up Wendi.");
+            return f;
+        }
+
+        ClientCard voidCard = meshSearch;
+        Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)), "Void activation was rejected");
+        f.Move(voidCard, CardLocation.SpellZone);
+        f.Chain(voidCard, true);
+        ClientCard revealed = f.Bot.Hand.First(c => c.IsCode(Grysta));
+        Is(f.Select(HintMsg.Confirm, revealed), Grysta, "Void revealed the wrong card type");
+        IList<ClientCard> voidSearch = f.Select(HintMsg.AddToHand, 2, 2,
+            Card(ElFusion, CardLocation.Deck), Card(Schism, CardLocation.Deck),
+            Card(Lev, CardLocation.Deck), Card(Squamata, CardLocation.Deck));
+        Has(voidSearch, ElFusion, "Void missed El Shaddoll Fusion");
+        Has(voidSearch, Schism, "Void missed Shaddoll Schism");
+        ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+        ClientCard schism = f.Add(Schism, CardLocation.Hand);
+        Is(f.Select(HintMsg.Discard, f.Bot.Hand.ToArray()), Schism,
+            "Void did not stage Schism for Construct recovery");
+        f.Move(schism, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
+            "Lev stopped before the Construct continuation");
+        f.Chain(lev, true);
+        Is(f.Select(HintMsg.Release, mesh), Mesh, "Lev did not tribute Meshachrer");
+        f.Move(mesh, CardLocation.Grave);
+        ClientCard construct = f.Extra(Construct);
+        Is(f.Select(HintMsg.SpSummon, construct, f.Extra(Winda)), Construct,
+            "Lev missed Construct after Void established the continuation");
+        f.Move(construct, CardLocation.MonsterZone);
+        construct.Position = (int)f.Executor.OnSelectPosition(Construct,
+            new[] { CardPosition.FaceUpAttack, CardPosition.FaceUpDefence });
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(construct, Desc(Construct, 0)),
+            "Construct send effect was rejected");
+        f.Chain(construct, true);
+        Is(f.Select(HintMsg.ToGrave, Card(Hedgehog, CardLocation.Deck),
+            Card(Wendi, CardLocation.Deck), Card(Resh, CardLocation.Deck)),
+            Hedgehog, "Construct did not prepare the Wendi search");
+        ClientCard hedgehog = f.Add(Hedgehog, CardLocation.Grave);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(hedgehog, Desc(Hedgehog, 1)),
+            "Hedgehog search was rejected");
+        f.Chain(hedgehog, true);
+        Is(f.Select(HintMsg.AddToHand, Card(Wendi, CardLocation.Deck),
+            Card(Squamata, CardLocation.Deck)), Wendi,
+            "Hedgehog did not search the WIND material");
+        ClientCard wendi = f.Add(Wendi, CardLocation.Hand);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
+            "El Shaddoll Fusion continuation was rejected");
+        f.Move(elFusion, CardLocation.SpellZone);
+        f.Chain(elFusion, true);
+        ClientCard wendikuruhu = f.Extra(Wendikuruhu);
+        Is(f.Select(HintMsg.SpSummon, wendikuruhu, f.Extra(Winda), f.Extra(Construct)),
+            Wendikuruhu, "El Shaddoll Fusion missed Wendikuruhu");
+        IList<ClientCard> controlMaterials = f.Select(HintMsg.FusionMaterial, 2, 2,
+            construct, wendi, revealed);
+        Has(controlMaterials, Construct, "Control Fusion did not use Construct");
+        Has(controlMaterials, Wendi, "Control Fusion did not use Wendi");
+        foreach (ClientCard material in controlMaterials) f.Move(material, CardLocation.Grave);
+        f.Move(elFusion, CardLocation.Grave);
+        f.Move(wendikuruhu, CardLocation.MonsterZone);
+        wendikuruhu.Position = (int)CardPosition.FaceUpDefence;
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(wendi, Desc(Wendi, 1)), "Wendi setup trigger was rejected");
+        f.Chain(wendi, true);
+        Is(f.Select(HintMsg.SpSummon, Card(Ariel, CardLocation.Deck),
+            Card(Hedgehog, CardLocation.Deck), Card(Squamata, CardLocation.Deck)),
+            Ariel, "Wendi did not set Ariel for the control line");
+        ClientCard ariel = f.Add(Ariel, CardLocation.MonsterZone, 0, true);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(construct, Desc(Construct, 2)),
+            "Construct recovery trigger was rejected");
+        f.Chain(construct, true);
+        Is(f.Select(HintMsg.AddToHand, schism, elFusion), Schism,
+            "Construct did not recover Schism");
+        f.Move(schism, CardLocation.Hand);
+        f.Move(schism, CardLocation.SpellZone, true);
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(wendikuruhu, Desc(Wendikuruhu, 0)),
+            "Wendikuruhu did not continue into the prepared Flip body");
+        f.Chain(wendikuruhu, true);
+        Is(f.Select(HintMsg.PosChange, ariel), Ariel, "Wendikuruhu did not flip Ariel");
+        ariel.Position = (int)CardPosition.FaceUpDefence;
+        f.AI.OnChainEnd();
+
+        Require(f.AI.OnSelectEffectYn(ariel, Desc(Ariel, 0)), "Ariel revival was rejected");
+        f.Chain(ariel, true);
+        Is(f.Select(HintMsg.SpSummon, squamata), Squamata,
+            "Ariel did not recover the banished Squamata");
+        f.Move(squamata, CardLocation.MonsterZone, true);
+        f.AI.OnChainEnd();
+
+        LevComboEvidence["levPlusShaddoll"] = Snapshot(f, 2, 2, 1,
+            "Two immediate activation windows are Wendikuruhu and Schism. Squamata destruction and Schism's same-attribute send are conditional; Winda is available through Schism. Link Shaddoll Construct is in the Side Deck, so the showcased Link continuation is unavailable in game one.");
+        return f;
     }
 
     private static void Decisions()
@@ -218,25 +465,26 @@ internal static class Shaddoll2025Checks
                 "Lev ignored the available battle solution");
         });
 
-        Run("Lev sends Meshachrer when its grave trigger creates a body", () =>
+        Run("Lev sends Meshachrer when the primary route is unavailable and revival is live", () =>
         {
             Fixture f = new Fixture();
             f.Add(Squamata, CardLocation.Grave);
             ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
             f.Chain(lev, true);
-            Is(f.Select(HintMsg.ToGrave, Card(Apkallone, CardLocation.Extra),
+            Is(f.Select(HintMsg.ToGrave, Card(Construct, CardLocation.Extra),
                 Card(Mesh, CardLocation.Extra)), Mesh,
                 "Lev missed Meshachrer revival value");
         });
 
-        Run("Lev sends Infernoid Evil when its grave trigger finds Void", () =>
+        Run("Lev falls back to Infernoid Evil when Apkallone is unavailable", () =>
         {
             Fixture f = new Fixture();
+            f.Add(Wendi, CardLocation.Hand);
             ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
             f.Chain(lev, true);
-            Is(f.Select(HintMsg.ToGrave, Card(Apkallone, CardLocation.Extra),
+            Is(f.Select(HintMsg.ToGrave, Card(Construct, CardLocation.Extra),
                 Card(Evil, CardLocation.Extra)), Evil,
-                "Lev missed the deck's Evil-to-Void starter line");
+                "Lev missed the available Evil-to-Void fallback");
         });
 
         Run("Lev can use its tribute effect after resolving its activation effect", () =>
@@ -248,6 +496,57 @@ internal static class Shaddoll2025Checks
             ClientCard faceupLev = f.Add(Lev, CardLocation.SpellZone);
             Require(f.AI.OnSelectEffectYn(faceupLev, Desc(Lev, 1)),
                 "The Shaddoll-only lock incorrectly blocked Lev's own second effect");
+        });
+
+        Run("Lev-only deterministic opening reports the legal Winda ceiling", () =>
+        {
+            Fixture f = ExecuteLevOpening(false);
+            Require(f.Bot.GetMonsters().Count(c => c.IsCode(Winda) && c.IsDefense()) == 1,
+                "Lev-only line did not end on Defense Position Winda");
+            Require(f.Bot.Hand.Any(c => c.IsCode(Wendi)),
+                "Lev-only line lost its Wendi follow-up");
+            Require(f.Bot.Banished.Count(c => c.IsCode(Apkallone, Squamata, Grysta)) == 3,
+                "Lev-only line recorded the wrong banished materials");
+            Require(f.Bot.Graveyard.Count(c => c.IsCode(Mesh)) == 1,
+                "Lev-only line recorded the wrong Graveyard");
+        });
+
+        Run("Lev plus one compatible Shaddoll reaches the verified control continuation", () =>
+        {
+            Fixture f = ExecuteLevOpening(true);
+            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Wendikuruhu) && c.IsDefense()),
+                "Full continuation did not retain Wendikuruhu");
+            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Ariel) && c.IsFaceup()),
+                "Full continuation did not flip Ariel");
+            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Squamata) && c.IsFacedown()),
+                "Full continuation did not preserve the Squamata Flip interaction");
+            Require(f.Bot.GetSpells().Any(c => c.IsCode(Schism) && c.IsFacedown()),
+                "Full continuation did not set the recovered Schism");
+            Require(new[] { Construct, Wendi, Hedgehog, ElFusion, Mesh }
+                .All(id => f.Bot.Graveyard.Any(c => c.IsCode(id))),
+                "Full continuation did not record its spent engine resources");
+            Require(!f.Bot.ExtraDeck.Any(c => c.IsCode(LinkConstruct)),
+                "Game-one Extra Deck unexpectedly contained the sided Link continuation");
+        });
+
+        Run("Interrupted Lev routes recalculate from the legal offers", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(Lev, CardLocation.SpellZone);
+            f.Add(Grysta, CardLocation.Hand);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+            f.Chain(mesh, true);
+            Is(f.Select(HintMsg.AddToHand, Card(ElFusion, CardLocation.Deck),
+                Card(Wendi, CardLocation.Deck), Card(Schism, CardLocation.Deck)),
+                ElFusion, "Missing Void did not produce the legal Fusion fallback");
+
+            Fixture noMesh = new Fixture();
+            noMesh.Add(Lev, CardLocation.SpellZone);
+            ClientCard tohushaddoll = noMesh.Add(Grysta, CardLocation.Grave);
+            noMesh.Chain(tohushaddoll, true);
+            Is(noMesh.Select(HintMsg.SpSummon, Card(Construct, CardLocation.Extra),
+                Card(Winda, CardLocation.Extra)), Construct,
+                "Missing Meshachrer did not produce a legal alternate Fusion");
         });
 
         Run("Fusion Deployment remains a legal Cartesia extender under Lev's lock", () =>
@@ -276,6 +575,33 @@ internal static class Shaddoll2025Checks
                 Card(Squamata, CardLocation.Deck));
             Has(selected, Lev, "Void failed to choose the Spell type");
             Has(selected, Schism, "Void failed to choose the Trap type");
+        });
+
+        Run("Void trap reveal finds Wendi plus El Fusion for the Lev continuation", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(Lev, CardLocation.SpellZone);
+            f.Add(Mesh, CardLocation.MonsterZone);
+            ClientCard card = f.Add(Void, CardLocation.SpellZone);
+            SetPrivate(f.Executor, "_voidRevealedType", CardType.Trap);
+            f.Chain(card, true);
+            IList<ClientCard> selected = f.Select(HintMsg.AddToHand, 2, 2,
+                Card(ElFusion, CardLocation.Deck), Card(Wendi, CardLocation.Deck),
+                Card(Squamata, CardLocation.Deck), Card(Schism, CardLocation.Deck));
+            Has(selected, ElFusion, "Void failed to choose the Spell type");
+            Has(selected, Wendi, "Void failed to choose the WIND material");
+        });
+
+        Run("Armageddon Knight sends Squamata into the adaptive route", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard armageddon = f.Add(Armageddon, CardLocation.MonsterZone);
+            Require(f.AI.OnSelectEffectYn(armageddon, 0),
+                "Armageddon Knight effect was rejected");
+            f.Chain(armageddon, true);
+            Is(f.Select(HintMsg.ToGrave, Card(Squamata, CardLocation.Deck),
+                Card(Grysta, CardLocation.Deck), Card(Dragon, CardLocation.Deck)),
+                Squamata, "Armageddon Knight missed the Squamata starter");
         });
 
         Run("Squamata sends Dragon into visible backrow", () =>
@@ -421,6 +747,8 @@ internal static class Shaddoll2025Checks
         Run("Meshachrer search prefers Void Unleashing as the broad extender", () =>
         {
             Fixture f = new Fixture();
+            f.Add(Grysta, CardLocation.Hand);
+            f.Add(Lev, CardLocation.SpellZone);
             ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
             f.Chain(mesh, true);
             Is(f.Select(HintMsg.AddToHand, Card(Void, CardLocation.Deck),
@@ -646,12 +974,13 @@ internal static class Shaddoll2025Checks
             string line = raw.Trim();
             if (line == "#main") { section = MainDeck; continue; }
             if (line == "#extra") { section = ExtraDeck; continue; }
-            if (line == "!side") break;
+            if (line == "!side") { section = SideDeck; continue; }
             int id;
             if (section != null && int.TryParse(line, out id)) section.Add(id);
         }
-        Require(MainDeck.Count == 41, "Expected the supplied 41-card Main Deck; got " + MainDeck.Count);
+        Require(MainDeck.Count == 40, "Expected the supplied 40-card Main Deck; got " + MainDeck.Count);
         Require(ExtraDeck.Count == 15, "Expected 15 Extra Deck cards; got " + ExtraDeck.Count);
+        Require(SideDeck.Count == 9, "Expected the supplied 9-card Side Deck; got " + SideDeck.Count);
     }
 
     private static string Hash(string path)
@@ -678,8 +1007,10 @@ internal static class Shaddoll2025Checks
             report["executableSha256"] = Hash(typeof(Executor).Assembly.Location);
             report["mainCount"] = MainDeck.Count;
             report["extraCount"] = ExtraDeck.Count;
+            report["sideCount"] = SideDeck.Count;
             report["results"] = Results;
-            report["evidence"] = "Synthetic compiled-executor offers; no Lua or duel server execution.";
+            report["levComboEvidence"] = LevComboEvidence;
+            report["evidence"] = "Deterministic compiled-executor route replay using the selected script semantics; no Lua engine execution.";
         }
         catch (Exception error)
         {
