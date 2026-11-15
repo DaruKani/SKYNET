@@ -260,6 +260,71 @@ and state behavior; real Lua-backed duels and Arena results are separate evidenc
 The [personal-executor receipt](personal-executor-provenance.json) retains source
 origins, exact script hashes and before/after validation.
 
+## Witchcraft 2026 executor
+
+`Deck=Witchcraft2026` adds a separate **Test** registration and
+`Decks/AI_Witchcraft2026.ydk` (40 Main / 15 Extra / 7 Side). The original
+`Witchcraft` executor/deck remain unchanged. Imported from the selected deck and
+implementation at `DaruKani/SKYNET` revision `94a977b2`; no external game files
+or databases are bundled by this addition.
+
+The RDA-style planner separates observations, resource-checked predictions and
+actual engine offers. It compares guide routes, alternatives and stopping, then
+commits one action and replans. Limits are 180 ms, depth 30, beam 64, 5,000 nodes
+and 256 candidates per expansion. The guide uses Walpurgis, the low-Witch ladder,
+Marka/Dragoon, Terracottan/Pupils/Rilliona, Vice and Edel revival. Fieldless
+Lacrima/Maid access and interrupted-route recovery are modeled separately.
+
+`OpponentAwareness.cs` records reviewed public effects and observed usage;
+unknown identities, costs and outcomes remain uncertain. Chain forecasts separate
+removal from negation, preserve paid costs and reselect actual resolution targets.
+They are bounded predictions, not a full opponent simulator or win probabilities.
+The `.csproj` includes this helper; other executors do not opt into it implicitly.
+
+GY handling covers the 15 applicable identities in this selected list: Seed,
+Pittore, Potterie, Schmietta, Genni, Marka, Distortion, Madame Rilliona,
+Despian Luluwalilith, Creation, Unveiling, Bystreet, Confusion, Celebration and
+Side-deck Draping. Seed returns an exact Spell-containing hand subset and stops
+prediction at the unknown draw; Pittore chooses from the actual post-draw hand.
+Potterie checks the empty hand; Distortion tracks GY age and discards at resolution.
+Genni supports copied Fusion/destruction, recruit/send, Unveiling and bounce,
+sharing its copy limit and paying banishes before selecting materials.
+Marka/Rilliona/Luluwalilith use real engine-offered triggers. Luluwalilith has
+**no qualifying recruit in the current Main Deck**; its native fixture uses
+Effect Veiler only as a test input. Lacrima has no own GY activation.
+
+Known limits: heuristic draw valuation, finite action coverage, partial public
+effect profiles, aggregated same-name model resources, no automatic side decking,
+and no guarantee of a globally optimal line. Pittore deliberately passes with a
+nonempty all-non-Witch hand. Draping copy evaluates one useful public S/T target.
+Unmodeled Link/Synchro routes and hidden opponent responses are not invented.
+
+Run from the workspace root with a compatible server already listening:
+
+```powershell
+WindBot\Tools\Run-Witchcraft2026.bat 127.0.0.1 7911 "D:\Games\MDPro4\Data\locales\en-US\cards.cdb"
+WindBot\Tools\Run-Witchcraft2026.bat --build-only
+./WindBot/Tools/Invoke-Witchcraft2026PlannerChecks.ps1 -BotExecutable WindBot/bin/Debug/WindBot.exe -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb -OutputDirectory Artifacts/witch-planner
+./WindBot/Tools/Invoke-WitchcraftOpponentChecks.ps1 -BotExecutable WindBot/bin/Debug/WindBot.exe -Database D:/Games/MDPro4/Data/locales/en-US/cards.cdb -OutputDirectory Artifacts/witch-opponent
+./WindBot/Tools/Invoke-Witchcraft2026NativeChecks.ps1 -BotExecutable WindBot/bin/Debug/WindBot.exe -Python python -ServerLibrary D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ygoserver.dll -DataRoot D:/Games/MDPro4/Data -OutputDirectory Artifacts/witch-guide -AllowVerifiedLethal
+python WindBot/Tools/witchcraft_grave_native.py --scenario seed --core D:/Games/MDPro4/MDPro4_Data/Plugins/x86_64/ocgcore.dll --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb --scripts D:/Games/MDPro4/Data/script.zip --output Artifacts/witch-seed.json
+```
+
+Use fresh receipt paths, Python 3.11+ and the explicitly selected installed
+scripts/CDB. The launcher uses Debug and opt-in `LogPath` to append timestamped
+logs beside the `.bat`; without `LogPath`, existing console behavior is retained.
+The same logging support accompanies the independent Sky Striker 2026 PR; neither
+executor depends on the other. Original dialog and roster entries are preserved.
+
+Upstream-based branch validation (2026-11-15): Debug/Release builds; 90/90 planner,
+119/119 opponent/GY and 14/14 RDA regression assertions. Full-bot guide: two
+completed wins against passive Default, **39/44 strict milestones**, with a
+separately verified early lethal in duel 1. Strict misses are retained, not
+renamed passes. The earlier source-runtime run reached 44/44; bounded scheduling
+can select a shorter win. Native GY fixture drivers pass 43/43 assertions across
+21 scenarios, verifying mechanics separately from executor strategy. No Arena
+strength comparison is claimed.
+
 ## Voiceless Voice routes and recovery
 
 `Deck=Voiceless` loads `Decks/AI_Voiceless.ydk`. Its 40-card main deck includes
