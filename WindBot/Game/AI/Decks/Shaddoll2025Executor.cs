@@ -58,6 +58,7 @@ namespace WindBot.Game.AI.Decks
         private int _coveredOpponentChainLength;
         private int _pendingFusionTargetId;
         private CardType _voidRevealedType;
+        private int _voidDiscardedMonsterId;
         private bool _shaddollExtraDeckLock;
         private bool _levTributedMesh;
         private bool _levOpponentTurnBranch;
@@ -172,6 +173,7 @@ namespace WindBot.Game.AI.Decks
             _coveredOpponentChainLength = 0;
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
+            _voidDiscardedMonsterId = 0;
             _shaddollExtraDeckLock = false;
             _levTributedMesh = false;
             _levOpponentTurnBranch = false;
@@ -204,7 +206,13 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.AddToHand)
                     return SelectVoidSearch(cards, min, max);
                 if (hint == HintMsg.Discard)
-                    return SelectByScore(cards, min, max, VoidDiscardScore);
+                {
+                    IList<ClientCard> selected = SelectByScore(cards, min, max, VoidDiscardScore);
+                    ClientCard discarded = selected.FirstOrDefault();
+                    _voidDiscardedMonsterId = discarded != null && IsShaddollMonster(discarded)
+                        ? discarded.Id : 0;
+                    return selected;
+                }
             }
 
             if (PromptIs(CardId.LevShaddollFusion))
@@ -997,6 +1005,18 @@ namespace WindBot.Game.AI.Decks
 
         private int VoidDiscardScore(ClientCard card)
         {
+            // Void may discard any card, not only the revealed Shaddoll. Preserve
+            // unique continuation pieces, then compare live GY value with the
+            // opportunity cost of spending a non-engine card.
+            if (card.IsCode(CardId.LevShaddollFusion) &&
+                !EffectUsed(CardId.LevShaddollFusion) &&
+                !Bot.HasInSpellZone(CardId.LevShaddollFusion)) return -500;
+            if (card.IsCode(CardId.ShaddollSchism) &&
+                !Bot.HasInSpellZone(CardId.ShaddollSchism) &&
+                Bot.Hand.Count(c => c.IsCode(CardId.ShaddollSchism)) == 1) return -480;
+            if (card.IsCode(CardId.ElShaddollFusion) && IsLevRouteActive() &&
+                !Bot.HasInSpellZone(CardId.ElShaddollFusion) &&
+                Bot.Hand.Count(c => c.IsCode(CardId.ElShaddollFusion)) == 1) return -470;
             if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ElShaddollConstruct))
             {
                 if (card.IsCode(CardId.ReeshaddollWendi, CardId.ElShaddollFusion,
@@ -1004,7 +1024,22 @@ namespace WindBot.Game.AI.Decks
                 if (card.IsCode(CardId.LevShaddollFusion)) return 250;
                 if (!IsShaddollCard(card)) return 220;
             }
-            return DiscardScore(card);
+            if (IsShaddollMonster(card) && !EffectUsed(card.Id))
+            {
+                int graveValue = ShaddollSendScore(card) + 35;
+                if (card.IsCode(CardId.ShaddollBeast)) graveValue += 25;
+                return graveValue;
+            }
+            if (IsShaddollCard(card)) return DiscardScore(card);
+
+            if (card.IsCode(CardId.AshBlossomJoyousSpring, CardId.MaxxC,
+                CardId.EffectVeiler, CardId.DrollLockBird,
+                CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) return 15;
+            if (card.IsCode(CardId.BlazingCartesia, CardId.DracotailFaimena,
+                CardId.TearlamentsScheiren, CardId.FusionDeployment)) return 20;
+            if (card.IsCode(CardId.ArmageddonKnight) &&
+                !IsLevRouteActive() && !Bot.HasInHandOrInSpellZone(CardId.LevShaddollFusion)) return 10;
+            return 55;
         }
 
         private int ArmageddonSendScore(ClientCard card)
@@ -1141,6 +1176,8 @@ namespace WindBot.Game.AI.Decks
 
         private int RevivalScore(ClientCard card)
         {
+            if (_voidDiscardedMonsterId != 0 && card.IsCode(_voidDiscardedMonsterId) &&
+                IsShaddollMonster(card)) return 180;
             if (card.IsCode(CardId.ElShaddollWinda)) return 125;
             if (card.IsCode(CardId.ElShaddollConstruct)) return 108;
             if (card.IsCode(CardId.ElShaddollApkallone)) return 104;

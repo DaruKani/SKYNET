@@ -604,6 +604,79 @@ internal static class Shaddoll2025Checks
             Has(selected, Schism, "Void failed to choose the Trap type");
         });
 
+        Run("Shaddoll monster plus Void values its discard and revives that body", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard beast = f.Add(Beast, CardLocation.Hand);
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            f.Add(Armageddon, CardLocation.Hand);
+
+            Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)),
+                "Void rejected the opening Shaddoll monster reveal");
+            f.Move(voidCard, CardLocation.SpellZone);
+            f.Chain(voidCard, true);
+            Is(f.Select(HintMsg.Confirm, beast), Beast,
+                "Void did not reveal the opening Shaddoll monster");
+            IList<ClientCard> search = f.Select(HintMsg.AddToHand, 2, 2,
+                Card(Lev, CardLocation.Deck), Card(Schism, CardLocation.Deck),
+                Card(ElFusion, CardLocation.Deck), Card(Squamata, CardLocation.Deck));
+            Has(search, Lev, "Void did not search Lev Shaddoll Fusion");
+            Has(search, Schism, "Void did not preserve the Schism branch");
+            ClientCard lev = f.Add(Lev, CardLocation.Hand);
+            f.Add(Schism, CardLocation.Hand);
+            Is(f.Select(HintMsg.Discard, f.Bot.Hand.ToArray()), Beast,
+                "Void did not value Beast's GY draw and later revival over a redundant starter");
+            f.Move(beast, CardLocation.Grave);
+            f.Move(voidCard, CardLocation.Grave);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(beast, Desc(Beast, 1)),
+                "The Shaddoll discarded by Void did not keep its GY trigger");
+            f.Chain(beast, true);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 0)),
+                "The searched Lev starter was rejected");
+            f.Move(lev, CardLocation.SpellZone);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+            Require(f.AI.OnSelectEffectYn(mesh, Desc(Mesh, 1)),
+                "Meshachrer search was rejected in the Void opening");
+            f.Chain(mesh, true);
+            Is(f.Select(HintMsg.AddToHand, Card(Void, CardLocation.Deck),
+                Card(ElFusion, CardLocation.Deck), Card(Wendi, CardLocation.Deck)), ElFusion,
+                "Meshachrer searched a spent second Void instead of El Shaddoll Fusion");
+            f.Add(ElFusion, CardLocation.Hand);
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
+                "Lev did not convert Meshachrer after the El Fusion search");
+            f.Chain(lev, true);
+            Is(f.Select(HintMsg.Release, mesh), Mesh,
+                "Lev did not tribute Meshachrer in the Void route");
+            f.Move(mesh, CardLocation.Grave);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Construct), f.Extra(Winda)), Construct,
+                "Lev did not summon Construct in the Void route");
+            f.AI.OnChainEnd();
+
+            Require(f.AI.OnSelectEffectYn(mesh, Desc(Mesh, 2)),
+                "Meshachrer did not activate its Graveyard revival");
+            f.Chain(mesh, true);
+            Is(f.Select(HintMsg.SpSummon, beast, Card(Squamata, CardLocation.Grave)), Beast,
+                "Meshachrer did not remember and revive the Shaddoll discarded by Void");
+
+            Fixture preserve = new Fixture();
+            ClientCard preserveVoid = preserve.Add(Void, CardLocation.SpellZone);
+            preserve.Add(Lev, CardLocation.SpellZone);
+            preserve.Add(Construct, CardLocation.MonsterZone);
+            ClientCard wendi = preserve.Add(Wendi, CardLocation.Hand);
+            ClientCard elFusion = preserve.Add(ElFusion, CardLocation.Hand);
+            ClientCard schism = preserve.Add(Schism, CardLocation.Hand);
+            ClientCard expendable = preserve.Add(Armageddon, CardLocation.Hand);
+            preserve.Chain(preserveVoid, true);
+            Is(preserve.Select(HintMsg.Discard, wendi, elFusion, schism, expendable), Armageddon,
+                "Void forced a Shaddoll discard instead of preserving the live continuation");
+        });
+
         Run("Void trap reveal finds Wendi plus El Fusion for the Lev continuation", () =>
         {
             Fixture f = new Fixture();

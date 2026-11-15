@@ -659,6 +659,11 @@ combo. Its implemented decisions include:
 - the recorded double-Armageddon route: the first Knight sends Squamata and is
   banished into Meshachrer, Meshachrer searches Lev, Lev sends Infernoid Evil,
   Evil finds Void, and the second Knight remains available as Void's discard;
+- the recorded Shaddoll-monster-plus-Void route: Void reveals the Shaddoll card
+  and searches Schism plus Lev, then values every legal discard by its live GY
+  effect, replacement value and remaining combo role instead of forcing the
+  revealed monster. When that monster is the best cost, Meshachrer remembers and
+  revives it while searching El Shaddoll Fusion instead of a spent second Void;
 - optional Apkallone negation only when a live opposing target exists, avoiding
   self-negation and declining when Apkallone is already disabled;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
@@ -711,7 +716,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 48 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 49 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
