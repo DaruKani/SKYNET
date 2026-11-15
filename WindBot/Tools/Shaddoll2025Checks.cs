@@ -28,6 +28,8 @@ internal static class Shaddoll2025Checks
     private const int Shekhinaga = 74822425, Perfume = 81196066;
     private const int Wendikuruhu = 8852158, Winda = 94977269;
     private const int Armageddon = 28985331, Ash = 14558127, LinkConstruct = 86938484;
+    private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
+    private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, DarkMagician = 46986414;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<Dictionary<string, object>> Results = new List<Dictionary<string, object>>();
@@ -1114,25 +1116,79 @@ internal static class Shaddoll2025Checks
                 "The executor treated unknown backrow as guaranteed safe lethal");
         });
 
-        Run("Cartesia selects Granguignol when its named line is legal", () =>
+        Run("Scheiren sends a live Shaddoll from hand before milling", () =>
         {
             Fixture f = new Fixture();
-            ClientCard cartesia = f.Add(95515789, CardLocation.MonsterZone);
-            f.Chain(cartesia, true);
-            Is(f.Select(HintMsg.SpSummon, Card(24915933, CardLocation.Extra),
-                Card(Construct, CardLocation.Extra)), 24915933,
-                "Cartesia missed the deck's dedicated named Fusion");
+            ClientCard scheiren = f.Add(Scheiren, CardLocation.Hand);
+            ClientCard beast = f.Add(Beast, CardLocation.Hand);
+            f.Add(Armageddon, CardLocation.Hand);
+            Require(f.AI.OnSelectEffectYn(scheiren, Desc(Scheiren, 0)),
+                "Scheiren rejected a live Shaddoll send and mill line");
+            f.Chain(scheiren, true);
+            Is(f.Select(HintMsg.ToGrave, beast, Card(Armageddon, CardLocation.Hand)), Beast,
+                "Scheiren sent a generic monster instead of the valuable Shaddoll trigger");
+
+            Fixture noShaddoll = new Fixture();
+            ClientCard strandedScheiren = noShaddoll.Add(Scheiren, CardLocation.Hand);
+            noShaddoll.Add(Armageddon, CardLocation.Hand);
+            Require(!noShaddoll.AI.OnSelectEffectYn(strandedScheiren, Desc(Scheiren, 0)),
+                "Scheiren spent a non-Shaddoll hand card without an engine payoff");
         });
 
-        Run("Faimena uses the board-breaking Fusion offered by the engine", () =>
+        Run("Cartesia selects Granguignol and preserves its hand interaction", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard cartesia = f.Add(Cartesia, CardLocation.MonsterZone);
+            ClientCard beast = f.Add(Beast, CardLocation.Hand);
+            ClientCard ash = f.Add(Ash, CardLocation.Hand);
+            Require(f.AI.OnSelectEffectYn(cartesia, Desc(Cartesia, 1)),
+                "Cartesia rejected a legal opponent-turn Fusion");
+            f.Chain(cartesia, true);
+            Is(f.Select(HintMsg.SpSummon, Card(Granguignol, CardLocation.Extra),
+                Card(Construct, CardLocation.Extra)), Granguignol,
+                "Cartesia missed the deck's dedicated named Fusion");
+            IList<ClientCard> materials = f.Select(HintMsg.FusionMaterial, 2, 2,
+                cartesia, beast, ash);
+            Has(materials, Cartesia, "Cartesia did not include itself for Granguignol");
+            Has(materials, Beast, "Cartesia missed the Shaddoll GY value in hand");
+            Require(!materials.Any(c => c.IsCode(Ash)),
+                "Cartesia consumed live hand interaction instead of the Shaddoll material");
+        });
+
+        Run("Faimena evaluates board-breaking and turn-zero Quick Fusion lines", () =>
         {
             Fixture f = new Fixture();
             f.Add(BlueEyes, CardLocation.MonsterZone, 1);
-            ClientCard faimena = f.Add(1498449, CardLocation.Hand);
+            ClientCard faimena = f.Add(Faimena, CardLocation.Hand);
             f.Chain(faimena, true);
             Is(f.Select(HintMsg.SpSummon, Card(Construct, CardLocation.Extra),
                 Card(Winda, CardLocation.Extra)), Construct,
                 "Faimena chose an early lock over visible board pressure");
+
+            Fixture turnZero = new Fixture();
+            turnZero.Duel.Player = 1;
+            ClientCard quickFaimena = turnZero.Add(Faimena, CardLocation.Hand);
+            ClientCard wendi = turnZero.Add(Wendi, CardLocation.Hand);
+            ClientCard squamata = turnZero.Add(Squamata, CardLocation.Hand);
+            ClientCard ash = turnZero.Add(Ash, CardLocation.Hand);
+            Require(turnZero.AI.OnSelectEffectYn(quickFaimena, Desc(Faimena, 0)),
+                "Faimena rejected a legal turn-zero Quick Fusion");
+            turnZero.Move(quickFaimena, CardLocation.Grave);
+            turnZero.Chain(quickFaimena, true);
+            Is(turnZero.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Construct, CardLocation.Extra)), Winda,
+                "Faimena did not establish the turn-zero Winda option");
+            IList<ClientCard> materials = turnZero.Select(HintMsg.FusionMaterial, 2, 2,
+                wendi, squamata, ash);
+            Has(materials, Wendi, "Faimena missed the non-DARK Shaddoll material");
+            Has(materials, Squamata, "Faimena missed the DARK Shaddoll material");
+
+            Fixture shortCost = new Fixture();
+            ClientCard invalidFaimena = shortCost.Add(Faimena, CardLocation.Hand);
+            shortCost.Add(Wendi, CardLocation.Hand);
+            Require(!shortCost.AI.OnSelectEffectYn(invalidFaimena, Desc(Faimena, 0)),
+                "Faimena counted its discarded self as a remaining Fusion material");
         });
 
         Run("Resolved Fuwalos also shortens Extra Deck extension", () =>

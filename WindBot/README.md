@@ -642,6 +642,10 @@ combo. Its implemented decisions include:
   Construct setup, Apkallone search/discard and Meshachrer search/revival;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
+- adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
+  from hand before milling, Faimena excludes its own discard cost and can make a
+  turn-zero Winda with two real remaining materials, and Cartesia includes
+  itself for Granguignol while preserving stronger hand interaction;
 - opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
@@ -716,7 +720,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 49 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 50 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete

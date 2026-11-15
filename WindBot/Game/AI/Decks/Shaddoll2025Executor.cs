@@ -338,7 +338,7 @@ namespace WindBot.Game.AI.Decks
                 return SelectByScore(cards, min, max, SpellTrapRecoveryScore);
 
             if (PromptIs(CardId.TearlamentsScheiren) && hint == HintMsg.ToGrave)
-                return SelectByScore(cards, min, max, DiscardScore);
+                return SelectByScore(cards, min, max, ScheirenSendScore);
 
             return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
@@ -506,7 +506,11 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location != CardLocation.Hand || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
                 return false;
-            return Bot.Hand.Count(c => c.IsMonster()) >= 2 && Bot.HasInExtra(ShaddollFusionIds);
+            // Faimena discards itself as cost before Fusion materials are chosen.
+            // Require two other monsters so the turn-zero Quick Fusion is real.
+            return Bot.Hand.Concat(Bot.GetMonsters())
+                .Count(c => c != Card && c.IsMonster()) >= 2 &&
+                Bot.HasInExtra(ShaddollFusionIds);
         }
 
         private bool CartesiaActivate()
@@ -590,7 +594,9 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.Hand)
             {
                 if (FunctionalWinda() || ShouldStopSpecialSummoning(CardLocation.Hand) ||
-                    HasSafeLethalOnBoard() || Bot.Hand.Count < 2)
+                    HasSafeLethalOnBoard() || Bot.GetMonsterCount() >= 5 ||
+                    Bot.Deck.Count < 3 ||
+                    !Bot.Hand.Any(c => c != Card && IsShaddollMonster(c)))
                     return false;
                 return MarkUsed(CardId.TearlamentsScheiren);
             }
@@ -824,6 +830,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (_shaddollExtraDeckLock && !card.HasSetcode(ShaddollSetcode))
                 return -1000;
+            if (ownerId == CardId.DracotailFaimena && Duel.Player == 1 &&
+                card.IsCode(CardId.ElShaddollWinda))
+                return 245;
             if (ownerId == CardId.TohushaddollGrysta && IsLevRouteActive() &&
                 card.IsCode(CardId.ElShaddollMeshachrer))
                 return 240;
@@ -882,6 +891,14 @@ namespace WindBot.Game.AI.Decks
 
         private int FusionMaterialScore(ClientCard card)
         {
+            if (_pendingFusionTargetId == CardId.GranguignolDuskDragon)
+            {
+                if (card.IsCode(CardId.BlazingCartesia)) return 280;
+                if (IsShaddollMonster(card)) return 220 + ShaddollSendScore(card);
+                if (card.IsCode(CardId.AshBlossomJoyousSpring, CardId.EffectVeiler,
+                    CardId.DrollLockBird, CardId.MaxxC,
+                    CardId.MulcharmyFuwalos, CardId.MulcharmyPurulia)) return -100;
+            }
             if (_pendingFusionTargetId == CardId.ReeshaddollWendikuruhu &&
                 HasLevControlExtension())
             {
@@ -1040,6 +1057,16 @@ namespace WindBot.Game.AI.Decks
             if (card.IsCode(CardId.ArmageddonKnight) &&
                 !IsLevRouteActive() && !Bot.HasInHandOrInSpellZone(CardId.LevShaddollFusion)) return 10;
             return 55;
+        }
+
+        private int ScheirenSendScore(ClientCard card)
+        {
+            if (!IsShaddollMonster(card)) return -300;
+            int score = ShaddollSendScore(card) + 40;
+            if (card.IsCode(CardId.ShaddollBeast)) score += 20;
+            if (IsLevRouteActive() && Bot.HasInMonstersZone(CardId.ElShaddollConstruct) &&
+                card.IsCode(CardId.ReeshaddollWendi)) score -= 300;
+            return score;
         }
 
         private int ArmageddonSendScore(ClientCard card)
