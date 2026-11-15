@@ -1161,7 +1161,7 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
             else if (Bot.HasInMonstersZone(CardId.SpiritWithEyesOfBlue) && Bot.HasInGraveyard(CardId.MaidenOfWhite) &&
-                !Bot.HasInHandOrInGraveyard(CardId.BlueEyesWhiteDragon) && !Bot.HasInHand(CardId.KaibamanTheLegend))
+                !Bot.HasInGraveyard(CardId.BlueEyesWhiteDragon) && !Bot.HasInHand(CardId.KaibamanTheLegend))
             {
                 AI.SelectCard(CardId.SpiritWithEyesOfBlue);
                 return true;
