@@ -602,8 +602,11 @@ remain under `Artifacts/destiny-board-implementation-20261102/`.
 
 ## Shaddoll 2025 executor
 
-`Shaddoll2025` is a normal WindBot executor for the exact 40 Main / 15 Extra /
-9 Side card list supplied as `Shaddoll2025.ydk`. It uses the released Standard
+`Shaddoll2025` is a normal WindBot executor for a 40 Main / 15 Extra / 9 Side
+revision of the supplied `Shaddoll2025.ydk`. El Shaddoll Grysta was moved from
+the Side Deck into the game-one Extra Deck and El Shaddoll Anoyatyllis moved to
+the Side Deck, making the opponent-turn summon-negate branch actually available.
+It uses the released Standard
 catalog in `DeckWorkshop/Data/standard` as its implementation reference. The
 installed scripts and card database take priority over external strategy notes.
 The supplied file's tournament provenance has not been independently confirmed;
@@ -626,6 +629,10 @@ combo. Its implemented decisions include:
   Meshachrer, followed by Void, Construct, Hedgehog/Wendi, El Shaddoll Fusion,
   Wendikuruhu, Ariel, Squamata and recovered Schism when every observed resource
   remains available;
+- real idle-command sequencing for the committed route: Lev starts before an
+  unrelated Void line, Meshachrer takes its search before being tributed, a
+  searched Void resolves before Lev's tribute effect, and flexible Fusion
+  effects wait until the Construct continuation is ready;
 - recalculation at each legal offer: missing Apkallone can use the Evil/Void
   fallback, missing Void can search El Shaddoll Fusion, missing Meshachrer can
   choose another legal Fusion, and Lev-only hands convert the completed
@@ -636,9 +643,10 @@ combo. Its implemented decisions include:
   Construct setup, Apkallone search/discard and Meshachrer search/revival;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
-- delayed opponent-turn Winda/Schism use, Wendikuruhu flip control, Shekhinaga
-  response deduplication, and Maxx "C"/Mulcharmy extension shortening once a
-  functional board is established;
+- opponent-turn branch selection between Winda's summon limit, Apkallone's
+  face-up negate and El Shaddoll Grysta's Special Summon negate, plus delayed
+  Schism use, Wendikuruhu flip control, Shekhinaga response deduplication, and
+  Maxx "C"/Mulcharmy extension shortening once a functional board is established;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -653,11 +661,14 @@ combo. Its implemented decisions include:
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
   grind-game Spell/Trap recovery, and conservative use of hand traps.
 
-The supplied list contains one Infernoid Evil, one Resh Shaddoll Incarnation and
+The revised list contains one Infernoid Evil, one Resh Shaddoll Incarnation and
 three Armageddon Knight starters. Shaddoll Construct (the Link Monster) is in
 the Side Deck rather than the game-one Extra Deck, so the executor does not
-fabricate the promotional Link continuation. The current game-one ceiling uses
-Wendikuruhu, a prepared Flip monster and Schism instead. Cartesia cannot
+fabricate the promotional Link continuation. El Shaddoll Grysta is now in the
+game-one Extra Deck; its script negates a Special Summon and destroys those
+monsters, but it is not an omni-negate. The current game-one branches use
+Wendikuruhu, a prepared Flip monster, Schism, Winda, Apkallone or Grysta according
+to the observed board. Cartesia cannot
 self-Special Summon by an absent Albaz condition, Faimena has no Dracotail Set
 target, and Perfume Dancer remains a Lev GY utility card.
 
@@ -671,10 +682,11 @@ With one of those four cards replaced by a compatible Shaddoll monster—Wendi,
 or a monster that leaves the single Hedgehog-to-Wendi search available in the
 Main Deck—the recorded control continuation is live. The lone Main Deck
 Hedgehog is not by itself sufficient for that exact branch. Wendikuruhu and
-Schism are two usable activation windows; Squamata's
-destroy and Schism's same-attribute send remain conditional effects, while
-Winda is the resulting floodgate. They are not blindly counted as four
-independent interruptions.
+Schism provide activation windows that can branch into multiple effects:
+Squamata's destroy, Schism's same-attribute send, Apkallone's face-up negate,
+Grysta's future summon negate or Winda's floodgate. Availability depends on the
+material, target, summon timing and once-per-turn state, so the promotional
+label is not treated as four unconditional omni-negates.
 
 Build and run the offline registration and focused callback checks from the
 workspace root:
@@ -694,7 +706,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 42 callback, route and deck-structure scenarios,
+The focused suite currently covers 47 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -707,3 +719,15 @@ and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
 2–1, all three results were observed and the Shaddoll client recorded no
 disconnects. This is a functional regression sample, not an estimate of matchup
 win rate or competitive strength.
+
+Scheduler-fix run `da97e47f-5c46-447e-b3c8-578b3024fd51` expanded the smoke
+matrix to 30 Normal-level games before the Grysta/Anoyatyllis Extra Deck swap.
+Shaddoll2025 went 1–4 against Blue-Eyes, 0–5 against Chaos-MAX, 2–3 against Dark
+Magician, 2–3 against Mathmech, 5–0 against Salamangreat and 4–1 against Sky
+Striker, with no Shaddoll disconnects. Final revised-deck run
+`2e3b4c81-d8d1-4d16-a3ba-7be06f03d567` completed another 18 observed games:
+0–3 Blue-Eyes, 0–3 Chaos-MAX, 0–3 Dark Magician, 3–0 Mathmech, 0–3
+Salamangreat and 1–2 Sky Striker, again with no Shaddoll disconnects. These
+results show that the launch/runtime path is stable and that the combo scheduler
+regression is covered, but they also show unresolved matchup weakness and high
+small-sample variance; they are not evidence of competitive strength.

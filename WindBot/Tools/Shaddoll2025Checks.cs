@@ -25,7 +25,8 @@ internal static class Shaddoll2025Checks
     private const int Fusion = 44394295, Schism = 21011044, Droll = 94145021;
     private const int Resh = 23912837, Evil = 97051536, Purulia = 84192580;
     private const int Mesh = 32467459, Construct = 20366274, Apkallone = 50907446;
-    private const int Perfume = 81196066, Wendikuruhu = 8852158, Winda = 94977269;
+    private const int ElGrysta = 48424886, Perfume = 81196066;
+    private const int Wendikuruhu = 8852158, Winda = 94977269;
     private const int Armageddon = 28985331, Ash = 14558127, LinkConstruct = 86938484;
     private const int BlueEyes = 89631139;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
@@ -126,6 +127,26 @@ internal static class Shaddoll2025Checks
             return Select(hint, 1, 1, offered)[0];
         }
 
+        internal ClientCard SelectIdle(params KeyValuePair<ClientCard, int>[] offers)
+        {
+            MainPhase main = new MainPhase { CanEndPhase = true };
+            for (int i = 0; i < offers.Length; ++i)
+            {
+                ClientCard card = offers[i].Key;
+                int description = offers[i].Value;
+                main.ActivableCards.Add(card);
+                main.ActivableDescs.Add(description);
+                card.ActionActivateIndex[description] = i;
+            }
+            Duel.MainPhase = main;
+            MainPhaseAction action = AI.OnSelectIdleCmd(main);
+            Require(action.Action == MainPhaseAction.MainAction.Activate,
+                "Idle scheduler did not choose an activation");
+            Require(action.Index >= 0 && action.Index < offers.Length,
+                "Idle scheduler returned an invalid activation index");
+            return offers[action.Index].Key;
+        }
+
         internal ClientCard Extra(int id)
         {
             return Bot.ExtraDeck.First(c => c.IsCode(id));
@@ -192,6 +213,11 @@ internal static class Shaddoll2025Checks
     private static int Desc(int id, int offset)
     {
         return id * 16 + offset;
+    }
+
+    private static KeyValuePair<ClientCard, int> Offer(ClientCard card, int offset)
+    {
+        return new KeyValuePair<ClientCard, int>(card, Desc(card.Id, offset));
     }
 
     private static void Require(bool condition, string message)
@@ -498,6 +524,37 @@ internal static class Shaddoll2025Checks
                 "The Shaddoll-only lock incorrectly blocked Lev's own second effect");
         });
 
+        Run("Idle scheduler starts Lev before an independent Void line", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            ClientCard lev = f.Add(Lev, CardLocation.Hand);
+            f.Add(Grysta, CardLocation.Hand);
+            Is(f.SelectIdle(Offer(voidCard, 0), Offer(lev, 0)), Lev,
+                "Idle scheduler spent Void before committing the Lev starter");
+        });
+
+        Run("Idle scheduler preserves Mesh search then Void then Lev tribute", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+            f.Add(Grysta, CardLocation.Hand);
+
+            Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(mesh, 1)), Mesh,
+                "Idle scheduler tributed Mesh or fused before taking its search");
+
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(voidCard, 0),
+                Offer(mesh, 1)), Void,
+                "Idle scheduler skipped the searched Void setup");
+
+            Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(voidCard, 0),
+                Offer(mesh, 1)), Lev,
+                "Idle scheduler fused before Lev converted Mesh into Construct");
+        });
+
         Run("Lev-only deterministic opening reports the legal Winda ceiling", () =>
         {
             Fixture f = ExecuteLevOpening(false);
@@ -636,6 +693,46 @@ internal static class Shaddoll2025Checks
             Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
                 Card(Construct, CardLocation.Extra)), Winda,
                 "Opponent-turn fusion failed to establish the summon limit");
+        });
+
+        Run("Opponent-turn Fusion adds Apkallone disruption behind Winda", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Winda, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            ClientCard threat = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.Hand);
+            f.Chain(threat, false);
+            Require(f.AI.OnSelectEffectYn(fusion, 0),
+                "El Shaddoll Fusion stopped at Winda instead of using the opponent-turn branch");
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
+                f.Extra(Construct), f.Extra(ElGrysta)), Apkallone,
+                "Fusion did not choose the live face-up negate behind Winda");
+        });
+
+        Run("Opponent-turn Fusion can prepare Grysta summon negation", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Winda, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.Hand);
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(ElGrysta),
+                f.Extra(74822425)), ElGrysta,
+                "Fusion missed the available summon-negate branch");
+        });
+
+        Run("El Shaddoll Grysta holds a Shaddoll cost for a real summon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            ClientCard grysta = f.Add(ElGrysta, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            Require(f.AI.OnSelectEffectYn(grysta, 0),
+                "El Shaddoll Grysta rejected its live summon-negate window");
         });
 
         Run("Going second fusion chooses Construct over premature Winda", () =>

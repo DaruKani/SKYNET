@@ -39,6 +39,7 @@ namespace WindBot.Game.AI.Decks
             public const int AshBlossomJoyousSpring = 14558127;
 
             public const int ElShaddollMeshachrer = 32467459;
+            public const int ElShaddollGrysta = 48424886;
             public const int ElShaddollShekhinaga = 74822425;
             public const int ElShaddollAnoyatyllis = 19261966;
             public const int ElShaddollConstruct = 20366274;
@@ -84,6 +85,7 @@ namespace WindBot.Game.AI.Decks
         private static readonly int[] ShaddollFusionIds =
         {
             CardId.ElShaddollMeshachrer,
+            CardId.ElShaddollGrysta,
             CardId.ElShaddollConstruct,
             CardId.ElShaddollApkallone,
             CardId.ElShaddollWinda,
@@ -104,18 +106,25 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.AshBlossomJoyousSpring,
                 DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.EffectVeiler, EffectVeilerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollGrysta, ElShaddollGrystaActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollShekhinaga, ShekhinagaActivate);
             AddExecutor(ExecutorType.Activate, CardId.ReeshaddollWendikuruhu, WendikuruhuActivate);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollSchism, SchismActivate);
             AddExecutor(ExecutorType.Activate, CardId.ReshShaddollIncarnation, ReshActivate);
+            // Route actions use separate Lev executors so the real idle-command
+            // scheduler cannot skip a stage. Lev starts first, Mesh searches,
+            // Void converts the reveal, and only then may Lev tribute Mesh.
+            AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevPrimaryActivate);
+            AddExecutor(ExecutorType.Activate, CardId.VoidUnleashing, VoidUnleashingActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollMeshachrer, MeshachrerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevTributeActivate);
+
+            // Flexible Fusion effects and extenders are intentionally after the
+            // committed Lev route. They remain available on the opponent's turn,
+            // where Lev's ignition effects are not legal offers.
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollFusion, ElShaddollFusionActivate);
             AddExecutor(ExecutorType.Activate, CardId.DracotailFaimena, FaimenaActivate);
             AddExecutor(ExecutorType.Activate, CardId.BlazingCartesia, CartesiaActivate);
-
-            // Starters and extenders. The order favors setup that creates a
-            // resilient route before spending cards from hand as Fusion material.
-            AddExecutor(ExecutorType.Activate, CardId.VoidUnleashing, VoidUnleashingActivate);
-            AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevShaddollFusionActivate);
             AddExecutor(ExecutorType.Activate, CardId.FusionDeployment, FusionDeploymentActivate);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollFusion, ShaddollFusionActivate);
             AddExecutor(ExecutorType.Activate, CardId.TearlamentsScheiren, ScheirenActivate);
@@ -132,7 +141,6 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.TohushaddollGrysta, TohushaddollGrystaActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollConstruct, ConstructActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollApkallone, ApkalloneActivate);
-            AddExecutor(ExecutorType.Activate, CardId.ElShaddollMeshachrer, MeshachrerActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollWinda, FusionRecoveryActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollAnoyatyllis, FusionRecoveryActivate);
             AddExecutor(ExecutorType.Activate, CardId.InfernoidEvil, InfernoidEvilActivate);
@@ -231,6 +239,10 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.SpSummon)
                     return SelectByScore(cards, min, max, RevivalScore);
             }
+
+            if (PromptIs(CardId.ElShaddollGrysta) &&
+                (hint == HintMsg.ToGrave || hint == HintMsg.Discard))
+                return SelectByScore(cards, min, max, DiscardScore);
 
             if (PromptIs(CardId.ElShaddollApkallone))
             {
@@ -422,6 +434,18 @@ namespace WindBot.Game.AI.Decks
             return MarkUsed(CardId.ElShaddollShekhinaga);
         }
 
+        private bool ElShaddollGrystaActivate()
+        {
+            if (Card.Location == CardLocation.Grave)
+                return FusionRecoveryActivate();
+            if (Card.Location != CardLocation.MonsterZone || Card.IsDisabled() ||
+                Duel.Player != 1 || !Bot.Hand.Any(IsShaddollCard))
+                return false;
+            AI.SelectCard(Bot.Hand.Where(IsShaddollCard)
+                .OrderByDescending(DiscardScore).FirstOrDefault());
+            return MarkUsed(CardId.ElShaddollGrysta);
+        }
+
         private bool WendikuruhuActivate()
         {
             if (Card.Location == CardLocation.Grave)
@@ -438,7 +462,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.IsFacedown())
                 return Duel.Player == 1 && IsMainPhase() && HasFusionResources(true);
-            if (!IsMainPhase() || !HasFusionResources(true) || FunctionalWinda())
+            if (!IsMainPhase() || !HasFusionResources(true) ||
+                (FunctionalWinda() && _specialSummonsThisTurn >= 1))
                 return false;
             if (Duel.Player == 0 && !Enemy.GetMonsters().Any(c => c.IsFaceup()))
                 return false;
@@ -471,7 +496,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (!HasFusionResources(false) || ShouldStopSpecialSummoning(CardLocation.Extra))
                 return false;
-            if (HasSafeLethalOnBoard() || FunctionalWinda())
+            if (HasSafeLethalOnBoard() || (Duel.Player == 0 && FunctionalWinda()))
                 return false;
             if (Duel.Player == 1)
                 return Enemy.GetMonsterCount() > 0 || Duel.CurrentChain.Count > 0;
@@ -516,28 +541,34 @@ namespace WindBot.Game.AI.Decks
             return MarkUsed(CardId.VoidUnleashing);
         }
 
-        private bool LevShaddollFusionActivate()
+        private bool LevPrimaryActivate()
         {
             if (DefaultCheckWhetherCardIsNegated(Card) || HasSafeLethalOnBoard())
                 return false;
             if (Card.Location == CardLocation.SpellZone && Card.IsFaceup())
-            {
-                ClientCard tribute = Bot.GetMonsters()
-                    .Where(c => c.HasType(CardType.Fusion) && c.IsFaceup() && !ShouldPreserveMonster(c))
-                    .OrderByDescending(c => c.IsCode(CardId.ElShaddollMeshachrer) && IsLevRouteActive() ? 1 : 0)
-                    .ThenBy(c => LevTributeScore(c))
-                    .FirstOrDefault();
-                if (tribute == null || ShouldStopSpecialSummoning(CardLocation.Extra))
-                    return false;
-                AI.SelectCard(tribute);
-                _levTributedMesh = tribute.IsCode(CardId.ElShaddollMeshachrer);
-                _shaddollExtraDeckLock = true;
-                return MarkUsed(CardId.LevShaddollFusion + 1);
-            }
+                return false;
             if (Bot.ExtraDeck.Count == 0)
                 return false;
             _shaddollExtraDeckLock = true;
             return MarkUsed(CardId.LevShaddollFusion);
+        }
+
+        private bool LevTributeActivate()
+        {
+            if (Card.Location != CardLocation.SpellZone || !Card.IsFaceup() ||
+                DefaultCheckWhetherCardIsNegated(Card) || HasSafeLethalOnBoard())
+                return false;
+            ClientCard tribute = Bot.GetMonsters()
+                .Where(c => c.HasType(CardType.Fusion) && c.IsFaceup() && !ShouldPreserveMonster(c))
+                .OrderByDescending(c => c.IsCode(CardId.ElShaddollMeshachrer) && IsLevRouteActive() ? 1 : 0)
+                .ThenBy(c => LevTributeScore(c))
+                .FirstOrDefault();
+            if (tribute == null || ShouldStopSpecialSummoning(CardLocation.Extra))
+                return false;
+            AI.SelectCard(tribute);
+            _levTributedMesh = tribute.IsCode(CardId.ElShaddollMeshachrer);
+            _shaddollExtraDeckLock = true;
+            return MarkUsed(CardId.LevShaddollFusion + 1);
         }
 
         private bool FusionDeploymentActivate()
@@ -658,8 +689,10 @@ namespace WindBot.Game.AI.Decks
         private bool MeshachrerActivate()
         {
             if (Card.Location == CardLocation.MonsterZone)
-                return Bot.LifePoints > 1600 && HasUsefulMeshSearch();
-            return Bot.GetMonsterCount() < 5 && Bot.Graveyard.Any(IsShaddollMonster);
+                return Bot.LifePoints > 1600 && HasUsefulMeshSearch() &&
+                    MarkUsed(CardId.ElShaddollMeshachrer);
+            return Bot.GetMonsterCount() < 5 && Bot.Graveyard.Any(IsShaddollMonster) &&
+                MarkUsed(CardId.ElShaddollMeshachrer + 1);
         }
 
         private bool FusionRecoveryActivate()
@@ -807,13 +840,21 @@ namespace WindBot.Game.AI.Decks
             int score = 0;
             if (card.IsCode(CardId.ElShaddollWinda))
             {
-                score = Duel.Player == 1 ? 105 : Duel.Phase == DuelPhase.Main2 ? 82 : 35;
+                score = Duel.Player == 1 ? 130 : Duel.Phase == DuelPhase.Main2 ? 82 : 35;
                 if (FunctionalWinda()) score -= 100;
             }
             else if (card.IsCode(CardId.ElShaddollConstruct))
-                score = Enemy.GetMonsterCount() > 0 ? 98 : 70;
+                score = Duel.Player == 0 && Enemy.GetMonsterCount() > 0 ? 108 : 70;
             else if (card.IsCode(CardId.ElShaddollApkallone))
-                score = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()) ? 94 : 72;
+            {
+                bool liveFaceup = Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                    .Any(c => c.IsFaceup() && !c.IsDisabled());
+                score = liveFaceup ? (Duel.Player == 1 ? 125 : 104) : 72;
+                if (FunctionalWinda() && liveFaceup) score += 15;
+            }
+            else if (card.IsCode(CardId.ElShaddollGrysta))
+                score = Duel.Player == 1 && Bot.Hand.Any(IsShaddollCard) ?
+                    (FunctionalWinda() ? 118 : 110) : 55;
             else if (card.IsCode(CardId.ElShaddollMeshachrer))
                 score = Bot.LifePoints > 1600 && Bot.Hand.Count >= 2 ? 92 : 58;
             else if (card.IsCode(CardId.ReeshaddollWendikuruhu))
@@ -1150,6 +1191,7 @@ namespace WindBot.Game.AI.Decks
         {
             return Bot.GetMonsters().Any(c => c.IsFaceup() && c.IsCode(
                 CardId.ElShaddollWinda,
+                CardId.ElShaddollGrysta,
                 CardId.ElShaddollShekhinaga,
                 CardId.ReeshaddollWendikuruhu,
                 CardId.ElShaddollMeshachrer)) ||
@@ -1163,6 +1205,8 @@ namespace WindBot.Game.AI.Decks
             if (Bot.HasInSpellZone(CardId.ShaddollSchism)) score += 65;
             if (Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                 c.IsCode(CardId.ElShaddollShekhinaga))) score += 55;
+            if (Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
+                c.IsCode(CardId.ElShaddollGrysta) && Bot.Hand.Any(IsShaddollCard))) score += 50;
             if (Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                 c.IsCode(CardId.ReeshaddollWendikuruhu))) score += 55;
             score += Math.Min(40, Bot.GetMonsters().Count(IsUsefulFacedownFlip) * 20);
@@ -1338,6 +1382,7 @@ namespace WindBot.Game.AI.Decks
         {
             return PromptIs(CardId.ElShaddollConstruct) ||
                 PromptIs(CardId.ElShaddollWinda) ||
+                PromptIs(CardId.ElShaddollGrysta) ||
                 PromptIs(CardId.ElShaddollShekhinaga) ||
                 PromptIs(CardId.ElShaddollAnoyatyllis);
         }
