@@ -20,6 +20,21 @@ Keep the console open while using Arena; press Ctrl+C to stop it. Internet acces
 is needed when dependencies must be installed. The launcher leaves failures
 visible instead of closing immediately.
 
+To start Arena with structured normal-WindBot duel logging already enabled,
+double-click **`Duel Log Arena.bat`**. It builds the current WindBot Release,
+starts or reuses Arena, enables traces for every Local WindBot agent, and opens
+the browser. Logs default to `../Artifacts/windbot-duel-traces`; override the
+absolute non-root destination or skip rebuilds from Command Prompt when needed:
+
+```bat
+"Duel Log Arena.bat" -TraceDirectory "D:\Arena-Traces"
+"Duel Log Arena.bat" -SkipWindBotBuild -SkipArenaBuild
+```
+
+The launcher only enables local normal-WindBot tracing. Remote WindBot and
+native SKYNET agents are left unchanged. Arena still requires a configured,
+dedicated SRVPro instance before it can run duels.
+
 Commands are optional. For a manual PowerShell start:
 
 ```powershell
