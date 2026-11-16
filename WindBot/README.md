@@ -157,6 +157,7 @@ registrations are preserved. Difficulty flags are left unassigned until measured
 | Sirokami Dark Magician | `SirokamiDarkMagician` | [PR #296](https://github.com/IceYGO/windbot/pull/296), pinned `12d5270` |
 | Raise Moon | `RaiseMoon` | [PR #297](https://github.com/IceYGO/windbot/pull/297), pinned `12a1d1b` |
 | Metalmorph | `Metalmorph` | Supplied personal source and deck |
+| Mikanko | `Mikanko` | Supplied MDPro4 deck and workspace implementation |
 | Odion | `Odion` | Supplied personal source and deck |
 | Bakura - Destiny Board | `DestinyBoard` | Workspace implementation; unrestricted, selected prerelease Necrofear |
 
@@ -230,6 +231,44 @@ server's ranking API and can compare Release binaries.
 The [executor skill](Skills/windbot-executor-builder/SKILL.md) and
 [authoring guide](Guides/ExecutorAuthoring.md) contain the maintained workflow.
 Use these with the current card scripts and observed duel traces.
+
+### Mikanko going-second OTK executor
+
+`Deck=Mikanko` loads `Decks/AI_Mikanko.ydk`, the supplied 40-card Main and
+15-card Extra Deck. The executor always chooses the second turn. It compares the
+actual Main Phase actions offered by the duel engine, prioritizes visible board
+breakers and high-value threats, then builds an equipped Mikanko reflector and
+enters battle when the observed damage is lethal. Kaiju and Lava Golem release
+choices use public threat scores; an established Kaiju is preserved as an OTK
+target instead of being replaced or tributed unnecessarily.
+
+The prompt handlers cover Ohime, Noble Twins, Great Ceremony, Water Arabesque,
+Fire Dance, Mayowashidori, Mikanko Rivalry, the Equip Spells, Kaiju/Lava Golem
+releases, material prompts and the supplied Extra Deck. Battle planning follows
+the selected MDPro4 scripts: Ohime and Uzuhime reflect unconditionally; Ha-Re and
+Hu-Li reflect only while equipped; Sanaki is not treated as a reflector.
+
+Build and run the focused dispatcher, prompt and battle checks with the selected
+MDPro4 database:
+
+```powershell
+msbuild .\WindBot\WindBot.sln /p:Configuration=Debug /p:Platform="Any CPU"
+.\WindBot\Tools\Invoke-MikankoChecks.ps1 `
+  -BotExecutable WindBot/bin/Debug/WindBot.exe `
+  -Database 'D:/Games/MDPro4/Data/locales/en-US/cards.cdb' `
+  -Deck WindBot/Decks/AI_Mikanko.ydk `
+  -OutputDirectory Artifacts/mikanko-focused-checks
+python WindBot/Tools/bot_tool.py check `
+  --database D:/Games/MDPro4/Data/locales/en-US/cards.cdb `
+  --deck WindBot/Decks/AI_Mikanko.ydk --registration Mikanko `
+  --output Artifacts/mikanko-runtime-check
+```
+
+The focused checks are synthetic legal-offer fixtures and the runtime check
+validates database identities, deck copies and registration. Neither executes a
+complete Lua-backed duel or proves a win rate. Arbitrary opponent effects and
+unseen private cards remain outside the executor's knowledge; less common Extra
+Deck routes use conservative heuristics and require real-duel evaluation.
 
 ## Personal executor checks
 
