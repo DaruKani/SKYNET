@@ -464,7 +464,7 @@ Server mode exposes an HTTP endpoint that starts a bot for each valid request. E
 http://127.0.0.1:2399/?name=%E2%91%A8&deck=Blue-Eyes&host=127.0.0.1&port=7911&dialog=cirno.zh-CN
 ```
 
-Query parameter names are lowercase. Supported parameters are `name`, `deck`, `host`, `port`, `dialog`, `version`, `password`, `hand`, `debug`, and `chat`. The `name`, `host`, and `port` parameters are required. `deckfile` is not supported.
+Query parameter names are lowercase. Supported parameters are `name`, `deck`, `host`, `port`, `dialog`, `version`, `password`, `hand`, `debug`, `chat`, and `tracedata`. The `name`, `host`, and `port` parameters are required. `tracedata` must identify an absolute non-root directory. `deckfile` is not supported.
 
 The HTTP listener binds to all interfaces. On Windows, run with sufficient privileges or reserve the URL for the selected port (using `2399` here):
 
