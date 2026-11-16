@@ -371,6 +371,20 @@ function removeSrvpro(index) {
                                         <n-form-item label="bot.conf path" class="span-2">
                                             <n-input v-model:value="draft.windbots[name].botConfPath" />
                                         </n-form-item>
+                                        <n-form-item label="Structured duel traces" class="span-2">
+                                            <div class="profile-help">
+                                                <n-checkbox v-model:checked="draft.windbots[name].traceEnabled">
+                                                    Capture public observations, legal offers and responses
+                                                </n-checkbox>
+                                                <p>Off by default. Arena separates JSONL files by experiment, room and participant. Trace capture does not enable training and masks hidden opponent identities.</p>
+                                            </div>
+                                        </n-form-item>
+                                        <n-form-item v-if="draft.windbots[name].traceEnabled" label="Trace output directory" class="span-2">
+                                            <n-input
+                                                v-model:value="draft.windbots[name].traceDirectory"
+                                                placeholder="Absolute non-root directory, for example D:\Arena-Traces"
+                                            />
+                                        </n-form-item>
                                     </template>
                                     <template v-else>
                                         <n-form-item label="Remote host" class="span-2">

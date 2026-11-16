@@ -1,5 +1,6 @@
 'use strict';
 
+const path = require('node:path');
 const { DEFAULT_WEBHOOK_TEMPLATE, renderWebhookTemplate, renderWebhookUrl } = require('./notifications');
 const { defaultSkynetSettings, normalizeSkynetSettings } = require('./skynet-config');
 
@@ -26,6 +27,8 @@ function createDefaultArenaSettings() {
                 mode: 'local',
                 port: 2399,
                 runtimeDir: '',
+                traceDirectory: '',
+                traceEnabled: false,
                 skynet: defaultSkynetSettings(),
             },
             old: {
@@ -36,6 +39,8 @@ function createDefaultArenaSettings() {
                 mode: 'local',
                 port: 2398,
                 runtimeDir: '',
+                traceDirectory: '',
+                traceEnabled: false,
                 skynet: defaultSkynetSettings(),
             },
         },
@@ -64,6 +69,22 @@ function readWindBot(input, existing, label) {
     if (mode === 'local') {
         result.botConfPath = String(source.botConfPath || '').trim();
         result.runtimeDir = String(source.runtimeDir || '').trim();
+        result.traceEnabled = source.traceEnabled ?? existing.traceEnabled ?? false;
+        result.traceDirectory = String(source.traceDirectory || '').trim();
+        if (typeof result.traceEnabled !== 'boolean') {
+            throw new Error(`${label}trace enabled must be a boolean`);
+        }
+        if (result.traceDirectory && (
+            !path.isAbsolute(result.traceDirectory)
+            || path.parse(result.traceDirectory).root === path.resolve(result.traceDirectory)
+            || result.traceDirectory.length > 4000
+            || /[\x00-\x1f]/.test(result.traceDirectory)
+        )) {
+            throw new Error(`${label}trace directory must be an explicit absolute non-root directory`);
+        }
+        if (result.traceEnabled && !result.traceDirectory) {
+            throw new Error(`${label}trace directory is required when structured traces are enabled`);
+        }
     } else if (mode === 'skynet') {
         result.skynet = normalizeSkynetSettings(source.skynet || existing.skynet);
     } else {
@@ -248,6 +269,8 @@ function getPublicArenaSettings(settings, updatedAt) {
     delete result.development;
     for (const instance of Object.values(result.windbots)) {
         instance.botConfUrl ||= '';
+        instance.traceDirectory ||= '';
+        instance.traceEnabled ??= false;
         instance.skynet = { ...defaultSkynetSettings(), ...instance.skynet };
     }
     return {

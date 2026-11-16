@@ -138,6 +138,21 @@ entry is excluded. Full display labels and deck registrations are retained;
 overlong participant names use a stable hash suffix to fit WindBot's 19 UTF-16
 unit wire limit without splitting surrogate pairs.
 
+To collect structured evidence for normal-WindBot development, open **Settings
+→ Agents**, select **Local WindBot**, enable **Structured duel traces**, and set
+an absolute non-root output directory. New experiments pass an isolated trace
+directory to each participant and produce JSONL under
+`<root>/<experiment>/<room>/<participant>/`. Capture is opt-in, does not enable
+training, and records only client-visible information. Analyze the resulting
+tree from the workspace root:
+
+```powershell
+python WindBot/Tools/analyze_traces.py `
+  --traces D:/Arena-Traces `
+  --output D:/Arena-Traces/analysis.json `
+  --decisions-csv D:/Arena-Traces/decisions.csv
+```
+
 ## Configure a SKYNET comparison
 
 1. Build `../SKYNET/Skynet.sln` in Release with Visual Studio MSBuild.

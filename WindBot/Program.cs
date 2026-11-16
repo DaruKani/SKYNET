@@ -77,6 +77,9 @@ namespace WindBot
             Info.Deck = Config.GetString("Deck", Info.Deck);
             Info.DeckFile = Config.GetString("DeckFile", Info.DeckFile);
             Info.Dialog = Config.GetString("Dialog", Info.Dialog);
+            Info.TraceData = Config.GetString("TraceData", Info.TraceData);
+            if (!string.IsNullOrWhiteSpace(Info.TraceData))
+                Info.TraceData = Game.AI.Trace.TraceSession.ResolveDirectory(Info.TraceData);
             Info.Host = Config.GetString("Host", Info.Host);
             Info.Port = Config.GetInt("Port", Info.Port);
             Info.HostInfo = Config.GetString("HostInfo", Info.HostInfo);
@@ -163,6 +166,9 @@ namespace WindBot
                 string dialog = queryParams.Get("dialog");
                 if (dialog != null)
                     Info.Dialog = dialog;
+                string traceData = queryParams.Get("tracedata");
+                if (traceData != null)
+                    Info.TraceData = Game.AI.Trace.TraceSession.ResolveDirectory(traceData);
                 string version = queryParams.Get("version");
                 if (version != null)
                     Info.Version = Int16.Parse(version);
@@ -281,6 +287,8 @@ namespace WindBot
             }
             finally
             {
+                if (client != null)
+                    client.CloseTrace();
                 Logger.ClearContext();
             }
         }

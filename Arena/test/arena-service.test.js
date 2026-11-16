@@ -602,6 +602,42 @@ test('WindBot 404 distinguishes a missing challenger from other missing decks', 
     );
 });
 
+test('local WindBot trace capture is isolated by run room and participant', async (context) => {
+    const service = new ArenaService({}, {});
+    const activeContext = {
+        abortController: new AbortController(),
+        id: 'run:trace/one',
+        kind: 'regression',
+        settings: {
+            srvpro: { duelPort: 7911, host: 'srvpro.lan' },
+            windbots: {
+                current: { mode: 'local', traceDirectory: 'D:\\Arena-Traces', traceEnabled: true },
+                old: { mode: 'local', traceDirectory: 'D:\\Old-Traces', traceEnabled: false },
+            },
+        },
+    };
+    const requests = [];
+    const originalFetch = global.fetch;
+    context.after(() => { global.fetch = originalFetch; });
+    global.fetch = async (url) => {
+        requests.push(new URL(url));
+        return new Response(null, { status: 200 });
+    };
+
+    await service.addBot(activeContext, {
+        deck: 'Shaddoll 2025', executionMode: 'local', endpointHost: '127.0.0.1',
+        endpointPort: 2399, rankName: 'Candidate', source: 'current',
+    }, 'M#123456789');
+    await service.addBot(activeContext, {
+        deck: 'Shaddoll 2025', executionMode: 'local', endpointHost: '127.0.0.1',
+        endpointPort: 2398, rankName: 'Baseline', source: 'old',
+    }, 'M#123456789');
+
+    const traceData = requests[0].searchParams.get('tracedata');
+    assert.match(traceData, /^D:\\Arena-Traces\\run_trace_one\\M_123456789\\current-Shaddoll_2025-[a-f0-9]{12}$/);
+    assert.equal(requests[1].searchParams.has('tracedata'), false);
+});
+
 test('scheduler stops immediately when WindBot reports a missing deck', async () => {
     const events = [];
     const service = new ArenaService({}, {

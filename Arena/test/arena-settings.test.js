@@ -47,6 +47,23 @@ test('incomplete runtime settings can still be saved', () => {
     assert.equal(result.srvpros[0].password, '');
     assert.equal(result.windbots.current.runtimeDir, '');
     assert.equal(result.windbots.current.botConfPath, '');
+    assert.equal(result.windbots.current.traceEnabled, false);
+    assert.equal(result.windbots.current.traceDirectory, '');
+});
+
+test('local WindBot trace capture is opt-in and requires an explicit absolute directory', () => {
+    const settings = createDefaultArenaSettings();
+    settings.windbots.current.traceEnabled = true;
+    settings.windbots.current.traceDirectory = 'relative-traces';
+    assert.throws(
+        () => validateAndMergeArenaSettings(settings, settings),
+        /trace directory must be an explicit absolute non-root directory/,
+    );
+
+    settings.windbots.current.traceDirectory = 'D:\\Arena-Traces';
+    const result = validateAndMergeArenaSettings(settings, settings);
+    assert.equal(result.windbots.current.traceEnabled, true);
+    assert.equal(result.windbots.current.traceDirectory, 'D:\\Arena-Traces');
 });
 
 test('public settings never expose SRVPro secrets', () => {

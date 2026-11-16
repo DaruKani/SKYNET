@@ -1,0 +1,502 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization.Json;
+using YGOSharp.OCGWrapper.Enums;
+
+namespace WindBot.Game.AI.Trace
+{
+    public sealed class TraceSession
+    {
+        public const int MaximumRows = 4096;
+        public const int MaximumBytes = 16 * 1024 * 1024;
+        public const int MaximumRowBytes = 1024 * 1024;
+        public const int MaximumCards = 512;
+        public const int MaximumOffers = 4096;
+
+        private readonly string _directory;
+        private readonly string _agent;
+        private FileStream _stream;
+        private string _duelId;
+        private bool _disabled;
+        private bool _counterObserved;
+        private bool _isTag;
+        private int _rows;
+        private long _bytes;
+        private int? _outcome;
+
+        public bool Enabled
+        {
+            get { return !_disabled && _stream != null; }
+        }
+
+        public TraceSession(string directory, string agent)
+        {
+            _directory = directory;
+            _agent = agent;
+        }
+
+        public static string ResolveDirectory(string directory)
+        {
+            if (!Path.IsPathRooted(directory))
+                throw new ArgumentException("TraceData must be an explicitly selected absolute directory.");
+            string fullPath = Path.GetFullPath(directory);
+            string root = Path.GetPathRoot(fullPath);
+            string normalizedPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string normalizedRoot = (root ?? string.Empty).TrimEnd(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (string.IsNullOrEmpty(root)
+                || string.Equals(normalizedPath, normalizedRoot, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("TraceData must be an explicitly selected absolute non-root directory.");
+            return fullPath;
+        }
+
+        public void Begin(bool isTag)
+        {
+            End(_outcome.HasValue, "next-duel-start");
+            if (_disabled || string.IsNullOrWhiteSpace(_directory))
+                return;
+            try
+            {
+                string directory = ResolveDirectory(_directory);
+                Directory.CreateDirectory(directory);
+                _duelId = Guid.NewGuid().ToString("N");
+                _stream = new FileStream(Path.Combine(directory, _duelId + ".jsonl"),
+                    FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+                _rows = 0;
+                _bytes = 0;
+                _outcome = null;
+                _counterObserved = false;
+                _isTag = isTag;
+                Write(new TraceRecord
+                {
+                    Kind = "start",
+                    Coverage = new[] { "select_idlecmd", "select_card" },
+                    MaxRows = MaximumRows,
+                    MaxBytes = MaximumBytes,
+                    MaxRowBytes = MaximumRowBytes
+                });
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        public void OnMessage(GameMessage message)
+        {
+            if (!Enabled)
+                return;
+            if (message == GameMessage.AddCounter || message == GameMessage.RemoveCounter)
+                _counterObserved = true;
+            int value = (int)message;
+            if ((value >= 10 && value <= 26 && message != GameMessage.SelectIdleCmd
+                && message != GameMessage.SelectCard)
+                || (value >= 140 && value <= 143))
+            {
+                Write(new TraceRecord
+                {
+                    Kind = "unsupported-prompt",
+                    Prompt = message.ToString(),
+                    Unsupported = new List<string> { "prompt-not-captured" }
+                });
+            }
+        }
+
+        public void AddOffer(List<TraceOffer> offers, int action, int index,
+            int controller, int location, int sequence, int description, bool fieldOnly = false)
+        {
+            if (!Enabled || offers == null)
+                return;
+            try
+            {
+                if (offers.Count >= MaximumOffers)
+                    throw new InvalidDataException("Offer limit.");
+                string[] names = { "summon", "spsummon", "reposition", "mset", "sset", "activate", "battle", "end", "shuffle" };
+                offers.Add(new TraceOffer
+                {
+                    Id = offers.Count,
+                    Type = names[action],
+                    ActionCode = action,
+                    Index = index,
+                    WireResponse = (index << 16) + action,
+                    Description = description,
+                    FieldOnly = fieldOnly,
+                    Card = action < 6 ? new TraceCardReference
+                    {
+                        Controller = controller,
+                        Location = location,
+                        Sequence = sequence
+                    } : null
+                });
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        public TraceRecord Prepare(Duel duel, List<TraceOffer> offers)
+        {
+            if (!Enabled || offers == null)
+                return null;
+            try
+            {
+                TraceRecord record = new TraceRecord
+                {
+                    Kind = "decision",
+                    Prompt = "select_idlecmd",
+                    Offers = offers,
+                    Unsupported = new List<string>(),
+                    Observation = new TraceObservation
+                    {
+                        Global = new TraceGlobal
+                        {
+                            MyLp = duel.Fields[0].LifePoints,
+                            OpLp = duel.Fields[1].LifePoints,
+                            Turn = duel.Turn,
+                            Phase = (int)duel.Phase,
+                            IsFirst = duel.IsFirst,
+                            IsMyTurn = duel.Player == 0
+                        },
+                        // ClientCard currently discards Query.Counters. Zero is
+                        // a placeholder, never an assertion that no counter exists.
+                        CounterStateAvailable = false
+                    }
+                };
+                if (_isTag)
+                    record.Unsupported.Add("tag-duel-not-supported");
+                if (_counterObserved)
+                    record.Unsupported.Add("counter-update-observed");
+                if (duel.CurrentChain.Count != 0 || duel.SolvingChainIndex != 0)
+                    record.Unsupported.Add("chain-state-incomplete");
+                if (offers.Any(offer => offer.Type == "shuffle"))
+                    record.Unsupported.Add("shuffle-action-not-supported");
+                if (offers.Any(offer => offer.FieldOnly))
+                    record.Unsupported.Add("field-only-effect-not-supported");
+
+                for (int player = 0; player < 2; ++player)
+                {
+                    ClientField field = duel.Fields[player];
+                    record.Observation.Counts.Add(new TraceCounts
+                    {
+                        Deck = field.Deck.Count,
+                        Hand = field.Hand.Count,
+                        Extra = field.ExtraDeck.Count,
+                        Grave = field.Graveyard.Count,
+                        Banished = field.Banished.Count,
+                        Monster = field.MonsterZone.Count(card => card != null),
+                        Spell = field.SpellZone.Count(card => card != null)
+                    });
+                    CaptureZone(record, field.Deck, player, CardLocation.Deck);
+                    CaptureZone(record, field.Hand, player, CardLocation.Hand);
+                    CaptureZone(record, field.ExtraDeck, player, CardLocation.Extra);
+                    CaptureZone(record, field.Graveyard, player, CardLocation.Grave);
+                    CaptureZone(record, field.Banished, player, CardLocation.Removed);
+                    CaptureZone(record, field.MonsterZone, player, CardLocation.MonsterZone);
+                    CaptureZone(record, field.SpellZone, player, CardLocation.SpellZone);
+                    if (field.HintDescriptions != null && field.HintDescriptions.Count > 0)
+                        AddUnsupported(record, "player-hint-state-incomplete");
+                }
+                foreach (TraceOffer offer in offers)
+                {
+                    TraceCard observed = offer.Card == null ? null : record.Observation.Cards.FirstOrDefault(card =>
+                        card.Controller == offer.Card.Controller && card.Location == offer.Card.Location
+                        && card.Sequence == offer.Card.Sequence);
+                    if (offer.Card != null && observed == null)
+                        AddUnsupported(record, "offered-card-not-observed");
+                    if (offer.ActionCode == 5 && (observed == null || !observed.Known))
+                    {
+                        offer.Description = -1;
+                        AddUnsupported(record, "hidden-offer-description-redacted");
+                    }
+                }
+                return record;
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+                return null;
+            }
+        }
+
+        public void AddSelectionCandidate(List<TraceSelectionCandidate> candidates, int index,
+            int code, int controller, int location, int sequence, int position)
+        {
+            if (!Enabled || candidates == null)
+                return;
+            try
+            {
+                if (candidates.Count >= 255)
+                    throw new InvalidDataException("Selection candidate limit.");
+                bool overlay = (location & (int)CardLocation.Overlay) != 0;
+                bool faceup = !overlay && (position & (int)CardPosition.FaceUp) != 0;
+                bool known = code > 0 && (controller == 0 || (!overlay
+                    && location != (int)CardLocation.Deck && location != (int)CardLocation.Hand
+                    && (location == (int)CardLocation.Grave || faceup)));
+                candidates.Add(new TraceSelectionCandidate
+                {
+                    Id = index,
+                    Known = known,
+                    Code = known ? code : 0,
+                    Card = new TraceCardReference
+                    {
+                        Controller = controller,
+                        Location = location,
+                        Sequence = sequence,
+                        OverlaySequence = overlay ? position : -1
+                    },
+                    Position = overlay || location == (int)CardLocation.Deck
+                        || location == (int)CardLocation.Hand ? 0 : position
+                });
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        public TraceRecord PrepareSelection(Duel duel, List<TraceSelectionCandidate> candidates,
+            int min, int max, bool cancelable, int hint)
+        {
+            if (!Enabled || candidates == null)
+                return null;
+            try
+            {
+                TraceRecord record = Prepare(duel, new List<TraceOffer>());
+                if (record == null)
+                    return null;
+                record.Prompt = "select_card";
+                record.Selection = new TraceSelection
+                {
+                    Min = min,
+                    Max = max,
+                    Cancelable = cancelable,
+                    Hint = hint,
+                    Candidates = candidates,
+                    SolvingChainIndex = duel.SolvingChainIndex
+                };
+                // Activation snapshots survive source movement and reverse resolution.
+                // Targets, relations and unhandled prompts remain explicitly incomplete.
+                for (int i = 0; i < duel.CurrentChainInfo.Count; ++i)
+                {
+                    if (i >= MaximumCards)
+                        throw new InvalidDataException("Chain limit.");
+                    ChainInfo info = duel.CurrentChainInfo[i];
+                    record.Selection.Chain.Add(new TraceChainLink
+                    {
+                        Index = i + 1,
+                        ActivatePlayer = info.ActivatePlayer,
+                        Code = Math.Max(0, info.ActivateId),
+                        Description = info.ActivateId > 0 ? info.ActivateDescription : -1,
+                        Activation = new TraceCardReference
+                        {
+                            Controller = info.ActivateController,
+                            Location = (int)info.ActivateLocation,
+                            Sequence = info.ActivateSequence
+                        }
+                    });
+                }
+                if (candidates.Any(candidate => candidate.Card.OverlaySequence >= 0))
+                    AddUnsupported(record, "overlay-selection-not-mapped");
+                return record;
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+                return null;
+            }
+        }
+
+        public void CommitSelection(TraceRecord record, byte[] response, bool cancelled, string source)
+        {
+            if (!Enabled || record == null)
+                return;
+            try
+            {
+                record.ResponseBytes = response.Select(value => (int)value).ToArray();
+                record.ResponseSource = source;
+                record.Cancelled = cancelled;
+                record.SelectedCandidateIds = cancelled ? new int[0] : record.ResponseBytes.Skip(1).ToArray();
+                bool valid = cancelled
+                    ? record.Selection.Cancelable && record.ResponseBytes.SequenceEqual(new[] { 255, 255, 255, 255 })
+                    : response.Length > 0 && response[0] == record.SelectedCandidateIds.Length
+                        && response[0] >= record.Selection.Min && response[0] <= record.Selection.Max
+                        && record.SelectedCandidateIds.Distinct().Count() == record.SelectedCandidateIds.Length
+                        && record.SelectedCandidateIds.All(id => record.Selection.Candidates.Any(candidate => candidate.Id == id));
+                if (!valid)
+                    AddUnsupported(record, "invalid-card-selection-response");
+                Write(record);
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        private void CaptureZone(TraceRecord record, IList<ClientCard> cards, int player, CardLocation location)
+        {
+            for (int sequence = 0; sequence < cards.Count; ++sequence)
+            {
+                ClientCard card = cards[sequence];
+                if (card == null)
+                    continue;
+                if (record.Observation.Cards.Count >= MaximumCards)
+                    throw new InvalidDataException("Card limit.");
+                bool faceup = card.IsFaceup();
+                bool known = card.Id > 0 && location != CardLocation.Deck
+                    && (player == 0 || (location != CardLocation.Hand
+                    && (location == CardLocation.Grave || faceup)));
+                TraceCard snapshot = new TraceCard
+                {
+                    Known = known,
+                    Controller = player,
+                    Location = (int)location,
+                    Sequence = sequence,
+                    Position = location == CardLocation.Deck || location == CardLocation.Hand ? 0 : card.Position
+                };
+                if (known)
+                {
+                    snapshot.Code = card.Id;
+                    snapshot.Attribute = card.Attribute;
+                    snapshot.Race = card.Race;
+                    snapshot.Level = card.Level;
+                    snapshot.Rank = card.Rank;
+                    snapshot.LinkMarker = card.LinkMarker;
+                    snapshot.Negated = card.Disabled != 0;
+                    snapshot.Attack = card.Attack;
+                    snapshot.Defense = card.Defense;
+                    snapshot.Type = card.Type;
+                    snapshot.OverlayCount = card.Overlays.Count;
+                    if (snapshot.OverlayCount > 0)
+                        AddUnsupported(record, "overlay-state-incomplete");
+                    if (card.EquipTarget != null || card.EquipCards.Count > 0
+                        || card.OwnTargets.Count > 0 || card.TargetCards.Count > 0)
+                        AddUnsupported(record, "card-relations-state-incomplete");
+                }
+                record.Observation.Cards.Add(snapshot);
+            }
+        }
+
+        private static void AddUnsupported(TraceRecord record, string reason)
+        {
+            if (!record.Unsupported.Contains(reason))
+                record.Unsupported.Add(reason);
+        }
+
+        public void Commit(TraceRecord record, int response, string decisionSource)
+        {
+            if (!Enabled || record == null)
+                return;
+            try
+            {
+                record.SelectedWireResponse = response;
+                record.DecisionSource = decisionSource;
+                List<TraceOffer> matches = record.Offers.Where(offer => offer.WireResponse == response).ToList();
+                if (matches.Count == 1)
+                    record.SelectedOfferId = matches[0].Id;
+                else
+                    AddUnsupported(record, "selected-wire-not-uniquely-offered");
+                Write(record);
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        public void OnOutcome(int result)
+        {
+            if (!Enabled)
+                return;
+            if (result < 0 || result > 2)
+            {
+                Disable("InvalidOutcome");
+                return;
+            }
+            _outcome = result;
+            Write(new TraceRecord { Kind = "outcome", Outcome = result });
+        }
+
+        public void End(bool authoritativeEnd, string reason)
+        {
+            if (Enabled)
+                Write(new TraceRecord
+                {
+                    Kind = "end",
+                    Outcome = _outcome,
+                    Completed = authoritativeEnd && _outcome.HasValue,
+                    Reason = reason
+                });
+            Close();
+        }
+
+        private void Write(TraceRecord record)
+        {
+            if (!Enabled)
+                return;
+            try
+            {
+                record.DuelId = _duelId;
+                record.Agent = _agent;
+                record.Sequence = _rows;
+                using (MemoryStream row = new MemoryStream())
+                {
+                    new DataContractJsonSerializer(typeof(TraceRecord)).WriteObject(row, record);
+                    if (_rows >= MaximumRows || row.Length + 1 > MaximumRowBytes
+                        || _bytes + row.Length + 1 > MaximumBytes)
+                    {
+                        Close();
+                        Logger.WriteLine("WINDBOT_TRACE stopped at the per-duel capture limit.");
+                        return;
+                    }
+                    row.Position = 0;
+                    row.CopyTo(_stream);
+                    _stream.WriteByte(10);
+                    _stream.Flush();
+                    _bytes += row.Length + 1;
+                    ++_rows;
+                }
+            }
+            catch (Exception exception)
+            {
+                Disable(exception.GetType().Name);
+            }
+        }
+
+        private void Disable(string reason)
+        {
+            bool report = !_disabled;
+            _disabled = true;
+            Close();
+            if (report)
+            {
+                try
+                {
+                    Logger.WriteLine("WINDBOT_TRACE disabled: " + reason + "; duel decisions continue unchanged.");
+                }
+                catch (Exception)
+                {
+                    // Diagnostics must never become a duel failure.
+                }
+            }
+        }
+
+        private void Close()
+        {
+            FileStream stream = _stream;
+            _stream = null;
+            if (stream == null)
+                return;
+            try
+            {
+                stream.Dispose();
+            }
+            catch (Exception)
+            {
+                _disabled = true;
+            }
+        }
+    }
+}

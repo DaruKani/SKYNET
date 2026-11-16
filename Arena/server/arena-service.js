@@ -44,6 +44,34 @@ function requestError(message, statusCode = 400) {
     return error;
 }
 
+function safeTraceSegment(value) {
+    const result = String(value || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 64);
+    return result || 'unknown';
+}
+
+function windBotInstanceName(context, competitor) {
+    return competitor.source === 'old'
+        || (competitor.source === 'target' && context.challengerVersion === 'old')
+        ? 'old' : 'current';
+}
+
+function getWindBotTraceDirectory(context, competitor, roomName) {
+    if (competitor.executionMode !== 'local') return null;
+    const instanceName = windBotInstanceName(context, competitor);
+    const instance = context.settings.windbots?.[instanceName];
+    if (!instance?.traceEnabled || !instance.traceDirectory) return null;
+    const identity = crypto.createHash('sha256')
+        .update(`${competitor.source || ''}\0${competitor.rankName || ''}\0${competitor.deck || ''}`)
+        .digest('hex').slice(0, 12);
+    const participant = `${instanceName}-${safeTraceSegment(competitor.deck)}-${identity}`;
+    return path.join(
+        instance.traceDirectory,
+        safeTraceSegment(context.id),
+        safeTraceSegment(roomName),
+        participant,
+    );
+}
+
 function getServerInstanceId(response, body) {
     const bodyId = body?.serverInstanceId;
     const headerId = response.headers?.get?.('x-server-instance-id');
@@ -558,6 +586,10 @@ class ArenaService {
                         endpoint: instance.mode === 'skynet' ? null
                             : `${instance.mode === 'local' ? '127.0.0.1' : instance.host}:${instance.port}`,
                         mode: instance.mode,
+                        ...(instance.mode === 'local' ? {
+                            traceDirectory: instance.traceDirectory || '',
+                            traceEnabled: instance.traceEnabled === true,
+                        } : {}),
                         ...(instance.mode === 'skynet' ? { skynet: structuredClone(instance.skynet) } : {}),
                     }]),
                 ),
@@ -1053,6 +1085,10 @@ class ArenaService {
         url.searchParams.set('chat', 'false');
         if (competitor.dialog) {
             url.searchParams.set('dialog', competitor.dialog);
+        }
+        const traceDirectory = getWindBotTraceDirectory(context, competitor, password);
+        if (traceDirectory) {
+            url.searchParams.set('tracedata', traceDirectory);
         }
         let response;
         try {

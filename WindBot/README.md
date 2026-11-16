@@ -425,6 +425,36 @@ Contributor guidance for creating and modifying deck AIs is available in `AGENTS
 - `Config`: Loads additional options from a configuration file. Command-line options take precedence.
 - `DbPath`: Specifies the path to `cards.cdb`. The default is `cards.cdb`. The program also looks for `cards.cdb` in the parent directory of the working directory, which is the typical location for YGOPro.
 - `ServerMode` and `ServerPort`: Enable the HTTP server mode and set its port. The default port is `2399`.
+- `TraceData`: Optional absolute non-root directory for bounded structured JSONL
+  traces. Each duel writes a unique file containing public observations, legal
+  main-phase offers, ordinary card-selection candidates, the executor's actual
+  response and the authoritative outcome. Hidden opponent identities remain
+  masked. Capture is off by default and never changes an executor decision.
+
+To collect a standalone trace, add an explicit output directory:
+
+```powershell
+.\bin\Release\WindBot.exe Deck=Shaddoll2025 `
+  Host=127.0.0.1 Port=7911 `
+  TraceData=D:/Arena-Traces/manual-shaddoll
+```
+
+Arena can configure this under **Settings → Agents → Local WindBot → Structured
+duel traces**. It separates files by experiment, room and participant. Summarize
+one or more completed runs as JSON plus a flat decision CSV:
+
+```powershell
+python Tools/analyze_traces.py `
+  --traces D:/Arena-Traces `
+  --output D:/Arena-Traces/analysis.json `
+  --decisions-csv D:/Arena-Traces/decisions.csv
+```
+
+The report counts executor responses, legal fallbacks, unsupported prompt
+coverage and W/L/D outcomes. These are correlations and protocol evidence, not
+proof that a particular action caused a result. Current structured coverage is
+`select_idlecmd` and ordinary `select_card`; chain, battle, yes/no, option, sum,
+tribute and select/unselect prompts remain explicitly unsupported.
 
 ## Server mode
 

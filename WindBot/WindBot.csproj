@@ -87,6 +87,8 @@
     <Compile Include="Game\AI\Enums\*.cs" />
     <Compile Include="Game\AI\Executor.cs" />
     <Compile Include="Game\AI\HintMsg.cs" />
+    <Compile Include="Game\AI\Trace\TraceRecord.cs" />
+    <Compile Include="Game\AI\Trace\TraceSession.cs" />
     <Compile Include="Game\AI\Opcodes.cs" />
     <Compile Include="Game\AI\Zones.cs" />
     <Compile Include="Game\AI\ExecutorType.cs" />
