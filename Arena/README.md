@@ -21,8 +21,10 @@ is needed when dependencies must be installed. The launcher leaves failures
 visible instead of closing immediately.
 
 To start Arena with structured normal-WindBot duel logging already enabled,
-double-click **`Duel Log Arena.bat`**. It builds the current WindBot Release,
-starts or reuses Arena, enables traces for every Local WindBot agent, and opens
+double-click **`Duel Log Arena.bat`**. It starts or reuses the prepared loopback
+SRVPro on ports `17911`/`17922`, verifies the authenticated room-count API,
+builds the current WindBot Release, starts or reuses Arena, applies the generated
+local server credential, enables traces for every Local WindBot agent, and opens
 the browser. Logs default to `../Artifacts/windbot-duel-traces`; override the
 absolute non-root destination or skip rebuilds from Command Prompt when needed:
 
@@ -32,8 +34,10 @@ absolute non-root destination or skip rebuilds from Command Prompt when needed:
 ```
 
 The launcher only enables local normal-WindBot tracing. Remote WindBot and
-native SKYNET agents are left unchanged. Arena still requires a configured,
-dedicated SRVPro instance before it can run duels.
+native SKYNET agents are left unchanged. It uses the already prepared dedicated
+runtime under `Artifacts/arena-server-v2`; it does not download or build the
+native room host. If that staged runtime is missing, the launcher stops with an
+explicit error instead of starting an Arena instance that cannot run duels.
 
 Commands are optional. For a manual PowerShell start:
 
