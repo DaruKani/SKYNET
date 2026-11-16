@@ -645,7 +645,9 @@ combo. Its implemented decisions include:
 - adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
   from hand before milling, Faimena excludes its own discard cost and can make a
   turn-zero Winda with two real remaining materials, and Cartesia includes
-  itself for Granguignol while preserving stronger hand interaction;
+  itself for Granguignol while preserving stronger hand interaction. Flexible
+  Quick Fusions do not chain over the bot's unresolved setup effects, and
+  Faimena is held through an empty own-turn board for the opponent's turn;
 - opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
@@ -720,7 +722,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 50 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 51 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -755,3 +757,10 @@ game each against Blue-Eyes, Dark Magician and Sky Striker: Shaddoll2025 went
 0–3 with zero disconnects. Arena exposes the observed results but not the hidden
 opening hands or a per-action duel trace, so this run proves runtime completion
 only; it does not show that Lev was drawn or that the deterministic combo occurred.
+
+Quick-Fusion chain-guard run `7c0cdc0b-b92d-4eb5-b6ea-d12f3f9ac91b`
+completed one Normal-level game against Lightsworn: Shaddoll2025 won 1–0 with
+zero disconnects. This confirms the corrected build completed a real Lua-backed
+duel, while the exact logged Void opening remains covered by the deterministic
+chain-lifecycle regression because Arena does not expose its shuffled opening
+hand or a per-action trace.

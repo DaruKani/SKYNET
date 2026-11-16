@@ -493,6 +493,9 @@ namespace WindBot.Game.AI.Decks
         {
             if (!HasFusionResources(false) || ShouldStopSpecialSummoning(CardLocation.Extra))
                 return false;
+            if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
+                Duel.LastChainPlayer == 0)
+                return false;
             if (HasSafeLethalOnBoard() || (Duel.Player == 0 && FunctionalWinda()))
                 return false;
             if (Duel.Player == 1)
@@ -505,6 +508,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location != CardLocation.Hand || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
+                return false;
+            if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
+                Duel.LastChainPlayer == 0)
+                return false;
+            if (Duel.Player == 0 && Enemy.GetMonsterCount() == 0)
                 return false;
             // Faimena discards itself as cost before Fusion materials are chosen.
             // Require two other monsters so the turn-zero Quick Fusion is real.
@@ -519,6 +527,9 @@ namespace WindBot.Game.AI.Decks
                 return Duel.Phase == DuelPhase.End;
             if (Card.Location != CardLocation.MonsterZone || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
+                return false;
+            if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
+                Duel.LastChainPlayer == 0)
                 return false;
             return Bot.Hand.Concat(Bot.GetMonsters()).Count(c => c != null && c.IsMonster()) >= 2 &&
                 (Bot.HasInExtra(CardId.GranguignolDuskDragon) || Bot.HasInExtra(ShaddollFusionIds));

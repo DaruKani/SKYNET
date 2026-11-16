@@ -606,6 +606,34 @@ internal static class Shaddoll2025Checks
             Has(selected, Schism, "Void failed to choose the Trap type");
         });
 
+        Run("Logged Void opening cannot be hijacked by our own Quick Fusions", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            f.Add(Armageddon, CardLocation.Hand);
+            ClientCard squamata = f.Add(Squamata, CardLocation.Hand);
+            ClientCard faimena = f.Add(Faimena, CardLocation.Hand);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+
+            Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)),
+                "Void rejected the recorded opening hand");
+            f.Move(voidCard, CardLocation.SpellZone);
+            f.Chain(voidCard, false);
+            Is(f.Select(HintMsg.Confirm, squamata), Squamata,
+                "Void did not reveal Squamata in the recorded opening");
+            Require(!f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
+                "El Shaddoll Fusion chained over our unresolved Void setup");
+            Require(!f.AI.OnSelectEffectYn(faimena, Desc(Faimena, 0)),
+                "Faimena chained over our unresolved Void setup");
+
+            f.Duel.SolvingChainIndex = 1;
+            IList<ClientCard> search = f.Select(HintMsg.AddToHand, 2, 2,
+                Card(Lev, CardLocation.Deck), Card(Schism, CardLocation.Deck),
+                Card(Fusion, CardLocation.Deck), Card(Resh, CardLocation.Deck));
+            Has(search, Lev, "The logged Void opening missed Lev Shaddoll Fusion");
+            Has(search, Schism, "The logged Void opening missed Shaddoll Schism");
+        });
+
         Run("Shaddoll monster plus Void values its discard and revives that body", () =>
         {
             Fixture f = new Fixture();
@@ -1184,7 +1212,15 @@ internal static class Shaddoll2025Checks
             Has(materials, Wendi, "Faimena missed the non-DARK Shaddoll material");
             Has(materials, Squamata, "Faimena missed the DARK Shaddoll material");
 
+            Fixture holdForTurnZero = new Fixture();
+            ClientCard heldFaimena = holdForTurnZero.Add(Faimena, CardLocation.Hand);
+            holdForTurnZero.Add(Wendi, CardLocation.Hand);
+            holdForTurnZero.Add(Squamata, CardLocation.Hand);
+            Require(!holdForTurnZero.AI.OnSelectEffectYn(heldFaimena, Desc(Faimena, 0)),
+                "Faimena made an empty-board Winda on our own setup turn");
+
             Fixture shortCost = new Fixture();
+            shortCost.Duel.Player = 1;
             ClientCard invalidFaimena = shortCost.Add(Faimena, CardLocation.Hand);
             shortCost.Add(Wendi, CardLocation.Hand);
             Require(!shortCost.AI.OnSelectEffectYn(invalidFaimena, Desc(Faimena, 0)),
