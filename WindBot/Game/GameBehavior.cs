@@ -1384,6 +1384,8 @@ namespace WindBot.Game
 
             IList<ClientCard> cards = new List<ClientCard>();
             IList<int> candidateIndexes = new List<int>();
+            List<TraceSelectionCandidate> traceCandidates = _trace.Enabled
+                ? new List<TraceSelectionCandidate>() : null;
             int count = packet.ReadByte();
             for (int i = 0; i < count; ++i)
             {
@@ -1391,7 +1393,9 @@ namespace WindBot.Game
                 int player = GetLocalPlayer(packet.ReadByte());
                 CardLocation loc = (CardLocation)packet.ReadByte();
                 int seq = packet.ReadByte();
-                packet.ReadByte(); // pos
+                int position = packet.ReadByte();
+                _trace.AddSelectionCandidate(traceCandidates, i, id, player,
+                    (int)loc, seq, position);
                 ClientCard card;
                 if (((int)loc & (int)CardLocation.Overlay) != 0)
                     card = new ClientCard(id, CardLocation.Overlay, -1);
@@ -1436,8 +1440,13 @@ namespace WindBot.Game
             // Lua helpers such as SelectSubGroup use this hint message repeatedly for one selection.
 
             int selectionMin = finishable ? 0 : 1;
+            TraceRecord observation = _trace.PrepareSelection(
+                _duel, traceCandidates, selectionMin, 1, cancelable, _select_hint);
+            if (observation != null)
+                observation.Prompt = "select_unselect";
             IList<ClientCard> selected = _ai.OnSelectCard(cards, selectionMin, 1, _select_hint, cancelable);
-            SendCardSelectionResponse(cards, candidateIndexes, selected, selectionMin, 1, cancelable);
+            SendCardSelectionResponse(cards, candidateIndexes, selected,
+                selectionMin, 1, cancelable, false, observation);
         }
 
         private void OnSelectCard(BinaryReader packet)

@@ -72,7 +72,7 @@ namespace WindBot.Game.AI.Trace
                 Write(new TraceRecord
                 {
                     Kind = "start",
-                    Coverage = new[] { "select_idlecmd", "select_card" },
+                    Coverage = new[] { "select_idlecmd", "select_card", "select_unselect" },
                     MaxRows = MaximumRows,
                     MaxBytes = MaximumBytes,
                     MaxRowBytes = MaximumRowBytes

@@ -49,9 +49,34 @@ namespace WindBot.Game.AI.Decks
             public const int ElShaddollWinda = 94977269;
             public const int InfernoidEvil = 97051536;
             public const int ShaddollConstruct = 86938484;
+
+            public const int BlueEyesAlternativeWhiteDragon = 38517737;
+            public const int BlueEyesSpiritDragon = 59822133;
+            public const int CrystalWingSynchroDragon = 50954680;
+            public const int DarkMagicalCircle = 47222536;
+            public const int DarkMagicianTheDragonKnight = 41721210;
+            public const int EternalSoul = 48680970;
+            public const int HopeHarbingerDragonTitanicGalaxy = 63767246;
+            public const int TheDarkMagicians = 50237654;
         }
 
         private const int ShaddollSetcode = 0x9d;
+
+        private enum LevRouteStage
+        {
+            None,
+            ApkalloneSent,
+            SquamataDiscarded,
+            TohushaddollSent,
+            MeshachrerSummoned,
+            VoidSearched,
+            ConstructSummoned,
+            HedgehogSent,
+            WendiReady,
+            ControlSpellsReady,
+            WendikuruhuSummoned,
+            ControlShellPrepared
+        }
 
         private readonly HashSet<int> _usedEffects = new HashSet<int>();
         private int _specialSummonsThisTurn;
@@ -62,6 +87,7 @@ namespace WindBot.Game.AI.Decks
         private bool _shaddollExtraDeckLock;
         private bool _levTributedMesh;
         private bool _levOpponentTurnBranch;
+        private LevRouteStage _levRouteStage;
 
         private static readonly int[] ShaddollMainMonsterIds =
         {
@@ -177,11 +203,83 @@ namespace WindBot.Game.AI.Decks
             _shaddollExtraDeckLock = false;
             _levTributedMesh = false;
             _levOpponentTurnBranch = false;
+            _levRouteStage = LevRouteStage.None;
+        }
+
+        public override void OnMove(
+            ClientCard card,
+            int previousControler,
+            int previousLocation,
+            int currentControler,
+            int currentLocation)
+        {
+            if (card != null && currentControler == 0)
+            {
+                ChainInfo solving = Duel.GetCurrentSolvingChainInfo();
+                if (solving != null && solving.ActivatePlayer == 0)
+                {
+                    if (solving.IsActivateCode(CardId.LevShaddollFusion) &&
+                        card.IsCode(CardId.ElShaddollApkallone) &&
+                        previousLocation == (int)CardLocation.Extra &&
+                        currentLocation == (int)CardLocation.Grave)
+                        AdvanceLevRoute(LevRouteStage.ApkalloneSent);
+                    else if (solving.IsActivateCode(CardId.ElShaddollApkallone) &&
+                        card.IsCode(CardId.ShaddollSquamata) &&
+                        currentLocation == (int)CardLocation.Grave)
+                        AdvanceLevRoute(LevRouteStage.SquamataDiscarded);
+                    else if (solving.IsActivateCode(CardId.ShaddollSquamata) &&
+                        card.IsCode(CardId.TohushaddollGrysta) &&
+                        currentLocation == (int)CardLocation.Grave)
+                        AdvanceLevRoute(LevRouteStage.TohushaddollSent);
+                    else if (solving.IsActivateCode(CardId.TohushaddollGrysta) &&
+                        card.IsCode(CardId.ElShaddollMeshachrer) &&
+                        currentLocation == (int)CardLocation.MonsterZone)
+                        AdvanceLevRoute(LevRouteStage.MeshachrerSummoned);
+                    else if (solving.IsActivateCode(CardId.ElShaddollMeshachrer) &&
+                        card.IsCode(CardId.VoidUnleashing) &&
+                        currentLocation == (int)CardLocation.Hand)
+                        AdvanceLevRoute(LevRouteStage.VoidSearched);
+                    else if (solving.IsActivateCode(CardId.LevShaddollFusion) &&
+                        card.IsCode(CardId.ElShaddollConstruct) &&
+                        currentLocation == (int)CardLocation.MonsterZone)
+                        AdvanceLevRoute(LevRouteStage.ConstructSummoned);
+                    else if (solving.IsActivateCode(CardId.ElShaddollConstruct) &&
+                        card.IsCode(CardId.ShaddollHedgehog) &&
+                        currentLocation == (int)CardLocation.Grave)
+                        AdvanceLevRoute(LevRouteStage.HedgehogSent);
+                    else if (solving.IsActivateCode(CardId.ShaddollHedgehog) &&
+                        card.IsCode(CardId.ReeshaddollWendi) &&
+                        currentLocation == (int)CardLocation.Hand)
+                        AdvanceLevRoute(LevRouteStage.WendiReady);
+                    else if (solving.IsActivateCode(CardId.VoidUnleashing) &&
+                        card.IsCode(CardId.ElShaddollFusion, CardId.ShaddollSchism) &&
+                        currentLocation == (int)CardLocation.Hand &&
+                        Bot.HasInHandOrInSpellZone(CardId.ElShaddollFusion) &&
+                        Bot.HasInHandOrInSpellZone(CardId.ShaddollSchism))
+                        AdvanceLevRoute(LevRouteStage.ControlSpellsReady);
+                    else if (solving.IsActivateCode(CardId.ElShaddollFusion) &&
+                        card.IsCode(CardId.ReeshaddollWendikuruhu) &&
+                        currentLocation == (int)CardLocation.MonsterZone)
+                        AdvanceLevRoute(LevRouteStage.WendikuruhuSummoned);
+                    else if (solving.IsActivateCode(CardId.NaelshaddollAriel) &&
+                        card.IsCode(CardId.ShaddollSquamata) &&
+                        currentLocation == (int)CardLocation.MonsterZone)
+                        AdvanceLevRoute(LevRouteStage.ControlShellPrepared);
+                }
+            }
+            base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
 
         public override void OnChainEnd()
         {
             base.OnChainEnd();
+            // If Hedgehog resolved without adding Wendi (negated or no longer
+            // available), release the planned wait so legal fallback Fusions
+            // can be reconsidered instead of deadlocking the turn.
+            if (_levRouteStage == LevRouteStage.HedgehogSent &&
+                EffectUsed(CardId.ShaddollHedgehog) &&
+                !Bot.HasInHand(CardId.ReeshaddollWendi))
+                _levRouteStage = LevRouteStage.ConstructSummoned;
             _coveredOpponentChainLength = 0;
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
@@ -201,7 +299,11 @@ namespace WindBot.Game.AI.Decks
             if (cards == null || cards.Count == 0)
                 return base.OnSelectCard(cards, min, max, hint, cancelable);
 
-            if (PromptIs(CardId.VoidUnleashing))
+            // SelectSubGroup issues repeated SelectUnselect packets after the
+            // original chain owner is no longer available through PromptIs.
+            // _voidRevealedType stays live until chain end and identifies every
+            // search/discard step of the same Void resolution.
+            if (PromptIs(CardId.VoidUnleashing) || _voidRevealedType != 0)
             {
                 if (hint == HintMsg.AddToHand)
                     return SelectVoidSearch(cards, min, max);
@@ -313,7 +415,7 @@ namespace WindBot.Game.AI.Decks
                 if (hint == HintMsg.Remove)
                     return SelectArielTargets(cards, min, max);
                 if (hint == HintMsg.SpSummon)
-                    return SelectByScore(cards, min, max, RevivalScore);
+                    return SelectByScore(cards, min, max, ArielRevivalScore);
             }
 
             if (PromptIs(CardId.TohushaddollGrysta) && hint == HintMsg.Target)
@@ -493,6 +595,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (!HasFusionResources(false) || ShouldStopSpecialSummoning(CardLocation.Extra))
                 return false;
+            if (MustResolveLevMeshFirst() || MustWaitForLevWendiSearch())
+                return false;
             if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
                 Duel.LastChainPlayer == 0)
                 return false;
@@ -508,6 +612,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location != CardLocation.Hand || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
+                return false;
+            if (MustResolveLevMeshFirst())
                 return false;
             if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
                 Duel.LastChainPlayer == 0)
@@ -527,6 +633,8 @@ namespace WindBot.Game.AI.Decks
                 return Duel.Phase == DuelPhase.End;
             if (Card.Location != CardLocation.MonsterZone || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
+                return false;
+            if (MustResolveLevMeshFirst())
                 return false;
             if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
                 Duel.LastChainPlayer == 0)
@@ -748,16 +856,23 @@ namespace WindBot.Game.AI.Decks
         private IList<ClientCard> SelectVoidSearch(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> selected = new List<ClientCard>();
-            foreach (CardType type in new[] { CardType.Trap, CardType.Spell, CardType.Monster })
+            CardType usedTypes = _voidRevealedType;
+            while (selected.Count < max)
             {
-                if ((_voidRevealedType & type) != 0)
-                    continue;
-                ClientCard choice = cards.Where(c => MatchesBaseType(c, type) && !selected.Contains(c))
-                    .OrderByDescending(VoidSearchScore).FirstOrDefault();
-                if (choice != null)
-                    selected.Add(choice);
-                if (selected.Count == max)
+                ClientCard choice = cards
+                    .Where(c => !selected.Contains(c) && (usedTypes & GetBaseType(c)) == 0)
+                    .OrderByDescending(VoidSearchScore)
+                    .FirstOrDefault();
+                if (choice == null)
                     break;
+                selected.Add(choice);
+                CardType type = GetBaseType(choice);
+                usedTypes |= type;
+                // SelectSubGroup normally asks for one card per SelectUnselect
+                // packet. Remember committed types when the lifecycle permits;
+                // global value ordering also remains correct if that transient
+                // state is cleared between packets.
+                _voidRevealedType |= type;
             }
             return FillSelection(selected, cards, min, max);
         }
@@ -779,9 +894,7 @@ namespace WindBot.Game.AI.Decks
         private IList<ClientCard> SelectEnemyThreat(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> ordered = cards
-                .OrderByDescending(c => c.Controller == 1 ? 1 : 0)
-                .ThenByDescending(c => c.IsFaceup() && !c.IsDisabled() ? 1 : 0)
-                .ThenByDescending(c => c.GetDefensePower())
+                .OrderByDescending(OpponentThreatScore)
                 .ToList();
             return FillSelection(ordered, cards, min, max);
         }
@@ -902,6 +1015,19 @@ namespace WindBot.Game.AI.Decks
 
         private int FusionMaterialScore(ClientCard card)
         {
+            if (_pendingFusionTargetId == CardId.ElShaddollMeshachrer &&
+                IsLevRouteActive() && _levRouteStage >= LevRouteStage.TohushaddollSent)
+            {
+                if (card.Location == CardLocation.Grave && card.IsCode(
+                    CardId.ElShaddollApkallone,
+                    CardId.ShaddollSquamata,
+                    CardId.TohushaddollGrysta))
+                    return 500;
+                if (card.Location == CardLocation.Hand && IsShaddollCard(card))
+                    return -600;
+                if (card.Location == CardLocation.Hand)
+                    return -500;
+            }
             if (_pendingFusionTargetId == CardId.GranguignolDuskDragon)
             {
                 if (card.IsCode(CardId.BlazingCartesia)) return 280;
@@ -1036,6 +1162,18 @@ namespace WindBot.Game.AI.Decks
             // Void may discard any card, not only the revealed Shaddoll. Preserve
             // unique continuation pieces, then compare live GY value with the
             // opportunity cost of spending a non-engine card.
+            if (IsLevRouteActive() && _levRouteStage >= LevRouteStage.VoidSearched &&
+                _levRouteStage < LevRouteStage.ConstructSummoned)
+            {
+                if (card.IsCode(CardId.ReeshaddollWendi) &&
+                    Bot.Hand.Count(c => c.IsCode(CardId.ReeshaddollWendi)) == 1)
+                    return -650;
+                if (card.IsCode(CardId.ElShaddollFusion, CardId.ShaddollSchism) &&
+                    Bot.Hand.Count(c => c.IsCode(card.Id)) == 1)
+                    return -625;
+                if (!IsShaddollCard(card))
+                    return 300;
+            }
             if (card.IsCode(CardId.LevShaddollFusion) &&
                 !EffectUsed(CardId.LevShaddollFusion) &&
                 !Bot.HasInSpellZone(CardId.LevShaddollFusion)) return -500;
@@ -1212,6 +1350,40 @@ namespace WindBot.Game.AI.Decks
             return score + card.Level;
         }
 
+        private int OpponentThreatScore(ClientCard card)
+        {
+            if (card == null || card.Controller != 1)
+                return -1000;
+            if (!card.IsFaceup() || card.IsDisabled())
+                return -500;
+
+            int score = 100;
+            if (card.IsCode(CardId.EternalSoul, CardId.DarkMagicalCircle))
+                score += 700;
+            if (card.IsCode(
+                CardId.HopeHarbingerDragonTitanicGalaxy,
+                CardId.BlueEyesSpiritDragon,
+                CardId.CrystalWingSynchroDragon))
+                score += 650;
+            if (card.IsCode(
+                CardId.BlueEyesAlternativeWhiteDragon,
+                CardId.DarkMagicianTheDragonKnight,
+                CardId.TheDarkMagicians))
+                score += 500;
+            if (card.IsFloodgate())
+                score += 450;
+            if (card.HasType(CardType.Continuous | CardType.Field))
+                score += 300;
+            if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link))
+                score += 220;
+            if (card.IsMonster())
+            {
+                score += Math.Max(0, card.Attack) / 40;
+                score += Math.Max(0, card.Defense) / 80;
+            }
+            return score;
+        }
+
         private int RevivalScore(ClientCard card)
         {
             if (_voidDiscardedMonsterId != 0 && card.IsCode(_voidDiscardedMonsterId) &&
@@ -1222,6 +1394,13 @@ namespace WindBot.Game.AI.Decks
             if (card.IsCode(CardId.ReeshaddollWendikuruhu)) return 100;
             if (card.IsCode(CardId.ShaddollSquamata)) return 90;
             return card.GetDefensePower();
+        }
+
+        private int ArielRevivalScore(ClientCard card)
+        {
+            if (card.IsCode(CardId.ShaddollSquamata))
+                return 3000;
+            return RevivalScore(card);
         }
 
         private int ShaddollRecoveryScore(ClientCard card)
@@ -1344,6 +1523,29 @@ namespace WindBot.Game.AI.Decks
                 Bot.HasInSpellZone(CardId.LevShaddollFusion);
         }
 
+        private bool MustResolveLevMeshFirst()
+        {
+            return Duel.Player == 0 &&
+                Bot.GetSpells().Any(c => c.IsCode(CardId.LevShaddollFusion) &&
+                    c.IsFaceup() && !c.IsDisabled()) &&
+                Bot.GetMonsters().Any(c => c.IsCode(CardId.ElShaddollMeshachrer) &&
+                    c.IsFaceup() && !c.IsDisabled());
+        }
+
+        private bool MustWaitForLevWendiSearch()
+        {
+            return Duel.Player == 0 && IsLevRouteActive() &&
+                _levRouteStage == LevRouteStage.HedgehogSent &&
+                Bot.HasInMonstersZone(CardId.ElShaddollConstruct) &&
+                !Bot.HasInHand(CardId.ReeshaddollWendi);
+        }
+
+        private void AdvanceLevRoute(LevRouteStage stage)
+        {
+            if (stage > _levRouteStage)
+                _levRouteStage = stage;
+        }
+
         private bool CanStartLevPrimaryRoute()
         {
             return Bot.HasInExtra(CardId.ElShaddollApkallone) &&
@@ -1457,12 +1659,12 @@ namespace WindBot.Game.AI.Decks
                 CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link);
         }
 
-        private bool MatchesBaseType(ClientCard card, CardType type)
+        private CardType GetBaseType(ClientCard card)
         {
-            if (type == CardType.Monster) return card.IsMonster();
-            if (type == CardType.Spell) return card.IsSpell();
-            if (type == CardType.Trap) return card.IsTrap();
-            return false;
+            if (card.IsMonster()) return CardType.Monster;
+            if (card.IsSpell()) return CardType.Spell;
+            if (card.IsTrap()) return CardType.Trap;
+            return 0;
         }
 
         private int GetPromptOwnerId()

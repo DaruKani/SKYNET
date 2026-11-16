@@ -659,9 +659,11 @@ combo. Its implemented decisions include:
   Wendikuruhu, Ariel and revived face-up Squamata. Construct recovers El Shaddoll
   Fusion while the searched Schism remains in hand, then both cards are set;
 - real idle-command sequencing for the committed route: Lev starts before an
-  unrelated Void line, Meshachrer searches Void before being tributed, Lev makes
-  Construct, Hedgehog finds Wendi, and only then does Void reveal Wendi and
-  resolve before the flexible Fusion continuation;
+  unrelated Void line, Meshachrer searches before being tributed, and Quick
+  Fusions cannot consume Mesh before Lev converts it. With no reveal already in
+  hand, Lev makes Construct and Hedgehog finds Wendi before Void resolves; with
+  a live opening reveal, Void may resolve earlier but preserves that Shaddoll and
+  still leaves Mesh for Lev;
 - recalculation at each legal offer: missing Apkallone can use the Evil/Void
   fallback, missing Void can search El Shaddoll Fusion, and missing Meshachrer
   can choose another legal Fusion;
@@ -676,7 +678,9 @@ combo. Its implemented decisions include:
   from hand before milling, Faimena excludes its own discard cost and can make a
   turn-zero Winda with two real remaining materials, and Cartesia includes
   itself for Granguignol while preserving stronger hand interaction. Flexible
-  Quick Fusions do not chain over the bot's unresolved setup effects, and
+  Quick Fusions do not chain over the bot's unresolved setup effects, consume
+  Mesh before Lev, or fire between Construct sending Hedgehog and Hedgehog
+  resolving the Wendi search, and
   Faimena is held through an empty own-turn board for the opponent's turn;
 - opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
@@ -752,13 +756,17 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 51 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 58 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
 launch, duel and result-recording path only; a small sample is not a strength or
-win-rate claim. The client cannot see hidden opponent cards, simulate future Lua
-resolution, or know an opponent's unobserved hand.
+win-rate claim. Structured traces now include repeated `SelectUnselect` card
+choices as well as ordinary card and idle-command selections, so Void subgroup
+searches and multi-step Fusion materials can be audited. `SelectChain` remains
+marked as an unsupported prompt in the current trace schema. The client cannot
+see hidden opponent cards, simulate future Lua resolution, or know an
+opponent's unobserved hand.
 
 Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
 and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
@@ -784,13 +792,23 @@ Combo-Sheet correction run `1e840c39-f0bb-4f82-8836-20e200ae7c44` used the
 restored game-one Extra Deck and the executor that records Wendikuruhu, Ariel,
 Squamata, El Shaddoll Fusion and Schism correctly. It completed one Normal-level
 game each against Blue-Eyes, Dark Magician and Sky Striker: Shaddoll2025 went
-0–3 with zero disconnects. Arena exposes the observed results but not the hidden
-opening hands or a per-action duel trace, so this run proves runtime completion
-only; it does not show that Lev was drawn or that the deterministic combo occurred.
+0–3 with zero disconnects. This older run predated structured per-action traces,
+so it proves runtime completion only and does not show that Lev was drawn or that
+the deterministic combo occurred.
 
 Quick-Fusion chain-guard run `7c0cdc0b-b92d-4eb5-b6ea-d12f3f9ac91b`
 completed one Normal-level game against Lightsworn: Shaddoll2025 won 1–0 with
 zero disconnects. This confirms the corrected build completed a real Lua-backed
-duel, while the exact logged Void opening remains covered by the deterministic
-chain-lifecycle regression because Arena does not expose its shuffled opening
-hand or a per-action trace.
+duel; the exact logged Void opening remains covered by the deterministic
+chain-lifecycle regression.
+
+Final trace-backed validation run `7875ea0c-30ed-4f08-82f4-40d398a38cae`
+completed three Normal-level Arena match entries against Blue-Eyes with no
+Shaddoll disconnects. Arena recorded three match wins, representing eight
+underlying duels (6–2). The shuffled sample contained one opening Lev route and
+that trace selected Apkallone, Squamata, Tohushaddoll Grysta, Meshachrer, Void,
+Construct, Hedgehog, Wendi and Schism in order. Across the run, the analyzer also
+observed the complete prepared control shell (Wendikuruhu, Ariel, revived
+Squamata, Schism and recovered El Shaddoll Fusion) in a real Lua-backed duel.
+This small successful sample verifies execution and traceability, not an expected
+Blue-Eyes win rate.

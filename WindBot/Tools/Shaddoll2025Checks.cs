@@ -156,6 +156,8 @@ internal static class Shaddoll2025Checks
 
         internal void Move(ClientCard card, CardLocation destination, bool faceDown = false)
         {
+            int previousController = card.Controller;
+            int previousLocation = (int)card.Location;
             if (card.Location == CardLocation.Hand) Bot.Hand.Remove(card);
             else if (card.Location == CardLocation.Grave) Bot.Graveyard.Remove(card);
             else if (card.Location == CardLocation.Removed) Bot.Banished.Remove(card);
@@ -184,6 +186,8 @@ internal static class Shaddoll2025Checks
                 card.Sequence = slot;
                 Bot.SpellZone[slot] = card;
             }
+            Executor.OnMove(card, previousController, previousLocation,
+                card.Controller, (int)destination);
         }
     }
 
@@ -534,6 +538,121 @@ internal static class Shaddoll2025Checks
             Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(voidCard, 0),
                 Offer(mesh, 1)), Lev,
                 "Idle scheduler fused before Lev converted Mesh into Construct");
+        });
+
+        Run("Quick Fusion cannot consume Mesh before Lev tribute resolves", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            lev.Position = (int)CardPosition.FaceUpAttack;
+            f.Add(Mesh, CardLocation.MonsterZone);
+            f.Add(Wendi, CardLocation.Hand);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+            ClientCard cartesia = f.Add(Cartesia, CardLocation.MonsterZone);
+            ClientCard faimena = f.Add(Faimena, CardLocation.Hand);
+            f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+
+            Require(!f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
+                "El Shaddoll Fusion consumed Mesh before Lev tribute");
+            Require(!f.AI.OnSelectEffectYn(cartesia, Desc(Cartesia, 0)),
+                "Cartesia consumed Mesh before Lev tribute");
+            Require(!f.AI.OnSelectEffectYn(faimena, Desc(Faimena, 0)),
+                "Faimena consumed Mesh before Lev tribute");
+        });
+
+        Run("El Fusion waits for Hedgehog to finish the Wendi search", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard construct = f.Add(Construct, CardLocation.MonsterZone);
+            ClientCard hedgehog = f.Add(Hedgehog, CardLocation.Deck);
+            f.Chain(construct, true);
+            f.Executor.OnMove(hedgehog, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Grave);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+            f.Add(Grysta, CardLocation.Hand);
+
+            Require(!f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
+                "El Fusion activated before Hedgehog could search Wendi");
+        });
+
+        Run("Lev route preserves the hand Shaddoll needed to activate searched Void", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard apkallone = f.Extra(Apkallone);
+            f.Chain(lev, true);
+            f.Move(apkallone, CardLocation.Grave);
+
+            ClientCard squamata = f.Add(Squamata, CardLocation.Hand);
+            f.Chain(apkallone, true);
+            f.Move(squamata, CardLocation.Grave);
+
+            ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Grave);
+            f.Chain(squamata, true);
+            f.Executor.OnMove(tohushaddoll, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Grave);
+
+            ClientCard wendi = f.Add(Wendi, CardLocation.Hand);
+            ClientCard mesh = f.Extra(Mesh);
+            f.Chain(tohushaddoll, true);
+            Is(f.Select(HintMsg.SpSummon, mesh), Mesh,
+                "Tohushaddoll Grysta did not choose Meshachrer");
+            IList<ClientCard> materials = f.Select(HintMsg.FusionMaterial, 3, 3,
+                apkallone, squamata, tohushaddoll, wendi);
+            Require(materials.Contains(apkallone) && materials.Contains(squamata) &&
+                materials.Contains(tohushaddoll),
+                "Meshachrer did not consume the three prepared grave materials");
+            Require(!materials.Contains(wendi),
+                "Meshachrer consumed the hand Shaddoll required to reveal for Void");
+        });
+
+        Run("Early Void resolution preserves Wendi and selects El Fusion plus Schism", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard apkallone = f.Extra(Apkallone);
+            f.Chain(lev, true);
+            f.Move(apkallone, CardLocation.Grave);
+            ClientCard squamata = f.Add(Squamata, CardLocation.Hand);
+            f.Chain(apkallone, true);
+            f.Move(squamata, CardLocation.Grave);
+            ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Grave);
+            f.Chain(squamata, true);
+            f.Executor.OnMove(tohushaddoll, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Grave);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+            f.Chain(tohushaddoll, true);
+            f.Executor.OnMove(mesh, 0, (int)CardLocation.Extra,
+                0, (int)CardLocation.MonsterZone);
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            f.Chain(mesh, true);
+            f.Executor.OnMove(voidCard, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Hand);
+            f.AI.OnChainEnd();
+
+            ClientCard wendi = f.Add(Wendi, CardLocation.Hand);
+            ClientCard expendable = f.Add(Droll, CardLocation.Hand);
+            Require(f.AI.OnSelectEffectYn(voidCard, Desc(Void, 0)),
+                "Searched Void rejected the live Wendi reveal");
+            f.Move(voidCard, CardLocation.SpellZone);
+            f.Chain(voidCard, true);
+            Is(f.Select(HintMsg.Confirm, wendi), Wendi,
+                "Void did not reveal the preserved Wendi");
+
+            // Reproduce the repeated SelectUnselect packets: after the first
+            // selection, the resolving chain owner can no longer be queried.
+            f.Duel.SolvingChainIndex = 0;
+            f.Duel.CurrentChain.Clear();
+            Is(f.Select(HintMsg.AddToHand, Card(ElFusion, CardLocation.Deck),
+                Card(Schism, CardLocation.Deck), Card(Fusion, CardLocation.Deck),
+                Card(Resh, CardLocation.Deck)), Schism,
+                "Void did not take Schism first from a repeated subgroup prompt");
+            Is(f.Select(HintMsg.AddToHand, Card(ElFusion, CardLocation.Deck),
+                Card(Fusion, CardLocation.Deck), Card(Resh, CardLocation.Deck)), ElFusion,
+                "Void fell back to the first legal Spell instead of El Shaddoll Fusion");
+            Is(f.Select(HintMsg.Discard, wendi, expendable), Droll,
+                "Void discarded the unique Wendi before Lev could reach Construct");
         });
 
         Run("Lev plus four non-engine cards reaches the recorded Combo Sheet board", () =>
@@ -968,6 +1087,23 @@ internal static class Shaddoll2025Checks
                 "Ariel failed to banish all useful enemy targets or consumed an own resource");
         });
 
+        Run("Lev control Ariel revives Squamata instead of the largest banished body", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard wendikuruhu = f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.SpellZone);
+            f.Chain(elFusion, true);
+            f.Executor.OnMove(wendikuruhu, 0, (int)CardLocation.Extra,
+                0, (int)CardLocation.MonsterZone);
+            ClientCard ariel = f.Add(Ariel, CardLocation.MonsterZone);
+            ClientCard squamata = f.Add(Squamata, CardLocation.Removed);
+            ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Removed);
+            f.Chain(ariel, true);
+            Is(f.Select(HintMsg.SpSummon, tohushaddoll, squamata), Squamata,
+                "Ariel revived the larger body instead of control-piece Squamata");
+        });
+
         Run("Resolved Maxx C shortens extension after a functional board", () =>
         {
             Fixture f = new Fixture();
@@ -1047,6 +1183,29 @@ internal static class Shaddoll2025Checks
             f.Chain(apkallone, true);
             Is(f.Select(HintMsg.Disable, apkallone, enemy), BlueEyes,
                 "Apkallone selected a friendly negate target");
+        });
+
+        Run("Apkallone negates recursive engines before a vanilla attacker", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard apkallone = f.Add(Apkallone, CardLocation.MonsterZone);
+            ClientCard blueEyes = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            ClientCard eternalSoul = f.Add(48680970, CardLocation.SpellZone, 1);
+            ClientCard circle = f.Add(47222536, CardLocation.SpellZone, 1);
+            f.Chain(apkallone, true);
+            Is(f.Select(HintMsg.Disable, blueEyes, circle, eternalSoul), 48680970,
+                "Apkallone ignored Eternal Soul's recursive engine value");
+        });
+
+        Run("Apkallone prioritizes a live negate over raw attack points", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard apkallone = f.Add(Apkallone, CardLocation.MonsterZone);
+            ClientCard blueEyes = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            ClientCard harbinger = f.Add(63767246, CardLocation.MonsterZone, 1);
+            f.Chain(apkallone, true);
+            Is(f.Select(HintMsg.Disable, blueEyes, harbinger), 63767246,
+                "Apkallone negated the vanilla body instead of Hope Harbinger");
         });
 
         Run("A continuously negated Apkallone does not predict a useful resolution", () =>
