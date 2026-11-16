@@ -50,16 +50,11 @@ namespace WindBot.Game.AI.Decks
             public const int InfernoidEvil = 97051536;
             public const int ShaddollConstruct = 86938484;
 
-            public const int BlueEyesAlternativeWhiteDragon = 38517737;
-            public const int BlueEyesSpiritDragon = 59822133;
             public const int WhiteStoneOfAncients = 71039903;
             public const int ReturnOfTheDragonLords = 6853254;
-            public const int CrystalWingSynchroDragon = 50954680;
-            public const int DarkMagicalCircle = 47222536;
+            public const int DarkMagician = 46986414;
             public const int DarkMagicianTheDragonKnight = 41721210;
-            public const int EternalSoul = 48680970;
-            public const int HopeHarbingerDragonTitanicGalaxy = 63767246;
-            public const int TheDarkMagicians = 50237654;
+            public const int MagicianNavigation = 7922915;
 
             public const int OrcustKnightmare = 4055337;
             public const int OrcustHarpHorror = 57835716;
@@ -86,6 +81,21 @@ namespace WindBot.Game.AI.Decks
             ControlSpellsReady,
             WendikuruhuSummoned,
             ControlShellPrepared
+        }
+
+        [Flags]
+        private enum OpponentCapability
+        {
+            None = 0,
+            Negate = 1,
+            Removal = 2,
+            Recursion = 4,
+            Protection = 8,
+            Floodgate = 16,
+            QuickInteraction = 32,
+            GraveInteraction = 64,
+            RepeatableEngine = 128,
+            AdvantageEngine = 256
         }
 
         private readonly HashSet<int> _usedEffects = new HashSet<int>();
@@ -578,13 +588,18 @@ namespace WindBot.Game.AI.Decks
                 if (Duel.Player != 1 || !IsMainPhase() || !HasSchismFusionResources())
                     return false;
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
+                bool exposedControlEngine = Enemy.GetSpells().Any(c =>
+                    c.IsFaceup() && !c.IsDisabled() && OpponentThreatScore(c) >= 800);
                 // Do not expose Winda into an empty Main Phase before the
                 // opponent has spent a Special Summon. Blue-Eyes in particular
                 // can otherwise choose one 3000 ATK body, battle over Winda and
-                // resume its engine next turn. Still cash Schism in when it is
-                // threatened, after the first opposing Special Summon, or at
-                // Main End after the opponent has committed a monster.
+                // resume its engine next turn. A visible recursive or removal
+                // engine is already a real commitment, however: answer it with
+                // Apkallone before Circle/Soul-style control takes over the duel.
+                // Also cash Schism in when it is threatened, after the first
+                // opposing Special Summon, or at Main End after a monster commit.
                 return DefaultOnBecomeTarget() ||
+                    exposedControlEngine ||
                     _opponentSpecialSummonsThisTurn > 0 ||
                     (mainEnd && Enemy.GetMonsterCount() > 0);
             }
@@ -1004,6 +1019,9 @@ namespace WindBot.Game.AI.Decks
             if (ownerId == CardId.ElShaddollFusion && Duel.Player == 1 &&
                 HasPreparedLevControlBoard() && card.IsCode(CardId.ElShaddollApkallone))
                 return 260;
+            if (ownerId == CardId.ElShaddollFusion && Duel.Player == 1 &&
+                card.IsCode(CardId.ElShaddollApkallone) && BestLiveOpponentThreatScore() >= 750)
+                return 280;
             if (ownerId == CardId.TohushaddollGrysta && Duel.Player == 1 &&
                 _levOpponentTurnBranch && Bot.Hand.Any(IsShaddollCard) &&
                 card.IsCode(CardId.ElShaddollShekhinaga))
@@ -1021,11 +1039,17 @@ namespace WindBot.Game.AI.Decks
                     .Select(OpponentThreatScore)
                     .DefaultIfEmpty(-1000)
                     .Max();
-                if (matchingThreat >= 850)
-                    return 300 + Math.Min(40, (matchingThreat - 850) / 10);
+                int faceupEngineThreat = Enemy.GetSpells()
+                    .Where(c => c.IsFaceup() && !c.IsDisabled())
+                    .Select(OpponentThreatScore)
+                    .DefaultIfEmpty(-1000)
+                    .Max();
+                if (card.IsCode(CardId.ElShaddollApkallone) && faceupEngineThreat >= 800)
+                    return 335;
+                if (matchingThreat >= 750)
+                    return 300 + Math.Min(40, (matchingThreat - 750) / 10);
                 if (card.IsCode(CardId.ElShaddollApkallone) &&
-                    Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
-                        c.IsCode(CardId.HopeHarbingerDragonTitanicGalaxy)))
+                    BestLiveOpponentThreatScore() >= 750)
                     return 295;
                 if (card.IsCode(CardId.ElShaddollWinda))
                     return 250;
@@ -1147,6 +1171,9 @@ namespace WindBot.Game.AI.Decks
 
         private int ShaddollSendScore(ClientCard card)
         {
+            if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpells().Any(c =>
+                c.IsFaceup() && !c.IsDisabled() && OpponentThreatScore(c) >= 800) &&
+                !EffectUsed(CardId.ShaddollDragon)) return 190;
             if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpellCount() > 0 &&
                 !EffectUsed(CardId.ShaddollDragon)) return 115;
             if (card.IsCode(CardId.NaelshaddollAriel) && Enemy.Graveyard.Any(c => c.IsMonster()) &&
@@ -1395,6 +1422,11 @@ namespace WindBot.Game.AI.Decks
             int score = card.Controller == 1 ? 100 : 0;
             if (card.Controller == 1)
             {
+                OpponentCapability capability = GetOpponentCapabilities(card);
+                if ((capability & OpponentCapability.GraveInteraction) != 0) score += 300;
+                if ((capability & OpponentCapability.Negate) != 0) score += 250;
+                if ((capability & OpponentCapability.Recursion) != 0) score += 220;
+                if ((capability & OpponentCapability.QuickInteraction) != 0) score += 100;
                 if (card.IsCode(CardId.OrcustCymbalSkeleton)) score += 800;
                 else if (card.IsCode(CardId.OrcustHarpHorror)) score += 780;
                 else if (card.IsCode(CardId.OrcustKnightmare)) score += 760;
@@ -1404,6 +1436,9 @@ namespace WindBot.Game.AI.Decks
                 else if (card.IsCode(CardId.PhantomKnightsFogBlade)) score += 680;
                 else if (card.IsCode(CardId.ReturnOfTheDragonLords)) score += 650;
                 else if (card.IsCode(CardId.WhiteStoneOfAncients)) score += 630;
+                else if (card.IsCode(CardId.MagicianNavigation)) score += 850;
+                else if (card.IsCode(CardId.DarkMagicianTheDragonKnight)) score += 760;
+                else if (card.IsCode(CardId.DarkMagician)) score += 720;
             }
             if (card.IsMonster()) score += 25;
             if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)) score += 20;
@@ -1417,23 +1452,19 @@ namespace WindBot.Game.AI.Decks
             if (!card.IsFaceup() || card.IsDisabled())
                 return -500;
 
+            OpponentCapability capability = GetOpponentCapabilities(card);
             int score = 100;
-            if (card.IsCode(CardId.EternalSoul, CardId.DarkMagicalCircle))
-                score += 700;
-            if (card.IsCode(
-                CardId.HopeHarbingerDragonTitanicGalaxy,
-                CardId.BlueEyesSpiritDragon,
-                CardId.CrystalWingSynchroDragon))
-                score += 650;
-            if (card.IsCode(
-                CardId.BlueEyesAlternativeWhiteDragon,
-                CardId.DarkMagicianTheDragonKnight,
-                CardId.TheDarkMagicians))
-                score += 500;
-            if (card.IsFloodgate())
-                score += 450;
+            if ((capability & OpponentCapability.Negate) != 0) score += 350;
+            if ((capability & OpponentCapability.Removal) != 0) score += 220;
+            if ((capability & OpponentCapability.Recursion) != 0) score += 220;
+            if ((capability & OpponentCapability.Protection) != 0) score += 180;
+            if ((capability & OpponentCapability.Floodgate) != 0) score += 450;
+            if ((capability & OpponentCapability.QuickInteraction) != 0) score += 140;
+            if ((capability & OpponentCapability.GraveInteraction) != 0) score += 80;
+            if ((capability & OpponentCapability.RepeatableEngine) != 0) score += 300;
+            if ((capability & OpponentCapability.AdvantageEngine) != 0) score += 120;
             if (card.HasType(CardType.Continuous | CardType.Field))
-                score += 300;
+                score += 200;
             if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link))
                 score += 220;
             if (card.IsMonster())
@@ -1442,6 +1473,56 @@ namespace WindBot.Game.AI.Decks
                 score += Math.Max(0, card.Defense) / 80;
             }
             return score;
+        }
+
+        private OpponentCapability GetOpponentCapabilities(ClientCard card)
+        {
+            if (card == null || card.Data == null)
+                return OpponentCapability.None;
+
+            string text = (card.Data.Description ?? string.Empty).ToLowerInvariant();
+            OpponentCapability capability = OpponentCapability.None;
+            if (text.Contains("negate the activation") || text.Contains("negate that effect") ||
+                text.Contains("negate its effects") || text.Contains("negate their effects"))
+                capability |= OpponentCapability.Negate;
+            if (text.Contains("banish it") || text.Contains("banish that") ||
+                text.Contains("destroy it") || text.Contains("destroy that") ||
+                text.Contains("destroy those") || text.Contains("attach it to this card") ||
+                text.Contains("return it to the hand") || text.Contains("return that target to the hand"))
+                capability |= OpponentCapability.Removal;
+            if (text.Contains("special summon") &&
+                (text.Contains("from your gy") || text.Contains("from the gy") ||
+                 text.Contains("hand or gy") || text.Contains("deck, and/or gy")))
+                capability |= OpponentCapability.Recursion;
+            if (text.Contains("cannot be destroyed") || text.Contains("unaffected by") ||
+                text.Contains("cannot target") || text.Contains("cannot be targeted"))
+                capability |= OpponentCapability.Protection;
+            if (card.IsFloodgate())
+                capability |= OpponentCapability.Floodgate;
+            if (text.Contains("(quick effect)") || text.Contains("during either player's turn"))
+                capability |= OpponentCapability.QuickInteraction;
+            if (text.Contains("from your gy") || text.Contains("from the gy") ||
+                text.Contains("banish this card from your gy"))
+                capability |= OpponentCapability.GraveInteraction;
+            if (text.Contains("add it to your hand") || text.Contains("add 1 ") ||
+                text.Contains("draw 1 card"))
+                capability |= OpponentCapability.AdvantageEngine;
+            if (card.HasType(CardType.Continuous | CardType.Field) &&
+                text.Contains("once per turn") &&
+                (capability & (OpponentCapability.Negate | OpponentCapability.Removal |
+                    OpponentCapability.Recursion | OpponentCapability.Protection |
+                    OpponentCapability.AdvantageEngine)) != 0)
+                capability |= OpponentCapability.RepeatableEngine;
+            return capability;
+        }
+
+        private int BestLiveOpponentThreatScore()
+        {
+            return Enemy.GetMonsters().Concat(Enemy.GetSpells())
+                .Where(c => c.IsFaceup() && !c.IsDisabled())
+                .Select(OpponentThreatScore)
+                .DefaultIfEmpty(-1000)
+                .Max();
         }
 
         private int RevivalScore(ClientCard card)

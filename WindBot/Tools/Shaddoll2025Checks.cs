@@ -32,6 +32,9 @@ internal static class Shaddoll2025Checks
     private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, DarkMagician = 46986414;
     private const int HopeHarbinger = 63767246, ReturnDragonLords = 6853254;
+    private const int DarkMagicalCircle = 47222536, EternalSoul = 48680970;
+    private const int MagicianNavigation = 7922915, CyberDragonInfinity = 10443957;
+    private const int TirasKeeperOfGenesis = 31386180;
     private const int OrcustCymbalSkeleton = 21441617;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<Dictionary<string, object>> Results = new List<Dictionary<string, object>>();
@@ -962,6 +965,39 @@ internal static class Shaddoll2025Checks
                 "Schism made Winda while Hope Harbinger remained able to negate the follow-up");
         });
 
+        Run("Schism uses Apkallone to disable a visible recursive control engine", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(EternalSoul, CardLocation.SpellZone, 1);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone);
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Apkallone, CardLocation.Extra), Card(Construct, CardLocation.Extra)), Apkallone,
+                "Schism made Winda while Eternal Soul remained live");
+        });
+
+        Run("Quick Fusion uses Apkallone against an established Extra Deck negate", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(CyberDragonInfinity, CardLocation.MonsterZone, 1);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone);
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Apkallone, CardLocation.Extra)), Apkallone,
+                "Quick Fusion left Cyber Dragon Infinity live behind Winda");
+
+            Fixture effectText = new Fixture();
+            effectText.Duel.Player = 1;
+            effectText.Add(TirasKeeperOfGenesis, CardLocation.MonsterZone, 1);
+            ClientCard secondFusion = effectText.Add(ElFusion, CardLocation.SpellZone);
+            effectText.Chain(secondFusion, true);
+            Is(effectText.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Apkallone, CardLocation.Extra)), Apkallone,
+                "Quick Fusion ignored Tiras's removal and protection capabilities");
+        });
+
         Run("Schism sends only a monster matching Winda's DARK attribute", () =>
         {
             Fixture light = new Fixture();
@@ -1137,6 +1173,17 @@ internal static class Shaddoll2025Checks
                 "Ariel banished a vanilla Dragon before its live grave protection");
         });
 
+        Run("Ariel removes Magician Navigation before a generic grave monster", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard ariel = f.Add(Ariel, CardLocation.Grave);
+            ClientCard navigation = f.Add(MagicianNavigation, CardLocation.Grave, 1);
+            ClientCard monster = f.Add(BlueEyes, CardLocation.Grave, 1);
+            f.Chain(ariel, true);
+            Is(f.Select(HintMsg.Remove, navigation, monster), MagicianNavigation,
+                "Ariel left Navigation's grave negate available");
+        });
+
         Run("Lev control Ariel revives Squamata instead of the largest banished body", () =>
         {
             Fixture f = new Fixture();
@@ -1203,6 +1250,29 @@ internal static class Shaddoll2025Checks
             f.Executor.OnSpSummoned();
             Require(f.AI.OnSelectEffectYn(schism, 0),
                 "Schism missed the lock window after the opponent's first Special Summon");
+        });
+
+        Run("Schism responds before a visible continuous control engine snowballs", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendi, CardLocation.Grave);
+            f.Add(MaxxC, CardLocation.Grave);
+            f.Add(DarkMagicalCircle, CardLocation.SpellZone, 1);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism waited while Dark Magical Circle was already live");
+        });
+
+        Run("Construct sends Dragon to break a visible recursive backrow", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(EternalSoul, CardLocation.SpellZone, 1);
+            ClientCard construct = f.Add(Construct, CardLocation.MonsterZone);
+            f.Chain(construct, true);
+            Is(f.Select(HintMsg.ToGrave, Card(Dragon, CardLocation.Deck),
+                Card(Squamata, CardLocation.Deck)), Dragon,
+                "Construct sent generic engine while Eternal Soul remained live");
         });
 
         Run("Schism does not count hand monsters as Fusion material", () =>

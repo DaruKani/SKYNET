@@ -676,8 +676,8 @@ combo. Its implemented decisions include:
   cost;
 - state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
   Construct setup, Apkallone search/discard and Meshachrer search/revival. Ariel
-  prioritizes live Orcust recursion and Dragon grave protection before generic
-  bodies;
+  prioritizes live Orcust recursion, Dragon grave protection and Magician
+  Navigation's grave negate before generic bodies;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
 - adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
@@ -693,10 +693,13 @@ combo. Its implemented decisions include:
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
   Shaddoll negate cost remain. Set Schism waits until the opponent has committed
   its first Special Summon, reaches Main End with a monster, or threatens the
-  Trap; it counts only field/GY materials and normally prioritizes Winda. When a
-  live Extra Deck negate is already established, it instead prefers a legal
-  same-Attribute Fusion for Schism's send, or Apkallone to disable Hope
-  Harbinger when no matching Fusion is offered;
+  Trap; a visible high-value continuous control engine is also treated as a
+  commitment so it can be answered before it snowballs. Schism counts only
+  field/GY materials and normally prioritizes Winda. When a live Extra Deck
+  negate is already established, it instead prefers a legal same-Attribute
+  Fusion for Schism's send, or Apkallone to disable the threat. El Shaddoll
+  Fusion likewise prefers Apkallone over Winda against an established high-value
+  face-up negate or recursive engine;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -716,6 +719,12 @@ combo. Its implemented decisions include:
   revives it while searching El Shaddoll Fusion instead of a spent second Void;
 - optional Apkallone negation only when a live opposing target exists, avoiding
   self-negation and declining when Apkallone is already disabled;
+- capability-based threat evaluation for publicly known cards. The executor
+  reads the selected database's effect text and classifies negate, removal,
+  recursion, protection, floodgate, Quick Effect, grave interaction, repeatable
+  continuous engines and recurring advantage. Schism, El Shaddoll Fusion,
+  Apkallone, Dragon and Ariel compare those capabilities before falling back to
+  the smaller card-specific grave-recursion list;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
   grind-game Spell/Trap recovery, and conservative use of hand traps.
 
@@ -766,7 +775,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 65 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 70 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -776,7 +785,9 @@ choices, chain-choice candidates and responses, and ordinary card and
 idle-command selections. Void subgroup searches, multi-step Fusion materials
 and the exact response window used for Schism or El Shaddoll Fusion can therefore
 be audited. The client cannot see hidden opponent cards, simulate future Lua
-resolution, or know an opponent's unobserved hand.
+resolution, or know an opponent's unobserved hand. Effect-text classification
+uses the English Standard catalog selected for this executor; it is a bounded
+semantic heuristic, not a substitute for executing each card's Lua script.
 
 Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
 and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
@@ -840,3 +851,18 @@ remained face-up, and Ariel valued generic grave bodies above live Orcust/Dragon
 recursion. Timing, legal material counting, adaptive Schism targets and grave
 priorities now have focused regressions. This run predates those corrections and
 is not a post-fix win-rate result.
+
+Completed post-timing run `3d471151-ffb4-4bad-89e7-446ea571169a` recorded 488
+underlying duels across 200 Arena entries. Shaddoll2025 went 313–175 by duel and
+140–60 by Arena result. Blue-Eyes improved from the preceding run's 3–17 Arena
+result to 12–8 and Orcust finished 10–10, but Dark Magician fell from 15–5 to
+5–15; Rank V finished 14–6 and Salamangreat 17–3. The Dark Magician losses
+exposed Dark Magical Circle in 30 of 33 duels, Dark Magician in 29, Eternal Soul
+in 28 and Magician Navigation in 24. Rank V losses exposed Tiras in 11 of 22
+duels and Cyber Dragon Infinity in nine. Those public observations now drive a
+capability-based correction instead of a matchup-name switch: visible repeatable
+control can open the delayed Schism window; Apkallone is preferred against live
+negate, removal, recursion or protection engines; and Dragon/Ariel score field
+and grave capabilities before card-specific fallbacks. These changes have
+compiled callback regressions but no post-change Arena result yet; the completed
+run remains diagnosis, not proof of improvement.
