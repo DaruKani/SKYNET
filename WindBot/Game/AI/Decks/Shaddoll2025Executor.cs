@@ -80,6 +80,7 @@ namespace WindBot.Game.AI.Decks
 
         private readonly HashSet<int> _usedEffects = new HashSet<int>();
         private int _specialSummonsThisTurn;
+        private int _opponentSpecialSummonsThisTurn;
         private int _coveredOpponentChainLength;
         private int _pendingFusionTargetId;
         private CardType _voidRevealedType;
@@ -196,6 +197,7 @@ namespace WindBot.Game.AI.Decks
             base.OnNewTurn();
             _usedEffects.Clear();
             _specialSummonsThisTurn = 0;
+            _opponentSpecialSummonsThisTurn = 0;
             _coveredOpponentChainLength = 0;
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
@@ -290,6 +292,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.LastSummonPlayer == 0)
                 _specialSummonsThisTurn++;
+            else if (Duel.LastSummonPlayer == 1)
+                _opponentSpecialSummonsThisTurn++;
             base.OnSpSummoned();
         }
 
@@ -560,8 +564,21 @@ namespace WindBot.Game.AI.Decks
         private bool SchismActivate()
         {
             if (Card.IsFacedown())
-                return Duel.Player == 1 && IsMainPhase() && HasFusionResources(true);
-            if (!IsMainPhase() || !HasFusionResources(true) ||
+            {
+                if (Duel.Player != 1 || !IsMainPhase() || !HasSchismFusionResources())
+                    return false;
+                bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
+                // Do not expose Winda into an empty Main Phase before the
+                // opponent has spent a Special Summon. Blue-Eyes in particular
+                // can otherwise choose one 3000 ATK body, battle over Winda and
+                // resume its engine next turn. Still cash Schism in when it is
+                // threatened, after the first opposing Special Summon, or at
+                // Main End after the opponent has committed a monster.
+                return DefaultOnBecomeTarget() ||
+                    _opponentSpecialSummonsThisTurn > 0 ||
+                    (mainEnd && Enemy.GetMonsterCount() > 0);
+            }
+            if (!IsMainPhase() || !HasSchismFusionResources() ||
                 (FunctionalWinda() && _specialSummonsThisTurn >= 1))
                 return false;
             if (Duel.Player == 0 && !Enemy.GetMonsters().Any(c => c.IsFaceup()))
@@ -1612,6 +1629,12 @@ namespace WindBot.Game.AI.Decks
             int materialCount = Bot.Hand.Count(c => c.IsMonster()) + Bot.GetMonsterCount();
             if (includeGrave)
                 materialCount += Bot.Graveyard.Count(c => c.IsMonster());
+            return materialCount >= 2 && Bot.ExtraDeck.Any(c => ShaddollFusionIds.Contains(c.Id));
+        }
+
+        private bool HasSchismFusionResources()
+        {
+            int materialCount = Bot.GetMonsterCount() + Bot.Graveyard.Count(c => c.IsMonster());
             return materialCount >= 2 && Bot.ExtraDeck.Any(c => ShaddollFusionIds.Contains(c.Id));
         }
 

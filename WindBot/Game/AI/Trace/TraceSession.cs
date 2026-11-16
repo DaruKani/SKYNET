@@ -79,7 +79,7 @@ namespace WindBot.Game.AI.Trace
                 Write(new TraceRecord
                 {
                     Kind = "start",
-                    Coverage = new[] { "select_idlecmd", "select_card", "select_unselect" },
+                    Coverage = new[] { "select_idlecmd", "select_card", "select_unselect", "select_chain" },
                     MaxRows = MaximumRows,
                     MaxBytes = MaximumBytes,
                     MaxRowBytes = MaximumRowBytes
@@ -99,7 +99,9 @@ namespace WindBot.Game.AI.Trace
                 _counterObserved = true;
             int value = (int)message;
             if ((value >= 10 && value <= 26 && message != GameMessage.SelectIdleCmd
-                && message != GameMessage.SelectCard)
+                && message != GameMessage.SelectCard
+                && message != GameMessage.SelectUnselect
+                && message != GameMessage.SelectChain)
                 || (value >= 140 && value <= 143))
             {
                 Write(new TraceRecord

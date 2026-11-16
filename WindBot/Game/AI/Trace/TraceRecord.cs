@@ -98,6 +98,10 @@ namespace WindBot.Game.AI.Trace
         public TraceCardReference Card;
         [DataMember(Name = "position")]
         public int Position;
+        [DataMember(Name = "description", EmitDefaultValue = false)]
+        public int Description;
+        [DataMember(Name = "forced", EmitDefaultValue = false)]
+        public bool Forced;
     }
 
     [DataContract]

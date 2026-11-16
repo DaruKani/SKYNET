@@ -1467,6 +1467,8 @@ namespace WindBot.Game
             IList<ClientCard> cards = new List<ClientCard>();
             IList<int> descs = new List<int>();
             IList<bool> forces = new List<bool>();
+            List<TraceSelectionCandidate> traceCandidates = _trace.Enabled
+                ? new List<TraceSelectionCandidate>() : null;
 
             for (int i = 0; i < count; ++i)
             {
@@ -1489,6 +1491,15 @@ namespace WindBot.Game
                 if (card.Id == 0)
                     card.SetId(id);
 
+                _trace.AddSelectionCandidate(traceCandidates, i, id, con, loc, seq,
+                    ((loc & (int)CardLocation.Overlay) != 0) ? sseq : card.Position);
+                if (traceCandidates != null && traceCandidates.Count > 0)
+                {
+                    TraceSelectionCandidate candidate = traceCandidates[traceCandidates.Count - 1];
+                    candidate.Description = candidate.Known ? desc : -1;
+                    candidate.Forced = forced;
+                }
+
                 cards.Add(card);
                 descs.Add(desc);
                 forces.Add(forced);
@@ -1500,13 +1511,25 @@ namespace WindBot.Game
                 return;
             }
 
+            bool mustRespond = forces.Any(force => force);
+            TraceRecord observation = _trace.PrepareSelection(
+                _duel, traceCandidates, mustRespond ? 1 : 0, 1, !mustRespond, hint1 | hint2);
+            if (observation != null)
+                observation.Prompt = "select_chain";
+
             if (cards.Count == 1 && forces[0])
             {
+                _trace.CommitSelection(observation, new byte[] { 1, 0 }, false, "forced");
                 Connection.Send(CtosMessage.Response, 0);
                 return;
             }
 
-            Connection.Send(CtosMessage.Response, _ai.OnSelectChain(cards, descs, forces, hint1 | hint2));
+            int response = _ai.OnSelectChain(cards, descs, forces, hint1 | hint2);
+            if (response < 0)
+                _trace.CommitSelection(observation, new byte[] { 255, 255, 255, 255 }, true, "executor");
+            else
+                _trace.CommitSelection(observation, new byte[] { 1, (byte)response }, false, "executor");
+            Connection.Send(CtosMessage.Response, response);
         }
 
         private void OnSelectCounter(BinaryReader packet)

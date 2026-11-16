@@ -1135,11 +1135,50 @@ internal static class Shaddoll2025Checks
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
-            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Wendi, CardLocation.Grave);
             f.Add(MaxxC, CardLocation.Grave);
-            ClientCard schism = f.Add(Schism, CardLocation.SpellZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
             Require(!f.AI.OnSelectEffectYn(schism, 0),
                 "Schism spent its once-per-turn interaction without a threat");
+        });
+
+        Run("Schism makes Winda after the opponent commits a Special Summon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendi, CardLocation.Grave);
+            f.Add(MaxxC, CardLocation.Grave);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism missed the lock window after the opponent's first Special Summon");
+        });
+
+        Run("Schism does not count hand monsters as Fusion material", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendi, CardLocation.Hand);
+            f.Add(MaxxC, CardLocation.Grave);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            Require(!f.AI.OnSelectEffectYn(schism, 0),
+                "Schism treated an illegal hand monster as Fusion material");
+        });
+
+        Run("Schism responds when backrow removal threatens it", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendi, CardLocation.Grave);
+            f.Add(MaxxC, CardLocation.Grave);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard duster = f.Add(18144506, CardLocation.SpellZone, 1);
+            f.Chain(duster, false);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism allowed mass backrow removal to erase it without a response");
         });
 
         Run("Meshachrer search prefers Void Unleashing as the broad extender", () =>

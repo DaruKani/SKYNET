@@ -689,8 +689,10 @@ combo. Its implemented decisions include:
 - opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
-  Shaddoll negate cost remain. Schism separately prioritizes Winda and offers its
-  send only for an opposing face-up DARK monster;
+  Shaddoll negate cost remain. Set Schism waits until the opponent has committed
+  its first Special Summon, reaches Main End with a monster, or threatens the
+  Trap; it counts only field/GY materials, prioritizes Winda and offers its send
+  only for an opposing face-up DARK monster;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -760,17 +762,17 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 58 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 61 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
 launch, duel and result-recording path only; a small sample is not a strength or
 win-rate claim. Structured traces now include repeated `SelectUnselect` card
-choices as well as ordinary card and idle-command selections, so Void subgroup
-searches and multi-step Fusion materials can be audited. `SelectChain` remains
-marked as an unsupported prompt in the current trace schema. The client cannot
-see hidden opponent cards, simulate future Lua resolution, or know an
-opponent's unobserved hand.
+choices, chain-choice candidates and responses, and ordinary card and
+idle-command selections. Void subgroup searches, multi-step Fusion materials
+and the exact response window used for Schism or El Shaddoll Fusion can therefore
+be audited. The client cannot see hidden opponent cards, simulate future Lua
+resolution, or know an opponent's unobserved hand.
 
 Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
 and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
@@ -816,3 +818,15 @@ observed the complete prepared control shell (Wendikuruhu, Ariel, revived
 Squamata, Schism and recovered El Shaddoll Fusion) in a real Lua-backed duel.
 This small successful sample verifies execution and traceability, not an expected
 Blue-Eyes win rate.
+
+At the 220-capture checkpoint of run `f07d557f-7b67-4927-98c7-366eb2005067`,
+219 duels had completed across 89 Arena match rooms. Against the bundled legacy Blue-Eyes bot,
+Shaddoll2025 went 3–18 by individual duel and 0–9 by Arena match result. Fifteen
+of the 18 losses showed Number 38: Hope Harbinger Dragon Titanic Galaxy, thirteen
+showed Blue-Eyes Spirit Dragon, and backrow removal repeatedly exposed Schism and
+El Shaddoll Fusion. That Blue-Eyes list also contains cards outside current
+tournament legality because Arena deck checks are disabled. A representative
+loss showed another policy defect: set Schism made Winda before the opponent had
+spent a Special Summon, allowing a single 3000 ATK body to attack over it. The
+new timing and material regressions correct that defect; the recorded 0–9 result
+predates the correction and is not presented as a post-fix win-rate result.
