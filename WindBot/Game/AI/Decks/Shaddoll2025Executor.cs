@@ -52,12 +52,22 @@ namespace WindBot.Game.AI.Decks
 
             public const int BlueEyesAlternativeWhiteDragon = 38517737;
             public const int BlueEyesSpiritDragon = 59822133;
+            public const int WhiteStoneOfAncients = 71039903;
+            public const int ReturnOfTheDragonLords = 6853254;
             public const int CrystalWingSynchroDragon = 50954680;
             public const int DarkMagicalCircle = 47222536;
             public const int DarkMagicianTheDragonKnight = 41721210;
             public const int EternalSoul = 48680970;
             public const int HopeHarbingerDragonTitanicGalaxy = 63767246;
             public const int TheDarkMagicians = 50237654;
+
+            public const int OrcustKnightmare = 4055337;
+            public const int OrcustHarpHorror = 57835716;
+            public const int OrcustCymbalSkeleton = 21441617;
+            public const int WorldLegacyWorldWand = 93920420;
+            public const int OrcustratedClimax = 703897;
+            public const int PhantomKnightsFogBlade = 25542642;
+            public const int DingirsuOrcustEveningStar = 93854893;
         }
 
         private const int ShaddollSetcode = 0x9d;
@@ -789,7 +799,9 @@ namespace WindBot.Game.AI.Decks
         private bool ArielActivate()
         {
             bool useful = Card.Location == CardLocation.MonsterZone ?
-                Bot.Banished.Any(c => IsShaddollCard(c)) : Enemy.Graveyard.Any(c => c.IsMonster());
+                Bot.Banished.Any(c => IsShaddollCard(c)) : Enemy.Graveyard.Any(c =>
+                    c.IsMonster() || c.IsCode(CardId.OrcustratedClimax,
+                        CardId.PhantomKnightsFogBlade, CardId.ReturnOfTheDragonLords));
             return useful && MarkUsed(CardId.NaelshaddollAriel);
         }
 
@@ -996,9 +1008,28 @@ namespace WindBot.Game.AI.Decks
                 _levOpponentTurnBranch && Bot.Hand.Any(IsShaddollCard) &&
                 card.IsCode(CardId.ElShaddollShekhinaga))
                 return 255;
-            if (ownerId == CardId.ShaddollSchism && Duel.Player == 1 &&
-                card.IsCode(CardId.ElShaddollWinda))
-                return 250;
+            if (ownerId == CardId.ShaddollSchism && Duel.Player == 1)
+            {
+                // Schism's post-Fusion send is often stronger than a Winda lock
+                // once a live Extra Deck negate is already established. Prefer
+                // a legally offered Fusion whose Attribute removes that threat;
+                // Apkallone is the fallback answer to Hope Harbinger when no
+                // matching LIGHT Fusion is legal from the current materials.
+                int matchingThreat = Enemy.GetMonsters()
+                    .Where(c => c.IsFaceup() && !c.IsDisabled() &&
+                        card.Attribute != 0 && (c.Attribute & card.Attribute) != 0)
+                    .Select(OpponentThreatScore)
+                    .DefaultIfEmpty(-1000)
+                    .Max();
+                if (matchingThreat >= 850)
+                    return 300 + Math.Min(40, (matchingThreat - 850) / 10);
+                if (card.IsCode(CardId.ElShaddollApkallone) &&
+                    Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
+                        c.IsCode(CardId.HopeHarbingerDragonTitanicGalaxy)))
+                    return 295;
+                if (card.IsCode(CardId.ElShaddollWinda))
+                    return 250;
+            }
             int score = 0;
             if (card.IsCode(CardId.ElShaddollWinda))
             {
@@ -1362,6 +1393,18 @@ namespace WindBot.Game.AI.Decks
         private int GraveDisruptionScore(ClientCard card)
         {
             int score = card.Controller == 1 ? 100 : 0;
+            if (card.Controller == 1)
+            {
+                if (card.IsCode(CardId.OrcustCymbalSkeleton)) score += 800;
+                else if (card.IsCode(CardId.OrcustHarpHorror)) score += 780;
+                else if (card.IsCode(CardId.OrcustKnightmare)) score += 760;
+                else if (card.IsCode(CardId.WorldLegacyWorldWand)) score += 740;
+                else if (card.IsCode(CardId.DingirsuOrcustEveningStar)) score += 720;
+                else if (card.IsCode(CardId.OrcustratedClimax)) score += 700;
+                else if (card.IsCode(CardId.PhantomKnightsFogBlade)) score += 680;
+                else if (card.IsCode(CardId.ReturnOfTheDragonLords)) score += 650;
+                else if (card.IsCode(CardId.WhiteStoneOfAncients)) score += 630;
+            }
             if (card.IsMonster()) score += 25;
             if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)) score += 20;
             return score + card.Level;

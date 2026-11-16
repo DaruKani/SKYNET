@@ -675,7 +675,9 @@ combo. Its implemented decisions include:
   preserve Wendi, El Shaddoll Fusion and Schism while using the supplied discard
   cost;
 - state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
-  Construct setup, Apkallone search/discard and Meshachrer search/revival;
+  Construct setup, Apkallone search/discard and Meshachrer search/revival. Ariel
+  prioritizes live Orcust recursion and Dragon grave protection before generic
+  bodies;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
 - adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
@@ -691,8 +693,10 @@ combo. Its implemented decisions include:
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
   Shaddoll negate cost remain. Set Schism waits until the opponent has committed
   its first Special Summon, reaches Main End with a monster, or threatens the
-  Trap; it counts only field/GY materials, prioritizes Winda and offers its send
-  only for an opposing face-up DARK monster;
+  Trap; it counts only field/GY materials and normally prioritizes Winda. When a
+  live Extra Deck negate is already established, it instead prefers a legal
+  same-Attribute Fusion for Schism's send, or Apkallone to disable Hope
+  Harbinger when no matching Fusion is offered;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -762,7 +766,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 61 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 65 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -819,14 +823,20 @@ Squamata, Schism and recovered El Shaddoll Fusion) in a real Lua-backed duel.
 This small successful sample verifies execution and traceability, not an expected
 Blue-Eyes win rate.
 
-At the 220-capture checkpoint of run `f07d557f-7b67-4927-98c7-366eb2005067`,
-219 duels had completed across 89 Arena match rooms. Against the bundled legacy Blue-Eyes bot,
-Shaddoll2025 went 3–18 by individual duel and 0–9 by Arena match result. Fifteen
-of the 18 losses showed Number 38: Hope Harbinger Dragon Titanic Galaxy, thirteen
-showed Blue-Eyes Spirit Dragon, and backrow removal repeatedly exposed Schism and
-El Shaddoll Fusion. That Blue-Eyes list also contains cards outside current
-tournament legality because Arena deck checks are disabled. A representative
-loss showed another policy defect: set Schism made Winda before the opponent had
-spent a Special Summon, allowing a single 3000 ATK body to attack over it. The
-new timing and material regressions correct that defect; the recorded 0–9 result
-predates the correction and is not presented as a post-fix win-rate result.
+Completed run `f07d557f-7b67-4927-98c7-366eb2005067` recorded 486 underlying
+duels across 200 Arena entries. Shaddoll2025 went 325–161 by duel and 151–49 by
+Arena result. The two weak Arena matchups were Blue-Eyes at 3–17 and Orcust at
+8–12. The prepared control shell was observed in 46 duels and went 40–6; with El
+Shaddoll Fusion also observed it went 37–4. This supports preserving the core Lev
+route while correcting its response policy rather than replacing the route.
+
+Against the bundled legacy Blue-Eyes bot, Shaddoll2025 went 12–34 by individual
+duel. Twenty-three of the 34 losses showed Number 38: Hope Harbinger Dragon
+Titanic Galaxy and twenty-one showed Blue-Eyes Spirit Dragon. The list also uses
+cards outside current tournament legality because Arena deck checks are disabled.
+The traces exposed three correctable policies: set Schism fired before the first
+opposing Special Summon, Schism kept selecting Winda while a LIGHT spell negate
+remained face-up, and Ariel valued generic grave bodies above live Orcust/Dragon
+recursion. Timing, legal material counting, adaptive Schism targets and grave
+priorities now have focused regressions. This run predates those corrections and
+is not a post-fix win-rate result.

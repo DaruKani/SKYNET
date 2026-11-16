@@ -31,6 +31,8 @@ internal static class Shaddoll2025Checks
     private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
     private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, DarkMagician = 46986414;
+    private const int HopeHarbinger = 63767246, ReturnDragonLords = 6853254;
+    private const int OrcustCymbalSkeleton = 21441617;
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static readonly List<Dictionary<string, object>> Results = new List<Dictionary<string, object>>();
     private static readonly List<int> MainDeck = new List<int>();
@@ -936,6 +938,30 @@ internal static class Shaddoll2025Checks
                 "Schism failed to establish Winda's summon limit");
         });
 
+        Run("Schism uses Construct to remove a live Hope Harbinger", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(HopeHarbinger, CardLocation.MonsterZone, 1);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone);
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Apkallone, CardLocation.Extra), Card(Construct, CardLocation.Extra)), Construct,
+                "Schism left Hope Harbinger live instead of using its LIGHT send");
+        });
+
+        Run("Schism uses Apkallone when Hope Harbinger has no matching Fusion answer", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(HopeHarbinger, CardLocation.MonsterZone, 1);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone);
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, Card(Winda, CardLocation.Extra),
+                Card(Apkallone, CardLocation.Extra)), Apkallone,
+                "Schism made Winda while Hope Harbinger remained able to negate the follow-up");
+        });
+
         Run("Schism sends only a monster matching Winda's DARK attribute", () =>
         {
             Fixture light = new Fixture();
@@ -1085,6 +1111,30 @@ internal static class Shaddoll2025Checks
                 "Ariel banished an own resource before the opponent's Fusion");
             Require(selected.Count == 2 && selected.All(c => c.Controller == 1),
                 "Ariel failed to banish all useful enemy targets or consumed an own resource");
+        });
+
+        Run("Ariel banishes live Orcust recursion before a generic Extra Deck body", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard ariel = f.Add(Ariel, CardLocation.Grave);
+            ClientCard cymbal = Card(OrcustCymbalSkeleton, CardLocation.Grave); cymbal.Controller = 1;
+            ClientCard fusion = Card(Construct, CardLocation.Grave); fusion.Controller = 1;
+            f.Chain(ariel, true);
+            Is(f.Select(HintMsg.Remove, cymbal, fusion), OrcustCymbalSkeleton,
+                "Ariel left Orcust Cymbal Skeleton live to revive the Orcust board");
+        });
+
+        Run("Ariel recognizes Return of the Dragon Lords as live grave protection", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard ariel = f.Add(Ariel, CardLocation.Grave);
+            ClientCard protection = f.Add(ReturnDragonLords, CardLocation.Grave, 1);
+            ClientCard dragon = f.Add(BlueEyes, CardLocation.Grave, 1);
+            Require(f.AI.OnSelectEffectYn(ariel, 0),
+                "Ariel ignored live Dragon destruction protection in the opponent's GY");
+            f.Chain(ariel, true);
+            Is(f.Select(HintMsg.Remove, protection, dragon), ReturnDragonLords,
+                "Ariel banished a vanilla Dragon before its live grave protection");
         });
 
         Run("Lev control Ariel revives Squamata instead of the largest banished body", () =>
