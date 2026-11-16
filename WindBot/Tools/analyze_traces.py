@@ -73,6 +73,7 @@ def observed_code(row, reference):
 
 
 def summarize_capture(path, rows):
+    start = rows[0]
     end = next((row for row in reversed(rows) if row.get("kind") == "end"), None)
     outcome = end.get("outcome") if end else None
     completed = bool(end and end.get("completed") and outcome in (0, 1, 2))
@@ -107,6 +108,10 @@ def summarize_capture(path, rows):
             "duelId": row.get("duelId"),
             "agent": row.get("agent"),
             "sequence": row.get("sequence"),
+            "recordedAt": row.get("recordedAt"),
+            "matchOrder": row.get("matchOrder"),
+            "roomName": row.get("roomName"),
+            "duelNumber": row.get("duelNumber"),
             "kind": row.get("kind"),
             "prompt": row.get("prompt"),
             "turn": global_state.get("turn"),
@@ -124,6 +129,10 @@ def summarize_capture(path, rows):
         "file": str(path),
         "duelId": rows[0].get("duelId"),
         "agent": rows[0].get("agent"),
+        "startedAt": start.get("recordedAt"),
+        "matchOrder": start.get("matchOrder"),
+        "roomName": start.get("roomName"),
+        "duelNumber": start.get("duelNumber"),
         "completed": completed,
         "outcome": outcome,
         "records": len(rows),
@@ -144,6 +153,17 @@ def merge_counts(target, values):
 
 def analyze(inputs):
     captures = [summarize_capture(path, read_capture(path)) for path in trace_files(inputs)]
+    captures.sort(key=lambda capture: (
+        capture["startedAt"] is None,
+        capture["startedAt"] or "",
+        capture["matchOrder"] is None,
+        capture["matchOrder"] or 0,
+        capture["file"],
+    ))
+    for start_order, capture in enumerate(captures, 1):
+        capture["startOrder"] = start_order
+        for row in capture["rows"]:
+            row["startOrder"] = start_order
     action_types = collections.Counter()
     response_sources = collections.Counter()
     decision_sources = collections.Counter()
@@ -182,7 +202,8 @@ def analyze(inputs):
 
 def write_csv(path, rows):
     columns = [
-        "file", "duelId", "agent", "sequence", "kind", "prompt", "turn", "phase",
+        "file", "duelId", "agent", "startOrder", "matchOrder", "roomName", "duelNumber",
+        "recordedAt", "sequence", "kind", "prompt", "turn", "phase",
         "selectedType", "selectedCardCode", "selectedCandidateCodes", "responseSource", "decisionSource",
         "unsupported", "outcome", "completed",
     ]

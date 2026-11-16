@@ -80,6 +80,10 @@ namespace WindBot
             Info.TraceData = Config.GetString("TraceData", Info.TraceData);
             if (!string.IsNullOrWhiteSpace(Info.TraceData))
                 Info.TraceData = Game.AI.Trace.TraceSession.ResolveDirectory(Info.TraceData);
+            Info.TraceRoom = Config.GetString("TraceRoom", Info.TraceRoom);
+            int traceMatchOrder = Config.GetInt("TraceMatchOrder", 0);
+            if (traceMatchOrder > 0)
+                Info.TraceMatchOrder = traceMatchOrder;
             Info.Host = Config.GetString("Host", Info.Host);
             Info.Port = Config.GetInt("Port", Info.Port);
             Info.HostInfo = Config.GetString("HostInfo", Info.HostInfo);
@@ -169,6 +173,21 @@ namespace WindBot
                 string traceData = queryParams.Get("tracedata");
                 if (traceData != null)
                     Info.TraceData = Game.AI.Trace.TraceSession.ResolveDirectory(traceData);
+                string traceRoom = queryParams.Get("traceroom");
+                if (traceRoom != null)
+                {
+                    if (traceRoom.Length > 64)
+                        throw new ArgumentException("Trace room is too long.");
+                    Info.TraceRoom = traceRoom;
+                }
+                string traceOrder = queryParams.Get("traceorder");
+                if (traceOrder != null)
+                {
+                    int parsedTraceOrder;
+                    if (!Int32.TryParse(traceOrder, out parsedTraceOrder) || parsedTraceOrder <= 0)
+                        throw new ArgumentException("Trace order must be a positive integer.");
+                    Info.TraceMatchOrder = parsedTraceOrder;
+                }
                 string version = queryParams.Get("version");
                 if (version != null)
                     Info.Version = Int16.Parse(version);

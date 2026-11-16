@@ -376,7 +376,7 @@ class ArenaDatabase {
                 FROM run_events
                 WHERE run_id = ?
                 ORDER BY id DESC
-                LIMIT 30
+                LIMIT 100
             ) ORDER BY id
         `).all(runId).map((event) => ({
             at: event.created_at,

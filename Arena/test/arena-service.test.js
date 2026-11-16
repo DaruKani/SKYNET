@@ -431,9 +431,11 @@ test('pair launches use one duel password per pair and never reuse it', async (c
         return new Response(null, { status: 200 });
     };
 
-    await service.launchMatchup(activeContext, matchup);
-    await service.launchMatchup(activeContext, matchup);
-    await service.launchRankingPair(activeContext, rankingEntries);
+    const launches = [
+        await service.launchMatchup(activeContext, matchup),
+        await service.launchMatchup(activeContext, matchup),
+        await service.launchRankingPair(activeContext, rankingEntries),
+    ];
 
     const passwords = requests.map((url) => url.searchParams.get('password'));
     assert.deepEqual(passwords, [
@@ -446,6 +448,10 @@ test('pair launches use one duel password per pair and never reuse it', async (c
     ]);
     assert.ok(requests.every((url) => url.searchParams.get('host') === 'srvpro.lan'));
     assert.ok(requests.every((url) => url.searchParams.get('port') === '7911'));
+    assert.deepEqual(launches.map((launch) => launch.launchOrder), [1, 2, 3]);
+    assert.deepEqual(launches.map((launch) => launch.roomName), [
+        'M#123456789', 'M#123456790', 'M#123456791',
+    ]);
 });
 
 test('tag launches send four randomly seated bots to one T room', async (context) => {
@@ -627,7 +633,7 @@ test('local WindBot trace capture is isolated by run room and participant', asyn
     await service.addBot(activeContext, {
         deck: 'Shaddoll 2025', executionMode: 'local', endpointHost: '127.0.0.1',
         endpointPort: 2399, rankName: 'Candidate', source: 'current',
-    }, 'M#123456789');
+    }, 'M#123456789', 7);
     await service.addBot(activeContext, {
         deck: 'Shaddoll 2025', executionMode: 'local', endpointHost: '127.0.0.1',
         endpointPort: 2398, rankName: 'Baseline', source: 'old',
@@ -635,7 +641,29 @@ test('local WindBot trace capture is isolated by run room and participant', asyn
 
     const traceData = requests[0].searchParams.get('tracedata');
     assert.match(traceData, /^D:\\Arena-Traces\\run_trace_one\\M_123456789\\current-Shaddoll_2025-[a-f0-9]{12}$/);
+    assert.equal(requests[0].searchParams.get('traceroom'), 'M#123456789');
+    assert.equal(requests[0].searchParams.get('traceorder'), '7');
     assert.equal(requests[1].searchParams.has('tracedata'), false);
+    assert.equal(requests[1].searchParams.has('traceorder'), false);
+});
+
+test('successful launches add a web-visible match order event', () => {
+    const launches = [];
+    const events = [];
+    const service = new ArenaService({}, {
+        addEvent(...args) { events.push(args); },
+        recordLaunch(...args) { launches.push(args); },
+    });
+    service.recordSuccessfulLaunch({ id: 'run-1' }, [4], {
+        launchOrder: 3,
+        participants: ['Shaddoll 2025', 'Lightsworn'],
+        roomName: 'M#123456789',
+    });
+    assert.deepEqual(launches, [['run-1', [4]]]);
+    assert.deepEqual(events, [[
+        'run-1', 'info', 'match-launched',
+        'Match #3 launched · M#123456789 · Shaddoll 2025 vs Lightsworn',
+    ]]);
 });
 
 test('scheduler stops immediately when WindBot reports a missing deck', async () => {

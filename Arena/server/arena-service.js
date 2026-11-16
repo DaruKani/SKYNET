@@ -622,6 +622,7 @@ class ArenaService {
                 launchedGames: 0,
             })),
             nextMatchupIndex: 0,
+            nextLaunchOrder: 1,
             nextRoomNumber: crypto.randomInt(
                 DUEL_ROOM_MIN,
                 DUEL_ROOM_MAX + 1,
@@ -1071,7 +1072,7 @@ class ArenaService {
         return `${context.kind === 'tag' ? 'T' : 'M'}#${roomNumber}`;
     }
 
-    async addBot(context, competitor, password) {
+    async addBot(context, competitor, password, launchOrder) {
         if (competitor.executionMode === 'skynet') {
             return this.skynetRuntime.launch(context, competitor, password);
         }
@@ -1089,6 +1090,10 @@ class ArenaService {
         const traceDirectory = getWindBotTraceDirectory(context, competitor, password);
         if (traceDirectory) {
             url.searchParams.set('tracedata', traceDirectory);
+            url.searchParams.set('traceroom', password);
+            if (Number.isInteger(launchOrder) && launchOrder > 0) {
+                url.searchParams.set('traceorder', String(launchOrder));
+            }
         }
         let response;
         try {
@@ -1144,15 +1149,23 @@ class ArenaService {
     async launchRoom(context, players) {
         const roomsPerSecond = getRoomLaunchRate(context);
         const joinDelayMs = SCHEDULE_POLL_MS / (roomsPerSecond * players.length);
+        const launchOrder = context.nextLaunchOrder || 1;
         for (let attempt = 1; attempt <= WINDBOT_REQUEST_ATTEMPTS; attempt++) {
             const password = this.nextDuelPassword(context);
             try {
                 await this.skynetRuntime.reserveRoom(context, players, password);
                 for (const player of players) {
-                    await this.addBot(context, player, password);
+                    await this.addBot(context, player, password, launchOrder);
                     await sleep(joinDelayMs, context.abortController.signal);
                 }
-                return;
+                context.nextLaunchOrder = launchOrder + 1;
+                return {
+                    launchOrder,
+                    participants: players.map((player) => (
+                        player.deck || player.rankName || player.botLabel || 'Unknown'
+                    )),
+                    roomName: password,
+                };
             } catch (error) {
                 await this.skynetRuntime.stopRoom(context, password);
                 let launchError = error;
@@ -1187,7 +1200,7 @@ class ArenaService {
         const players = matchup.launchedGames % 2 === 0
             ? matchup.competitors
             : [...matchup.competitors].reverse();
-        await this.launchRoom(context, players);
+        return this.launchRoom(context, players);
     }
 
     async launchRankingPair(context, entries) {
@@ -1195,7 +1208,7 @@ class ArenaService {
         if (Math.random() < 0.5) {
             players.reverse();
         }
-        await this.launchRoom(context, players);
+        return this.launchRoom(context, players);
     }
 
     async launchTagGroup(context, entries) {
@@ -1204,7 +1217,19 @@ class ArenaService {
             const swapIndex = Math.floor(Math.random() * (index + 1));
             [players[index], players[swapIndex]] = [players[swapIndex], players[index]];
         }
-        await this.launchRoom(context, players);
+        return this.launchRoom(context, players);
+    }
+
+    recordSuccessfulLaunch(context, matchupIds, launch) {
+        this.database.recordLaunch(context.id, matchupIds);
+        if (!launch) return;
+        const participants = launch.participants.join(' vs ');
+        this.database.addEvent(
+            context.id,
+            'info',
+            'match-launched',
+            `Match #${launch.launchOrder} launched · ${launch.roomName} · ${participants}`,
+        );
     }
 
     async scheduleGames(context) {
@@ -1244,10 +1269,14 @@ class ArenaService {
                             secondIndex++;
                         }
                         const entries = [context.matchups[firstIndex], context.matchups[secondIndex]];
-                        await this.launchRankingPair(context, entries);
+                        const launch = await this.launchRankingPair(context, entries);
                         entries.forEach((entry) => { entry.launchedGames++; });
                         launchedGames++;
-                        this.database.recordLaunch(context.id, entries.map((entry) => entry.id));
+                        this.recordSuccessfulLaunch(
+                            context,
+                            entries.map((entry) => entry.id),
+                            launch,
+                        );
                         this.markChanged('progress');
                         continue;
                     }
@@ -1255,10 +1284,14 @@ class ArenaService {
                         const entries = Array.from({ length: 4 }, () => (
                             context.matchups[Math.floor(Math.random() * context.matchups.length)]
                         ));
-                        await this.launchTagGroup(context, entries);
+                        const launch = await this.launchTagGroup(context, entries);
                         entries.forEach((entry) => { entry.launchedGames++; });
                         launchedGames++;
-                        this.database.recordLaunch(context.id, entries.map((entry) => entry.id));
+                        this.recordSuccessfulLaunch(
+                            context,
+                            entries.map((entry) => entry.id),
+                            launch,
+                        );
                         this.markChanged('progress');
                         continue;
                     }
@@ -1278,11 +1311,11 @@ class ArenaService {
                         }
                     }
                     const matchup = context.matchups[matchupIndex];
-                    await this.launchMatchup(context, matchup);
+                    const launch = await this.launchMatchup(context, matchup);
                     matchup.launchedGames++;
                     launchedGames++;
                     context.nextMatchupIndex = (matchupIndex + 1) % context.matchups.length;
-                    this.database.recordLaunch(context.id, [matchup.id]);
+                    this.recordSuccessfulLaunch(context, [matchup.id], launch);
                     this.markChanged('progress');
                 }
                 consecutiveErrors = 0;

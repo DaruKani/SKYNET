@@ -168,6 +168,14 @@ python WindBot/Tools/analyze_traces.py `
   --decisions-csv D:/Arena-Traces/decisions.csv
 ```
 
+Each successful Arena room launch appears on the web under **Match order &
+activity** as `Match #N`, with its room, participants and acceptance time. The
+same `matchOrder` and `roomName` are written into every WindBot JSONL row;
+`duelNumber` orders duels inside a best-of-three match, and `recordedAt` is the
+UTC timestamp for the individual row. The analyzer sorts captures by their start
+timestamp and adds `startOrder`, so concurrent runs can be compared without
+relying on file names.
+
 ## Configure a SKYNET comparison
 
 1. Build `../SKYNET/Skynet.sln` in Release with Visual Studio MSBuild.

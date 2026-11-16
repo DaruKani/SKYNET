@@ -14,6 +14,14 @@ namespace WindBot.Game.AI.Trace
         public string DuelId;
         [DataMember(Name = "sequence")]
         public int Sequence;
+        [DataMember(Name = "recordedAt")]
+        public string RecordedAt;
+        [DataMember(Name = "roomName", EmitDefaultValue = false)]
+        public string RoomName;
+        [DataMember(Name = "matchOrder", EmitDefaultValue = false)]
+        public int? MatchOrder;
+        [DataMember(Name = "duelNumber")]
+        public int DuelNumber;
         [DataMember(Name = "agent")]
         public string Agent;
         [DataMember(Name = "prompt", EmitDefaultValue = false)]

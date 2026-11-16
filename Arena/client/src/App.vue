@@ -942,6 +942,13 @@ function formatDate(value, timeOnly = false) {
     }).format(new Date(value));
 }
 
+function recentRunEvents(type, limit = 8) {
+    return [...(displayedRun.value?.events || [])]
+        .filter((event) => (type ? event.type === type : event.type !== 'match-launched'))
+        .reverse()
+        .slice(0, limit);
+}
+
 function formatDuration(value) {
     if (!Number.isFinite(value)) {
         return '—';
@@ -2036,15 +2043,28 @@ onBeforeUnmount(() => {
                         <article v-if="displayedRun" class="panel event-panel">
                             <div class="aside-heading">
                                 <div>
-                                    <h2>Activity</h2>
+                                    <h2>Match order & activity</h2>
                                 </div>
                             </div>
-                            <ol class="event-list">
-                                <li v-for="event in [...displayedRun.events].reverse().slice(0, 8)" :key="event.id">
-                                    <time>{{ formatDate(event.at, true) }}</time>
-                                    <span :class="`event-${event.level}`">{{ event.message }}</span>
-                                </li>
-                            </ol>
+                            <div v-if="recentRunEvents('match-launched', 12).length" class="event-section">
+                                <h3>Recent match start order</h3>
+                                <p>Match # is Arena room-launch order; the time is when both participants were accepted.</p>
+                                <ol class="event-list">
+                                    <li v-for="event in recentRunEvents('match-launched', 12)" :key="event.id">
+                                        <time>{{ formatDate(event.at, true) }}</time>
+                                        <span>{{ event.message }}</span>
+                                    </li>
+                                </ol>
+                            </div>
+                            <div v-if="recentRunEvents(null, 8).length" class="event-section">
+                                <h3>Other activity</h3>
+                                <ol class="event-list">
+                                    <li v-for="event in recentRunEvents(null, 8)" :key="event.id">
+                                        <time>{{ formatDate(event.at, true) }}</time>
+                                        <span :class="`event-${event.level}`">{{ event.message }}</span>
+                                    </li>
+                                </ol>
+                            </div>
                         </article>
 
                         <article class="future-panel">

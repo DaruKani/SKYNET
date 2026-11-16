@@ -7,15 +7,16 @@ import analyze_traces
 
 
 class TraceAnalysisTests(unittest.TestCase):
-    def write_capture(self, directory, rows):
-        path = Path(directory) / "duel.jsonl"
+    def write_capture(self, directory, rows, name="duel.jsonl"):
+        path = Path(directory) / name
         path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
         return path
 
     def test_completed_capture_summarizes_actions_fallbacks_and_unsupported(self):
-        common = {"schema": analyze_traces.SCHEMA, "duelId": "duel-1", "agent": "TestExecutor"}
+        common = {"schema": analyze_traces.SCHEMA, "duelId": "duel-1", "agent": "TestExecutor",
+                  "matchOrder": 4, "roomName": "M#123456789", "duelNumber": 2}
         rows = [
-            dict(common, sequence=0, kind="start"),
+            dict(common, sequence=0, kind="start", recordedAt="2026-11-16T12:00:00.0000000Z"),
             dict(common, sequence=1, kind="decision", prompt="select_idlecmd",
                  observation={"global": {"turn": 2, "phase": 4}, "cards": [
                      {"known": True, "code": 123, "controller": 0, "location": 2, "sequence": 0}
@@ -37,6 +38,9 @@ class TraceAnalysisTests(unittest.TestCase):
         self.assertEqual(report["summary"]["actionTypes"], {"summon": 1})
         self.assertEqual(report["summary"]["responseSources"], {"legal-fallback": 1})
         self.assertEqual(report["summary"]["decisionSources"], {"Summon:TestExecutor.Summon": 1})
+        self.assertEqual(report["captures"][0]["startOrder"], 1)
+        self.assertEqual(report["captures"][0]["matchOrder"], 4)
+        self.assertEqual(report["captures"][0]["duelNumber"], 2)
         self.assertEqual(report["decisionRows"][0]["selectedCardCode"], 123)
         self.assertEqual(report["decisionRows"][1]["selectedCandidateCodes"], "456")
 
@@ -49,6 +53,21 @@ class TraceAnalysisTests(unittest.TestCase):
             path = self.write_capture(directory, rows)
             with self.assertRaisesRegex(ValueError, "non-contiguous sequence"):
                 analyze_traces.read_capture(path)
+
+    def test_capture_start_order_uses_utc_start_timestamp(self):
+        common = {"schema": analyze_traces.SCHEMA, "agent": "A", "sequence": 0, "kind": "start"}
+        with tempfile.TemporaryDirectory() as directory:
+            self.write_capture(directory, [dict(
+                common, duelId="later", recordedAt="2026-11-16T12:00:02.0000000Z",
+                matchOrder=2, duelNumber=1,
+            )], "a-later.jsonl")
+            self.write_capture(directory, [dict(
+                common, duelId="earlier", recordedAt="2026-11-16T12:00:01.0000000Z",
+                matchOrder=1, duelNumber=1,
+            )], "z-earlier.jsonl")
+            captures = analyze_traces.analyze([directory])["captures"]
+        self.assertEqual([capture["duelId"] for capture in captures], ["earlier", "later"])
+        self.assertEqual([capture["startOrder"] for capture in captures], [1, 2])
 
 
 if __name__ == "__main__":

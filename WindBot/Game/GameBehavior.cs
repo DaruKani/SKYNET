@@ -54,7 +54,8 @@ namespace WindBot.Game
             _ai.Executor = DecksManager.Instantiate(_ai, _duel);
             Game.SetDeckContext(_ai.Executor.GetType().Name);
             Deck = Deck.Load(Game.DeckFile ?? _ai.Executor.Deck);
-            _trace = new TraceSession(Game.TraceData, _ai.Executor.GetType().Name);
+            _trace = new TraceSession(Game.TraceData, _ai.Executor.GetType().Name,
+                Game.TraceRoom, Game.TraceMatchOrder);
 
             _select_hint = 0;
         }

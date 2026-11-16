@@ -1110,6 +1110,26 @@ input {
     list-style: none;
 }
 
+.event-section + .event-section {
+    margin-top: 18px;
+}
+
+.event-section h3 {
+    margin: 0 22px 4px;
+    color: #a9bcc1;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.event-section > p {
+    margin: 0 22px 10px;
+    color: #71868c;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
 .event-list li {
     display: grid;
     grid-template-columns: 58px 1fr;

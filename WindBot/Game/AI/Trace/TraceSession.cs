@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Json;
@@ -17,12 +18,15 @@ namespace WindBot.Game.AI.Trace
 
         private readonly string _directory;
         private readonly string _agent;
+        private readonly string _roomName;
+        private readonly int? _matchOrder;
         private FileStream _stream;
         private string _duelId;
         private bool _disabled;
         private bool _counterObserved;
         private bool _isTag;
         private int _rows;
+        private int _duelNumber;
         private long _bytes;
         private int? _outcome;
 
@@ -31,10 +35,12 @@ namespace WindBot.Game.AI.Trace
             get { return !_disabled && _stream != null; }
         }
 
-        public TraceSession(string directory, string agent)
+        public TraceSession(string directory, string agent, string roomName, int? matchOrder)
         {
             _directory = directory;
             _agent = agent;
+            _roomName = roomName;
+            _matchOrder = matchOrder;
         }
 
         public static string ResolveDirectory(string directory)
@@ -65,6 +71,7 @@ namespace WindBot.Game.AI.Trace
                 _stream = new FileStream(Path.Combine(directory, _duelId + ".jsonl"),
                     FileMode.CreateNew, FileAccess.Write, FileShare.Read);
                 _rows = 0;
+                ++_duelNumber;
                 _bytes = 0;
                 _outcome = null;
                 _counterObserved = false;
@@ -441,6 +448,10 @@ namespace WindBot.Game.AI.Trace
                 record.DuelId = _duelId;
                 record.Agent = _agent;
                 record.Sequence = _rows;
+                record.RecordedAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+                record.RoomName = _roomName;
+                record.MatchOrder = _matchOrder;
+                record.DuelNumber = _duelNumber;
                 using (MemoryStream row = new MemoryStream())
                 {
                     new DataContractJsonSerializer(typeof(TraceRecord)).WriteObject(row, record);

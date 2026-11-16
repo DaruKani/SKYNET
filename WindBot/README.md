@@ -430,6 +430,10 @@ Contributor guidance for creating and modifying deck AIs is available in `AGENTS
   main-phase offers, ordinary card-selection candidates, the executor's actual
   response and the authoritative outcome. Hidden opponent identities remain
   masked. Capture is off by default and never changes an executor decision.
+- `TraceRoom` and `TraceMatchOrder`: Optional correlation metadata supplied by
+  Arena. Every row records UTC `recordedAt`; Arena traces also contain the room,
+  room-launch order and per-process duel number so files can be ordered across
+  concurrent matches and within a best-of-three match.
 
 To collect a standalone trace, add an explicit output directory:
 
@@ -464,7 +468,7 @@ Server mode exposes an HTTP endpoint that starts a bot for each valid request. E
 http://127.0.0.1:2399/?name=%E2%91%A8&deck=Blue-Eyes&host=127.0.0.1&port=7911&dialog=cirno.zh-CN
 ```
 
-Query parameter names are lowercase. Supported parameters are `name`, `deck`, `host`, `port`, `dialog`, `version`, `password`, `hand`, `debug`, `chat`, and `tracedata`. The `name`, `host`, and `port` parameters are required. `tracedata` must identify an absolute non-root directory. `deckfile` is not supported.
+Query parameter names are lowercase. Supported parameters are `name`, `deck`, `host`, `port`, `dialog`, `version`, `password`, `hand`, `debug`, `chat`, `tracedata`, `traceroom`, and `traceorder`. The `name`, `host`, and `port` parameters are required. `tracedata` must identify an absolute non-root directory; `traceorder` must be a positive integer. `deckfile` is not supported.
 
 The HTTP listener binds to all interfaces. On Windows, run with sufficient privileges or reserve the URL for the selected port (using `2399` here):
 
