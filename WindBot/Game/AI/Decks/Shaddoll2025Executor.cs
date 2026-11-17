@@ -588,8 +588,17 @@ namespace WindBot.Game.AI.Decks
                 if (Duel.Player != 1 || !IsMainPhase() || !HasSchismFusionResources())
                     return false;
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
+                bool threatened = DefaultOnBecomeTarget();
                 bool exposedControlEngine = Enemy.GetSpells().Any(c =>
                     c.IsFaceup() && !c.IsDisabled() && OpponentThreatScore(c) >= 800);
+                // The prepared Lev board has two different jobs: El Fusion
+                // establishes Apkallone's negate first, while Schism preserves
+                // Winda for the summon lock. Do not spend Schism merely because
+                // the first dangerous monster has appeared when the Quick-Play
+                // branch can answer it without consuming the floodgate branch.
+                // A threatened Schism still cashes itself in immediately.
+                if (!threatened && ShouldLeadWithElFusion())
+                    return false;
                 // Do not expose Winda into an empty Main Phase before the
                 // opponent has spent a Special Summon. Blue-Eyes in particular
                 // can otherwise choose one 3000 ATK body, battle over Winda and
@@ -598,7 +607,7 @@ namespace WindBot.Game.AI.Decks
                 // Apkallone before Circle/Soul-style control takes over the duel.
                 // Also cash Schism in when it is threatened, after the first
                 // opposing Special Summon, or at Main End after a monster commit.
-                return DefaultOnBecomeTarget() ||
+                return threatened ||
                     exposedControlEngine ||
                     _opponentSpecialSummonsThisTurn > 0 ||
                     (mainEnd && Enemy.GetMonsterCount() > 0);
@@ -634,6 +643,11 @@ namespace WindBot.Game.AI.Decks
         }
 
         private bool ElShaddollFusionActivate()
+        {
+            return CanActivateElShaddollFusionNow();
+        }
+
+        private bool CanActivateElShaddollFusionNow()
         {
             if (!HasFusionResources(false) || ShouldStopSpecialSummoning(CardLocation.Extra))
                 return false;
@@ -1461,7 +1475,7 @@ namespace WindBot.Game.AI.Decks
             if ((capability & OpponentCapability.Floodgate) != 0) score += 450;
             if ((capability & OpponentCapability.QuickInteraction) != 0) score += 140;
             if ((capability & OpponentCapability.GraveInteraction) != 0) score += 80;
-            if ((capability & OpponentCapability.RepeatableEngine) != 0) score += 300;
+            if ((capability & OpponentCapability.RepeatableEngine) != 0) score += 350;
             if ((capability & OpponentCapability.AdvantageEngine) != 0) score += 120;
             if (card.HasType(CardType.Continuous | CardType.Field))
                 score += 200;
@@ -1483,12 +1497,18 @@ namespace WindBot.Game.AI.Decks
             string text = (card.Data.Description ?? string.Empty).ToLowerInvariant();
             OpponentCapability capability = OpponentCapability.None;
             if (text.Contains("negate the activation") || text.Contains("negate that effect") ||
-                text.Contains("negate its effects") || text.Contains("negate their effects"))
+                text.Contains("negate the effect") || text.Contains("negate its effect") ||
+                text.Contains("negate its effects") || text.Contains("negate their effect") ||
+                text.Contains("negate their effects"))
                 capability |= OpponentCapability.Negate;
             if (text.Contains("banish it") || text.Contains("banish that") ||
+                text.Contains("banish them") ||
                 text.Contains("destroy it") || text.Contains("destroy that") ||
                 text.Contains("destroy those") || text.Contains("attach it to this card") ||
-                text.Contains("return it to the hand") || text.Contains("return that target to the hand"))
+                text.Contains("attach that card to this card") ||
+                text.Contains("send it to the gy") || text.Contains("send that target to the gy") ||
+                text.Contains("return it to the hand") || text.Contains("return that target to the hand") ||
+                text.Contains("shuffle it into the deck") || text.Contains("shuffle that target into the deck"))
                 capability |= OpponentCapability.Removal;
             if (text.Contains("special summon") &&
                 (text.Contains("from your gy") || text.Contains("from the gy") ||
@@ -1497,7 +1517,10 @@ namespace WindBot.Game.AI.Decks
             if (text.Contains("cannot be destroyed") || text.Contains("unaffected by") ||
                 text.Contains("cannot target") || text.Contains("cannot be targeted"))
                 capability |= OpponentCapability.Protection;
-            if (card.IsFloodgate())
+            if (card.IsFloodgate() || text.Contains("your opponent cannot special summon") ||
+                text.Contains("neither player can special summon") ||
+                text.Contains("your opponent can only special summon") ||
+                text.Contains("neither player can activate"))
                 capability |= OpponentCapability.Floodgate;
             if (text.Contains("(quick effect)") || text.Contains("during either player's turn"))
                 capability |= OpponentCapability.QuickInteraction;
@@ -1507,7 +1530,9 @@ namespace WindBot.Game.AI.Decks
             if (text.Contains("add it to your hand") || text.Contains("add 1 ") ||
                 text.Contains("draw 1 card"))
                 capability |= OpponentCapability.AdvantageEngine;
-            if (card.HasType(CardType.Continuous | CardType.Field) &&
+            bool persistentCard = card.IsMonster() ||
+                card.HasType(CardType.Continuous | CardType.Field);
+            if (persistentCard &&
                 text.Contains("once per turn") &&
                 (capability & (OpponentCapability.Negate | OpponentCapability.Removal |
                     OpponentCapability.Recursion | OpponentCapability.Protection |
@@ -1523,6 +1548,19 @@ namespace WindBot.Game.AI.Decks
                 .Select(OpponentThreatScore)
                 .DefaultIfEmpty(-1000)
                 .Max();
+        }
+
+        private bool ShouldLeadWithElFusion()
+        {
+            if (Duel.Player != 1 || FunctionalWinda() ||
+                Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
+                    c.IsCode(CardId.ElShaddollApkallone)))
+                return false;
+            bool readyElFusion = Bot.GetSpells().Any(c =>
+                c.IsCode(CardId.ElShaddollFusion) && c.IsFacedown());
+            return readyElFusion && CanActivateElShaddollFusionNow() &&
+                Bot.HasInExtra(CardId.ElShaddollApkallone) &&
+                BestLiveOpponentThreatScore() >= 750;
         }
 
         private int RevivalScore(ClientCard card)

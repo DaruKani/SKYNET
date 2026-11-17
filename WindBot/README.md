@@ -691,7 +691,10 @@ combo. Its implemented decisions include:
 - opponent-turn branch selection that uses El Shaddoll Fusion to send the revived
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
-  Shaddoll negate cost remain. Set Schism waits until the opponent has committed
+  Shaddoll negate cost remain. When the prepared board has both Quick-Play Fusion
+  and Schism, a dangerous repeatable monster is answered by El Shaddoll Fusion
+  into Apkallone first; Schism is preserved for the later Winda floodgate window.
+  Set Schism waits until the opponent has committed
   its first Special Summon, reaches Main End with a monster, or threatens the
   Trap; a visible high-value continuous control engine is also treated as a
   commitment so it can be answered before it snowballs. Schism counts only
@@ -722,7 +725,10 @@ combo. Its implemented decisions include:
 - capability-based threat evaluation for publicly known cards. The executor
   reads the selected database's effect text and classifies negate, removal,
   recursion, protection, floodgate, Quick Effect, grave interaction, repeatable
-  continuous engines and recurring advantage. Schism, El Shaddoll Fusion,
+  permanent engines and recurring advantage. Repeatable monster effects such as
+  once-per-turn removal are valued as persistent engines rather than as one raw
+  body, and common negate, removal and summon-lock phrasings are recognized.
+  Schism, El Shaddoll Fusion,
   Apkallone, Dragon and Ariel compare those capabilities before falling back to
   the smaller card-specific grave-recursion list;
 - going-second Construct/Apkallone priorities, visible backrow and GY answers,
@@ -775,7 +781,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 70 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 71 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -787,7 +793,9 @@ and the exact response window used for Schism or El Shaddoll Fusion can therefor
 be audited. The client cannot see hidden opponent cards, simulate future Lua
 resolution, or know an opponent's unobserved hand. Effect-text classification
 uses the English Standard catalog selected for this executor; it is a bounded
-semantic heuristic, not a substitute for executing each card's Lua script.
+semantic heuristic, not a substitute for executing each card's Lua script. It
+does not infer activation conditions that are absent from the public text or
+predict whether an opponent holds the cost for a conditional effect.
 
 Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
 and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won
@@ -864,5 +872,25 @@ capability-based correction instead of a matchup-name switch: visible repeatable
 control can open the delayed Schism window; Apkallone is preferred against live
 negate, removal, recursion or protection engines; and Dragon/Ariel score field
 and grave capabilities before card-specific fallbacks. These changes have
-compiled callback regressions but no post-change Arena result yet; the completed
-run remains diagnosis, not proof of improvement.
+compiled callback regressions. The completed run remains diagnosis, not proof of
+improvement.
+
+Capability-policy run `800a8951-99d7-4ec8-8fbf-c078d7f7f88a` is the first
+post-change Arena evidence. It recorded 477 completed underlying duels across 200
+Arena entries: 292–185 by duel and 130–70 by Arena result, down from 70% to 65%
+by Arena result. Blue-Eyes regressed from 12–8 to 2–18, while Dark Magician
+improved from 5–15 to 11–9; Rank V was 12–8, Orcust 10–10 and Salamangreat 15–5.
+The prepared control shell remained strong when reached (33–9, or 28–7 when El
+Shaddoll Fusion was also observed), but it appeared in 42 duels instead of 49,
+and opening Lev fell from 175 to 141 observations. That draw mix explains part
+of the aggregate movement, not the Blue-Eyes collapse. Source and trace review
+found that the first capability parser treated repeatable removal on a face-up
+monster as a one-shot effect; Blue-Eyes Alternative White Dragon therefore fell
+below the live-engine threshold after the older name-specific score was removed.
+It also allowed Schism to consume the floodgate branch before a ready El Shaddoll
+Fusion could establish Apkallone. The parser now recognizes once-per-turn
+monster interaction as a repeatable permanent capability, and the prepared
+control shell gives El Shaddoll Fusion the first answer to such a threat while
+retaining Schism for Winda. The focused compiled regression covers that exact
+decision. No Arena run has been made after this correction, so the change is not
+yet a win-rate claim.

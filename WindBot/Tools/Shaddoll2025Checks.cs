@@ -30,7 +30,8 @@ internal static class Shaddoll2025Checks
     private const int Armageddon = 28985331, Ash = 14558127, LinkConstruct = 86938484;
     private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
     private const int Granguignol = 24915933;
-    private const int BlueEyes = 89631139, DarkMagician = 46986414;
+    private const int BlueEyes = 89631139, BlueEyesAlternative = 38517737;
+    private const int DarkMagician = 46986414;
     private const int HopeHarbinger = 63767246, ReturnDragonLords = 6853254;
     private const int DarkMagicalCircle = 47222536, EternalSoul = 48680970;
     private const int MagicianNavigation = 7922915, CyberDragonInfinity = 10443957;
@@ -1013,17 +1014,19 @@ internal static class Shaddoll2025Checks
                 "Schism declined its legal DARK send after summoning Winda");
         });
 
-        Run("Recorded control board uses El Fusion to summon Apkallone", () =>
+        Run("Prepared control board uses El Fusion before Schism against repeatable removal", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
             f.Add(Wendikuruhu, CardLocation.MonsterZone);
             f.Add(Ariel, CardLocation.MonsterZone);
             f.Add(Squamata, CardLocation.MonsterZone);
-            f.Add(Schism, CardLocation.SpellZone, 0, true);
-            ClientCard threat = f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard threat = f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
             ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
             f.Chain(threat, false);
+            Require(!f.AI.OnSelectEffectYn(schism, 0),
+                "Schism consumed the Winda branch before El Fusion could establish Apkallone");
             Require(f.AI.OnSelectEffectYn(fusion, 0),
                 "El Shaddoll Fusion rejected the prepared opponent-turn branch");
             f.Chain(fusion, true);
@@ -1036,6 +1039,28 @@ internal static class Shaddoll2025Checks
                 f.Bot.GetMonsters().First(c => c.IsCode(Wendikuruhu)));
             Has(materials, Squamata, "Apkallone branch did not send Squamata by El Fusion");
             Has(materials, Ariel, "Apkallone branch consumed Wendikuruhu before its interaction");
+        });
+
+        Run("Schism keeps the response window when Maxx C makes El Fusion unavailable", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            ClientCard threat = f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
+            IList<int> resolved = (IList<int>)typeof(DefaultExecutor)
+                .GetField("enemyResolvedEffectIdList", Flags).GetValue(f.Executor);
+            resolved.Add(MaxxC);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            f.Chain(threat, false);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism yielded to an El Fusion branch that could not activate");
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "El Fusion ignored the resolved Maxx C stop condition");
         });
 
         Run("Squamata sent by El Fusion sends Tohushaddoll Grysta", () =>
