@@ -692,11 +692,15 @@ combo. Its implemented decisions include:
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
   Shaddoll negate cost remain. When the prepared board has both Quick-Play Fusion
-  and Schism, the opponent's first Special Summon is answered by Schism into
-  Winda before that body can become Xyz, Link or Fusion material. This summon-
-  denial window overrides single-monster removal and negate scoring. El Shaddoll
-  Fusion is preserved for protecting the lock or answering the engine that
-  remains after the opponent has been forced off its preferred summon route.
+  and Schism, revived Squamata remains face-down so Wendikuruhu has real Flip
+  fuel. That protected shell establishes Winda before the opponent's first
+  Special Summon; Wendikuruhu can then flip Squamata and turn the permitted
+  summoned monster face-down. If the first Special Summon has already resolved,
+  the executor does not pretend that a late Winda counts it retroactively.
+  Schism instead chooses a legal same-Attribute Fusion so its follow-up send
+  removes that Xyz, Synchro, Link or Fusion material. Winda remains the preferred
+  late target when the material is DARK because it supplies both the send and
+  the remaining summon limit.
   A resolving one-shot Normal or Quick-Play Spell is not treated as an
   Apkallone target that will still exist after the Fusion chain resolves. El
   Shaddoll Fusion now waits for an established monster or persistent
@@ -705,15 +709,14 @@ combo. Its implemented decisions include:
   Circle remains the exception: El Shaddoll Fusion can make Apkallone before the
   engine snowballs. If Schism is unavailable, El Shaddoll Fusion still
   establishes Winda after the opponent's first Special Summon or at Main End.
-  Set Schism waits until the opponent has committed
-  its first Special Summon, reaches Main End with a monster, or threatens the
-  Trap; a visible high-value continuous control engine is also treated as a
-  commitment so it can be answered before it snowballs. Schism counts only
-  field/GY materials and normally prioritizes Winda. When a live Extra Deck
-  negate is already established, it instead prefers a legal same-Attribute
-  Fusion for Schism's send, or Apkallone to disable the threat. El Shaddoll
-  Fusion likewise prefers Apkallone over Winda against an established high-value
-  face-up negate or recursive engine;
+  Set Schism may activate proactively only with the protected Wendikuruhu/Flip
+  shell. Otherwise it waits for a removable material, Main End commitment or a
+  threat to the Trap. A visible high-value continuous control engine is also
+  treated as a commitment so it can be answered before it snowballs. Schism
+  counts only field/GY materials and compares the summoned Fusion's Attribute
+  with the visible material before using Winda as a fallback. El Shaddoll Fusion
+  likewise prefers Apkallone against an established high-value face-up negate or
+  recursive engine;
 - Fusion Control board evaluation that preserves an active Winda or other live
   interaction, stops redundant extensions and proceeds to battle with safe
   on-board lethal;
@@ -761,12 +764,14 @@ and [Shaddoll guide](https://www.masterduelmeta.com/articles/guides/shaddoll-pan
 describe the route as a 1.5-card combo. The recorded Combo Sheet resolves the
 apparent reveal problem by searching Void with Meshachrer, using Lev to make
 Construct, and searching Wendi with Hedgehog before activating Void. A
-deterministic Lev-plus-four-non-engine replay now reaches the recorded endboard:
-face-up Wendikuruhu, Ariel and Squamata; face-up Lev; and set El Shaddoll Fusion
-plus Schism. One non-engine card is used as Void's discard cost.
+deterministic Lev-plus-four-non-engine replay now reaches the usable control
+endboard: face-up Wendikuruhu and Ariel, face-down Squamata, face-up Lev, and set
+El Shaddoll Fusion plus Schism. One non-engine card is used as Void's discard
+cost. Squamata is intentionally face-down because Wendikuruhu cannot legally
+turn an opposing monster face-down until it first flips a face-down Flip monster.
 
-On the opponent's turn, Wendikuruhu's position change remains conditional on a
-legal facedown monster. El Shaddoll Fusion can use Squamata to summon Apkallone,
+On the opponent's turn, the prepared Squamata makes Wendikuruhu's position
+change live. El Shaddoll Fusion can use Squamata to summon Apkallone,
 whose summon-trigger effect negates one face-up card; Squamata can then send
 Tohushaddoll Grysta. Its Fusion continuation chooses Shekhinaga only with a legal
 EARTH material and a remaining Shaddoll hand cost. Schism summons Winda as the
@@ -792,7 +797,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 75 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 78 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -938,15 +943,25 @@ Mokey King 20–0. The prepared control shell went 40–6, or 39–5 when El Sha
 Fusion was also observed, and opening Lev went 117–43. This confirms that the
 core route remained productive after the one-shot Spell timing fix.
 
-The same traces show that the response objective was still wrong against summon
-engines. Blue-Eyes losses exposed Hope Harbinger in 26 of 30 duel losses and
-Spirit Dragon in 25; El Shaddoll Fusion appeared on the opponent's turn in 19
-Blue-Eyes duels but those duels went 4–15. Negating Blue-Eyes Alternative after
-it reached the field did not stop it from becoming Xyz material. The current
-policy therefore treats the first opposing Special Summon as the primary choke
-point: prepared Schism forces Winda before the second material, while El Fusion
-and Apkallone remain available for persistent Spell/Trap engines or later board
-protection. Focused regressions cover Alternative into Winda, a Rank V extender
-into Winda, and Dark Magical Circle into Apkallone. No Arena run has been made
-after this summon-denial correction, so the 71% run is diagnosis rather than a
-post-change strength claim.
+The next run, `81781204-441c-473d-82f4-cf14da400c61`, exposed that the first
+summon-denial correction was itself incomplete. It recorded 475 completed
+Shaddoll duel traces and fell from 316–160 to 295–180. Blue-Eyes fell from 20–30
+to 13–35 by duel trace and Dark Magician from 29–18 to 16–32, while Orcust
+improved from 24–26 to 34–17. Schism activations increased from 417 to 457 and
+El Shaddoll Fusion activations fell from 71 to 57, confirming that the new rule
+was consuming too many response windows rather than improving the core combo.
+
+The trace order supplies the rules-level cause. In a Blue-Eyes loss, Alternative
+White Dragon was Special Summoned, Schism then made Winda, and Blue-Eyes White
+Dragon was still Special Summoned afterward. Winda only limits summons made
+while it is face-up; making it after the first summon does not retroactively
+consume the opponent's permitted summon. The corrected policy now establishes
+Winda before the first summon only when face-up Wendikuruhu and a face-down Flip
+body can protect it. The deterministic Lev route therefore leaves revived
+Squamata face-down. If the first summon has already happened, Schism removes the
+visible material with a same-Attribute Fusion instead: Construct for a LIGHT
+Alternative or Rank V extender, and Winda for a DARK material that Schism can
+also send. Dark Magical Circle still routes to El Fusion/Apkallone. The compiled
+regressions cover all of these branches and prove that the recorded Lev board's
+Wendikuruhu effect is legally activatable. No Arena run has been made after this
+protected-lock correction.

@@ -449,14 +449,15 @@ internal static class Shaddoll2025Checks
         Is(f.Select(HintMsg.SpSummon, squamata), Squamata,
             "Ariel did not recover the banished Squamata");
         f.Move(squamata, CardLocation.MonsterZone);
-        squamata.Position = (int)CardPosition.FaceUpDefence;
+        squamata.Position = (int)f.Executor.OnSelectPosition(Squamata,
+            new[] { CardPosition.FaceUpDefence, CardPosition.FaceDownDefence });
         f.AI.OnChainEnd();
 
         f.Move(elFusion, CardLocation.SpellZone, true);
         f.Move(schism, CardLocation.SpellZone, true);
 
         LevComboEvidence["levPlusCost"] = Snapshot(f, 3, 2, 1,
-            "Recorded Combo Sheet endboard: Wendikuruhu, Ariel and face-up Squamata; Lev remains face-up, while El Shaddoll Fusion and Schism are set. Apkallone, Shekhinaga and Winda are opponent-turn branches whose interactions remain conditional on legal materials and timing.");
+            "Control endboard: Wendikuruhu, Ariel and face-down Squamata; Lev remains face-up, while El Shaddoll Fusion and Schism are set. The face-down Flip body makes Wendikuruhu's position-change interaction legal instead of merely displayed on the board.");
         return f;
     }
 
@@ -670,8 +671,8 @@ internal static class Shaddoll2025Checks
                 "Full continuation did not retain Wendikuruhu");
             Require(f.Bot.GetMonsters().Any(c => c.IsCode(Ariel) && c.IsFaceup()),
                 "Full continuation did not flip Ariel");
-            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Squamata) && c.IsFaceup() && c.IsDefense()),
-                "Full continuation did not revive face-up Squamata in Defense Position");
+            Require(f.Bot.GetMonsters().Any(c => c.IsCode(Squamata) && c.IsFacedown()),
+                "Full continuation did not preserve Squamata as Wendikuruhu's Flip fuel");
             Require(f.Bot.GetSpells().Any(c => c.IsCode(ElFusion) && c.IsFacedown()),
                 "Full continuation did not set the recovered El Shaddoll Fusion");
             Require(f.Bot.GetSpells().Any(c => c.IsCode(Schism) && c.IsFacedown()),
@@ -1016,7 +1017,23 @@ internal static class Shaddoll2025Checks
                 "Schism declined its legal DARK send after summoning Winda");
         });
 
-        Run("Prepared control board makes Winda after Blue-Eyes Alternative", () =>
+        Run("Prepared Flip shell establishes Winda before the first Special Summon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone, 0, true);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Protected Schism waited until Winda could no longer count the first summon");
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
+                f.Extra(Construct)), Winda,
+                "Protected pre-summon Schism failed to establish the summon limit");
+        });
+
+        Run("Late Schism removes Blue-Eyes Alternative instead of making Winda", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
@@ -1032,14 +1049,14 @@ internal static class Shaddoll2025Checks
             Require(f.AI.OnSelectEffectYn(schism, 0),
                 "Schism did not stop Alternative from becoming Xyz material");
             Require(!f.AI.OnSelectEffectYn(fusion, 0),
-                "El Fusion tried to negate Alternative instead of denying the next summon");
+                "El Fusion tried to negate Alternative while Schism could remove the material");
             f.Chain(schism, true);
             Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
-                f.Extra(Construct), f.Extra(Shekhinaga)), Winda,
-                "Schism answered one Alternative effect instead of establishing Winda");
+                f.Extra(Construct), f.Extra(Shekhinaga)), Construct,
+                "Late Winda allowed a second summon instead of removing Alternative");
         });
 
-        Run("Prepared control board makes Winda after a Rank V extender", () =>
+        Run("Late Schism removes a Rank V extender by Attribute", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
@@ -1058,8 +1075,28 @@ internal static class Shaddoll2025Checks
                 "El Fusion spent the route-denial window on one Rank V material");
             f.Chain(schism, true);
             Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
+                f.Extra(Construct)), Construct,
+                "Late Winda left the LIGHT Rank V material on the field");
+        });
+
+        Run("Late Schism uses Winda when it can also send the DARK material", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard material = f.Add(DarkMagician, CardLocation.MonsterZone, 1);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            f.Chain(material, false);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism ignored a removable DARK summon material");
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
                 f.Extra(Construct)), Winda,
-                "Schism failed to establish Winda before the second Rank V material");
+                "Schism missed the Winda line that also sends the DARK material");
         });
 
         Run("Prepared control board ignores a resolving one-shot draw Spell", () =>
@@ -1232,6 +1269,28 @@ internal static class Shaddoll2025Checks
             f.Chain(wendik, true);
             Is(f.Select(HintMsg.PosChange, own, enemy), BlueEyes,
                 "Flip-control failed to select the opposing threat");
+        });
+
+        Run("Recorded Lev board keeps live Wendikuruhu Flip fuel", () =>
+        {
+            Fixture f = ExecuteLevOpening();
+            f.Duel.Turn = 2;
+            f.Duel.Player = 1;
+            f.AI.OnNewTurn();
+            ClientCard wendik = f.Bot.GetMonsters()
+                .First(c => c.IsCode(Wendikuruhu));
+            ClientCard squamata = f.Bot.GetMonsters()
+                .First(c => c.IsCode(Squamata));
+            f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
+            Require(squamata.IsFacedown(),
+                "Recorded board exposed the Flip fuel before the opponent's turn");
+            Require(f.AI.OnSelectEffectYn(wendik, Desc(Wendikuruhu, 0)),
+                "Recorded board claimed Wendikuruhu interaction without a legal activation");
+            f.Chain(wendik, true);
+            Is(f.Select(HintMsg.PosChange, squamata), Squamata,
+                "Wendikuruhu did not flip the prepared Squamata");
+            Require(f.AI.OnSelectYesNo(Desc(Wendikuruhu, 2)),
+                "Wendikuruhu declined to turn the opposing monster face-down");
         });
 
         Run("Ariel prioritizes the opponent's Extra Deck grave resource", () =>

@@ -502,9 +502,13 @@ namespace WindBot.Game.AI.Decks
             // contains its printed ATK here.
             if (PromptIs(CardId.LevShaddollFusion) && positions.Contains(CardPosition.FaceUpDefence))
                 return CardPosition.FaceUpDefence;
+            // Ariel's revived Squamata is Wendikuruhu's required Flip fuel.
+            // Leaving it face-up makes that interruption legally unusable on
+            // an otherwise empty board.
             if (PromptIs(CardId.NaelshaddollAriel) && cardId == CardId.ShaddollSquamata &&
-                Bot.HasInExtra(CardId.ShaddollConstruct) && positions.Contains(CardPosition.FaceUpDefence))
-                return CardPosition.FaceUpDefence;
+                Bot.HasInMonstersZone(CardId.ReeshaddollWendikuruhu) &&
+                positions.Contains(CardPosition.FaceDownDefence))
+                return CardPosition.FaceDownDefence;
             if (ShaddollMainMonsterIds.Contains(cardId) && positions.Contains(CardPosition.FaceDownDefence))
                 return CardPosition.FaceDownDefence;
 
@@ -590,16 +594,19 @@ namespace WindBot.Game.AI.Decks
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool threatened = DefaultOnBecomeTarget();
                 bool exposedControlEngine = HasUrgentPersistentSpellTrapEngine();
-                bool summonDenial = ShouldPrioritizeWindaLock();
-                // The first opposing Special Summon is the most valuable Winda
-                // window: stop the material from becoming an Xyz, Link or Fusion
-                // board instead of spending El Fusion to negate one body that can
-                // still be used as material. Persistent Spell/Trap engines remain
-                // an exception because Apkallone can disable the engine itself.
-                if (!threatened && !summonDenial && ShouldLeadWithElFusion())
+                bool protectedWinda = ShouldEstablishProtectedWindaBeforeSummon();
+                bool removeMaterial = ShouldUseSchismMaterialRemovalWindow();
+                // Winda does not retroactively count a Special Summon made before
+                // it became face-up. Establish it proactively only when the
+                // prepared Flip shell can protect the lock. If the first summon
+                // already happened, use Schism's Attribute-matching send to remove
+                // that material instead of pretending a late Winda stops it.
+                if (!threatened && !protectedWinda && !removeMaterial &&
+                    ShouldLeadWithElFusion())
                     return false;
                 return threatened ||
-                    summonDenial ||
+                    protectedWinda ||
+                    removeMaterial ||
                     exposedControlEngine ||
                     _opponentSpecialSummonsThisTurn > 0 ||
                     (mainEnd && Enemy.GetMonsterCount() > 0);
@@ -610,7 +617,8 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Player == 0 && !Enemy.GetMonsters().Any(c => c.IsFaceup()))
                 return false;
             if (Duel.Player == 1 && Enemy.GetMonsterCount() == 0 && Duel.CurrentChain.Count == 0)
-                return false;
+                return ShouldEstablishProtectedWindaBeforeSummon() &&
+                    MarkUsed(CardId.ShaddollSchism);
             return MarkUsed(CardId.ShaddollSchism);
         }
 
@@ -652,11 +660,13 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (Duel.Player == 1)
             {
-                bool summonDenial = ShouldPrioritizeWindaLock();
+                bool schismPriority = ShouldEstablishProtectedWindaBeforeSummon() ||
+                    ShouldUseSchismMaterialRemovalWindow();
                 bool threatened = Card != null &&
                     Card.IsCode(CardId.ElShaddollFusion) && DefaultOnBecomeTarget();
                 bool answerPersistentThreat = Bot.HasInExtra(CardId.ElShaddollApkallone) &&
-                    BestPersistentOpponentThreatScore() >= 750 && !summonDenial;
+                    BestPersistentOpponentThreatScore() >= 750 &&
+                    (!schismPriority || HasUrgentPersistentSpellTrapEngine());
                 bool schismAvailable = Bot.HasInSpellZone(CardId.ShaddollSchism);
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool fallbackWindaWindow = !schismAvailable && Enemy.GetMonsterCount() > 0 &&
@@ -1043,10 +1053,24 @@ namespace WindBot.Game.AI.Decks
                 return 255;
             if (ownerId == CardId.ShaddollSchism && Duel.Player == 1)
             {
-                // Once the opponent commits its first Special Summon, deny the
-                // next summon before optimizing removal or a single-card negate.
-                if (ShouldPrioritizeWindaLock() && card.IsCode(CardId.ElShaddollWinda))
-                    return 380;
+                if (ShouldEstablishProtectedWindaBeforeSummon() &&
+                    card.IsCode(CardId.ElShaddollWinda))
+                    return 400;
+                if (ShouldUseSchismMaterialRemovalWindow())
+                {
+                    int materialThreat = Enemy.GetMonsters()
+                        .Where(c => c.IsFaceup() && card.Attribute != 0 &&
+                            (c.Attribute & card.Attribute) != 0)
+                        .Select(OpponentThreatScore)
+                        .DefaultIfEmpty(-1000)
+                        .Max();
+                    if (materialThreat > -1000)
+                        return 370 +
+                            (card.IsCode(CardId.ElShaddollWinda) ? 20 : 0) +
+                            Math.Min(25, Math.Max(0, materialThreat - 500) / 20);
+                    if (card.IsCode(CardId.ElShaddollWinda))
+                        return 225;
+                }
                 // Schism's post-Fusion send is often stronger than a Winda lock
                 // once a live Extra Deck negate is already established. Prefer
                 // a legally offered Fusion whose Attribute removes that threat;
@@ -1572,20 +1596,38 @@ namespace WindBot.Game.AI.Decks
                 IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800);
         }
 
-        private bool ShouldPrioritizeWindaLock()
+        private bool ShouldEstablishProtectedWindaBeforeSummon()
         {
-            if (Duel.Player != 1 || _opponentSpecialSummonsThisTurn != 1 ||
-                FunctionalWinda() || Enemy.GetMonsterCount() == 0 ||
+            if (Duel.Player != 1 || _opponentSpecialSummonsThisTurn != 0 ||
+                FunctionalWinda() ||
                 !Bot.HasInExtra(CardId.ElShaddollWinda) ||
                 !Bot.HasInSpellZone(CardId.ShaddollSchism) ||
                 !HasSchismFusionResources())
                 return false;
-            return !HasUrgentPersistentSpellTrapEngine();
+            bool liveWendikuruhu = Bot.GetMonsters().Any(c => c.IsFaceup() &&
+                !c.IsDisabled() && c.IsCode(CardId.ReeshaddollWendikuruhu));
+            bool flipFuel = Bot.GetMonsters().Any(c =>
+                c.IsFacedown() && c.HasType(CardType.Flip));
+            return liveWendikuruhu && flipFuel &&
+                !HasUrgentPersistentSpellTrapEngine();
+        }
+
+        private bool ShouldUseSchismMaterialRemovalWindow()
+        {
+            if (Duel.Player != 1 || _opponentSpecialSummonsThisTurn != 1 ||
+                FunctionalWinda() || !Bot.HasInSpellZone(CardId.ShaddollSchism) ||
+                !HasSchismFusionResources() || HasUrgentPersistentSpellTrapEngine())
+                return false;
+            return Enemy.GetMonsters().Any(target => target.IsFaceup() &&
+                Bot.ExtraDeck.Any(fusion => ShaddollFusionIds.Contains(fusion.Id) &&
+                    fusion.Attribute != 0 && (target.Attribute & fusion.Attribute) != 0));
         }
 
         private bool ShouldLeadWithElFusion()
         {
-            if (Duel.Player != 1 || FunctionalWinda() || ShouldPrioritizeWindaLock() ||
+            if (Duel.Player != 1 || FunctionalWinda() ||
+                ShouldEstablishProtectedWindaBeforeSummon() ||
+                ShouldUseSchismMaterialRemovalWindow() ||
                 Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                     c.IsCode(CardId.ElShaddollApkallone)))
                 return false;
