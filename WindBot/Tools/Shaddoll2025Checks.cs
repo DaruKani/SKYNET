@@ -540,6 +540,10 @@ internal static class Shaddoll2025Checks
                 "Idle scheduler tributed Mesh or fused before taking its search");
 
             ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            f.Chain(mesh, true);
+            f.Executor.OnMove(voidCard, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Hand);
+            f.AI.OnChainEnd();
             Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(voidCard, 0),
                 Offer(mesh, 1)), Void,
                 "Idle scheduler skipped the searched Void setup");
@@ -547,6 +551,18 @@ internal static class Shaddoll2025Checks
             Is(f.SelectIdle(Offer(elFusion, 0), Offer(lev, 1), Offer(voidCard, 0),
                 Offer(mesh, 1)), Lev,
                 "Idle scheduler fused before Lev converted Mesh into Construct");
+        });
+
+        Run("Opening Void cannot jump ahead of the live Mesh search", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard mesh = f.Add(Mesh, CardLocation.MonsterZone);
+            ClientCard voidCard = f.Add(Void, CardLocation.Hand);
+            f.Add(Grysta, CardLocation.Hand);
+
+            Is(f.SelectIdle(Offer(voidCard, 0), Offer(lev, 1), Offer(mesh, 1)), Mesh,
+                "Opening Void resolved before Meshachrer secured the route search");
         });
 
         Run("Quick Fusion cannot consume Mesh before Lev tribute resolves", () =>
@@ -573,16 +589,29 @@ internal static class Shaddoll2025Checks
         {
             Fixture f = new Fixture();
             ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            ClientCard voidCard = f.Add(Void, CardLocation.SpellZone);
+            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
+            ClientCard schism = f.Add(Schism, CardLocation.Hand);
+            f.Chain(voidCard, true);
+            f.Executor.OnMove(elFusion, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Hand);
+            f.Executor.OnMove(schism, 0, (int)CardLocation.Deck,
+                0, (int)CardLocation.Hand);
+            f.AI.OnChainEnd();
+
             ClientCard construct = f.Add(Construct, CardLocation.MonsterZone);
             ClientCard hedgehog = f.Add(Hedgehog, CardLocation.Deck);
             f.Chain(construct, true);
             f.Executor.OnMove(hedgehog, 0, (int)CardLocation.Deck,
                 0, (int)CardLocation.Grave);
-            ClientCard elFusion = f.Add(ElFusion, CardLocation.Hand);
             f.Add(Grysta, CardLocation.Hand);
 
+            Require((bool)typeof(Shaddoll2025Executor)
+                .GetField("_waitingForLevWendi", Flags).GetValue(f.Executor),
+                "Construct send did not arm the Wendi-search wait state");
+
             Require(!f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
-                "El Fusion activated before Hedgehog could search Wendi");
+                "El Fusion activated before Hedgehog could search Wendi after early Void advanced the route state");
         });
 
         Run("Lev route preserves the hand Shaddoll needed to activate searched Void", () =>

@@ -108,6 +108,8 @@ namespace WindBot.Game.AI.Decks
         private bool _shaddollExtraDeckLock;
         private bool _levTributedMesh;
         private bool _levOpponentTurnBranch;
+        private bool _levMeshSearchResolved;
+        private bool _waitingForLevWendi;
         private LevRouteStage _levRouteStage;
 
         private static readonly int[] ShaddollMainMonsterIds =
@@ -161,23 +163,14 @@ namespace WindBot.Game.AI.Decks
             // scheduler cannot skip a stage. Lev starts first, Mesh searches,
             // Void converts the reveal, and only then may Lev tribute Mesh.
             AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevPrimaryActivate);
-            AddExecutor(ExecutorType.Activate, CardId.VoidUnleashing, VoidUnleashingActivate);
             AddExecutor(ExecutorType.Activate, CardId.ElShaddollMeshachrer, MeshachrerActivate);
+            AddExecutor(ExecutorType.Activate, CardId.VoidUnleashing, VoidUnleashingActivate);
             AddExecutor(ExecutorType.Activate, CardId.LevShaddollFusion, LevTributeActivate);
 
-            // Flexible Fusion effects and extenders are intentionally after the
-            // committed Lev route. They remain available on the opponent's turn,
-            // where Lev's ignition effects are not legal offers.
-            AddExecutor(ExecutorType.Activate, CardId.ElShaddollFusion, ElShaddollFusionActivate);
-            AddExecutor(ExecutorType.Activate, CardId.DracotailFaimena, FaimenaActivate);
-            AddExecutor(ExecutorType.Activate, CardId.BlazingCartesia, CartesiaActivate);
-            AddExecutor(ExecutorType.Activate, CardId.FusionDeployment, FusionDeploymentActivate);
-            AddExecutor(ExecutorType.Activate, CardId.ShaddollFusion, ShaddollFusionActivate);
-            AddExecutor(ExecutorType.Activate, CardId.TearlamentsScheiren, ScheirenActivate);
-            AddExecutor(ExecutorType.Activate, CardId.ArmageddonKnight, ArmageddonKnightActivate);
-
             // Shaddoll and Fusion trigger effects. Selection is owned by the
-            // actual resolving chain link, so forced triggers work without a plan flag.
+            // actual resolving chain link. Keep them ahead of optional Quick
+            // Fusions so Construct -> Hedgehog finishes the Wendi search before
+            // El Shaddoll Fusion is allowed to consume the control materials.
             AddExecutor(ExecutorType.Activate, CardId.ShaddollSquamata, SquamataActivate);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollHedgehog, HedgehogActivate);
             AddExecutor(ExecutorType.Activate, CardId.ReeshaddollWendi, WendiActivate);
@@ -192,6 +185,17 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.InfernoidEvil, InfernoidEvilActivate);
             AddExecutor(ExecutorType.Activate, CardId.LunalightPerfumeDancer, PerfumeDancerActivate);
             AddExecutor(ExecutorType.Activate, CardId.GranguignolDuskDragon, GranguignolActivate);
+
+            // Flexible Fusion effects and extenders are intentionally after the
+            // committed Lev route and its triggers. They remain available on the
+            // opponent's turn, where Lev's ignition effects are not legal offers.
+            AddExecutor(ExecutorType.Activate, CardId.ElShaddollFusion, ElShaddollFusionActivate);
+            AddExecutor(ExecutorType.Activate, CardId.DracotailFaimena, FaimenaActivate);
+            AddExecutor(ExecutorType.Activate, CardId.BlazingCartesia, CartesiaActivate);
+            AddExecutor(ExecutorType.Activate, CardId.FusionDeployment, FusionDeploymentActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollFusion, ShaddollFusionActivate);
+            AddExecutor(ExecutorType.Activate, CardId.TearlamentsScheiren, ScheirenActivate);
+            AddExecutor(ExecutorType.Activate, CardId.ArmageddonKnight, ArmageddonKnightActivate);
 
             // Establish a flip body only after the non-Normal-Summon starters.
             AddExecutor(ExecutorType.Summon, CardId.ArmageddonKnight, ArmageddonKnightSummon);
@@ -225,6 +229,8 @@ namespace WindBot.Game.AI.Decks
             _shaddollExtraDeckLock = false;
             _levTributedMesh = false;
             _levOpponentTurnBranch = false;
+            _levMeshSearchResolved = false;
+            _waitingForLevWendi = false;
             _levRouteStage = LevRouteStage.None;
         }
 
@@ -258,9 +264,12 @@ namespace WindBot.Game.AI.Decks
                         currentLocation == (int)CardLocation.MonsterZone)
                         AdvanceLevRoute(LevRouteStage.MeshachrerSummoned);
                     else if (solving.IsActivateCode(CardId.ElShaddollMeshachrer) &&
-                        card.IsCode(CardId.VoidUnleashing) &&
                         currentLocation == (int)CardLocation.Hand)
-                        AdvanceLevRoute(LevRouteStage.VoidSearched);
+                    {
+                        _levMeshSearchResolved = true;
+                        if (card.IsCode(CardId.VoidUnleashing))
+                            AdvanceLevRoute(LevRouteStage.VoidSearched);
+                    }
                     else if (solving.IsActivateCode(CardId.LevShaddollFusion) &&
                         card.IsCode(CardId.ElShaddollConstruct) &&
                         currentLocation == (int)CardLocation.MonsterZone)
@@ -268,11 +277,17 @@ namespace WindBot.Game.AI.Decks
                     else if (solving.IsActivateCode(CardId.ElShaddollConstruct) &&
                         card.IsCode(CardId.ShaddollHedgehog) &&
                         currentLocation == (int)CardLocation.Grave)
+                    {
+                        _waitingForLevWendi = true;
                         AdvanceLevRoute(LevRouteStage.HedgehogSent);
+                    }
                     else if (solving.IsActivateCode(CardId.ShaddollHedgehog) &&
                         card.IsCode(CardId.ReeshaddollWendi) &&
                         currentLocation == (int)CardLocation.Hand)
+                    {
+                        _waitingForLevWendi = false;
                         AdvanceLevRoute(LevRouteStage.WendiReady);
+                    }
                     else if (solving.IsActivateCode(CardId.VoidUnleashing) &&
                         card.IsCode(CardId.ElShaddollFusion, CardId.ShaddollSchism) &&
                         currentLocation == (int)CardLocation.Hand &&
@@ -302,6 +317,9 @@ namespace WindBot.Game.AI.Decks
                 EffectUsed(CardId.ShaddollHedgehog) &&
                 !Bot.HasInHand(CardId.ReeshaddollWendi))
                 _levRouteStage = LevRouteStage.ConstructSummoned;
+            if (_waitingForLevWendi && EffectUsed(CardId.ShaddollHedgehog) &&
+                !Bot.HasInHand(CardId.ReeshaddollWendi))
+                _waitingForLevWendi = false;
             _coveredOpponentChainLength = 0;
             _pendingFusionTargetId = 0;
             _voidRevealedType = 0;
@@ -724,6 +742,11 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.Grave)
                 return false; // Infernoid Evil is Extra Deck-only and cannot be added from there.
             if (DefaultCheckWhetherCardIsNegated(Card) || HasSafeLethalOnBoard())
+                return false;
+            if (Duel.Player == 0 && IsLevRouteActive() &&
+                Bot.GetMonsters().Any(c => c.IsCode(CardId.ElShaddollMeshachrer) &&
+                    c.IsFaceup() && !c.IsDisabled()) &&
+                !_levMeshSearchResolved)
                 return false;
             ClientCard reveal = Bot.Hand
                 .Where(c => c != Card && IsShaddollCard(c))
@@ -1796,8 +1819,7 @@ namespace WindBot.Game.AI.Decks
         private bool MustWaitForLevWendiSearch()
         {
             return Duel.Player == 0 && IsLevRouteActive() &&
-                _levRouteStage == LevRouteStage.HedgehogSent &&
-                Bot.HasInMonstersZone(CardId.ElShaddollConstruct) &&
+                _waitingForLevWendi &&
                 !Bot.HasInHand(CardId.ReeshaddollWendi);
         }
 

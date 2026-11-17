@@ -767,8 +767,12 @@ Construct, and searching Wendi with Hedgehog before activating Void. A
 deterministic Lev-plus-four-non-engine replay now reaches the usable control
 endboard: face-up Wendikuruhu and Ariel, face-down Squamata, face-up Lev, and set
 El Shaddoll Fusion plus Schism. One non-engine card is used as Void's discard
-cost. Squamata is intentionally face-down because Wendikuruhu cannot legally
-turn an opposing monster face-down until it first flips a face-down Flip monster.
+cost. In the live idle scheduler, an opening Void can no longer resolve ahead
+of Meshachrer's search, and optional Quick Fusions wait for the Construct ->
+Hedgehog -> Wendi trigger sequence even when an earlier Void resolution has
+already advanced the control-spell state. Squamata is intentionally face-down
+because Wendikuruhu cannot legally turn an opposing monster face-down until it
+first flips a face-down Flip monster.
 
 On the opponent's turn, the prepared Squamata makes Wendikuruhu's position
 change live. While Winda is applying its summon limit, Wendikuruhu now keeps
@@ -801,7 +805,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 79 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 80 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
