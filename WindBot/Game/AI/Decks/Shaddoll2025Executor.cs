@@ -210,7 +210,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.MonsterSet, CardId.TohushaddollGrysta, SetShaddollMonster);
 
             AddExecutor(ExecutorType.SpellSet, SetSpellTrap);
-            AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
+            AddExecutor(ExecutorType.Repos, ShaddollMonsterRepos);
         }
 
         public override bool OnSelectHand()
@@ -639,18 +639,18 @@ namespace WindBot.Game.AI.Decks
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool threatened = DefaultOnBecomeTarget();
                 bool exposedControlEngine = HasUrgentPersistentSpellTrapEngine();
-                bool protectedWinda = ShouldEstablishProtectedWindaBeforeSummon();
+                bool preSummonWinda = ShouldEstablishWindaBeforeFirstSummon();
                 bool removeMaterial = ShouldUseSchismMaterialRemovalWindow();
                 // Winda does not retroactively count a Special Summon made before
-                // it became face-up. Establish it proactively only when the
-                // prepared Flip shell can protect the lock. If the first summon
-                // already happened, use Schism's Attribute-matching send to remove
-                // that material instead of pretending a late Winda stops it.
-                if (!threatened && !protectedWinda && !removeMaterial &&
+                // it became face-up. Establish it proactively whenever Schism has
+                // legal Winda materials. If the first summon already happened, use
+                // Schism's Attribute-matching send to remove that material instead
+                // of pretending a late Winda stops it.
+                if (!threatened && !preSummonWinda && !removeMaterial &&
                     ShouldLeadWithElFusion())
                     return false;
                 return threatened ||
-                    protectedWinda ||
+                    preSummonWinda ||
                     removeMaterial ||
                     exposedControlEngine ||
                     _opponentSpecialSummonsThisTurn > 0 ||
@@ -662,7 +662,7 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Player == 0 && !Enemy.GetMonsters().Any(c => c.IsFaceup()))
                 return false;
             if (Duel.Player == 1 && Enemy.GetMonsterCount() == 0 && Duel.CurrentChain.Count == 0)
-                return ShouldEstablishProtectedWindaBeforeSummon() &&
+                return ShouldEstablishWindaBeforeFirstSummon() &&
                     MarkUsed(CardId.ShaddollSchism);
             return MarkUsed(CardId.ShaddollSchism);
         }
@@ -705,7 +705,7 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (Duel.Player == 1)
             {
-                bool schismPriority = ShouldEstablishProtectedWindaBeforeSummon() ||
+                bool schismPriority = ShouldEstablishWindaBeforeFirstSummon() ||
                     ShouldUseSchismMaterialRemovalWindow();
                 bool threatened = Card != null &&
                     Card.IsCode(CardId.ElShaddollFusion) && DefaultOnBecomeTarget();
@@ -984,6 +984,23 @@ namespace WindBot.Game.AI.Decks
             return DefaultSpellSet();
         }
 
+        private bool ShaddollMonsterRepos()
+        {
+            if (Card != null && Card.IsFacedown() && Card.HasType(CardType.Flip))
+            {
+                bool liveWendikuruhu = Bot.GetMonsters().Any(c => c.IsFaceup() &&
+                    !c.IsDisabled() && c.IsCode(CardId.ReeshaddollWendikuruhu));
+                int flipFuel = Bot.GetMonsters().Count(c =>
+                    c.IsFacedown() && c.HasType(CardType.Flip));
+                // Wendikuruhu cannot perform its opponent-turn position change
+                // without one face-down Flip monster. Develop surplus bodies,
+                // but never let the generic battle routine expose the last fuel.
+                if (liveWendikuruhu && flipFuel <= 1)
+                    return false;
+            }
+            return DefaultMonsterRepos();
+        }
+
         private IList<ClientCard> SelectVoidSearch(IList<ClientCard> cards, int min, int max)
         {
             List<ClientCard> selected = new List<ClientCard>();
@@ -1113,7 +1130,7 @@ namespace WindBot.Game.AI.Decks
                 return 255;
             if (ownerId == CardId.ShaddollSchism && Duel.Player == 1)
             {
-                if (ShouldEstablishProtectedWindaBeforeSummon() &&
+                if (ShouldEstablishWindaBeforeFirstSummon() &&
                     card.IsCode(CardId.ElShaddollWinda))
                     return 400;
                 if (ShouldUseSchismMaterialRemovalWindow())
@@ -1700,20 +1717,21 @@ namespace WindBot.Game.AI.Decks
             return 600;
         }
 
-        private bool ShouldEstablishProtectedWindaBeforeSummon()
+        private bool ShouldEstablishWindaBeforeFirstSummon()
         {
-            if (Duel.Player != 1 || _opponentSpecialSummonsThisTurn != 0 ||
+            if (Duel.Player != 1 || Duel.CurrentChain.Count != 0 ||
+                _opponentSpecialSummonsThisTurn != 0 ||
                 FunctionalWinda() ||
                 !Bot.HasInExtra(CardId.ElShaddollWinda) ||
                 !Bot.HasInSpellZone(CardId.ShaddollSchism) ||
-                !HasSchismFusionResources())
+                !HasSchismWindaResources())
                 return false;
-            bool liveWendikuruhu = Bot.GetMonsters().Any(c => c.IsFaceup() &&
-                !c.IsDisabled() && c.IsCode(CardId.ReeshaddollWendikuruhu));
-            bool flipFuel = Bot.GetMonsters().Any(c =>
-                c.IsFacedown() && c.HasType(CardType.Flip));
-            return liveWendikuruhu && flipFuel &&
-                !HasUrgentPersistentSpellTrapEngine();
+            // Winda only counts Special Summons made while this copy is face-up.
+            // Waiting for the first Blue-Eyes body still permits the Synchro/Xyz
+            // summon that the lock was meant to prevent. Its own destruction
+            // protection makes the pre-summon lock worthwhile even when the
+            // full Wendikuruhu + Flip protection shell was interrupted.
+            return !HasUrgentPersistentSpellTrapEngine();
         }
 
         private bool ShouldUseSchismMaterialRemovalWindow()
@@ -1730,7 +1748,7 @@ namespace WindBot.Game.AI.Decks
         private bool ShouldLeadWithElFusion()
         {
             if (Duel.Player != 1 || FunctionalWinda() ||
-                ShouldEstablishProtectedWindaBeforeSummon() ||
+                ShouldEstablishWindaBeforeFirstSummon() ||
                 ShouldUseSchismMaterialRemovalWindow() ||
                 Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                     c.IsCode(CardId.ElShaddollApkallone)))
@@ -1976,6 +1994,26 @@ namespace WindBot.Game.AI.Decks
         {
             int materialCount = Bot.GetMonsterCount() + Bot.Graveyard.Count(c => c.IsMonster());
             return materialCount >= 2 && Bot.ExtraDeck.Any(c => ShaddollFusionIds.Contains(c.Id));
+        }
+
+        private bool HasSchismWindaResources()
+        {
+            List<ClientCard> materials = Bot.GetMonsters()
+                .Concat(Bot.Graveyard)
+                .Where(c => c.IsMonster())
+                .ToList();
+            for (int i = 0; i < materials.Count; ++i)
+            {
+                for (int j = i + 1; j < materials.Count; ++j)
+                {
+                    ClientCard first = materials[i];
+                    ClientCard second = materials[j];
+                    if ((IsShaddollMonster(first) && second.HasAttribute(CardAttribute.Dark)) ||
+                        (IsShaddollMonster(second) && first.HasAttribute(CardAttribute.Dark)))
+                        return true;
+                }
+            }
+            return false;
         }
 
         private bool HasShaddollSendTarget()

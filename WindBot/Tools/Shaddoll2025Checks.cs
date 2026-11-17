@@ -1078,6 +1078,36 @@ internal static class Shaddoll2025Checks
                 "Protected pre-summon Schism failed to establish the summon limit");
         });
 
+        Run("Interrupted shell still establishes Winda before the first Special Summon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Squamata, CardLocation.Grave);
+            f.Add(Wendi, CardLocation.Grave);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism waited despite legal Winda materials");
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
+                f.Extra(Construct)), Winda,
+                "Interrupted shell did not prioritize the pre-summon Winda lock");
+        });
+
+        Run("Generic reposition preserves Wendikuruhu's final Flip fuel", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(Winda, CardLocation.MonsterZone);
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            ClientCard squamata = f.Add(Squamata, CardLocation.MonsterZone, 0, true);
+            squamata.ActionIndex[(int)MainPhaseAction.MainAction.Repos] = 0;
+            MainPhase main = new MainPhase { CanEndPhase = true };
+            main.ReposableCards.Add(squamata);
+            f.Duel.MainPhase = main;
+            MainPhaseAction action = f.AI.OnSelectIdleCmd(main);
+            Require(action.Action != MainPhaseAction.MainAction.Repos,
+                "Generic reposition exposed the only Flip body needed by Wendikuruhu");
+        });
+
         Run("Late Schism removes Blue-Eyes Alternative instead of making Winda", () =>
         {
             Fixture f = new Fixture();

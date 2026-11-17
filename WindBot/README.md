@@ -693,9 +693,12 @@ combo. Its implemented decisions include:
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
   Shaddoll negate cost remain. When the prepared board has both Quick-Play Fusion
   and Schism, revived Squamata remains face-down so Wendikuruhu has real Flip
-  fuel. That protected shell establishes Winda before the opponent's first
-  Special Summon; Wendikuruhu can then flip Squamata and turn the permitted
-  summoned monster face-down. If the first Special Summon has already resolved,
+  fuel. Schism establishes Winda before the opponent's first Special Summon
+  whenever its field/Graveyard contains a legal Shaddoll plus DARK material;
+  the full Wendikuruhu shell can then flip Squamata and turn the permitted
+  summoned monster face-down. The generic reposition routine preserves the
+  final face-down Flip body instead of exposing Wendikuruhu's only fuel. If the
+  first Special Summon has already resolved,
   the executor does not pretend that a late Winda counts it retroactively.
   Schism instead chooses a legal same-Attribute Fusion so its follow-up send
   removes that Xyz, Synchro, Link or Fusion material. Winda remains the preferred
@@ -709,9 +712,10 @@ combo. Its implemented decisions include:
   Circle remains the exception: El Shaddoll Fusion can make Apkallone before the
   engine snowballs. If Schism is unavailable, El Shaddoll Fusion still
   establishes Winda after the opponent's first Special Summon or at Main End.
-  Set Schism may activate proactively only with the protected Wendikuruhu/Flip
-  shell. Otherwise it waits for a removable material, Main End commitment or a
-  threat to the Trap. A visible high-value continuous control engine is also
+  Set Schism activates proactively when it can legally make Winda before the
+  first summon, even if the full Wendikuruhu/Flip shell was interrupted. Without
+  legal Winda materials it waits for a removable material, Main End commitment
+  or a threat to the Trap. A visible high-value continuous control engine is also
   treated as a commitment so it can be answered before it snowballs. Schism
   counts only field/GY materials and compares the summoned Fusion's Attribute
   with the visible material before using Winda as a fallback. El Shaddoll Fusion
@@ -809,7 +813,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 81 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 83 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -968,12 +972,27 @@ White Dragon was Special Summoned, Schism then made Winda, and Blue-Eyes White
 Dragon was still Special Summoned afterward. Winda only limits summons made
 while it is face-up; making it after the first summon does not retroactively
 consume the opponent's permitted summon. The corrected policy now establishes
-Winda before the first summon only when face-up Wendikuruhu and a face-down Flip
-body can protect it. The deterministic Lev route therefore leaves revived
-Squamata face-down. If the first summon has already happened, Schism removes the
-visible material with a same-Attribute Fusion instead: Construct for a LIGHT
+Winda before the first summon whenever Schism has a legal Shaddoll plus DARK
+material pair. The deterministic Lev route also leaves revived Squamata
+face-down so a live Wendikuruhu keeps its position-change interaction. If the
+first summon has already happened, Schism removes the visible material with a
+same-Attribute Fusion instead: Construct for a LIGHT
 Alternative or Rank V extender, and Winda for a DARK material that Schism can
 also send. Dark Magical Circle still routes to El Fusion/Apkallone. The compiled
 regressions cover all of these branches and prove that the recorded Lev board's
-Wendikuruhu effect is legally activatable. No Arena run has been made after this
-protected-lock correction.
+Wendikuruhu effect is legally activatable.
+
+The later targeted Blue-Eyes run
+`7b1fc6be-ab7a-49f7-a85e-6a673554d165` recorded 245 completed underlying duels
+across 100 Arena entries and went 85–160. Blue-Eyes Spirit Dragon appeared in
+147 duels; Shaddoll won 28 of those (19.0%) versus 57 of 98 without Spirit
+(58.2%). Number 38: Hope Harbinger appeared in 149 duels; Shaddoll won 20
+(13.4%) versus 65 of 96 without it (67.7%). The Spirit chain-order regression
+had no practical opportunity in this sample: no captured Shaddoll chain choice
+contained multiple simultaneous own Graveyard triggers while a live Spirit was
+already face-up. First-end observations instead showed Schism set in 185 duels,
+but the prior policy required the complete Wendikuruhu/Flip shell before making
+Winda ahead of the first opposing summon. The executor now uses any legal
+Schism-to-Winda material pair for that pre-summon lock and preserves the last
+face-down Flip body for Wendikuruhu. This correction has focused compiled
+coverage but has not yet been rerun in Arena.
