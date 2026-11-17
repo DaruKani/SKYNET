@@ -31,6 +31,7 @@ internal static class Shaddoll2025Checks
     private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
     private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, BlueEyesAlternative = 38517737;
+    private const int CyberDragon = 70095154;
     private const int TradeIn = 38120068;
     private const int DarkMagician = 46986414;
     private const int HopeHarbinger = 63767246, ReturnDragonLords = 6853254;
@@ -1015,7 +1016,7 @@ internal static class Shaddoll2025Checks
                 "Schism declined its legal DARK send after summoning Winda");
         });
 
-        Run("Prepared control board uses El Fusion before Schism against repeatable removal", () =>
+        Run("Prepared control board makes Winda after Blue-Eyes Alternative", () =>
         {
             Fixture f = new Fixture();
             f.Duel.Player = 1;
@@ -1025,21 +1026,40 @@ internal static class Shaddoll2025Checks
             ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
             ClientCard threat = f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
             ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
             f.Chain(threat, false);
-            Require(!f.AI.OnSelectEffectYn(schism, 0),
-                "Schism consumed the Winda branch before El Fusion could establish Apkallone");
-            Require(f.AI.OnSelectEffectYn(fusion, 0),
-                "El Shaddoll Fusion rejected the prepared opponent-turn branch");
-            f.Chain(fusion, true);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism did not stop Alternative from becoming Xyz material");
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "El Fusion tried to negate Alternative instead of denying the next summon");
+            f.Chain(schism, true);
             Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
-                f.Extra(Construct), f.Extra(Shekhinaga)), Apkallone,
-                "El Shaddoll Fusion did not choose Apkallone for the face-up negate");
-            IList<ClientCard> materials = f.Select(HintMsg.FusionMaterial, 2, 2,
-                f.Bot.GetMonsters().First(c => c.IsCode(Squamata)),
-                f.Bot.GetMonsters().First(c => c.IsCode(Ariel)),
-                f.Bot.GetMonsters().First(c => c.IsCode(Wendikuruhu)));
-            Has(materials, Squamata, "Apkallone branch did not send Squamata by El Fusion");
-            Has(materials, Ariel, "Apkallone branch consumed Wendikuruhu before its interaction");
+                f.Extra(Construct), f.Extra(Shekhinaga)), Winda,
+                "Schism answered one Alternative effect instead of establishing Winda");
+        });
+
+        Run("Prepared control board makes Winda after a Rank V extender", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            ClientCard extender = f.Add(CyberDragon, CardLocation.MonsterZone, 1);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            f.Chain(extender, false);
+            Require(f.AI.OnSelectEffectYn(schism, 0),
+                "Schism let the first Rank V material remain available");
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "El Fusion spent the route-denial window on one Rank V material");
+            f.Chain(schism, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone),
+                f.Extra(Construct)), Winda,
+                "Schism failed to establish Winda before the second Rank V material");
         });
 
         Run("Prepared control board ignores a resolving one-shot draw Spell", () =>

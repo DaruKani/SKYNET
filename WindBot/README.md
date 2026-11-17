@@ -692,14 +692,19 @@ combo. Its implemented decisions include:
   Squamata and summon Apkallone, lets Squamata send Tohushaddoll Grysta, and uses
   that GY Fusion trigger for Shekhinaga only when a real EARTH material and a
   Shaddoll negate cost remain. When the prepared board has both Quick-Play Fusion
-  and Schism, a dangerous repeatable monster is answered by El Shaddoll Fusion
-  into Apkallone first; Schism is preserved for the later Winda floodgate window.
+  and Schism, the opponent's first Special Summon is answered by Schism into
+  Winda before that body can become Xyz, Link or Fusion material. This summon-
+  denial window overrides single-monster removal and negate scoring. El Shaddoll
+  Fusion is preserved for protecting the lock or answering the engine that
+  remains after the opponent has been forced off its preferred summon route.
   A resolving one-shot Normal or Quick-Play Spell is not treated as an
   Apkallone target that will still exist after the Fusion chain resolves. El
   Shaddoll Fusion now waits for an established monster or persistent
   Continuous, Field, Equip or Pendulum engine, unless the set Quick-Play itself
-  is threatened. If Schism is unavailable, El Shaddoll Fusion still establishes
-  Winda after the opponent's first Special Summon or at Main End.
+  is threatened. A visible persistent Spell/Trap engine such as Dark Magical
+  Circle remains the exception: El Shaddoll Fusion can make Apkallone before the
+  engine snowballs. If Schism is unavailable, El Shaddoll Fusion still
+  establishes Winda after the opponent's first Special Summon or at Main End.
   Set Schism waits until the opponent has committed
   its first Special Summon, reaches Main End with a monster, or threatens the
   Trap; a visible high-value continuous control engine is also treated as a
@@ -787,7 +792,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 74 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 75 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -923,3 +928,25 @@ chain cards from persistent face-up threats, preserves Schism for Winda, and
 retains a no-Schism Winda fallback. The compiled suite covers Trade-In versus
 Dark Magical Circle, the prepared Alternative branch and the fallback after an
 opposing Special Summon. No Arena run has been made after this timing correction.
+
+Completed run `551ef82e-ec51-4d57-a15d-9c6b3808d932` recorded 476 completed
+underlying duel traces across 200 single-match Arena entries: 316–160 by duel
+trace and 142–58 by Arena result (71%). The Arena matchup results were Blue-Eyes
+6–14, Orcust 10–10, Rank V 12–8, Dark Magician 13–7, Salamangreat 14–6,
+Toadally Awesome 15–5, Lightsworn 16–4, MathMech 17–3, Dragunity 19–1 and Mokey
+Mokey King 20–0. The prepared control shell went 40–6, or 39–5 when El Shaddoll
+Fusion was also observed, and opening Lev went 117–43. This confirms that the
+core route remained productive after the one-shot Spell timing fix.
+
+The same traces show that the response objective was still wrong against summon
+engines. Blue-Eyes losses exposed Hope Harbinger in 26 of 30 duel losses and
+Spirit Dragon in 25; El Shaddoll Fusion appeared on the opponent's turn in 19
+Blue-Eyes duels but those duels went 4–15. Negating Blue-Eyes Alternative after
+it reached the field did not stop it from becoming Xyz material. The current
+policy therefore treats the first opposing Special Summon as the primary choke
+point: prepared Schism forces Winda before the second material, while El Fusion
+and Apkallone remain available for persistent Spell/Trap engines or later board
+protection. Focused regressions cover Alternative into Winda, a Rank V extender
+into Winda, and Dark Magical Circle into Apkallone. No Arena run has been made
+after this summon-denial correction, so the 71% run is diagnosis rather than a
+post-change strength claim.

@@ -589,25 +589,17 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool threatened = DefaultOnBecomeTarget();
-                bool exposedControlEngine = Enemy.GetSpells().Any(c =>
-                    IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800);
-                // The prepared Lev board has two different jobs: El Fusion
-                // establishes Apkallone's negate first, while Schism preserves
-                // Winda for the summon lock. Do not spend Schism merely because
-                // the first dangerous monster has appeared when the Quick-Play
-                // branch can answer it without consuming the floodgate branch.
-                // A threatened Schism still cashes itself in immediately.
-                if (!threatened && ShouldLeadWithElFusion())
+                bool exposedControlEngine = HasUrgentPersistentSpellTrapEngine();
+                bool summonDenial = ShouldPrioritizeWindaLock();
+                // The first opposing Special Summon is the most valuable Winda
+                // window: stop the material from becoming an Xyz, Link or Fusion
+                // board instead of spending El Fusion to negate one body that can
+                // still be used as material. Persistent Spell/Trap engines remain
+                // an exception because Apkallone can disable the engine itself.
+                if (!threatened && !summonDenial && ShouldLeadWithElFusion())
                     return false;
-                // Do not expose Winda into an empty Main Phase before the
-                // opponent has spent a Special Summon. Blue-Eyes in particular
-                // can otherwise choose one 3000 ATK body, battle over Winda and
-                // resume its engine next turn. A visible recursive or removal
-                // engine is already a real commitment, however: answer it with
-                // Apkallone before Circle/Soul-style control takes over the duel.
-                // Also cash Schism in when it is threatened, after the first
-                // opposing Special Summon, or at Main End after a monster commit.
                 return threatened ||
+                    summonDenial ||
                     exposedControlEngine ||
                     _opponentSpecialSummonsThisTurn > 0 ||
                     (mainEnd && Enemy.GetMonsterCount() > 0);
@@ -660,10 +652,11 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (Duel.Player == 1)
             {
+                bool summonDenial = ShouldPrioritizeWindaLock();
                 bool threatened = Card != null &&
                     Card.IsCode(CardId.ElShaddollFusion) && DefaultOnBecomeTarget();
                 bool answerPersistentThreat = Bot.HasInExtra(CardId.ElShaddollApkallone) &&
-                    BestPersistentOpponentThreatScore() >= 750;
+                    BestPersistentOpponentThreatScore() >= 750 && !summonDenial;
                 bool schismAvailable = Bot.HasInSpellZone(CardId.ShaddollSchism);
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool fallbackWindaWindow = !schismAvailable && Enemy.GetMonsterCount() > 0 &&
@@ -1050,6 +1043,10 @@ namespace WindBot.Game.AI.Decks
                 return 255;
             if (ownerId == CardId.ShaddollSchism && Duel.Player == 1)
             {
+                // Once the opponent commits its first Special Summon, deny the
+                // next summon before optimizing removal or a single-card negate.
+                if (ShouldPrioritizeWindaLock() && card.IsCode(CardId.ElShaddollWinda))
+                    return 380;
                 // Schism's post-Fusion send is often stronger than a Winda lock
                 // once a live Extra Deck negate is already established. Prefer
                 // a legally offered Fusion whose Attribute removes that threat;
@@ -1569,9 +1566,26 @@ namespace WindBot.Game.AI.Decks
                 CardType.Equip | CardType.Pendulum);
         }
 
+        private bool HasUrgentPersistentSpellTrapEngine()
+        {
+            return Enemy.GetSpells().Any(c =>
+                IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800);
+        }
+
+        private bool ShouldPrioritizeWindaLock()
+        {
+            if (Duel.Player != 1 || _opponentSpecialSummonsThisTurn != 1 ||
+                FunctionalWinda() || Enemy.GetMonsterCount() == 0 ||
+                !Bot.HasInExtra(CardId.ElShaddollWinda) ||
+                !Bot.HasInSpellZone(CardId.ShaddollSchism) ||
+                !HasSchismFusionResources())
+                return false;
+            return !HasUrgentPersistentSpellTrapEngine();
+        }
+
         private bool ShouldLeadWithElFusion()
         {
-            if (Duel.Player != 1 || FunctionalWinda() ||
+            if (Duel.Player != 1 || FunctionalWinda() || ShouldPrioritizeWindaLock() ||
                 Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() &&
                     c.IsCode(CardId.ElShaddollApkallone)))
                 return false;
