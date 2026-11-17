@@ -581,6 +581,13 @@ namespace WindBot.Game.AI.Decks
                 !Bot.GetMonsters().Any(c => c.IsFacedown() && c.HasType(CardType.Flip)))
                 return false;
             bool usefulNow = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.HasType(CardType.Link));
+            // The prepared Winda shell needs this Quick Effect to turn the
+            // opponent's one permitted Special Summon face-down. Do not expose
+            // the Flip body at an empty opponent board merely because a broad
+            // end-of-step timing hint was offered; the recorded Blue-Eyes loss
+            // did exactly that before Alternative White Dragon was summoned.
+            if (Duel.Player == 1 && FunctionalWinda())
+                return usefulNow && MarkUsed(CardId.ReeshaddollWendikuruhu);
             bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
             return (usefulNow || Duel.Player == 0 || mainEnd) && MarkUsed(CardId.ReeshaddollWendikuruhu);
         }

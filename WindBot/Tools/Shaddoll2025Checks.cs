@@ -1293,6 +1293,24 @@ internal static class Shaddoll2025Checks
                 "Wendikuruhu declined to turn the opposing monster face-down");
         });
 
+        Run("Winda shell preserves Wendikuruhu until an opposing monster appears", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Turn = 2;
+            f.Duel.Player = 1;
+            f.AI.OnNewTurn();
+            f.Add(Winda, CardLocation.MonsterZone);
+            ClientCard wendik = f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone, 0, true);
+
+            Require(!f.AI.OnSelectEffectYn(wendik, Desc(Wendikuruhu, 0)),
+                "Wendikuruhu exposed its Flip fuel before the opponent committed a monster");
+
+            f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
+            Require(f.AI.OnSelectEffectYn(wendik, Desc(Wendikuruhu, 0)),
+                "Wendikuruhu missed Alternative White Dragon after preserving the Flip fuel");
+        });
+
         Run("Ariel prioritizes the opponent's Extra Deck grave resource", () =>
         {
             Fixture f = new Fixture();

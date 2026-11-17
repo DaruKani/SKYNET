@@ -771,7 +771,11 @@ cost. Squamata is intentionally face-down because Wendikuruhu cannot legally
 turn an opposing monster face-down until it first flips a face-down Flip monster.
 
 On the opponent's turn, the prepared Squamata makes Wendikuruhu's position
-change live. El Shaddoll Fusion can use Squamata to summon Apkallone,
+change live. While Winda is applying its summon limit, Wendikuruhu now keeps
+that face-down Flip body hidden until an opposing face-up non-Link monster is
+actually available. It no longer spends the interaction at an empty-board
+timing hint before Blue-Eyes Alternative White Dragon appears. El Shaddoll
+Fusion can use Squamata to summon Apkallone,
 whose summon-trigger effect negates one face-up card; Squamata can then send
 Tohushaddoll Grysta. Its Fusion continuation chooses Shekhinaga only with a legal
 EARTH material and a remaining Shaddoll hand cost. Schism summons Winda as the
@@ -797,7 +801,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 78 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 79 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
