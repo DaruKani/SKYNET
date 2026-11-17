@@ -31,6 +31,7 @@ internal static class Shaddoll2025Checks
     private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
     private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, BlueEyesAlternative = 38517737;
+    private const int TradeIn = 38120068;
     private const int DarkMagician = 46986414;
     private const int HopeHarbinger = 63767246, ReturnDragonLords = 6853254;
     private const int DarkMagicalCircle = 47222536, EternalSoul = 48680970;
@@ -1041,6 +1042,60 @@ internal static class Shaddoll2025Checks
             Has(materials, Ariel, "Apkallone branch consumed Wendikuruhu before its interaction");
         });
 
+        Run("Prepared control board ignores a resolving one-shot draw Spell", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            ClientCard tradeIn = f.Add(TradeIn, CardLocation.SpellZone, 1);
+            f.Chain(tradeIn, false);
+            Require(!f.AI.OnSelectEffectYn(schism, 0),
+                "Schism spent the Winda branch on a resolving Trade-In");
+            Require(!f.AI.OnSelectEffectYn(fusion, 0),
+                "El Shaddoll Fusion tried to make Apkallone after Trade-In had already resolved");
+        });
+
+        Run("Prepared control board answers persistent Circle with El Fusion first", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Wendikuruhu, CardLocation.MonsterZone);
+            f.Add(Ariel, CardLocation.MonsterZone);
+            f.Add(Squamata, CardLocation.MonsterZone);
+            ClientCard schism = f.Add(Schism, CardLocation.SpellZone, 0, true);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            ClientCard circle = f.Add(DarkMagicalCircle, CardLocation.SpellZone, 1);
+            f.Chain(circle, false);
+            Require(!f.AI.OnSelectEffectYn(schism, 0),
+                "Schism consumed the Winda branch before El Fusion could answer Circle");
+            Require(f.AI.OnSelectEffectYn(fusion, 0),
+                "El Shaddoll Fusion ignored an established Dark Magical Circle");
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone)), Apkallone,
+                "El Shaddoll Fusion made Winda while Dark Magical Circle remained live");
+        });
+
+        Run("El Fusion without Schism makes Winda after an opposing Special Summon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Duel.Player = 1;
+            f.Add(Squamata, CardLocation.Hand);
+            f.Add(MaxxC, CardLocation.Hand);
+            ClientCard fusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
+            f.Add(BlueEyes, CardLocation.MonsterZone, 1);
+            f.Duel.LastSummonPlayer = 1;
+            f.Executor.OnSpSummoned();
+            Require(f.AI.OnSelectEffectYn(fusion, 0),
+                "El Shaddoll Fusion missed the Winda fallback when Schism was unavailable");
+            f.Chain(fusion, true);
+            Is(f.Select(HintMsg.SpSummon, f.Extra(Winda), f.Extra(Apkallone)), Winda,
+                "El Shaddoll Fusion used Apkallone on a vanilla body instead of establishing Winda");
+        });
+
         Run("Schism keeps the response window when Maxx C makes El Fusion unavailable", () =>
         {
             Fixture f = new Fixture();
@@ -1086,6 +1141,7 @@ internal static class Shaddoll2025Checks
             f.Add(Ariel, CardLocation.MonsterZone);
             f.Add(Squamata, CardLocation.MonsterZone);
             f.Add(Schism, CardLocation.SpellZone, 0, true);
+            f.Add(BlueEyesAlternative, CardLocation.MonsterZone, 1);
             ClientCard elFusion = f.Add(ElFusion, CardLocation.SpellZone, 0, true);
             f.Chain(elFusion, true);
             Is(f.Select(HintMsg.SpSummon, f.Extra(Apkallone), f.Extra(Winda)), Apkallone,

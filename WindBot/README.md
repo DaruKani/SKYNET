@@ -694,6 +694,12 @@ combo. Its implemented decisions include:
   Shaddoll negate cost remain. When the prepared board has both Quick-Play Fusion
   and Schism, a dangerous repeatable monster is answered by El Shaddoll Fusion
   into Apkallone first; Schism is preserved for the later Winda floodgate window.
+  A resolving one-shot Normal or Quick-Play Spell is not treated as an
+  Apkallone target that will still exist after the Fusion chain resolves. El
+  Shaddoll Fusion now waits for an established monster or persistent
+  Continuous, Field, Equip or Pendulum engine, unless the set Quick-Play itself
+  is threatened. If Schism is unavailable, El Shaddoll Fusion still establishes
+  Winda after the opponent's first Special Summon or at Main End.
   Set Schism waits until the opponent has committed
   its first Special Summon, reaches Main End with a monster, or threatens the
   Trap; a visible high-value continuous control engine is also treated as a
@@ -781,7 +787,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 71 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 74 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete
@@ -894,3 +900,26 @@ control shell gives El Shaddoll Fusion the first answer to such a threat while
 retaining Schism for Winda. The focused compiled regression covers that exact
 decision. No Arena run has been made after this correction, so the change is not
 yet a win-rate claim.
+
+Completed run `6751fceb-69b3-43d3-80fe-b5e11ec335e6` recorded 464 completed
+underlying duel traces across 200 single-match Arena entries: 306–158 by duel
+trace and 140–60 by Arena result. The Arena matchup results were Blue-Eyes 2–18,
+Dark Magician 6–14, Orcust 12–8, Salamangreat 14–6, Lightsworn 15–5, Rank V
+16–4, Toadally Awesome 16–4, Dragunity 19–1, MathMech 20–0 and Mokey Mokey King
+20–0. The prepared control shell was still positive globally at 39–10 in 49
+observations, but it went only 1–7 against Blue-Eyes. Opening Lev went 4–17
+against Blue-Eyes, and a first-turn Winda went 0–7 there; against Dark Magician,
+first-turn Winda went 2–10.
+
+Trace order exposed the timing defect rather than a missing combo route. El
+Shaddoll Fusion was firing on resolving one-shot setup Spells such as Trade-In,
+The Melody of Awakening Dragon, Cards of Consonance, Dragon Shrine, Pot of
+Desires and Upstart Goblin. Apkallone's summon trigger begins only after that
+chain resolves, when those Normal Spells are already in the GY, so the bot spent
+El Fusion and its materials without negating the effect and before Blue-Eyes
+Alternative White Dragon, Hope Harbinger, Dark Magical Circle or Eternal Soul
+became the real target. Opponent-turn Fusion timing now distinguishes transient
+chain cards from persistent face-up threats, preserves Schism for Winda, and
+retains a no-Schism Winda fallback. The compiled suite covers Trade-In versus
+Dark Magical Circle, the prepared Alternative branch and the fallback after an
+opposing Special Summon. No Arena run has been made after this timing correction.

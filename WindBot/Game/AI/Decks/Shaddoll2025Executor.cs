@@ -590,7 +590,7 @@ namespace WindBot.Game.AI.Decks
                 bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
                 bool threatened = DefaultOnBecomeTarget();
                 bool exposedControlEngine = Enemy.GetSpells().Any(c =>
-                    c.IsFaceup() && !c.IsDisabled() && OpponentThreatScore(c) >= 800);
+                    IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800);
                 // The prepared Lev board has two different jobs: El Fusion
                 // establishes Apkallone's negate first, while Schism preserves
                 // Winda for the summon lock. Do not spend Schism merely because
@@ -659,7 +659,17 @@ namespace WindBot.Game.AI.Decks
             if (HasSafeLethalOnBoard() || (Duel.Player == 0 && FunctionalWinda()))
                 return false;
             if (Duel.Player == 1)
-                return Enemy.GetMonsterCount() > 0 || Duel.CurrentChain.Count > 0;
+            {
+                bool threatened = Card != null &&
+                    Card.IsCode(CardId.ElShaddollFusion) && DefaultOnBecomeTarget();
+                bool answerPersistentThreat = Bot.HasInExtra(CardId.ElShaddollApkallone) &&
+                    BestPersistentOpponentThreatScore() >= 750;
+                bool schismAvailable = Bot.HasInSpellZone(CardId.ShaddollSchism);
+                bool mainEnd = CurrentTiming != -1 && (CurrentTiming & 0x200) != 0;
+                bool fallbackWindaWindow = !schismAvailable && Enemy.GetMonsterCount() > 0 &&
+                    (_opponentSpecialSummonsThisTurn > 0 || mainEnd);
+                return threatened || answerPersistentThreat || fallbackWindaWindow;
+            }
             return Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2 ||
                 Duel.Phase == DuelPhase.BattleStart;
         }
@@ -1031,10 +1041,8 @@ namespace WindBot.Game.AI.Decks
                 card.IsCode(CardId.ReeshaddollWendikuruhu))
                 return 240;
             if (ownerId == CardId.ElShaddollFusion && Duel.Player == 1 &&
-                HasPreparedLevControlBoard() && card.IsCode(CardId.ElShaddollApkallone))
-                return 260;
-            if (ownerId == CardId.ElShaddollFusion && Duel.Player == 1 &&
-                card.IsCode(CardId.ElShaddollApkallone) && BestLiveOpponentThreatScore() >= 750)
+                card.IsCode(CardId.ElShaddollApkallone) &&
+                BestPersistentOpponentThreatScore() >= 750)
                 return 280;
             if (ownerId == CardId.TohushaddollGrysta && Duel.Player == 1 &&
                 _levOpponentTurnBranch && Bot.Hand.Any(IsShaddollCard) &&
@@ -1054,7 +1062,7 @@ namespace WindBot.Game.AI.Decks
                     .DefaultIfEmpty(-1000)
                     .Max();
                 int faceupEngineThreat = Enemy.GetSpells()
-                    .Where(c => c.IsFaceup() && !c.IsDisabled())
+                    .Where(IsPersistentOpponentThreat)
                     .Select(OpponentThreatScore)
                     .DefaultIfEmpty(-1000)
                     .Max();
@@ -1063,7 +1071,7 @@ namespace WindBot.Game.AI.Decks
                 if (matchingThreat >= 750)
                     return 300 + Math.Min(40, (matchingThreat - 750) / 10);
                 if (card.IsCode(CardId.ElShaddollApkallone) &&
-                    BestLiveOpponentThreatScore() >= 750)
+                    BestPersistentOpponentThreatScore() >= 750)
                     return 295;
                 if (card.IsCode(CardId.ElShaddollWinda))
                     return 250;
@@ -1186,7 +1194,7 @@ namespace WindBot.Game.AI.Decks
         private int ShaddollSendScore(ClientCard card)
         {
             if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpells().Any(c =>
-                c.IsFaceup() && !c.IsDisabled() && OpponentThreatScore(c) >= 800) &&
+                IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800) &&
                 !EffectUsed(CardId.ShaddollDragon)) return 190;
             if (card.IsCode(CardId.ShaddollDragon) && Enemy.GetSpellCount() > 0 &&
                 !EffectUsed(CardId.ShaddollDragon)) return 115;
@@ -1541,13 +1549,24 @@ namespace WindBot.Game.AI.Decks
             return capability;
         }
 
-        private int BestLiveOpponentThreatScore()
+        private int BestPersistentOpponentThreatScore()
         {
             return Enemy.GetMonsters().Concat(Enemy.GetSpells())
-                .Where(c => c.IsFaceup() && !c.IsDisabled())
+                .Where(IsPersistentOpponentThreat)
                 .Select(OpponentThreatScore)
                 .DefaultIfEmpty(-1000)
                 .Max();
+        }
+
+        private bool IsPersistentOpponentThreat(ClientCard card)
+        {
+            if (card == null || card.Controller != 1 ||
+                !card.IsFaceup() || card.IsDisabled())
+                return false;
+            if (card.IsMonster())
+                return true;
+            return card.HasType(CardType.Continuous | CardType.Field |
+                CardType.Equip | CardType.Pendulum);
         }
 
         private bool ShouldLeadWithElFusion()
@@ -1560,7 +1579,7 @@ namespace WindBot.Game.AI.Decks
                 c.IsCode(CardId.ElShaddollFusion) && c.IsFacedown());
             return readyElFusion && CanActivateElShaddollFusionNow() &&
                 Bot.HasInExtra(CardId.ElShaddollApkallone) &&
-                BestLiveOpponentThreatScore() >= 750;
+                BestPersistentOpponentThreatScore() >= 750;
         }
 
         private int RevivalScore(ClientCard card)
