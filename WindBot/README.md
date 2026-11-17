@@ -785,7 +785,11 @@ Tohushaddoll Grysta. Its Fusion continuation chooses Shekhinaga only with a lega
 EARTH material and a remaining Shaddoll hand cost. Schism summons Winda as the
 Special Summon floodgate and can additionally send an opponent's face-up DARK
 monster. These are separate timing windows and conditional interactions, not
-four unconditional omni-negates.
+four unconditional omni-negates. Against Blue-Eyes Spirit Dragon, simultaneous
+Graveyard triggers are ordered by continuation value: the core search or Fusion
+effect is placed first, while a lower-value trigger is placed last as the legal
+negate target. The executor no longer exposes Tohushaddoll Grysta above Squamata
+merely because Squamata's executor was registered first.
 
 Build and run the offline registration and focused callback checks from the
 workspace root:
@@ -805,7 +809,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 80 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 81 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete

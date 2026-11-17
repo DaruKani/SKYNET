@@ -31,6 +31,7 @@ internal static class Shaddoll2025Checks
     private const int Faimena = 1498449, Scheiren = 572850, Cartesia = 95515789;
     private const int Granguignol = 24915933;
     private const int BlueEyes = 89631139, BlueEyesAlternative = 38517737;
+    private const int BlueEyesSpiritDragon = 59822133;
     private const int CyberDragon = 70095154;
     private const int TradeIn = 38120068;
     private const int DarkMagician = 46986414;
@@ -612,6 +613,21 @@ internal static class Shaddoll2025Checks
 
             Require(!f.AI.OnSelectEffectYn(elFusion, Desc(ElFusion, 0)),
                 "El Fusion activated before Hedgehog could search Wendi after early Void advanced the route state");
+        });
+
+        Run("Grave trigger order chain-blocks Blue-Eyes Spirit Dragon", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(BlueEyesSpiritDragon, CardLocation.MonsterZone, 1);
+            ClientCard squamata = f.Add(Squamata, CardLocation.Grave);
+            ClientCard tohushaddoll = f.Add(Grysta, CardLocation.Grave);
+            IList<ClientCard> offered = new[] { squamata, tohushaddoll };
+            int selected = f.AI.OnSelectChain(offered,
+                new[] { Desc(Squamata, 1), Desc(Grysta, 1) },
+                new[] { true, true });
+
+            Is(offered[selected], Grysta,
+                "Spirit Dragon was allowed to negate the core Grysta Fusion continuation");
         });
 
         Run("Lev route preserves the hand Shaddoll needed to activate searched Void", () =>

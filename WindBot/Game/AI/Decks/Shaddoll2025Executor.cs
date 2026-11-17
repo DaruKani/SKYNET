@@ -51,6 +51,7 @@ namespace WindBot.Game.AI.Decks
             public const int ShaddollConstruct = 86938484;
 
             public const int WhiteStoneOfAncients = 71039903;
+            public const int BlueEyesSpiritDragon = 59822133;
             public const int ReturnOfTheDragonLords = 6853254;
             public const int DarkMagician = 46986414;
             public const int DarkMagicianTheDragonKnight = 41721210;
@@ -110,6 +111,7 @@ namespace WindBot.Game.AI.Decks
         private bool _levOpponentTurnBranch;
         private bool _levMeshSearchResolved;
         private bool _waitingForLevWendi;
+        private ClientCard _preferredSpiritProtectedTrigger;
         private LevRouteStage _levRouteStage;
 
         private static readonly int[] ShaddollMainMonsterIds =
@@ -231,7 +233,24 @@ namespace WindBot.Game.AI.Decks
             _levOpponentTurnBranch = false;
             _levMeshSearchResolved = false;
             _waitingForLevWendi = false;
+            _preferredSpiritProtectedTrigger = null;
             _levRouteStage = LevRouteStage.None;
+        }
+
+        public override void OnSelectChain(IList<ClientCard> cards)
+        {
+            base.OnSelectChain(cards);
+            _preferredSpiritProtectedTrigger = null;
+            if (cards == null || !Enemy.GetMonsters().Any(c => c.IsFaceup() &&
+                !c.IsDisabled() && c.IsCode(CardId.BlueEyesSpiritDragon)))
+                return;
+            List<ClientCard> graveTriggers = cards.Where(c => c != null &&
+                c.Controller == 0 && c.Location == CardLocation.Grave &&
+                IsSpiritOrderableGraveTrigger(c)).ToList();
+            if (graveTriggers.Count > 1)
+                _preferredSpiritProtectedTrigger = graveTriggers
+                    .OrderByDescending(SpiritProtectedTriggerScore)
+                    .First();
         }
 
         public override void OnMove(
@@ -594,7 +613,8 @@ namespace WindBot.Game.AI.Decks
         private bool WendikuruhuActivate()
         {
             if (Card.Location == CardLocation.Grave)
-                return HasRecoverableShaddollCard() && MarkUsed(CardId.ReeshaddollWendikuruhu + 1);
+                return CanUseSpiritOrderedTrigger(Card) &&
+                    HasRecoverableShaddollCard() && MarkUsed(CardId.ReeshaddollWendikuruhu + 1);
             if (Card.Location != CardLocation.MonsterZone ||
                 !Bot.GetMonsters().Any(c => c.IsFacedown() && c.HasType(CardType.Flip)))
                 return false;
@@ -819,7 +839,8 @@ namespace WindBot.Game.AI.Decks
                 return MarkUsed(CardId.TearlamentsScheiren);
             }
             if (Card.Location == CardLocation.Grave)
-                return !FunctionalWinda() && !ShouldStopSpecialSummoning(CardLocation.Extra) &&
+                return CanUseSpiritOrderedTrigger(Card) &&
+                    !FunctionalWinda() && !ShouldStopSpecialSummoning(CardLocation.Extra) &&
                     MarkUsed(CardId.TearlamentsScheiren + 1);
             return false;
         }
@@ -839,19 +860,22 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.MonsterZone)
                 return Enemy.GetMonsterCount() > 0 && MarkUsed(CardId.ShaddollSquamata);
-            return HasShaddollSendTarget() && MarkUsed(CardId.ShaddollSquamata);
+            return CanUseSpiritOrderedTrigger(Card) &&
+                HasShaddollSendTarget() && MarkUsed(CardId.ShaddollSquamata);
         }
 
         private bool HedgehogActivate()
         {
             if (Card.Location == CardLocation.MonsterZone)
                 return ShaddollSpellTrapIds.Any(Bot.HasInDeck) && MarkUsed(CardId.ShaddollHedgehog);
-            return ShaddollMainMonsterIds.Any(Bot.HasInDeck) && MarkUsed(CardId.ShaddollHedgehog);
+            return CanUseSpiritOrderedTrigger(Card) &&
+                ShaddollMainMonsterIds.Any(Bot.HasInDeck) && MarkUsed(CardId.ShaddollHedgehog);
         }
 
         private bool WendiActivate()
         {
-            return Bot.GetMonsterCount() < 5 && ShaddollMainMonsterIds.Any(Bot.HasInDeck) &&
+            return (Card.Location != CardLocation.Grave || CanUseSpiritOrderedTrigger(Card)) &&
+                Bot.GetMonsterCount() < 5 && ShaddollMainMonsterIds.Any(Bot.HasInDeck) &&
                 MarkUsed(CardId.ReeshaddollWendi);
         }
 
@@ -859,13 +883,15 @@ namespace WindBot.Game.AI.Decks
         {
             bool useful = Card.Location == CardLocation.MonsterZone ?
                 Enemy.GetFieldCount() > 0 : Enemy.GetSpellCount() > 0;
-            return useful && MarkUsed(CardId.ShaddollDragon);
+            return (Card.Location != CardLocation.Grave || CanUseSpiritOrderedTrigger(Card)) &&
+                useful && MarkUsed(CardId.ShaddollDragon);
         }
 
         private bool BeastActivate()
         {
             bool useful = Card.Location == CardLocation.MonsterZone ? Bot.Hand.Count > 0 : Bot.Deck.Count > 0;
-            return useful && MarkUsed(CardId.ShaddollBeast);
+            return (Card.Location != CardLocation.Grave || CanUseSpiritOrderedTrigger(Card)) &&
+                useful && MarkUsed(CardId.ShaddollBeast);
         }
 
         private bool ArielActivate()
@@ -874,7 +900,8 @@ namespace WindBot.Game.AI.Decks
                 Bot.Banished.Any(c => IsShaddollCard(c)) : Enemy.Graveyard.Any(c =>
                     c.IsMonster() || c.IsCode(CardId.OrcustratedClimax,
                         CardId.PhantomKnightsFogBlade, CardId.ReturnOfTheDragonLords));
-            return useful && MarkUsed(CardId.NaelshaddollAriel);
+            return (Card.Location != CardLocation.Grave || CanUseSpiritOrderedTrigger(Card)) &&
+                useful && MarkUsed(CardId.NaelshaddollAriel);
         }
 
         private bool TohushaddollGrystaActivate()
@@ -882,7 +909,8 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.MonsterZone)
                 return Bot.Graveyard.Any(c => IsShaddollCard(c) && c.HasType(CardType.Flip)) &&
                     MarkUsed(CardId.TohushaddollGrysta);
-            if (FunctionalWinda() || ShouldStopSpecialSummoning(CardLocation.Extra) || !HasFusionResources(true))
+            if (!CanUseSpiritOrderedTrigger(Card) || FunctionalWinda() ||
+                ShouldStopSpecialSummoning(CardLocation.Extra) || !HasFusionResources(true))
                 return false;
             _shaddollExtraDeckLock = true;
             return MarkUsed(CardId.TohushaddollGrysta);
@@ -892,7 +920,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.MonsterZone)
                 return HasShaddollSendTarget();
-            return HasRecoverableSpellTrap();
+            return CanUseSpiritOrderedTrigger(Card) && HasRecoverableSpellTrap();
         }
 
         private bool ApkalloneActivate()
@@ -900,12 +928,13 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.MonsterZone)
                 return !Card.IsDisabled() && Enemy.GetMonsters().Concat(Enemy.GetSpells())
                     .Any(c => c.IsFaceup() && !c.IsDisabled());
-            return HasRecoverableShaddollCard();
+            return CanUseSpiritOrderedTrigger(Card) && HasRecoverableShaddollCard();
         }
 
         private bool InfernoidEvilActivate()
         {
             return (Card.Location == CardLocation.Grave || Card.Location == CardLocation.Removed) &&
+                (Card.Location != CardLocation.Grave || CanUseSpiritOrderedTrigger(Card)) &&
                 Bot.HasInDeck(CardId.VoidUnleashing);
         }
 
@@ -920,7 +949,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool FusionRecoveryActivate()
         {
-            return Card.Location == CardLocation.Grave && HasRecoverableSpellTrap();
+            return Card.Location == CardLocation.Grave &&
+                CanUseSpiritOrderedTrigger(Card) && HasRecoverableSpellTrap();
         }
 
         private bool PerfumeDancerActivate()
@@ -1624,6 +1654,50 @@ namespace WindBot.Game.AI.Decks
         {
             return Enemy.GetSpells().Any(c =>
                 IsPersistentOpponentThreat(c) && OpponentThreatScore(c) >= 800);
+        }
+
+        private bool IsSpiritOrderableGraveTrigger(ClientCard card)
+        {
+            return card != null && (ShaddollMainMonsterIds.Contains(card.Id) ||
+                card.IsCode(CardId.TohushaddollGrysta,
+                    CardId.ElShaddollConstruct,
+                    CardId.ElShaddollApkallone,
+                    CardId.ReeshaddollWendikuruhu,
+                    CardId.ElShaddollWinda,
+                    CardId.ElShaddollShekhinaga,
+                    CardId.ElShaddollAnoyatyllis,
+                    CardId.InfernoidEvil,
+                    CardId.TearlamentsScheiren));
+        }
+
+        private bool CanUseSpiritOrderedTrigger(ClientCard card)
+        {
+            return _preferredSpiritProtectedTrigger == null ||
+                card == _preferredSpiritProtectedTrigger;
+        }
+
+        private int SpiritProtectedTriggerScore(ClientCard card)
+        {
+            // Simultaneous grave triggers are placed from the most important
+            // effect first. The final, lower-value link is the only activation
+            // Blue-Eyes Spirit Dragon can chain to and negate.
+            if (card.IsCode(CardId.TohushaddollGrysta) && HasFusionResources(true)) return 1000;
+            if (card.IsCode(CardId.ShaddollHedgehog) &&
+                !Bot.HasInHand(CardId.ReeshaddollWendi)) return 940;
+            if (card.IsCode(CardId.ElShaddollApkallone)) return 920;
+            if (card.IsCode(CardId.InfernoidEvil) &&
+                Bot.HasInDeck(CardId.VoidUnleashing)) return 900;
+            if (card.IsCode(CardId.ReeshaddollWendi) && Bot.GetMonsterCount() < 5) return 880;
+            if (card.IsCode(CardId.ShaddollSquamata) && HasShaddollSendTarget()) return 840;
+            if (card.IsCode(CardId.ElShaddollConstruct) && HasRecoverableSpellTrap()) return 810;
+            if (card.IsCode(CardId.ReeshaddollWendikuruhu)) return 780;
+            if (card.IsCode(CardId.NaelshaddollAriel)) return 740;
+            if (card.IsCode(CardId.ShaddollDragon)) return 700;
+            if (card.IsCode(CardId.TearlamentsScheiren)) return 680;
+            if (card.IsCode(CardId.ElShaddollWinda,
+                CardId.ElShaddollShekhinaga, CardId.ElShaddollAnoyatyllis)) return 650;
+            if (card.IsCode(CardId.ShaddollBeast)) return 500;
+            return 600;
         }
 
         private bool ShouldEstablishProtectedWindaBeforeSummon()
