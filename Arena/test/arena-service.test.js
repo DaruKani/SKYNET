@@ -870,7 +870,7 @@ test('deck listing keeps current decks available without an old WindBot', () => 
     });
 
     assert.deepEqual(service.listDecks(), {
-        currentDecks: [{ aiLevel: null, currentLabel: 'Current', deck: 'Dragon' }],
+        currentDecks: [{ aiLevel: null, currentLabel: 'Current', deck: 'Dragon', format: 'standard' }],
         oldDecks: [],
         regressionDecks: [],
     });
@@ -1424,7 +1424,10 @@ for (const mode of ['local', 'remote']) {
             const next = service.contexts.get('srvpro-2');
             const competitors = next.matchups.flatMap((matchup) => matchup.competitors)
                 .filter((competitor) => kind !== 'challenge' || competitor.slot !== 1);
-            assert.deepEqual([...new Set(competitors.map((competitor) => competitor.deck))].sort(), ['Beta', 'Gamma']);
+            assert.deepEqual(
+                [...new Set(competitors.map((competitor) => competitor.deck))].sort(),
+                kind === 'challenge' ? ['Gamma'] : ['Beta', 'Gamma'],
+            );
             assert.ok(competitors.every((competitor) => competitor.dialog === 'updated'));
             assert.ok(competitors.filter((competitor) => competitor.deck === 'Beta')
                 .every((competitor) => competitor.botLabel === 'Renamed Beta'));

@@ -338,6 +338,9 @@ are never killed. Output buffers are bounded.
 
 - **Regression:** candidate versus baseline on matching profile IDs.
 - **Challenge:** one chosen profile versus a list of opponents.
+- Bulk Standard experiments exclude `AI_RD*` Rush Duel profiles and, in
+  Challenge mode, exclude the challenger itself. Explicitly selecting a Rush
+  profile is rejected before any room or bot process is launched.
 - **Ranking:** continuously sample candidate deck pairs until stopped.
 - **Tag smoke test:** WindBot-only stability checks; native SKYNET tag play is
   disabled until its lifecycle is validated.

@@ -72,6 +72,16 @@ def observed_code(row, reference):
     return None
 
 
+def record_kind(row):
+    # TraceSession builds card-selection snapshots from the ordinary decision
+    # snapshot helper. Builds before the writer fix left kind="decision" even
+    # though the full selection contract and response were present. Normalize
+    # those captures so completed historical runs remain auditable.
+    if row.get("prompt") == "select_card" and row.get("selection") is not None:
+        return "selection"
+    return row.get("kind")
+
+
 def summarize_capture(path, rows):
     start = rows[0]
     end = next((row for row in reversed(rows) if row.get("kind") == "end"), None)
@@ -93,7 +103,8 @@ def summarize_capture(path, rows):
         offer = selected_offer(row)
         if offer:
             action_types[offer.get("type") or "unknown"] += 1
-        if row.get("kind") not in ("decision", "selection"):
+        kind = record_kind(row)
+        if kind not in ("decision", "selection"):
             continue
         global_state = (row.get("observation") or {}).get("global") or {}
         selected_codes = []
@@ -112,7 +123,7 @@ def summarize_capture(path, rows):
             "matchOrder": row.get("matchOrder"),
             "roomName": row.get("roomName"),
             "duelNumber": row.get("duelNumber"),
-            "kind": row.get("kind"),
+            "kind": kind,
             "prompt": row.get("prompt"),
             "turn": global_state.get("turn"),
             "phase": global_state.get("phase"),
@@ -136,8 +147,8 @@ def summarize_capture(path, rows):
         "completed": completed,
         "outcome": outcome,
         "records": len(rows),
-        "decisions": sum(row.get("kind") == "decision" for row in rows),
-        "selections": sum(row.get("kind") == "selection" for row in rows),
+        "decisions": sum(record_kind(row) == "decision" for row in rows),
+        "selections": sum(record_kind(row) == "selection" for row in rows),
         "actionTypes": dict(sorted(action_types.items())),
         "responseSources": dict(sorted(response_sources.items())),
         "decisionSources": dict(sorted(decision_sources.items())),

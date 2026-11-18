@@ -50,6 +50,7 @@ test('parseBotConfig parses supported entries and filters manual bots', () => {
         aiLevel: 4,
         deck: 'Dragon',
         dialog: 'dragon',
+        format: 'standard',
         label: 'Dragon Bot',
     });
     assert.equal(bots.get('Beginner').aiLevel, 1);
@@ -71,6 +72,27 @@ SELECT_DECKFILE
     assert.deepEqual([...bots.keys()], ['MokeyMokeyKing', 'Level VIII']);
     assert.equal(bots.get('MokeyMokeyKing').dialog, 'Mokey.EN');
     assert.equal(bots.get('Level VIII').aiLevel, 2);
+});
+
+test('parseBotConfig marks Rush profiles and Standard challenge rejects them', () => {
+    const settings = createDefaultArenaSettings();
+    settings.windbots.current = {
+        ...settings.windbots.current,
+        botConfText: `${botConfig}\n!Rush Dragon\nName=Rush Deck=RushDragon Dialog=rush\nAI_RD2`,
+        host: 'windbot-current.lan',
+        mode: 'remote',
+    };
+    const bots = parseBotConfig(settings.windbots.current.botConfText);
+    assert.equal(bots.get('RushDragon').format, 'rush');
+    assert.deepEqual(buildChallengeMatchups(settings, 'ManualExecutor', []).map((item) => item.label), [
+        'Dragon',
+        'Deck With Spaces',
+        'Unleveled',
+    ]);
+    assert.throws(
+        () => buildChallengeMatchups(settings, 'ManualExecutor', ['RushDragon']),
+        /Rush Duel decks cannot run in a Standard Arena experiment/,
+    );
 });
 
 test('buildRegressionMatchups creates generalized competitors', (context) => {
@@ -191,17 +213,14 @@ test('challenge shares the target rank and keeps opponent bot names', () => {
         'Dragon',
         'Deck With Spaces',
         'Unleveled',
-        'ManualExecutor',
     ]);
     assert.equal(matchups[0].competitors[0].deck, 'ManualExecutor');
     assert.equal(matchups[0].competitors[0].dialog, 'default');
-    assert.equal(matchups.at(-1).competitors[1].deck, 'ManualExecutor');
     assert.equal(matchups[0].competitors[0].endpointHost, 'windbot-current.lan');
     assert.equal(matchups[0].competitors[0].rankName, 'ManualExecutor');
     assert.equal(matchups[0].competitors[1].rankName, 'Dragon Bot');
     assert.ok(matchups.every((item) => item.competitors[0].rankName === 'ManualExecutor'));
-    assert.equal(matchups.at(-1).competitors[1].rankName, 'Opp-ManualExecutor');
-    assert.equal(new Set(matchups.flatMap((item) => item.competitors.map((bot) => bot.rankName))).size, 5);
+    assert.equal(new Set(matchups.flatMap((item) => item.competitors.map((bot) => bot.rankName))).size, 4);
 
     const [oldTargetMatchup] = buildChallengeMatchups(
         settings,
@@ -216,7 +235,7 @@ test('challenge shares the target rank and keeps opponent bot names', () => {
     assert.equal(oldTargetMatchup.competitors[1].botLabel, 'Quoted Bot');
 
     const beginnerMatchups = buildChallengeMatchups(settings, 'Beginner', []);
-    assert.ok(beginnerMatchups.some((item) => item.label === 'Beginner'));
+    assert.ok(!beginnerMatchups.some((item) => item.label === 'Beginner'));
 
     const aliasSettings = structuredClone(settings);
     aliasSettings.windbots.current.botConfText += `

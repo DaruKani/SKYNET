@@ -276,6 +276,7 @@ namespace WindBot.Game.AI.Trace
                 TraceRecord record = Prepare(duel, new List<TraceOffer>());
                 if (record == null)
                     return null;
+                record.Kind = "selection";
                 record.Prompt = "select_card";
                 record.Selection = new TraceSelection
                 {

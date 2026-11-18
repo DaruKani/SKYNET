@@ -1755,15 +1755,19 @@ internal static class Shaddoll2025Checks
                 "Cartesia consumed live hand interaction instead of the Shaddoll material");
         });
 
-        Run("Faimena evaluates board-breaking and turn-zero Quick Fusion lines", () =>
+        Run("Faimena preserves its discard for a real opponent-turn summon lock", () =>
         {
             Fixture f = new Fixture();
             f.Add(BlueEyes, CardLocation.MonsterZone, 1);
             ClientCard faimena = f.Add(Faimena, CardLocation.Hand);
+            f.Add(Wendi, CardLocation.Hand);
+            f.Add(Squamata, CardLocation.Hand);
+            Require(!f.AI.OnSelectEffectYn(faimena, Desc(Faimena, 0)),
+                "Faimena duplicated an ordinary Fusion effect on our own turn");
             f.Chain(faimena, true);
             Is(f.Select(HintMsg.SpSummon, Card(Construct, CardLocation.Extra),
                 Card(Winda, CardLocation.Extra)), Construct,
-                "Faimena chose an early lock over visible board pressure");
+                "Faimena's resolving target callback ignored visible board pressure");
 
             Fixture turnZero = new Fixture();
             turnZero.Duel.Player = 1;
@@ -1796,6 +1800,14 @@ internal static class Shaddoll2025Checks
             shortCost.Add(Wendi, CardLocation.Hand);
             Require(!shortCost.AI.OnSelectEffectYn(invalidFaimena, Desc(Faimena, 0)),
                 "Faimena counted its discarded self as a remaining Fusion material");
+
+            Fixture noLock = new Fixture();
+            noLock.Duel.Player = 1;
+            ClientCard noLockFaimena = noLock.Add(Faimena, CardLocation.Hand);
+            noLock.Add(Wendi, CardLocation.Hand);
+            noLock.Add(Veiler, CardLocation.Hand);
+            Require(!noLock.AI.OnSelectEffectYn(noLockFaimena, Desc(Faimena, 0)),
+                "Faimena spent itself on an empty-board Construct instead of preserving turn-zero interaction");
         });
 
         Run("Resolved Fuwalos also shortens Extra Deck extension", () =>

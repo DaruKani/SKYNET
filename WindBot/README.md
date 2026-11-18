@@ -681,9 +681,10 @@ combo. Its implemented decisions include:
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
 - adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
-  from hand before milling, Faimena excludes its own discard cost and can make a
-  turn-zero Winda with two real remaining materials, and Cartesia includes
-  itself for Granguignol while preserving stronger hand interaction. Flexible
+  from hand before milling, Faimena is preserved on the bot's turn and activates
+  on the opponent's turn only when its two real remaining materials can make
+  Winda (or Apkallone against an established persistent threat), and Cartesia
+  includes itself for Granguignol while preserving stronger hand interaction. Flexible
   Quick Fusions do not chain over the bot's unresolved setup effects, consume
   Mesh before Lev, or fire between Construct sending Hedgehog and Hedgehog
   resolving the Wendi search, and
@@ -820,14 +821,28 @@ legality checks and an uncontrolled core seed. Their results prove the complete
 launch, duel and result-recording path only; a small sample is not a strength or
 win-rate claim. Structured traces now include repeated `SelectUnselect` card
 choices, chain-choice candidates and responses, and ordinary card and
-idle-command selections. Void subgroup searches, multi-step Fusion materials
-and the exact response window used for Schism or El Shaddoll Fusion can therefore
+idle-command selections. Card callbacks are emitted as `kind: selection`
+rather than being mixed into idle-command decisions. Void subgroup searches,
+multi-step Fusion materials and the exact response window used for Schism or El Shaddoll Fusion can therefore
 be audited. The client cannot see hidden opponent cards, simulate future Lua
 resolution, or know an opponent's unobserved hand. Effect-text classification
 uses the English Standard catalog selected for this executor; it is a bounded
 semantic heuristic, not a substitute for executing each card's Lua script. It
 does not infer activation conditions that are absent from the public text or
 predict whether an opponent holds the cost for a conditional effect.
+
+Broad challenge run `77fa0384-9f9f-46b7-9172-9548647d0fe3` completed 183
+single-match Arena entries across 61 Standard opponents with no recorded
+disconnects. Shaddoll2025 went 66-117 (36.1%); excluding the three mirror
+entries it went 64-116 (35.6%). Its trace tree contains 874 captures, 873 of
+them complete. After normalizing the older writer's mislabeled card callbacks,
+the analyzer recovers 22,939 selection rows instead of reporting zero. The same
+evidence found 20 accepted Faimena activations, all on the bot's own turn; 15
+ended in losses, and several selected Granguignol without creating immediate
+control. That correlation motivated preserving Faimena for a verified
+opponent-turn Winda or Apkallone line. It does not prove the policy will improve
+the next randomized sample, so this update is committed before any new Arena
+run.
 
 Arena run `517f9b9a-61be-43c8-ba7f-30055724bbb7` used the current 40/15/9 list
 and completed three Normal-level matches against `Lightsworn`: Shaddoll2025 won

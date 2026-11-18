@@ -727,18 +727,26 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location != CardLocation.Hand || !IsMainPhase() ||
                 ShouldStopSpecialSummoning(CardLocation.Extra) || FunctionalWinda() || HasSafeLethalOnBoard())
                 return false;
+            // The latest broad trace sample recorded every accepted Faimena
+            // activation on our own turn (15 losses from 20 uses). Discarding
+            // Faimena there duplicates the deck's ordinary Fusion effects and
+            // spends the turn-zero interaction. Keep it for the opponent's Main
+            // Phase, where making Winda actually denies further summons.
+            if (Duel.Player != 1)
+                return false;
             if (MustResolveLevMeshFirst())
                 return false;
             if (Duel.SolvingChainIndex == 0 && Duel.CurrentChain.Count > 0 &&
                 Duel.LastChainPlayer == 0)
                 return false;
-            if (Duel.Player == 0 && Enemy.GetMonsterCount() == 0)
-                return false;
             // Faimena discards itself as cost before Fusion materials are chosen.
-            // Require two other monsters so the turn-zero Quick Fusion is real.
-            return Bot.Hand.Concat(Bot.GetMonsters())
-                .Count(c => c != Card && c.IsMonster()) >= 2 &&
-                Bot.HasInExtra(ShaddollFusionIds);
+            // An empty-board turn-zero activation is useful only when the two
+            // remaining monsters can really make Winda. Once a persistent
+            // threat is visible, Apkallone is also an acceptable continuation.
+            if (CanFaimenaSummon(CardId.ElShaddollWinda))
+                return true;
+            return BestPersistentOpponentThreatScore() >= 750 &&
+                CanFaimenaSummon(CardId.ElShaddollApkallone);
         }
 
         private bool CartesiaActivate()
@@ -1988,6 +1996,46 @@ namespace WindBot.Game.AI.Decks
             if (includeGrave)
                 materialCount += Bot.Graveyard.Count(c => c.IsMonster());
             return materialCount >= 2 && Bot.ExtraDeck.Any(c => ShaddollFusionIds.Contains(c.Id));
+        }
+
+        private bool CanFaimenaSummon(int fusionId)
+        {
+            if (!Bot.HasInExtra(fusionId))
+                return false;
+            List<ClientCard> materials = Bot.Hand.Concat(Bot.GetMonsters())
+                .Where(c => c != null && c != Card && c.IsMonster())
+                .ToList();
+            for (int i = 0; i < materials.Count; ++i)
+            {
+                for (int j = i + 1; j < materials.Count; ++j)
+                {
+                    ClientCard first = materials[i];
+                    ClientCard second = materials[j];
+                    if (fusionId == CardId.ElShaddollApkallone)
+                    {
+                        if (IsShaddollMonster(first) && IsShaddollMonster(second) &&
+                            first.Attribute != second.Attribute)
+                            return true;
+                        continue;
+                    }
+                    CardAttribute required = fusionId == CardId.ElShaddollWinda
+                        ? CardAttribute.Dark
+                        : fusionId == CardId.ElShaddollConstruct
+                            ? CardAttribute.Light
+                            : fusionId == CardId.ElShaddollShekhinaga
+                                ? CardAttribute.Earth
+                                : fusionId == CardId.ElShaddollAnoyatyllis
+                                    ? CardAttribute.Water
+                                    : fusionId == CardId.ReeshaddollWendikuruhu
+                                        ? CardAttribute.Wind
+                                        : 0;
+                    if (required != 0 &&
+                        ((IsShaddollMonster(first) && second.HasAttribute(required)) ||
+                         (IsShaddollMonster(second) && first.HasAttribute(required))))
+                        return true;
+                }
+            }
+            return false;
         }
 
         private bool HasSchismFusionResources()

@@ -156,18 +156,21 @@ const runKindDescriptions = {
 const regressionDeckOptions = computed(() => (system.value?.configuration.decks || []).map((item) => ({
     aiLevel: item.aiLevel,
     currentLabel: item.currentLabel,
+    format: item.format,
     value: item.deck,
-})));
+})).filter((item) => item.format !== 'rush'));
 const currentDeckOptions = computed(() => (system.value?.configuration.currentDecks || []).map((item) => ({
     aiLevel: item.aiLevel,
     currentLabel: item.currentLabel,
+    format: item.format,
     value: item.deck,
-})));
+})).filter((item) => item.format !== 'rush'));
 const oldDeckOptions = computed(() => (system.value?.configuration.oldDecks || []).map((item) => ({
     aiLevel: item.aiLevel,
     currentLabel: item.currentLabel,
+    format: item.format,
     value: item.deck,
-})));
+})).filter((item) => item.format !== 'rush'));
 const catalogDeckOptions = computed(() => (
     experimentKind.value === 'regression' ? regressionDeckOptions.value : currentDeckOptions.value
 ));
@@ -223,20 +226,14 @@ const effectiveSelectedDeckSet = computed(() => {
     }
     const target = String(targetDeck.value || '').trim();
     return new Set(deckOptions.value
-        .filter((option) => (
-            option.aiLevel !== 1
-            || (experimentKind.value === 'challenge' && option.value === target)
-        ))
+        .filter((option) => option.aiLevel !== 1
+            && (experimentKind.value !== 'challenge' || option.value !== target))
         .map((option) => option.value));
 });
 const allDeckCount = computed(() => {
-    if (experimentKind.value !== 'challenge' || !String(targetDeck.value || '').trim()) {
-        return bulkDeckCount.value;
-    }
-    const included = deckOptions.value.some((item) => (
-        item.value === String(targetDeck.value || '').trim() && item.aiLevel !== 1
-    ));
-    return bulkDeckCount.value + (included ? 0 : 1);
+    if (experimentKind.value !== 'challenge') return bulkDeckCount.value;
+    const target = String(targetDeck.value || '').trim();
+    return deckOptions.value.filter((item) => item.aiLevel !== 1 && item.value !== target).length;
 });
 const displayedRun = computed(() => selectedRun.value);
 const historyPageCount = computed(() => Math.max(1, Math.ceil(
@@ -1556,8 +1553,8 @@ onBeforeUnmount(() => {
                                                 class="deck-option"
                                                 :checked="allDecks
                                                     ? option.aiLevel !== 1
-                                                        || (experimentKind === 'challenge'
-                                                            && String(targetDeck || '').trim() === option.value)
+                                                        && (experimentKind !== 'challenge'
+                                                            || String(targetDeck || '').trim() !== option.value)
                                                     : selectedDecks.includes(option.value)"
                                                 :disabled="allDecks || !!activeRun"
                                                 @update:checked="handleDeckSelection(option.value, $event)"

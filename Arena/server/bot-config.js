@@ -33,10 +33,12 @@ function parseBotConfig(content) {
 
         const deck = match[2] || match[3];
         const aiLevel = block.match(/\bAI_LV(\d+)\b/);
+        const format = /\bAI_RD\d+\b/.test(block) ? 'rush' : 'standard';
         bots.set(deck, {
             aiLevel: aiLevel ? Number(aiLevel[1]) : null,
             deck,
             dialog: match[4],
+            format,
             label: match[1],
         });
     }
@@ -110,6 +112,17 @@ function getOldCatalog(settings) {
             }
             return right.aiLevel - left.aiLevel || left.deck.localeCompare(right.deck);
         });
+}
+
+function isBulkEligible(bot) {
+    return bot.aiLevel !== 1 && bot.format !== 'rush';
+}
+
+function rejectRushDecks(catalogByDeck, decks) {
+    const rushDecks = decks.filter((deck) => catalogByDeck.get(deck)?.format === 'rush');
+    if (rushDecks.length > 0) {
+        throw new Error(`Rush Duel decks cannot run in a Standard Arena experiment: ${rushDecks.join(', ')}`);
+    }
 }
 
 function validateWindBotRuntime(instance, label) {
@@ -210,12 +223,13 @@ function buildRegressionMatchups(settings, requestedDecks) {
         .filter((item) => (
             requestedDeckSet
                 ? requestedDeckSet.has(item.deck)
-                : item.current.aiLevel !== 1
+                : isBulkEligible(item.current)
         ))
         .map((item) => item.deck);
     if (selectedDecks.length === 0) {
         throw new Error('No eligible shared decks; bulk selection excludes LV1');
     }
+    rejectRushDecks(catalogByDeck, selectedDecks);
 
     const matchups = selectedDecks.map((deck) => {
         const pair = catalogByDeck.get(deck);
@@ -261,11 +275,11 @@ function buildChallengeMatchups(settings, targetDeckInput, requestedDecks, chall
         if (missing.length > 0) {
             throw new Error(`These opponents are not in the current catalog: ${missing.join(', ')}`);
         }
+        rejectRushDecks(opponentCatalogByDeck, opponentDecks);
     } else {
-        opponentDecks = opponentCatalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
-        if (!opponentDecks.includes(targetDeck)) {
-            opponentDecks.push(targetDeck);
-        }
+        opponentDecks = opponentCatalog
+            .filter((bot) => isBulkEligible(bot) && bot.deck !== targetDeck)
+            .map((bot) => bot.deck);
     }
     if (opponentDecks.length === 0) {
         throw new Error('At least one opponent deck is required');
@@ -316,11 +330,12 @@ function buildRankingEntries(settings, requestedDecks) {
     const catalogByDeck = new Map(catalog.map((bot) => [bot.deck, bot]));
     const selectedDecks = requestedDecks?.length
         ? [...new Set(requestedDecks.map((deck) => deck.trim()))]
-        : catalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
+        : catalog.filter(isBulkEligible).map((bot) => bot.deck);
     const missing = selectedDecks.filter((deck) => !catalogByDeck.has(deck));
     if (missing.length > 0) {
         throw new Error(`These decks are not in the current catalog: ${missing.join(', ')}`);
     }
+    rejectRushDecks(catalogByDeck, selectedDecks);
     if (selectedDecks.length < 2) {
         throw new Error('Ranking requires at least two decks');
     }
@@ -355,11 +370,12 @@ function buildTagEntries(settings, requestedDecks) {
     const catalogByDeck = new Map(catalog.map((bot) => [bot.deck, bot]));
     const selectedDecks = requestedDecks?.length
         ? [...new Set(requestedDecks.map((deck) => deck.trim()))]
-        : catalog.filter((bot) => bot.aiLevel !== 1).map((bot) => bot.deck);
+        : catalog.filter(isBulkEligible).map((bot) => bot.deck);
     const missing = selectedDecks.filter((deck) => !catalogByDeck.has(deck));
     if (missing.length > 0) {
         throw new Error(`These decks are not in the current catalog: ${missing.join(', ')}`);
     }
+    rejectRushDecks(catalogByDeck, selectedDecks);
     if (selectedDecks.length === 0) {
         throw new Error('Tag smoke tests require at least one deck');
     }
@@ -433,6 +449,7 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 aiLevel: item.current.aiLevel,
                 currentLabel: item.current.label,
                 deck: item.deck,
+                format: item.current.format,
                 oldLabel: item.old.label,
             }));
             if (decks.length === 0) {
@@ -449,6 +466,7 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 aiLevel: item.aiLevel,
                 currentLabel: item.label,
                 deck: item.deck,
+                format: item.format,
             }));
             if (currentDecks.length === 0) {
                 currentIssues.push('Current catalog has no runnable decks');
@@ -464,6 +482,7 @@ function inspectConfiguration(settings, selectedSrvpro = settings.srvpro || sett
                 aiLevel: item.aiLevel,
                 currentLabel: item.label,
                 deck: item.deck,
+                format: item.format,
             }));
             if (oldDecks.length === 0) {
                 oldIssues.push('Baseline catalog has no runnable decks');

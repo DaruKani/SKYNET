@@ -54,6 +54,23 @@ class TraceAnalysisTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "non-contiguous sequence"):
                 analyze_traces.read_capture(path)
 
+    def test_legacy_mislabeled_card_selection_is_normalized(self):
+        common = {"schema": analyze_traces.SCHEMA, "duelId": "legacy", "agent": "A"}
+        rows = [
+            dict(common, sequence=0, kind="start"),
+            dict(common, sequence=1, kind="decision", prompt="select_card",
+                 observation={"global": {"turn": 1, "phase": 4}},
+                 selection={"candidates": [{"id": 3, "known": True, "code": 456}]},
+                 selectedCandidateIds=[3], responseSource="executor"),
+            dict(common, sequence=2, kind="end", outcome=0, completed=True),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            report = analyze_traces.analyze([self.write_capture(directory, rows)])
+        self.assertEqual(report["summary"]["decisions"], 0)
+        self.assertEqual(report["summary"]["selections"], 1)
+        self.assertEqual(report["decisionRows"][0]["kind"], "selection")
+        self.assertEqual(report["decisionRows"][0]["selectedCandidateCodes"], "456")
+
     def test_capture_start_order_uses_utc_start_timestamp(self):
         common = {"schema": analyze_traces.SCHEMA, "agent": "A", "sequence": 0, "kind": "start"}
         with tempfile.TemporaryDirectory() as directory:
