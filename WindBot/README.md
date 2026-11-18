@@ -667,7 +667,9 @@ combo. Its implemented decisions include:
   Fusions cannot consume Mesh before Lev converts it. With no reveal already in
   hand, Lev makes Construct and Hedgehog finds Wendi before Void resolves; with
   a live opening reveal, Void may resolve earlier but preserves that Shaddoll and
-  still leaves Mesh for Lev;
+  still leaves Mesh for Lev. A spent Meshachrer is not counted as a functional
+  control board, so a resolved Maxx C or Fuwalos cannot make the executor stop
+  when Lev is already offering the one-summon conversion;
 - recalculation at each legal offer: missing Apkallone can use the Evil/Void
   fallback, missing Void can search El Shaddoll Fusion, and missing Meshachrer
   can choose another legal Fusion;
@@ -677,7 +679,9 @@ combo. Its implemented decisions include:
 - state-based Squamata sends, Hedgehog/Wendi searches, Ariel GY disruption,
   Construct setup, Apkallone search/discard and Meshachrer search/revival. Ariel
   prioritizes live Orcust recursion, Dragon grave protection and Magician
-  Navigation's grave negate before generic bodies;
+  Navigation's grave negate before generic bodies. Meshachrer search follows the
+  script's once-per-copy limit, while its Graveyard revival is not assigned a
+  fabricated hard once-per-turn;
 - legal-offer Fusion target and material scoring for Shaddoll Fusion, El
   Shaddoll Fusion, Schism, Tohushaddoll Grysta, Cartesia, Faimena and Scheiren;
 - adaptive secondary engines: Scheiren sends the highest-value live Shaddoll
@@ -814,7 +818,7 @@ does not itself execute the Lua engine. WindBot's
 local HTTP command endpoint binds only to `127.0.0.1` and uses a small TCP-based
 HTTP/1.1 handler so server mode does not depend on the Windows HTTP service.
 
-The focused suite currently covers 83 callback, scheduler, route and deck-structure scenarios,
+The focused suite currently covers 85 callback, scheduler, route and deck-structure scenarios,
 including the Fusion Control regressions above. Real script-backed Arena runs
 use the prepared loopback MDPro4 native host, shuffled decks, disabled deck
 legality checks and an uncontrolled core seed. Their results prove the complete

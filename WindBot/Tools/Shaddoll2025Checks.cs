@@ -554,6 +554,31 @@ internal static class Shaddoll2025Checks
                 "Idle scheduler fused before Lev converted Mesh into Construct");
         });
 
+        Run("Lev completes the committed Mesh conversion under Maxx C", () =>
+        {
+            Fixture f = new Fixture();
+            ClientCard lev = f.Add(Lev, CardLocation.SpellZone);
+            f.Add(Mesh, CardLocation.MonsterZone);
+            SetPrivate(f.Executor, "_specialSummonsThisTurn", 1);
+            IList<int> resolved = (IList<int>)typeof(DefaultExecutor)
+                .GetField("enemyResolvedEffectIdList", Flags).GetValue(f.Executor);
+            resolved.Add(MaxxC);
+            Require(f.AI.OnSelectEffectYn(lev, Desc(Lev, 1)),
+                "Maxx C made the committed route end on a spent Meshachrer");
+        });
+
+        Run("Each Meshachrer copy keeps its script-level soft search", () =>
+        {
+            Fixture f = new Fixture();
+            f.Add(Grysta, CardLocation.Hand);
+            ClientCard first = f.Add(Mesh, CardLocation.MonsterZone);
+            ClientCard second = f.Add(Mesh, CardLocation.MonsterZone);
+            Require(f.AI.OnSelectEffectYn(first, Desc(Mesh, 1)),
+                "The first Meshachrer copy rejected its search");
+            Require(f.AI.OnSelectEffectYn(second, Desc(Mesh, 1)),
+                "The executor fabricated a hard once-per-turn across two Meshachrer copies");
+        });
+
         Run("Opening Void cannot jump ahead of the live Mesh search", () =>
         {
             Fixture f = new Fixture();

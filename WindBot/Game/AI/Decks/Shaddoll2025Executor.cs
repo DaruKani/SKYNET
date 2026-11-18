@@ -100,6 +100,7 @@ namespace WindBot.Game.AI.Decks
         }
 
         private readonly HashSet<int> _usedEffects = new HashSet<int>();
+        private readonly HashSet<ClientCard> _usedMeshSearches = new HashSet<ClientCard>();
         private int _specialSummonsThisTurn;
         private int _opponentSpecialSummonsThisTurn;
         private int _coveredOpponentChainLength;
@@ -222,6 +223,7 @@ namespace WindBot.Game.AI.Decks
         {
             base.OnNewTurn();
             _usedEffects.Clear();
+            _usedMeshSearches.Clear();
             _specialSummonsThisTurn = 0;
             _opponentSpecialSummonsThisTurn = 0;
             _coveredOpponentChainLength = 0;
@@ -810,7 +812,15 @@ namespace WindBot.Game.AI.Decks
                 .OrderByDescending(c => c.IsCode(CardId.ElShaddollMeshachrer) && IsLevRouteActive() ? 1 : 0)
                 .ThenBy(c => LevTributeScore(c))
                 .FirstOrDefault();
-            if (tribute == null || ShouldStopSpecialSummoning(CardLocation.Extra))
+            bool finishCommittedRoute = tribute != null &&
+                tribute.IsCode(CardId.ElShaddollMeshachrer) && IsLevRouteActive() &&
+                ControlBoardScore() < 100;
+            // Mesh has usually spent its search before this offer and supplies
+            // no interruption by itself. Once Lev can legally convert it, one
+            // additional draw under Maxx C/Fuwalos is preferable to ending on
+            // the exact exposed body observed in the broad-run losses.
+            if (tribute == null ||
+                (ShouldStopSpecialSummoning(CardLocation.Extra) && !finishCommittedRoute))
                 return false;
             AI.SelectCard(tribute);
             _levTributedMesh = tribute.IsCode(CardId.ElShaddollMeshachrer);
@@ -949,10 +959,18 @@ namespace WindBot.Game.AI.Decks
         private bool MeshachrerActivate()
         {
             if (Card.Location == CardLocation.MonsterZone)
-                return Bot.LifePoints > 1600 && HasUsefulMeshSearch() &&
-                    MarkUsed(CardId.ElShaddollMeshachrer);
-            return Bot.GetMonsterCount() < 5 && Bot.Graveyard.Any(IsShaddollMonster) &&
-                MarkUsed(CardId.ElShaddollMeshachrer + 1);
+            {
+                // The Lua script uses SetCountLimit(1) without a shared card
+                // code: each properly summoned copy owns its own search.
+                if (_usedMeshSearches.Contains(Card) ||
+                    Bot.LifePoints <= 1600 || !HasUsefulMeshSearch())
+                    return false;
+                _usedMeshSearches.Add(Card);
+                return true;
+            }
+            // Meshachrer's Graveyard revival has no count limit in the selected
+            // script. Do not turn it into a fabricated hard once-per-turn.
+            return Bot.GetMonsterCount() < 5 && Bot.Graveyard.Any(IsShaddollMonster);
         }
 
         private bool FusionRecoveryActivate()
@@ -1850,8 +1868,7 @@ namespace WindBot.Game.AI.Decks
             return Bot.GetMonsters().Any(c => c.IsFaceup() && c.IsCode(
                 CardId.ElShaddollWinda,
                 CardId.ElShaddollShekhinaga,
-                CardId.ReeshaddollWendikuruhu,
-                CardId.ElShaddollMeshachrer)) ||
+                CardId.ReeshaddollWendikuruhu)) ||
                 Bot.HasInSpellZone(CardId.ShaddollSchism);
         }
 
